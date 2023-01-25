@@ -6,6 +6,7 @@
 #include "duckdb/function/scalar/string_functions.hpp"
 #include "duckdb/parser/expression/bound_expression.hpp"
 #include "duckdb/planner/expression/bound_function_expression.hpp"
+#include <iostream>
 
 namespace duckdb {
 
@@ -63,11 +64,13 @@ static bool ClampSlice(const INPUT_TYPE &value, INDEX_TYPE &begin, INDEX_TYPE &e
 
 template <typename INPUT_TYPE, typename INDEX_TYPE>
 INPUT_TYPE SliceValue(Vector &result, INPUT_TYPE input, INDEX_TYPE begin, INDEX_TYPE end) {
+std::cout << "SliceValue default\n";
 	return input;
 }
 
 template <>
 list_entry_t SliceValue(Vector &result, list_entry_t input, int64_t begin, int64_t end) {
+std::cout << "SliceValue other\n";
 	input.offset += begin;
 	input.length = end - begin;
 	return input;
@@ -75,6 +78,7 @@ list_entry_t SliceValue(Vector &result, list_entry_t input, int64_t begin, int64
 
 template <>
 string_t SliceValue(Vector &result, string_t input, int32_t begin, int32_t end) {
+std::cout << "SliceValue string\n";
 	// one-based - zero has strange semantics
 	return SubstringFun::SubstringUnicode(result, input, begin + 1, end - begin);
 }
@@ -119,17 +123,20 @@ static void ExecuteSlice(Vector &result, Vector &s, Vector &b, Vector &e, const 
 			auto sliced = ((INPUT_TYPE *)sdata.data)[sidx];
 			auto begin = ((INDEX_TYPE *)bdata.data)[bidx];
 			auto end = ((INDEX_TYPE *)edata.data)[eidx];
-
 			begin = (begin > 0) ? begin - 1 : begin;
 
 			auto svalid = sdata.validity.RowIsValid(sidx);
 			auto bvalid = bdata.validity.RowIsValid(bidx);
 			auto evalid = edata.validity.RowIsValid(eidx);
 
+std::cout << "\t" << begin << "\t" << end <<"\t" << svalid << "\t" << bvalid << "\t";
+
 			// Try to slice
 			if (!svalid || !ClampSlice(sliced, begin, end, bvalid, evalid)) {
+std::cout << "INVALID\n";
 				rmask.SetInvalid(i);
 			} else {
+std::cout << "VALID\n";
 				rdata[i] = SliceValue<INPUT_TYPE, INDEX_TYPE>(result, sliced, begin, end);
 			}
 		}
