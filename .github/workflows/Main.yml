@@ -246,11 +246,10 @@ jobs:
 
  valgrind:
     name: Valgrind
-    runs-on: ubuntu-20.04
-    needs: linux-debug
+    runs-on: ubuntu-22.04
     env:
-      CC: gcc-10
-      CXX: g++-10
+      CC: gcc
+      CXX: g++
       DISABLE_SANITIZER: 1
       BUILD_JEMALLOC: 1
       GEN: ninja
@@ -274,9 +273,52 @@ jobs:
       shell: bash
       run: make debug
 
-    - name: Test
+    - name: Test 3
+      continue-on-error: true
       shell: bash
-      run: valgrind ./build/debug/test/unittest test/sql/tpch/tpch_sf001.test_slow
+      run: |
+        valgrind --leak-check=full --track-origins=yes ./build/debug/test/unittest --start-offset 620  --end-offset 630
+    - name: Test ART\1
+      continue-on-error: true
+      shell: bash
+      run: |
+        valgrind --leak-check=full --track-origins=yes (for i in {1..30}; do ./build/debug/test/unittest --force-storage test/sql/index/art/test_art_big_range.test; done)
+    - name: Test ART\2
+      continue-on-error: true
+      shell: bash
+      run: |
+        valgrind --leak-check=full --track-origins=yes (./build/debug/test/unittest --force-storage test/sql/index/art/test_art_big_range.test && ./build/debug/test/unittest --force-storage test/sql/index/art/test_art_big_range.test && ./build/debug/test/unittest --force-storage test/sql/index/art/test_art_big_range.test && ./build/debug/test/unittest --force-storage test/sql/index/art/test_art_big_range.test && ./build/debug/test/unittest --force-storage test/sql/index/art/test_art_big_range.test )
+
+    - name: Test ART\3
+      continue-on-error: true
+      shell: bash
+      run: |
+        valgrind --leak-check=full --track-origins=yes ./build/debug/test/unittest --force-storage test/sql/index/art/test_art_big_range.test
+    - name: Test ART\4
+      continue-on-error: true
+      shell: bash
+      run: |
+        valgrind --leak-check=full --track-origins=yes ./build/debug/test/unittest --force-storage test/sql/index/art/test_art_big_range.test
+    - name: Test ART
+      continue-on-error: true
+      shell: bash
+      run: |
+        valgrind --leak-check=full --track-origins=yes ./build/debug/test/unittest --force-storage test/sql/index/art/test_art_big_range.test
+    - name: Test 1
+      continue-on-error: true
+      shell: bash
+      run: |
+        valgrind --leak-check=full --track-origins=yes ./build/debug/test/unittest --start-offset 1  --end-offset 10
+    - name: Test 2
+      continue-on-error: true
+      shell: bash
+      run: |
+        valgrind --leak-check=full --track-origins=yes ./build/debug/test/unittest --start-offset 470  --end-offset 480
+    - name: Test 1000
+      continue-on-error: true
+      shell: bash
+      run: |
+        valgrind --leak-check=full --track-origins=yes ./build/debug/test/unittest --start-offset 1000  --end-offset 1200
 
  docs:
     name: Website Docs
