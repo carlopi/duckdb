@@ -265,22 +265,23 @@ jobs:
       run: make debug
 
     - name: Test 1
+      if: ${{ ( failure() && steps.build.conclusion == 'success' ) || success() }}
       continue-on-error: true
       shell: bash
       run: |
         valgrind --leak-check=full --track-origins=yes ./build/debug/test/unittest --start-offset 1  --end-offset 10
     - name: Test 2
-      continue-on-error: true
+      if: ${{ ( failure() && steps.build.conclusion == 'success' ) || success() }}
       shell: bash
       run: |
         valgrind --leak-check=full --track-origins=yes ./build/debug/test/unittest --start-offset 10  --end-offset 100
     - name: Test 3
-      continue-on-error: true
+      if: ${{ ( failure() && steps.build.conclusion == 'success' ) || success() }}
       shell: bash
       run: |
         valgrind --leak-check=full --track-origins=yes ./build/debug/test/unittest --start-offset 100  --end-offset 200
     - name: Test 4
-      continue-on-error: true
+      if: ${{ ( failure() && steps.build.conclusion == 'success' ) || success() }}
       shell: bash
       run: |
         valgrind --leak-check=full --track-origins=yes ./build/debug/test/unittest --start-offset 200  --end-offset 300
