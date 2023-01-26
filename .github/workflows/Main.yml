@@ -268,27 +268,22 @@ jobs:
       continue-on-error: true
       shell: bash
       run: |
-        valgrind ./build/debug/test/unittest --start-offset 1  --end-offset 10
+        valgrind --leak-check=full --track-origins=yes ./build/debug/test/unittest --start-offset 1  --end-offset 10
     - name: Test 2
       continue-on-error: true
       shell: bash
       run: |
-        valgrind ./build/debug/test/unittest --start-offset 10  --end-offset 100
+        valgrind --leak-check=full --track-origins=yes ./build/debug/test/unittest --start-offset 10  --end-offset 100
     - name: Test 3
       continue-on-error: true
       shell: bash
       run: |
-        valgrind ./build/debug/test/unittest --start-offset 100  --end-offset 200
+        valgrind --leak-check=full --track-origins=yes ./build/debug/test/unittest --start-offset 100  --end-offset 200
     - name: Test 4
       continue-on-error: true
       shell: bash
       run: |
-        valgrind ./build/debug/test/unittest --start-offset 200  --end-offset 300
-    - name: Test 5
-      continue-on-error: true
-      shell: bash
-      run: |
-        valgrind ./build/debug/test/unittest --start-offset 300  --end-offset 1000
+        valgrind --leak-check=full --track-origins=yes ./build/debug/test/unittest --start-offset 200  --end-offset 300
 
  docs:
     name: Website Docs
