@@ -24,7 +24,10 @@ function createdb(callback) {
         if (callback) callback();
     } else {
         console.log("Creating test database... This may take several minutes.");
-        var db = new sqlite3.Database(db_path, () => {
+        var db;
+	db = new sqlite3.Database(db_path, () => {
+        	console.log("Main callback called");
+console.log(db);
             db.serialize(function() {
                 db.run("CREATE TABLE foo (id INT, txt TEXT)");
                 db.run("BEGIN TRANSACTION");
@@ -39,6 +42,7 @@ function createdb(callback) {
                 });
             });
         });
+        console.log("Created database");
     }
 };
 
