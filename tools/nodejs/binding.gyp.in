@@ -26,7 +26,7 @@
                 "-Wno-redundant-move"
             ],
             "cflags_cc!": [
-                "-fno-rrti",
+                "-fno-rtti",
                 "-fno-exceptions"
             ],
             "cflags": [
@@ -36,7 +36,7 @@
                 "${CFLAGS}"
             ],
             "cflags!": [
-                "-fno-rrti",
+                "-fno-rtti",
                 "-fno-exceptions"
             ],
             "xcode_settings": {
