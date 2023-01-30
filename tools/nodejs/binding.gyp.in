@@ -21,21 +21,25 @@
                 "${DEFINES}"
             ],
             "cflags_cc": [
+                "/GR",
                 "-frtti",
                 "-fexceptions",
                 "-Wno-redundant-move"
             ],
             "cflags_cc!": [
+                "/GR-",
                 "-fno-rtti",
                 "-fno-exceptions"
             ],
             "cflags": [
+                "/GR",
                 "-frtti",
                 "-fexceptions",
                 "-Wno-redundant-move",
                 "${CFLAGS}"
             ],
             "cflags!": [
+                "/GR-",
                 "-fno-rtti",
                 "-fno-exceptions"
             ],
