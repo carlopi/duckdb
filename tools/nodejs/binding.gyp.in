@@ -62,6 +62,7 @@
                 [
                     "OS==\"win\"",
                     {
+                        "RuntimeTypeInfo": true,
                         "defines": [
                             "DUCKDB_BUILD_LIBRARY"
                         ]
