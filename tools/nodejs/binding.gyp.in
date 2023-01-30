@@ -49,7 +49,7 @@
 
             },
             "msvs_settings": {
-                "RuntimeTypeInfo": true,
+                "RuntimeTypeInfo": "true",
                 "VCCLCompilerTool": {
                     "ExceptionHandling": 1,
                     "AdditionalOptions": [
@@ -62,7 +62,7 @@
                 [
                     "OS==\"win\"",
                     {
-                        "RuntimeTypeInfo": true,
+                        "RuntimeTypeInfo": "true",
                         "defines": [
                             "DUCKDB_BUILD_LIBRARY"
                         ]
