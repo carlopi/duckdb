@@ -49,6 +49,7 @@
 
             },
             "msvs_settings": {
+                "RuntimeTypeInfo": true,
                 "VCCLCompilerTool": {
                     "ExceptionHandling": 1,
                     "AdditionalOptions": [
