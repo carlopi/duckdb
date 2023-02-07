@@ -22,7 +22,11 @@ public:
 class PythonFileHandle : public FileHandle {
 public:
 	PythonFileHandle(FileSystem &file_system, const string &path, const py::object handle);
-
+	~PythonFileHandle() override
+	{
+		PythonFileHandle::Close();
+		//unsure whether specifying the class if needed, seems to work either way
+	}
 	void Close() override {
 		PythonGILWrapper gil;
 		handle.attr("close")();
