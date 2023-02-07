@@ -64,14 +64,15 @@ public:
 public:
 	//! Initialize a scan on the index with the given expression and column ids
 	//! to fetch from the base table for a single predicate
-	unique_ptr<IndexScanState> InitializeScanSinglePredicate(Transaction &transaction, Value value,
+	unique_ptr<IndexScanState> InitializeScanSinglePredicate(const Transaction &transaction, const Value& value,
 	                                                         ExpressionType expression_type) override;
 
 	//! Initialize a scan on the index with the given expression and column ids
 	//! to fetch from the base table for two predicates
-	unique_ptr<IndexScanState> InitializeScanTwoPredicates(Transaction &transaction, Value low_value,
-	                                                       ExpressionType low_expression_type, Value high_value,
-	                                                       ExpressionType high_expression_type) override;
+	unique_ptr<IndexScanState> InitializeScanTwoPredicates(Transaction &transaction,
+	                                                       const Value& low_value, ExpressionType low_expression_type,
+	                                                       const Value& high_value, ExpressionType high_expression_type
+	                                                       ) override;
 
 	//! Perform a lookup on the index
 	bool Scan(Transaction &transaction, DataTable &table, IndexScanState &state, idx_t max_count,
