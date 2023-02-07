@@ -4,7 +4,7 @@
 #include "fsst.h"
 
 namespace duckdb {
-string_t FSSTPrimitives::DecompressValue(void *duckdb_fsst_decoder, Vector &result, unsigned char *compressed_string,
+string_t FSSTPrimitives::DecompressValue(void *duckdb_fsst_decoder, Vector &result, const unsigned char *compressed_string,
                                          idx_t compressed_string_len) {
 	D_ASSERT(result.GetVectorType() == VectorType::FLAT_VECTOR);
 	unsigned char decompress_buffer[StringUncompressed::STRING_BLOCK_LIMIT + 1];
@@ -16,7 +16,7 @@ string_t FSSTPrimitives::DecompressValue(void *duckdb_fsst_decoder, Vector &resu
 	return StringVector::AddStringOrBlob(result, (const char *)decompress_buffer, decompressed_string_size);
 }
 
-Value FSSTPrimitives::DecompressValue(void *duckdb_fsst_decoder, unsigned char *compressed_string,
+Value FSSTPrimitives::DecompressValue(void *duckdb_fsst_decoder, const unsigned char *compressed_string,
                                       idx_t compressed_string_len) {
 	unsigned char decompress_buffer[StringUncompressed::STRING_BLOCK_LIMIT + 1];
 	auto decompressed_string_size =
