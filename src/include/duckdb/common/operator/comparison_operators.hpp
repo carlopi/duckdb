@@ -157,24 +157,24 @@ inline bool LessThan::Operation(bool left, bool right) {
 struct StringComparisonOperators {
 	template <bool INVERSE>
 	static inline bool EqualsOrNot(const string_t a, const string_t b) {
-		if (a.IsInlined()) {
-			// small string: compare entire string
-			if (memcmp(&a, &b, sizeof(string_t)) == 0) {
-				// entire string is equal
+		if (memcmp(&a, &b, string_t::HEADER_SIZE) != 0) {
+			return INVERSE;	// they can't represent the same underlying string
+		}
+		// they have the same length and same prefix!
+		if (memcmp(&a, &b, sizeof(string_t)) == 0) {
+			// either they are both inlined (so compare equal) or point to the same string (so compare equal)
+			return !INVERSE;
+		}
+		if (!a.IsInlined()) {
+			// 'long' strings -> compare pointed values
+			if (memcmp(a.value.pointer.ptr, b.value.pointer.ptr, a.GetSize()) == 0) {
 				return INVERSE ? false : true;
 			}
-		} else {
-			// large string: first check prefix and length
-			if (memcmp(&a, &b, string_t::HEADER_SIZE) == 0) {
-				// prefix and length are equal: check main string
-				if (memcmp(a.value.pointer.ptr, b.value.pointer.ptr, a.GetSize()) == 0) {
-					// entire string is equal
-					return INVERSE ? false : true;
-				}
-			}
 		}
-		// not equal
-		return INVERSE ? true : false;
+		// either they are short string of same lenght but different content
+		//     or they point to string with different content
+		//     either way, they can't represent the same underlying string
+		return INVERSE;
 	}
 };
 
