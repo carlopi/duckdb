@@ -30,12 +30,13 @@ public:
 	static constexpr idx_t PREFIX_LENGTH = 0;
 	static constexpr idx_t INLINE_LENGTH = 0;
 #endif
-
-	string_t() = default;
-	explicit string_t(uint32_t len) {
+	explicit string_t(uint32_t len = 0) {
+//		*(reinterpret_cast<uint64_t*>(this)) = 0ull;
+//		*(reinterpret_cast<uint64_t*>(this) + 1) = 0ull;
 		value.inlined.length = len;
+		memset(value.inlined.inlined, 0, INLINE_BYTES);
 	}
-	string_t(const char *data, uint32_t len) {
+	explicit string_t(const char *data, uint32_t len) {
 		value.inlined.length = len;
 		D_ASSERT(data || GetSize() == 0);
 		if (IsInlined()) {
@@ -59,9 +60,31 @@ public:
 	}
 	string_t(const char *data) : string_t(data, strlen(data)) { // NOLINT: Allow implicit conversion from `const char*`
 	}
-	string_t(const string &value)
-	    : string_t(value.c_str(), value.size()) { // NOLINT: Allow implicit conversion from `const char*`
+	string_t(const string_t &value) { // NOLINT: Allow implicit conversion from `const char*`
+		*(reinterpret_cast<uint64_t*>(this)) = *reinterpret_cast<const uint64_t*>(&value);
+		*(reinterpret_cast<uint64_t*>(this) + 1) = *(reinterpret_cast<const uint64_t*>(&value) + 1);
 	}
+
+	string_t(string_t &&value) { // NOLINT: Allow implicit conversion from `const char*`
+		*(reinterpret_cast<uint64_t*>(this)) = *reinterpret_cast<const uint64_t*>(&value);
+		*(reinterpret_cast<uint64_t*>(this) + 1) = *(reinterpret_cast<const uint64_t*>(&value) + 1);
+	}
+
+	string_t& operator=(string_t &&value) { // NOLINT: Allow implicit conversion from `const char*`
+		*(reinterpret_cast<uint64_t*>(this)) = *reinterpret_cast<const uint64_t*>(&value);
+		*(reinterpret_cast<uint64_t*>(this) + 1) = *(reinterpret_cast<const uint64_t*>(&value) + 1);
+		return *this;
+	}
+
+	string_t& operator=(const string_t& value) {
+		*(reinterpret_cast<uint64_t*>(this)) = *reinterpret_cast<const uint64_t*>(&value);
+		*(reinterpret_cast<uint64_t*>(this) + 1) = *(reinterpret_cast<const uint64_t*>(&value) + 1);
+		return *this;
+	}
+
+        string_t(const string &value)
+           : string_t(value.c_str(), value.size()) { // NOLINT: Allow implicit conversion from `const char*`
+}
 
 	bool IsInlined() const {
 		return GetSize() <= INLINE_LENGTH;

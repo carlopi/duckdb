@@ -37,7 +37,7 @@ inline const char *NullValue() {
 
 template <>
 inline string_t NullValue() {
-	return string_t(NullValue<const char *>());
+	return string_t("");
 }
 
 template <>
@@ -47,7 +47,7 @@ inline char *NullValue() {
 
 template <>
 inline string NullValue() {
-	return string(NullValue<const char *>());
+	return string();
 }
 
 template <>

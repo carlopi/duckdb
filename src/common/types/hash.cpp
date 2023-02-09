@@ -90,7 +90,7 @@ hash_t HashBytes(void *ptr, size_t len) noexcept {
 		h ^= k;
 		h *= M;
 	}
-	if (STRING_T_BACKED_MEMORY) {
+	if (false) if (STRING_T_BACKED_MEMORY || (len > 8)) {
 		auto k = Load<uint64_t>(reinterpret_cast<const_data_ptr_t>(reinterpret_cast<const uint8_t*>(ptr) + ((len >= 8) ? (len - 8) : 0)));
 
 		k *= M;

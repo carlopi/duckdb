@@ -411,11 +411,11 @@ static void NormalizeIntervalEntries(interval_t input, int64_t &months, int64_t 
 	micros = input.micros;
 }
 
-bool Interval::Equals(interval_t left, interval_t right) {
+bool Interval::Equals(const interval_t& left, const interval_t& right) {
 	return left.months == right.months && left.days == right.days && left.micros == right.micros;
 }
 
-bool Interval::GreaterThan(interval_t left, interval_t right) {
+bool Interval::GreaterThan(const interval_t& left, const interval_t& right) {
 	int64_t lmonths, ldays, lmicros;
 	int64_t rmonths, rdays, rmicros;
 	NormalizeIntervalEntries(left, lmonths, ldays, lmicros);
@@ -434,7 +434,7 @@ bool Interval::GreaterThan(interval_t left, interval_t right) {
 	return lmicros > rmicros;
 }
 
-bool Interval::GreaterThanEquals(interval_t left, interval_t right) {
+bool Interval::GreaterThanEquals(const interval_t& left, const interval_t& right) {
 	return GreaterThan(left, right) || Equals(left, right);
 }
 

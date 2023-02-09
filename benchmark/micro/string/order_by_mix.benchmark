@@ -1,0 +1,14 @@
+# name: benchmark/micro/string/greater_than_long.benchmark
+# description: String Greater Than (Long)
+# group: [string]
+
+name String Greater Than (Long)
+group string
+
+load benchmark/micro/string/strings_mix.sql
+
+run
+INSERT INTO TT SELECT DISTINCT * FROM strings
+
+result I
+5397413

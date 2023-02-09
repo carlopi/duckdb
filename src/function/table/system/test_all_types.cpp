@@ -68,8 +68,8 @@ vector<TestType> TestAllTypesFun::GetTestTypes() {
 	// enums
 	Vector small_enum(LogicalType::VARCHAR, 2);
 	auto small_enum_ptr = FlatVector::GetData<string_t>(small_enum);
-	small_enum_ptr[0] = StringVector::AddStringOrBlob(small_enum, "DUCK_DUCK_ENUM");
-	small_enum_ptr[1] = StringVector::AddStringOrBlob(small_enum, "GOOSE");
+	small_enum_ptr[0] = StringVector::AddStringOrBlob(small_enum, string_t("DUCK_DUCK_ENUM"));
+	small_enum_ptr[1] = StringVector::AddStringOrBlob(small_enum, string_t("GOOSE"));
 	result.emplace_back(LogicalType::ENUM("small_enum", small_enum, 2), "small_enum");
 
 	Vector medium_enum(LogicalType::VARCHAR, 300);
