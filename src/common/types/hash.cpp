@@ -63,11 +63,6 @@ hash_t Hash(const char *str) {
 }
 
 template <>
-hash_t Hash(string_t val) {
-	return Hash(val.GetDataUnsafe(), val.GetSize());
-}
-
-template <>
 hash_t Hash(char *val) {
 	return Hash<const char *>(val);
 }
@@ -75,6 +70,7 @@ hash_t Hash(char *val) {
 // MIT License
 // Copyright (c) 2018-2021 Martin Ankerl
 // https://github.com/martinus/robin-hood-hashing/blob/3.11.5/LICENSE
+template <bool STRING_T_BACKED_MEMORY = false>
 hash_t HashBytes(void *ptr, size_t len) noexcept {
 	static constexpr uint64_t M = UINT64_C(0xc6a4a7935bd1e995);
 	static constexpr uint64_t SEED = UINT64_C(0xe17a1465);
@@ -94,7 +90,21 @@ hash_t HashBytes(void *ptr, size_t len) noexcept {
 		h ^= k;
 		h *= M;
 	}
+	if (STRING_T_BACKED_MEMORY) {
+		auto k = Load<uint64_t>(reinterpret_cast<const_data_ptr_t>(reinterpret_cast<const uint8_t*>(ptr) + ((len >= 8) ? (len - 8) : 0)));
 
+		k *= M;
+		k ^= k >> R;
+		k *= M;
+
+		h ^= k;
+		h *= M;
+
+		h ^= h >> R;
+		h *= M;
+		h ^= h >> R;
+		return static_cast<hash_t>(h);
+	}
 	auto const *const data8 = reinterpret_cast<uint8_t const *>(data64 + n_blocks);
 	switch (len & 7U) {
 	case 7:
@@ -126,6 +136,11 @@ hash_t HashBytes(void *ptr, size_t len) noexcept {
 	h *= M;
 	h ^= h >> R;
 	return static_cast<hash_t>(h);
+}
+
+template <>
+hash_t Hash(string_t val) {
+	return HashBytes</*STRING_T_BACKED_MEMORY*/true>((void*)val.GetDataUnsafe(), val.GetSize());
 }
 
 hash_t Hash(const char *val, size_t size) {
