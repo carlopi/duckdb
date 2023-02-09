@@ -118,6 +118,10 @@ public:
 	void Verify() const;
 	void VerifyNull() const;
 	bool operator<(const string_t &r) const {
+		const uint32_t thisPrefix = *reinterpret_cast<const uint32_t*>(value.pointer.prefix);
+		const uint32_t otherPrefix = *reinterpret_cast<const uint32_t*>(r.value.pointer.prefix);
+		if (thisPrefix != otherPrefix)
+			return thisPrefix < otherPrefix;
 		auto this_str = this->GetString();
 		auto r_str = r.GetString();
 		return this_str < r_str;
