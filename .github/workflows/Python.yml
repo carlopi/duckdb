@@ -22,8 +22,114 @@ env:
   GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
 jobs:
-   win-python3:
-      name: Python 3 Windows
+   win-python3A:
+      name: Python 3 Windows / A
+      runs-on: windows-latest
+      strategy:
+       matrix:
+        python_build: [cp36-*, cp37-*, cp38-*, cp39-*, cp310-*, cp311-*]
+
+      env:
+        CIBW_BUILD: ${{ matrix.python_build}}
+        SETUPTOOLS_SCM_NO_LOCAL: 'yes'
+        SETUPTOOLS_USE_DISTUTILS: 'stdlib'
+        TWINE_USERNAME: 'hfmuehleisen'
+        DUCKDB_BUILD_UNITY: 1
+
+      steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.7'
+
+      - name: Install
+        shell: bash
+        run: pip install cibuildwheel twine
+
+      - name: Setup Ccache
+        uses: hendrikmuhs/ccache-action@main
+        with:
+          key: ${{ github.job }}-${{ matrix.python_build }}
+          save: ${{ github.ref == 'refs/heads/master' || github.repository != 'duckdb/duckdb' }}
+
+      - name: Build
+        shell: bash
+        run: |
+          cd tools/pythonpkg
+          python setup.py sdist
+          mkdir duckdb_tarball && tar xvf dist/duckdb-*.tar.gz --strip-components=1 -C duckdb_tarball
+          export DISTUTILS_C_COMPILER_LAUNCHER=ccache
+          # TODO: Use ccache inside container, see https://github.com/pypa/cibuildwheel/issues/1030
+          cibuildwheel --output-dir wheelhouse --config-file cibw.toml duckdb_tarball
+
+      - name: Deploy
+        env:
+          TWINE_USERNAME: 'hfmuehleisen'
+          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" =~ ^(refs/heads/master|refs/tags/v.+)$ && "$GITHUB_REPOSITORY" = "duckdb/duckdb" ]] ; then
+            twine upload --non-interactive --disable-progress-bar --skip-existing tools/pythonpkg/wheelhouse/*.whl
+          fi
+
+   win-python3B:
+      name: Python 3 Windows / B
+      runs-on: windows-latest
+      strategy:
+       matrix:
+        python_build: [cp36-*, cp37-*, cp38-*, cp39-*, cp310-*, cp311-*]
+
+      env:
+        CIBW_BUILD: ${{ matrix.python_build}}
+        SETUPTOOLS_SCM_NO_LOCAL: 'yes'
+        SETUPTOOLS_USE_DISTUTILS: 'stdlib'
+        TWINE_USERNAME: 'hfmuehleisen'
+        DUCKDB_BUILD_UNITY: 1
+
+      steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.7'
+
+      - name: Install
+        shell: bash
+        run: pip install cibuildwheel twine
+
+      - name: Setup Ccache
+        uses: hendrikmuhs/ccache-action@main
+        with:
+          key: ${{ github.job }}-${{ matrix.python_build }}
+          save: ${{ github.ref == 'refs/heads/master' || github.repository != 'duckdb/duckdb' }}
+
+      - name: Build
+        shell: bash
+        run: |
+          cd tools/pythonpkg
+          python setup.py sdist
+          mkdir duckdb_tarball && tar xvf dist/duckdb-*.tar.gz --strip-components=1 -C duckdb_tarball
+          export DISTUTILS_C_COMPILER_LAUNCHER=ccache
+          # TODO: Use ccache inside container, see https://github.com/pypa/cibuildwheel/issues/1030
+          cibuildwheel --output-dir wheelhouse --config-file cibw.toml duckdb_tarball
+
+      - name: Deploy
+        env:
+          TWINE_USERNAME: 'hfmuehleisen'
+          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" =~ ^(refs/heads/master|refs/tags/v.+)$ && "$GITHUB_REPOSITORY" = "duckdb/duckdb" ]] ; then
+            twine upload --non-interactive --disable-progress-bar --skip-existing tools/pythonpkg/wheelhouse/*.whl
+          fi
+
+   win-python3C:
+      name: Python 3 Windows / C
       runs-on: windows-latest
       strategy:
        matrix:
