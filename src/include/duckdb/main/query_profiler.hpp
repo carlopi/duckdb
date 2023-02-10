@@ -118,7 +118,7 @@ private:
 	//! The stack of Physical Operators that are currently active
 	const PhysicalOperator *active_operator;
 	//! A mapping of physical operators to recorded timings
-	unordered_map<const PhysicalOperator *, OperatorInformation> timings;
+	std::unordered_map<const PhysicalOperator *, OperatorInformation> timings;
 };
 
 //! The QueryProfiler can be used to measure timings of queries
@@ -215,7 +215,7 @@ private:
 	//! The timer used to time the individual phases of the planning process
 	Profiler phase_profiler;
 	//! A mapping of the phase names to the timings
-	using PhaseTimingStorage = unordered_map<string, double>;
+	using PhaseTimingStorage = std::unordered_map<string, double>;
 	PhaseTimingStorage phase_timings;
 	using PhaseTimingItem = PhaseTimingStorage::value_type;
 	//! The stack of currently active phases

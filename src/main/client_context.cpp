@@ -1022,7 +1022,7 @@ void ClientContext::TryBindRelation(Relation &relation, vector<ColumnDefinition>
 	});
 }
 
-unordered_set<string> ClientContext::GetTableNames(const string &query) {
+std::unordered_set<string> ClientContext::GetTableNames(const string &query) {
 	auto lock = LockContext();
 
 	auto statements = ParseStatementsInternal(*lock, query);
@@ -1030,7 +1030,7 @@ unordered_set<string> ClientContext::GetTableNames(const string &query) {
 		throw InvalidInputException("Expected a single statement");
 	}
 
-	unordered_set<string> result;
+	std::unordered_set<string> result;
 	RunFunctionInTransactionInternal(*lock, [&]() {
 		// bind the expressions
 		auto binder = Binder::CreateBinder(*this);

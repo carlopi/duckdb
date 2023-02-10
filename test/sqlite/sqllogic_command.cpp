@@ -17,7 +17,7 @@ static void query_break(int line) {
 	(void)line;
 }
 
-static Connection *GetConnection(DuckDB &db, unordered_map<string, unique_ptr<Connection>> &named_connection_map,
+static Connection *GetConnection(DuckDB &db, std::unordered_map<string, unique_ptr<Connection>> &named_connection_map,
                                  string con_name) {
 	auto entry = named_connection_map.find(con_name);
 	if (entry == named_connection_map.end()) {

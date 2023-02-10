@@ -55,7 +55,7 @@ struct InterpretedBenchmarkState : public BenchmarkState {
 };
 
 struct BenchmarkFileReader {
-	BenchmarkFileReader(string path_, unordered_map<std::string, std::string> replacement_map)
+	BenchmarkFileReader(string path_, std::unordered_map<std::string, std::string> replacement_map)
 	    : path(path_), infile(path), linenr(0), replacements(replacement_map) {
 	}
 
@@ -84,7 +84,7 @@ private:
 	std::string path;
 	std::ifstream infile;
 	int linenr;
-	unordered_map<std::string, std::string> replacements;
+	std::unordered_map<std::string, std::string> replacements;
 };
 
 InterpretedBenchmark::InterpretedBenchmark(string full_path)

@@ -35,7 +35,7 @@ struct LogicalTypeIdHash {
 
 struct DateFormatMap {
 public:
-	void Initialize(const unordered_map<LogicalTypeId, vector<const char *>, LogicalTypeIdHash> &format_templates) {
+	void Initialize(const std::unordered_map<LogicalTypeId, vector<const char *>, LogicalTypeIdHash> &format_templates) {
 		for (const auto &entry : format_templates) {
 			auto &formats = candidate_formats.emplace(entry.first, vector<StrpTimeFormat>()).first->second;
 			formats.reserve(entry.second.size());
@@ -61,7 +61,7 @@ public:
 	}
 
 private:
-	unordered_map<LogicalTypeId, vector<StrpTimeFormat>, LogicalTypeIdHash> candidate_formats;
+	std::unordered_map<LogicalTypeId, vector<StrpTimeFormat>, LogicalTypeIdHash> candidate_formats;
 };
 
 struct JSONScanData : public TableFunctionData {

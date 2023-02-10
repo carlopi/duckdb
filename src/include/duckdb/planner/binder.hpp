@@ -180,7 +180,7 @@ public:
 	void SetBindingMode(BindingMode mode);
 	BindingMode GetBindingMode();
 	void AddTableName(string table_name);
-	const unordered_set<string> &GetTableNames();
+	const std::unordered_set<string> &GetTableNames();
 
 	void SetCanContainNulls(bool can_contain_nulls);
 
@@ -204,7 +204,7 @@ private:
 	//! Binding mode
 	BindingMode mode = BindingMode::STANDARD_BINDING;
 	//! Table names extracted for BindingMode::EXTRACT_NAMES
-	unordered_set<string> table_names;
+	std::unordered_set<string> table_names;
 	//! The set of bound views
 	unordered_set<ViewCatalogEntry *> bound_views;
 

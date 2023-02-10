@@ -27,8 +27,8 @@ public:
 	unique_ptr<DuckDB> db;
 	unique_ptr<Connection> con;
 	unique_ptr<DBConfig> config;
-	unordered_set<string> extensions;
-	unordered_map<string, unique_ptr<Connection>> named_connection_map;
+	std::unordered_set<string> extensions;
+	std::unordered_map<string, unique_ptr<Connection>> named_connection_map;
 	bool output_hash_mode = false;
 	bool output_result_mode = false;
 	bool debug_mode = false;
@@ -40,16 +40,16 @@ public:
 	bool output_sql = false;
 	bool enable_verification = false;
 	bool skip_reload = false;
-	unordered_map<string, string> environment_variables;
+	std::unordered_map<string, string> environment_variables;
 
 	// If these error msgs occur in a test, the test will abort but still count as passed
-	unordered_set<string> ignore_error_messages = {"HTTP", "Unable to connect"};
+	std::unordered_set<string> ignore_error_messages = {"HTTP", "Unable to connect"};
 	// If these error msgs occur a statement that is expected to fail, the test will fail
-	unordered_set<string> always_fail_error_messages = {"differs from original result!", "INTERNAL"};
+	std::unordered_set<string> always_fail_error_messages = {"differs from original result!", "INTERNAL"};
 
 	//! The map converting the labels to the hash values
-	unordered_map<string, string> hash_label_map;
-	unordered_map<string, unique_ptr<QueryResult>> result_label_map;
+	std::unordered_map<string, string> hash_label_map;
+	std::unordered_map<string, unique_ptr<QueryResult>> result_label_map;
 	mutex log_lock;
 
 public:

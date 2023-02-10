@@ -78,8 +78,8 @@ struct JSONKeyEquality {
 };
 
 template <typename T>
-using json_key_map_t = unordered_map<JSONKey, T, JSONKeyHash, JSONKeyEquality>;
-using json_key_set_t = unordered_set<JSONKey, JSONKeyHash, JSONKeyEquality>;
+using json_key_map_t = std::unordered_map<JSONKey, T, JSONKeyHash, JSONKeyEquality>;
+using json_key_set_t = std::unordered_set<JSONKey, JSONKeyHash, JSONKeyEquality>;
 
 struct JSONCommon {
 public:

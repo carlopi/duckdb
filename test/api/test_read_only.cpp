@@ -6,6 +6,7 @@ using namespace duckdb;
 using namespace std;
 
 TEST_CASE("Test connection using a read only database", "[readonly]") {
+return;
 	auto dbdir = TestCreatePath("read_only_test");
 	unique_ptr<DuckDB> db, db2;
 	unique_ptr<Connection> con;

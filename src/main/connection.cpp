@@ -249,7 +249,7 @@ shared_ptr<Relation> Connection::ReadParquet(const string &parquet_file, bool bi
 	return TableFunction("parquet_scan", params, named_parameters)->Alias(parquet_file);
 }
 
-unordered_set<string> Connection::GetTableNames(const string &query) {
+std::unordered_set<string> Connection::GetTableNames(const string &query) {
 	return context->GetTableNames(query);
 }
 
