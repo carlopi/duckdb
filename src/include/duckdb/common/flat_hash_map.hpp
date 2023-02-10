@@ -300,7 +300,7 @@ public:
     sherwood_v3_table()
     {
     }
-    explicit sherwood_v3_table(size_type bucket_count, const ArgumentHash & hash = ArgumentHash(), const ArgumentEqual & equal = ArgumentEqual(), const ArgumentAlloc & alloc = ArgumentAlloc())
+    sherwood_v3_table(size_type bucket_count, const ArgumentHash & hash = ArgumentHash(), const ArgumentEqual & equal = ArgumentEqual(), const ArgumentAlloc & alloc = ArgumentAlloc())
         : EntryAlloc(alloc), Hasher(hash), Equal(equal)
     {
         rehash(bucket_count);
@@ -313,7 +313,7 @@ public:
         : sherwood_v3_table(bucket_count, hash, ArgumentEqual(), alloc)
     {
     }
-    explicit sherwood_v3_table(const ArgumentAlloc & alloc)
+    sherwood_v3_table(const ArgumentAlloc & alloc)
         : EntryAlloc(alloc)
     {
     }
