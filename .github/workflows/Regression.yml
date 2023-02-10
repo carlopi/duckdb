@@ -24,8 +24,8 @@ jobs:
   name: Regression Tests
   runs-on: ubuntu-20.04
   env:
-    CC: gcc-10
-    CXX: g++-10
+    CC: clang
+    CXX: clang++
     GEN: ninja
     BUILD_BENCHMARK: 1
     BUILD_TPCH: 1
@@ -44,7 +44,7 @@ jobs:
 
     - name: Install
       shell: bash
-      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build && pip install requests
+      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build clang && pip install requests
 
     - name: Setup Ccache
       uses: hendrikmuhs/ccache-action@main
@@ -100,8 +100,8 @@ jobs:
   name: Storage Size Regression Test
   runs-on: ubuntu-20.04
   env:
-    CC: gcc-10
-    CXX: g++-10
+    CC: clang
+    CXX: clang++
     GEN: ninja
     BUILD_TPCH: 1
     BUILD_TPCDS: 1
@@ -117,7 +117,7 @@ jobs:
 
     - name: Install
       shell: bash
-      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build && pip install requests
+      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build clang && pip install requests
 
     - name: Setup Ccache
       uses: hendrikmuhs/ccache-action@main
@@ -143,8 +143,8 @@ jobs:
   name: Regression Test (Python Client)
   runs-on: ubuntu-20.04
   env:
-    CC: gcc-10
-    CXX: g++-10
+    CC: clang
+    CXX: clang++
     GEN: ninja
 
   steps:
@@ -159,7 +159,7 @@ jobs:
     - name: Install
       shell: bash
       run: |
-        sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build
+        sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build clang
         pip install numpy pytest pandas mypy psutil pyarrow
 
     - name: Setup Ccache
@@ -210,8 +210,8 @@ jobs:
   name: Regression Test Join Order Plan Cost
   runs-on: ubuntu-20.04
   env:
-    CC: gcc-10
-    CXX: g++-10
+    CC: clang
+    CXX: clang++
     GEN: ninja
     BUILD_TPCH: 1
     BUILD_HTTPFS: 1
@@ -227,7 +227,7 @@ jobs:
 
     - name: Install
       shell: bash
-      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build && pip install tqdm
+      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build clang && pip install tqdm
 
     - name: Setup Ccache
       uses: hendrikmuhs/ccache-action@main
