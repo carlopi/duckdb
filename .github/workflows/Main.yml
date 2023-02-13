@@ -31,6 +31,7 @@ jobs:
       GEN: ninja
       CC: clang-16
       CXX: clang++-16
+      BUILD_PARQUET: 1
 
     steps:
     - uses: actions/checkout@v3
