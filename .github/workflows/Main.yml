@@ -31,6 +31,8 @@ jobs:
     env:
       TREAT_WARNINGS_AS_ERRORS: 1
       GEN: ninja
+      CC: clang-16
+      CXX: clang++-16
 
     steps:
     - uses: actions/checkout@v3
