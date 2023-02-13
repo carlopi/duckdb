@@ -39,6 +39,9 @@ jobs:
       shell: bash
       run: |
         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+        sudo apt-get uodate -y -qq
+        sudo apt-get software-properties-common -y -qq
+        sudo add-apt-repository 'deb http://apt.llvm.org/kinetic/ llvm-toolchain-kinetic-16 main'
         sudo apt-get update -y -qq && sudo apt-get install clang-16 -y -qq ninja-build
 
     - name: Build
