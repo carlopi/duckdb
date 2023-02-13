@@ -48,9 +48,6 @@ jobs:
         chmod +x llvm.sh
         sudo ./llvm.sh 16
 
-    - name: Build
-      shell: bash
-      run:  make debug
     - name: Build release
       shell: bash
       run:  make
