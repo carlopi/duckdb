@@ -39,13 +39,7 @@ jobs:
       shell: bash
       run: |
         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-        sudo apt-get update -y -qq && sudo apt-get install clang-16 -y -qq ninja-build
-
-    - name: Setup Ccache
-      uses: hendrikmuhs/ccache-action@main
-      with:
-        key: ${{ github.job }}
-        save: ${{ github.ref == 'refs/heads/master' || github.repository != 'duckdb/duckdb' }}
+        sudo apt-get update -y -qq && sudo apt-get install clang -y -qq ninja-build
 
     - name: Build
       shell: bash
