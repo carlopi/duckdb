@@ -29,8 +29,8 @@ jobs:
     env:
       TREAT_WARNINGS_AS_ERRORS: 1
       GEN: ninja
-      CC: clang-16
-      CXX: clang++-16
+      CC: clang-17
+      CXX: clang++-17
       BUILD_PARQUET: 1
 
     steps:
@@ -47,7 +47,7 @@ jobs:
         sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build
         wget https://apt.llvm.org/llvm.sh
         chmod +x llvm.sh
-        sudo ./llvm.sh 16
+        sudo ./llvm.sh 17
 
     - name: Build release
       shell: bash
