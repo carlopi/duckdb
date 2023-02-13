@@ -22,6 +22,8 @@ concurrency:
 
 env:
   GH_TOKEN: ${{ secrets.GH_TOKEN }}
+  CC: clang-16
+  CXX: clang++-16
 
 jobs:
 
@@ -79,6 +81,9 @@ jobs:
       shell: bash
       run: |
         sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build texlive-latex-base texlive-fonts-extra libcurl4-openssl-dev valgrind pandoc tidy
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 16
         mkdir -p $HOME/.R
         R -f tools/rpkg/dependencies.R
 
@@ -180,6 +185,9 @@ jobs:
       shell: bash
       run: |
         sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build libcurl4-openssl-dev
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 16
         mkdir -p $HOME/.R
         R -f tools/rpkg/dependencies.R
 
@@ -225,6 +233,9 @@ jobs:
     - name: Install
       shell: bash
       run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 16
         R -f tools/rpkg/dependencies.R
 
     - name: Build
@@ -269,6 +280,9 @@ jobs:
     - name: Install
       shell: bash
       run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 16
         R -f tools/rpkg/dependencies.R
 
     - name: Build
