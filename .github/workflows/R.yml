@@ -36,9 +36,9 @@ jobs:
     container: fedora:38
 
     env:
-      CC: clang
-      CPP: clang-cpp
-      CXX: clang++
+      CC: /usr/bin/clang
+      CPP: /usr/bin/clang-cpp
+      CXX: /usr/bin/clang++
 
     steps:
     - uses: actions/checkout@v3
