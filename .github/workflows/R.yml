@@ -47,6 +47,7 @@ jobs:
         sudo dnf install git clang openssl cmake which -y
         which clang
         which clang++
+	export CXX="/usr/bin/clang++"
 
     - uses: ./.github/actions/build_extensions
       with:
