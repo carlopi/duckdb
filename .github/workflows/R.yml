@@ -45,8 +45,8 @@ jobs:
     - name: Deps
       run: |
         sudo dnf install git clang openssl cmake -y
-	which clang
-	which clang++
+        which clang
+        which clang++
 
     - uses: ./.github/actions/build_extensions
       with:
