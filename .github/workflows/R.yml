@@ -39,7 +39,7 @@ jobs:
     - uses: actions/checkout@v3
     - name: Deps
       run: |
-        sudo dnf install git clang-16 openssl cmake -y
+        sudo dnf install git clang openssl cmake -y
     - uses: ./.github/actions/build_extensions
       with:
         run_tests: 0
