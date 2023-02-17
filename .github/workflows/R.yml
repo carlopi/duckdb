@@ -36,17 +36,6 @@ jobs:
     container: fedora
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: ./.github/actions/ubuntu_16_setup
-      with:
-        openssl: 1
-
-    - name: Setup Ccache
-      uses: hendrikmuhs/ccache-action@main
-      with:
-        key: ${{ github.job }}
-        save: ${{ github.ref == 'refs/heads/master' || github.repository != 'duckdb/duckdb' }}
-
     - uses: ./.github/actions/build_extensions
       with:
         run_tests: 0
@@ -59,7 +48,8 @@ jobs:
 
   rstats-linux:
     name: R Package Linux
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
+    container: fedora
     needs: r-test-extension
     env:
       LIBARROW_BINARY: 'false'
