@@ -578,12 +578,6 @@ function(add_extension_definitions)
     add_definitions(-DBUILD_FTS_EXTENSION=${BUILD_FTS_EXTENSION})
   endif()
 
-  if(${BUILD_HTTPFS_EXTENSION})
-    find_package(OpenSSL REQUIRED)
-    include_directories(${PROJECT_SOURCE_DIR}/extension/httpfs/include ${OPENSSL_INCLUDE_DIR})
-    add_definitions(-DBUILD_HTTPFS_EXTENSION=${BUILD_HTTPFS_EXTENSION})
-  endif()
-
   if(${BUILD_VISUALIZER_EXTENSION})
     include_directories(${PROJECT_SOURCE_DIR}/extension/visualizer/include)
     add_definitions(-DBUILD_VISUALIZER_EXTENSION=${BUILD_VISUALIZER_EXTENSION})
@@ -709,11 +703,6 @@ function(link_extension_libraries LIBRARY)
 
   if(${BUILD_FTS_EXTENSION})
     target_link_libraries(${LIBRARY} fts_extension)
-  endif()
-
-  if(${BUILD_HTTPFS_EXTENSION})
-    find_package(OpenSSL REQUIRED)
-    target_link_libraries(${LIBRARY} httpfs_extension ${OPENSSL_LIBRARIES})
   endif()
 
   if(${BUILD_VISUALIZER_EXTENSION})
