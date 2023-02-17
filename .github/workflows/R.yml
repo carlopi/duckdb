@@ -33,7 +33,7 @@ jobs:
   r-test-extension:
     name: Extension for R test
     runs-on: ubuntu-latest
-    container: fedora-latest
+    container: fedora-38
 
     steps:
     - uses: actions/checkout@v3
