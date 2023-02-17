@@ -33,13 +33,15 @@ jobs:
   r-test-extension:
     name: Extension for R test
     runs-on: ubuntu-latest
-    container: fedora
+    container: fedora-latest
 
     steps:
     - uses: actions/checkout@v3
     - name: Deps
       run: |
         sudo dnf install git clang openssl cmake -y
+        sudo dnf install clang-16 -y
+
     - uses: ./.github/actions/build_extensions
       with:
         run_tests: 0
