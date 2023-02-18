@@ -19,6 +19,7 @@
 
 namespace py = pybind11;
 
+
 namespace duckdb {
 
 enum PySQLTokenType {
