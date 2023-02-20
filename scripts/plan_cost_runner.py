@@ -96,6 +96,7 @@ def print_diffs(diffs):
         print("New cost:", new_cost)
 
 def cardinality_is_higher(card_a, card_b):
+    print(card_a, card_b)
     # card_a > card_b?
     # add 20% threshold before we start caring
     return card_a > (card_b + card_b / 5 + 5000)
