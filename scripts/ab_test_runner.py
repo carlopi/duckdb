@@ -149,7 +149,6 @@ sigma3b = []
 sigma10b = []
 
 for bench in outliers:
-    print(bench)
     s = bench[1]['res']
     if s > 10.0:
         sigma10b.append(bench)
@@ -197,5 +196,6 @@ if len(sigma1a) != 0:
 if len(sigma1b) != 0:
     print('''==========   B fastest by 1-3 sigma  =========''');
     print_res(sigma1b)
+print()
 
 exit(exit_code)

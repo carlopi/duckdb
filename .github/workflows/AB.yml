@@ -1,0 +1,93 @@
+name: A/B Testing
+on:
+  workflow_dispatch:
+  pull_request:
+    paths-ignore:
+      - '**.md'
+      - 'tools/**'
+      - '.github/workflows/**'
+      - '!.github/workflows/AB.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.head_ref || '' }}-${{ github.base_ref || '' }}-${{ github.ref != 'refs/heads/master' || github.sha }}
+  cancel-in-progress: true
+
+env:
+  GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+jobs:
+ ab-test-benchmark-runner:
+  name: A/B Tests
+  runs-on: ubuntu-20.04
+  env:
+    CC: gcc-10
+    CXX: g++-10
+    GEN: ninja
+    BUILD_BENCHMARK: 1
+    BUILD_TPCH: 1
+    BUILD_TPCDS: 1
+    BUILD_HTTPFS: 1
+    BUILD_JEMALLOC: 1
+
+  steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.7'
+
+    - name: Install
+      shell: bash
+      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build && pip install requests
+
+    - name: Setup Ccache
+      uses: hendrikmuhs/ccache-action@main
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.ref == 'refs/heads/master' || github.repository != 'duckdb/duckdb' }}
+
+    - name: Build
+      shell: bash
+      run: |
+        make
+        git clone https://github.com/duckdb/duckdb.git --depth=1
+        cd duckdb
+        make
+        cd ..
+
+    - name: Set up benchmarks
+      shell: bash
+      run: |
+        cp -r benchmark duckdb/
+
+    - name: Regression Test Micro
+      if: always()
+      shell: bash
+      run: |
+        python scripts/ab_test_runner.py --old=duckdb/build/release/benchmark/benchmark_runner --new=build/release/benchmark/benchmark_runner --benchmarks=.github/regression/micro.csv --verbose --threads=2
+
+    - name: Regression Test TPCH
+      if: always()
+      shell: bash
+      run: |
+        python scripts/ab_test_runner.py --old=duckdb/build/release/benchmark/benchmark_runner --new=build/release/benchmark/benchmark_runner --benchmarks=.github/regression/tpch.csv --verbose --threads=2
+
+    - name: Regression Test TPCDS
+      if: always()
+      shell: bash
+      run: |
+        python scripts/ab_test_runner.py --old=duckdb/build/release/benchmark/benchmark_runner --new=build/release/benchmark/benchmark_runner --benchmarks=.github/regression/tpcds.csv --verbose --threads=2
+
+    - name: Regression Test H2OAI
+      if: always()
+      shell: bash
+      run: |
+        python scripts/ab_test_runner.py --old=duckdb/build/release/benchmark/benchmark_runner --new=build/release/benchmark/benchmark_runner --benchmarks=.github/regression/h2oai.csv --verbose --threads=2
+
+    - name: Regression Test IMDB
+      if: always()
+      shell: bash
+      run: |
+        python scripts/ab_test_runner.py --old=duckdb/build/release/benchmark/benchmark_runner --new=build/release/benchmark/benchmark_runner --benchmarks=.github/regression/imdb.csv --verbose --threads=2
