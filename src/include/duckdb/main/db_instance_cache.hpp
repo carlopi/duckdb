@@ -16,6 +16,7 @@
 namespace duckdb {
 class DBInstanceCache {
 public:
+
 	DBInstanceCache() {};
 	//! Gets a DB Instance from the cache if already exists (Fails if the configurations do not match)
 	shared_ptr<DuckDB> GetInstance(const string &database, const DBConfig &config_dict);
