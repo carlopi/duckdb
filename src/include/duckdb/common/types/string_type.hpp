@@ -163,8 +163,8 @@ public:
 				return (left_length > 0u);
 
 #ifndef DUCKDB_DEBUG_NO_INLINE
-			uint32_t A = Load<uint32_t>(left.value.pointer.prefix);
-			uint32_t B = Load<uint32_t>(right.value.pointer.prefix);
+			uint32_t A = Load<uint32_t>((const_data_ptr_t)left.GetPrefix());
+			uint32_t B = Load<uint32_t>((const_data_ptr_t)right.GetPrefix());
 
 			// Check on prefix -----
 			// We dont' need to mask since:
