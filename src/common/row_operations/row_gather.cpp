@@ -32,7 +32,7 @@ static void TemplatedGatherLoop(Vector &rows, const SelectionVector &row_sel, Ve
 		auto row_idx = row_sel.get_index(i);
 		auto row = ptrs[row_idx];
 		auto col_idx = col_sel.get_index(i);
-		data[col_idx] = Load<T>(row + col_offset);
+		data[col_idx] = LoadAligned32<T>(row + col_offset);
 		ValidityBytes row_mask(row);
 		if (!row_mask.RowIsValid(row_mask.GetValidityEntry(entry_idx), idx_in_entry)) {
 			if (build_size > STANDARD_VECTOR_SIZE && col_mask.AllValid()) {
@@ -64,7 +64,7 @@ static void GatherVarchar(Vector &rows, const SelectionVector &row_sel, Vector &
 		auto row = ptrs[row_idx];
 		auto col_idx = col_sel.get_index(i);
 		auto col_ptr = row + col_offset;
-		data[col_idx] = Load<string_t>(col_ptr);
+		data[col_idx] = LoadAligned32<string_t>(col_ptr);
 		ValidityBytes row_mask(row);
 		if (!row_mask.RowIsValid(row_mask.GetValidityEntry(entry_idx), idx_in_entry)) {
 			if (build_size > STANDARD_VECTOR_SIZE && col_mask.AllValid()) {
@@ -72,7 +72,7 @@ static void GatherVarchar(Vector &rows, const SelectionVector &row_sel, Vector &
 				col_mask.Initialize(build_size);
 			}
 			col_mask.SetInvalid(col_idx);
-		} else if (base_heap_ptr && Load<uint32_t>(col_ptr) > string_t::INLINE_LENGTH) {
+		} else if (base_heap_ptr && LoadAligned32<uint32_t>(col_ptr) > string_t::INLINE_LENGTH) {
 			//	Not inline, so unswizzle the copied pointer the pointer
 			auto heap_ptr_ptr = row + heap_offset;
 			auto heap_row_ptr = base_heap_ptr + Load<idx_t>(heap_ptr_ptr);
@@ -103,8 +103,8 @@ static void GatherNestedVector(Vector &rows, const SelectionVector &row_sel, Vec
 		auto col_ptr = ptrs[row_idx] + col_offset;
 		if (base_heap_ptr) {
 			auto heap_ptr_ptr = row + heap_offset;
-			auto heap_row_ptr = base_heap_ptr + Load<idx_t>(heap_ptr_ptr);
-			data_locations[i] = heap_row_ptr + Load<idx_t>(col_ptr);
+			auto heap_row_ptr = base_heap_ptr + LoadAligned32<idx_t>(heap_ptr_ptr);
+			data_locations[i] = heap_row_ptr + LoadAligned32<idx_t>(col_ptr);
 		} else {
 			data_locations[i] = Load<data_ptr_t>(col_ptr);
 		}

@@ -22,7 +22,7 @@ bool Comparators::TieIsBreakable(const idx_t &tie_col, const data_ptr_t &row_ptr
 		return true;
 	}
 	const auto &tie_col_offset = row_layout.GetOffsets()[col_idx];
-	auto tie_string = Load<string_t>(row_ptr + tie_col_offset);
+	auto tie_string = LoadAligned32<string_t>(row_ptr + tie_col_offset);
 	if (tie_string.GetSize() < sort_layout.prefix_lengths[tie_col]) {
 		// No need to break the tie - we already compared the full string
 		return false;
@@ -102,8 +102,8 @@ int Comparators::BreakBlobTie(const idx_t &tie_col, const SBScanState &left, con
 
 template <class T>
 int Comparators::TemplatedCompareVal(const data_ptr_t &left_ptr, const data_ptr_t &right_ptr) {
-	const auto left_val = Load<T>(left_ptr);
-	const auto right_val = Load<T>(right_ptr);
+	const auto left_val = (sizeof(T)%4 == 0) ? LoadAligned32<T>(left_ptr) : Load<T>(left_ptr);
+	const auto right_val = (sizeof(T)%4 == 0) ? LoadAligned32<T>(right_ptr) : Load<T>(right_ptr);
 	if (Equals::Operation<T>(left_val, right_val)) {
 		return 0;
 	} else if (LessThan::Operation<T>(left_val, right_val)) {

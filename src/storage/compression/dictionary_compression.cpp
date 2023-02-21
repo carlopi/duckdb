@@ -288,9 +288,9 @@ public:
 		memcpy(base_ptr + index_buffer_offset, index_buffer.data(), index_buffer_size);
 
 		// Store sizes and offsets in segment header
-		Store<uint32_t>(index_buffer_offset, (data_ptr_t)&header_ptr->index_buffer_offset);
-		Store<uint32_t>(index_buffer.size(), (data_ptr_t)&header_ptr->index_buffer_count);
-		Store<uint32_t>((uint32_t)current_width, (data_ptr_t)&header_ptr->bitpacking_width);
+		StoreAligned32<uint32_t>(index_buffer_offset, (data_ptr_t)&header_ptr->index_buffer_offset);
+		StoreAligned32<uint32_t>(index_buffer.size(), (data_ptr_t)&header_ptr->index_buffer_count);
+		StoreAligned32<uint32_t>((uint32_t)current_width, (data_ptr_t)&header_ptr->bitpacking_width);
 
 		D_ASSERT(current_width == BitpackingPrimitives::MinimumBitWidth(index_buffer.size() - 1));
 		D_ASSERT(DictionaryCompressionStorage::HasEnoughSpace(current_segment->count, index_buffer.size(),
@@ -446,9 +446,9 @@ unique_ptr<SegmentScanState> DictionaryCompressionStorage::StringInitScan(Column
 	// Load header values
 	auto dict = DictionaryCompressionStorage::GetDictionary(segment, state->handle);
 	auto header_ptr = (dictionary_compression_header_t *)baseptr;
-	auto index_buffer_offset = Load<uint32_t>((data_ptr_t)&header_ptr->index_buffer_offset);
-	auto index_buffer_count = Load<uint32_t>((data_ptr_t)&header_ptr->index_buffer_count);
-	state->current_width = (bitpacking_width_t)(Load<uint32_t>((data_ptr_t)&header_ptr->bitpacking_width));
+	auto index_buffer_offset = LoadAligned32<uint32_t>((data_ptr_t)&header_ptr->index_buffer_offset);
+	auto index_buffer_count = LoadAligned32<uint32_t>((data_ptr_t)&header_ptr->index_buffer_count);
+	state->current_width = (bitpacking_width_t)(LoadAligned32<uint32_t>((data_ptr_t)&header_ptr->bitpacking_width));
 
 	auto index_buffer_ptr = (uint32_t *)(baseptr + index_buffer_offset);
 
@@ -478,7 +478,7 @@ void DictionaryCompressionStorage::StringScanPartial(ColumnSegment &segment, Col
 	auto dict = DictionaryCompressionStorage::GetDictionary(segment, scan_state.handle);
 
 	auto header_ptr = (dictionary_compression_header_t *)baseptr;
-	auto index_buffer_offset = Load<uint32_t>((data_ptr_t)&header_ptr->index_buffer_offset);
+	auto index_buffer_offset = LoadAligned32<uint32_t>((data_ptr_t)&header_ptr->index_buffer_offset);
 	auto index_buffer_ptr = (uint32_t *)(baseptr + index_buffer_offset);
 
 	auto base_data = (data_ptr_t)(baseptr + DICTIONARY_HEADER_SIZE);
@@ -554,8 +554,8 @@ void DictionaryCompressionStorage::StringFetchRow(ColumnSegment &segment, Column
 	auto baseptr = handle.Ptr() + segment.GetBlockOffset();
 	auto header_ptr = (dictionary_compression_header_t *)baseptr;
 	auto dict = DictionaryCompressionStorage::GetDictionary(segment, handle);
-	auto index_buffer_offset = Load<uint32_t>((data_ptr_t)&header_ptr->index_buffer_offset);
-	auto width = (bitpacking_width_t)(Load<uint32_t>((data_ptr_t)&header_ptr->bitpacking_width));
+	auto index_buffer_offset = LoadAligned32<uint32_t>((data_ptr_t)&header_ptr->index_buffer_offset);
+	auto width = (bitpacking_width_t)(LoadAligned32<uint32_t>((data_ptr_t)&header_ptr->bitpacking_width));
 	auto index_buffer_ptr = (uint32_t *)(baseptr + index_buffer_offset);
 	auto base_data = (data_ptr_t)(baseptr + DICTIONARY_HEADER_SIZE);
 	auto result_data = FlatVector::GetData<string_t>(result);
@@ -598,16 +598,16 @@ idx_t DictionaryCompressionStorage::RequiredSpace(idx_t current_count, idx_t ind
 StringDictionaryContainer DictionaryCompressionStorage::GetDictionary(ColumnSegment &segment, BufferHandle &handle) {
 	auto header_ptr = (dictionary_compression_header_t *)(handle.Ptr() + segment.GetBlockOffset());
 	StringDictionaryContainer container;
-	container.size = Load<uint32_t>((data_ptr_t)&header_ptr->dict_size);
-	container.end = Load<uint32_t>((data_ptr_t)&header_ptr->dict_end);
+	container.size = LoadAligned32<uint32_t>((data_ptr_t)&header_ptr->dict_size);
+	container.end = LoadAligned32<uint32_t>((data_ptr_t)&header_ptr->dict_end);
 	return container;
 }
 
 void DictionaryCompressionStorage::SetDictionary(ColumnSegment &segment, BufferHandle &handle,
                                                  StringDictionaryContainer container) {
 	auto header_ptr = (dictionary_compression_header_t *)(handle.Ptr() + segment.GetBlockOffset());
-	Store<uint32_t>(container.size, (data_ptr_t)&header_ptr->dict_size);
-	Store<uint32_t>(container.end, (data_ptr_t)&header_ptr->dict_end);
+	StoreAligned32<uint32_t>(container.size, (data_ptr_t)&header_ptr->dict_size);
+	StoreAligned32<uint32_t>(container.end, (data_ptr_t)&header_ptr->dict_end);
 }
 
 string_t DictionaryCompressionStorage::FetchStringFromDict(ColumnSegment &segment, StringDictionaryContainer dict,

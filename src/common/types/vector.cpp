@@ -688,7 +688,7 @@ void Vector::Print() const {
 
 template <class T>
 static void TemplatedFlattenConstantVector(data_ptr_t data, data_ptr_t old_data, idx_t count) {
-	auto constant = Load<T>(old_data);
+	auto constant = (sizeof(T)%4 == 0) ? LoadAligned32<T>(old_data) : Load<T>(old_data);
 	auto output = (T *)data;
 	for (idx_t i = 0; i < count; i++) {
 		output[i] = constant;

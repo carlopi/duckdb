@@ -215,7 +215,7 @@ struct PartitionFunctor {
 				}
 
 				for (idx_t i = 0; i < next; i++) {
-					const auto bin = CONSTANTS::ApplyMask(Load<hash_t>(data_ptr + hash_offset));
+					const auto bin = CONSTANTS::ApplyMask(LoadAligned32<hash_t>(data_ptr + hash_offset));
 
 					// Write entry to bin in temp buf
 					FastMemcpy(tmp_buf + pos[bin] * row_width, data_ptr, row_width);
@@ -376,7 +376,7 @@ struct PartitionFunctor {
 		idx_t size = 0;
 		auto row_ptr = base_row_ptr + layout.GetHeapOffset();
 		for (idx_t i = 0; i < count; i++) {
-			size += Load<uint32_t>(Load<data_ptr_t>(row_ptr));
+			size += Load<uint32_t>(LoadAligned32<data_ptr_t>(row_ptr));
 			row_ptr += row_width;
 		}
 
