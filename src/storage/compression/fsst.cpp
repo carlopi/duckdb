@@ -699,15 +699,15 @@ bool FSSTFun::TypeIsSupported(PhysicalType type) {
 //===--------------------------------------------------------------------===//
 void FSSTStorage::SetDictionary(ColumnSegment &segment, BufferHandle &handle, StringDictionaryContainer container) {
 	auto header_ptr = (fsst_compression_header_t *)(handle.Ptr() + segment.GetBlockOffset());
-	Store<uint32_t>(container.size, (data_ptr_t)&header_ptr->dict_size);
-	Store<uint32_t>(container.end, (data_ptr_t)&header_ptr->dict_end);
+	StoreAligned32<uint32_t>(container.size, (data_ptr_t)&header_ptr->dict_size);
+	StoreAligned32<uint32_t>(container.end, (data_ptr_t)&header_ptr->dict_end);
 }
 
 StringDictionaryContainer FSSTStorage::GetDictionary(ColumnSegment &segment, BufferHandle &handle) {
 	auto header_ptr = (fsst_compression_header_t *)(handle.Ptr() + segment.GetBlockOffset());
 	StringDictionaryContainer container;
-	container.size = Load<uint32_t>((data_ptr_t)&header_ptr->dict_size);
-	container.end = Load<uint32_t>((data_ptr_t)&header_ptr->dict_end);
+	container.size = LoadAligned32<uint32_t>((data_ptr_t)&header_ptr->dict_size);
+	container.end = LoadAligned32<uint32_t>((data_ptr_t)&header_ptr->dict_end);
 	return container;
 }
 
@@ -725,8 +725,8 @@ char *FSSTStorage::FetchStringPointer(StringDictionaryContainer dict, data_ptr_t
 bool FSSTStorage::ParseFSSTSegmentHeader(data_ptr_t base_ptr, duckdb_fsst_decoder_t *decoder_out,
                                          bitpacking_width_t *width_out) {
 	auto header_ptr = (fsst_compression_header_t *)base_ptr;
-	auto fsst_symbol_table_offset = Load<uint32_t>((data_ptr_t)&header_ptr->fsst_symbol_table_offset);
-	*width_out = (bitpacking_width_t)(Load<uint32_t>((data_ptr_t)&header_ptr->bitpacking_width));
+	auto fsst_symbol_table_offset = LoadAligned32<uint32_t>((data_ptr_t)&header_ptr->fsst_symbol_table_offset);
+	*width_out = (bitpacking_width_t)(LoadAligned32<uint32_t>((data_ptr_t)&header_ptr->bitpacking_width));
 	return duckdb_fsst_import(decoder_out, base_ptr + fsst_symbol_table_offset);
 }
 

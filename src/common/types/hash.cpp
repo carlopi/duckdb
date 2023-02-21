@@ -40,7 +40,7 @@ template <>
 hash_t Hash(float val) {
 	static_assert(sizeof(float) == sizeof(uint32_t), "");
 	FloatingPointEqualityTransform<float>::OP(val);
-	uint32_t uval = Load<uint32_t>((const_data_ptr_t)&val);
+	uint32_t uval = LoadAligned32<uint32_t>((const_data_ptr_t)&val);
 	return murmurhash64(uval);
 }
 
@@ -48,7 +48,7 @@ template <>
 hash_t Hash(double val) {
 	static_assert(sizeof(double) == sizeof(uint64_t), "");
 	FloatingPointEqualityTransform<double>::OP(val);
-	uint64_t uval = Load<uint64_t>((const_data_ptr_t)&val);
+	uint64_t uval = LoadAligned32<uint32_t>((const_data_ptr_t)&val);
 	return murmurhash64(uval);
 }
 
@@ -85,7 +85,7 @@ hash_t HashBytes(void *ptr, size_t len) noexcept {
 
 	size_t const n_blocks = len / 8;
 	for (size_t i = 0; i < n_blocks; ++i) {
-		auto k = Load<uint64_t>(reinterpret_cast<const_data_ptr_t>(data64 + i));
+		auto k = LoadAligned32<uint64_t>(reinterpret_cast<const_data_ptr_t>(data64 + i));
 
 		k *= M;
 		k ^= k >> R;
