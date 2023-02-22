@@ -120,18 +120,18 @@ void Store(const T &val, data_ptr_t ptr) {
 }
 
 template <typename T>
-const T LoadAligned32(uint32_t * const ptr) {
+const T LoadAligned32(const uint32_t * const ptr) {
         D_ASSERT(((uint64_t)ptr) % 4 == 0);
         T ret;
-        memcpy((uint32_t *)&ret, (uint32_t * const)ptr, sizeof(ret));
+        memcpy(&ret, ptr, sizeof(ret));
         return ret;
 }
 
 template <typename T>
-void StoreAligned32(const T &val, uint32_t* ptr) {
+void StoreAligned32(const T &val, const uint32_t* ptr) {
         D_ASSERT(((uint64_t)&val) % 4 == 0);
         D_ASSERT(((uint64_t)ptr) % 4 == 0);
-        memcpy((uint32_t*)ptr, (uint32_t * const)&val, sizeof(val));
+        memcpy(ptr, &val, sizeof(val));
 }
 
 //! This assigns a shared pointer, but ONLY assigns if "target" is not equal to "source"
