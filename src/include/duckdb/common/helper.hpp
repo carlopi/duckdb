@@ -120,7 +120,7 @@ void Store(const T &val, data_ptr_t ptr) {
 }
 
 template <typename T>
-const T LoadAligned32(const_data_ptr_t __attribute__((aligned(4) )) ptr) {
+const T LoadAligned32(uint32_t * const ptr) {
         D_ASSERT(((uint64_t)ptr) % 4 == 0);
         T ret;
         memcpy((uint32_t *)&ret, (uint32_t * const)ptr, sizeof(ret));
@@ -128,7 +128,7 @@ const T LoadAligned32(const_data_ptr_t __attribute__((aligned(4) )) ptr) {
 }
 
 template <typename T>
-void StoreAligned32(const T &val, data_ptr_t __attribute__((aligned(4) )) ptr) {
+void StoreAligned32(const T &val, uint32_t* ptr) {
         D_ASSERT(((uint64_t)&val) % 4 == 0);
         D_ASSERT(((uint64_t)ptr) % 4 == 0);
         memcpy((uint32_t*)ptr, (uint32_t * const)&val, sizeof(val));
