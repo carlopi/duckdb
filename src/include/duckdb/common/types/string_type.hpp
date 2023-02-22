@@ -129,15 +129,15 @@ public:
 				return false;
 			return (memcmp(a.GetDataUnsafe(), b.GetDataUnsafe(), a.GetSize()) == 0);
 #endif
-			uint64_t A = Load<uint64_t>((const_data_ptr_t)&a);
-			uint64_t B = Load<uint64_t>((const_data_ptr_t)&b);
+			uint64_t A = LoadAligned32<uint64_t>((const_data_ptr_t)&a);
+			uint64_t B = LoadAligned32<uint64_t>((const_data_ptr_t)&b);
 			if (A != B) {
 				// Either length or prefix are different -> not equal
 				return false;
 			}
 			// they have the same length and same prefix!
-			A = Load<uint64_t>((const_data_ptr_t)&a + 8u);
-			B = Load<uint64_t>((const_data_ptr_t)&b + 8u);
+			A = LoadAligned32<uint64_t>((const_data_ptr_t)&a + 8u);
+			B = LoadAligned32<uint64_t>((const_data_ptr_t)&b + 8u);
 			if (A == B) {
 				// either they are both inlined (so compare equal) or point to the same string (so compare equal)
 				return true;
@@ -163,8 +163,8 @@ public:
 				return (left_length > 0u);
 
 #ifndef DUCKDB_DEBUG_NO_INLINE
-			uint32_t A = Load<uint32_t>((const_data_ptr_t)left.GetPrefix());
-			uint32_t B = Load<uint32_t>((const_data_ptr_t)right.GetPrefix());
+			uint32_t A = LoadAligned32<uint32_t>((const_data_ptr_t)left.GetPrefix());
+			uint32_t B = LoadAligned32<uint32_t>((const_data_ptr_t)right.GetPrefix());
 
 			// Check on prefix -----
 			// We dont' need to mask since:
