@@ -163,8 +163,8 @@ public:
 				return (left_length > 0u);
 
 #ifndef DUCKDB_DEBUG_NO_INLINE
-			uint32_t A = LoadAligned32<uint32_t>((const_data_ptr_t)left.GetPrefix());
-			uint32_t B = LoadAligned32<uint32_t>((const_data_ptr_t)right.GetPrefix());
+//			uint32_t A = LoadAligned32<uint32_t>((const_data_ptr_t)left.GetPrefix());
+//			uint32_t B = LoadAligned32<uint32_t>((const_data_ptr_t)right.GetPrefix());
 
 			// Check on prefix -----
 			// We dont' need to mask since:
@@ -172,8 +172,8 @@ public:
 			// 	if the prefix is smaller, it will stay smaller regardless of the extra bytes
 			//	if the prefix is equal, the extra bytes are guaranteed to be /0 for the shorter one
 
-			if (A != B)
-				return A > B;
+//			if (A != B)
+//				return A > B;
 #endif
 			auto memcmp_res = memcmp(left.GetDataUnsafe(), right.GetDataUnsafe(), min_length);
 			return memcmp_res > 0 || (memcmp_res == 0 && left_length > right_length);
