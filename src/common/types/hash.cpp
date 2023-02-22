@@ -159,7 +159,7 @@ hash_t Hash(string_t val) {
 		const_data_ptr_t data64 = static_cast<const_data_ptr_t>(val.GetInlined());
 		uint64_t h = SEED ^ (val.GetSize() * M);
 
-		uint64_t k = LoadAligned32<uint64_t>(reinterpret_cast<const_data_ptr_t>(data64));
+		uint64_t k = LoadAligned32<uint64_t>((uint32_t * const)(data64));
 
 		k *= M;
 		k ^= k >> R;
@@ -168,7 +168,7 @@ hash_t Hash(string_t val) {
 		h ^= k;
 		h *= M;
 
-		k = LoadAligned32<uint32_t>(reinterpret_cast<const_data_ptr_t>((char const *)data64 + 8u));
+		k = LoadAligned32<uint32_t>((uint32_t * const)((char const *)data64 + 8u));
 		k <<= 32u;
 		k *= M;
 		k ^= k >> R;
