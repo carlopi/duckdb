@@ -132,12 +132,12 @@ public:
 
 
 
-			uint64_t A = *reinterpret_cast<uint32_t*>(&a);
+			uint64_t A = *reinterpret_cast<const uint32_t*>(&a);
 			A <<= 32u;
-			A |= *(reinterpret_cast<uint32_t*>(&a) + 1);
-			uint64_t B = *reinterpret_cast<uint32_t*>(&b);
+			A |= *(reinterpret_cast<const uint32_t*>(&a) + 1);
+			uint64_t B = *reinterpret_cast<const uint32_t*>(&b);
 			B <<= 32u;
-			B |= *(reinterpret_cast<uint32_t*>(&b) + 1);
+			B |= *(reinterpret_cast<const uint32_t*>(&b) + 1);
 
 
 
@@ -150,12 +150,12 @@ public:
 			// they have the same length and same prefix!
 		//	A = LoadAligned32<uint64_t>((uint32_t * const)&a + 2u);
 		//	B = LoadAligned32<uint64_t>((uint32_t * const)&b + 2u);
-			A = *(reinterpret_cast<uint32_t*>(&a) + 2);
+			A = *(reinterpret_cast<const uint32_t*>(&a) + 2);
 			A <<= 32u;
-			A |= *(reinterpret_cast<uint32_t*>(&a) + 3);
-			B = *(reinterpret_cast<uint32_t*>(&b) + 2);
+			A |= *(reinterpret_cast<const uint32_t*>(&a) + 3);
+			B = *(reinterpret_cast<const uint32_t*>(&b) + 2);
 			B <<= 32u;
-			B |= *(reinterpret_cast<uint32_t*>(&b) + 3);
+			B |= *(reinterpret_cast<const uint32_t*>(&b) + 3);
 			if (A == B) {
 				// either they are both inlined (so compare equal) or point to the same string (so compare equal)
 				return true;
