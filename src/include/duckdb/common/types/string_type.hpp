@@ -177,12 +177,16 @@ public:
 			const uint32_t right_length = right.GetSize();
 			const uint32_t min_length = std::min<uint32_t>(left_length, right_length);
 
-			if (min_length == 0u)
-				return (left_length > 0u);
-
 #ifndef DUCKDB_DEBUG_NO_INLINE
-//			uint32_t A = LoadAligned32<uint32_t>((uint32_t * const)left.GetPrefix());
-//			uint32_t B = LoadAligned32<uint32_t>((uint32_t * const)right.GetPrefix());
+			uint32_t A = LoadAligned32<uint32_t>((uint32_t * const)left.GetPrefix());
+			uint32_t B = LoadAligned32<uint32_t>((uint32_t * const)right.GetPrefix());
+
+			auto bswap = [](uint32_t v) -> uint32_t {
+				uint32_t t1 = (v>>16u) | (v<<16u);
+				uint32_t t2 = t1 & 0x00ff00ff;
+				uint32_t t3 = t1 & 0xff00ff00;
+				return (t2<<8u) | (t3>>8u);
+			};
 
 			// Check on prefix -----
 			// We dont' need to mask since:
@@ -190,8 +194,8 @@ public:
 			// 	if the prefix is smaller, it will stay smaller regardless of the extra bytes
 			//	if the prefix is equal, the extra bytes are guaranteed to be /0 for the shorter one
 
-//			if (A != B)
-//				return A > B;
+			if (A != B)
+				return bswap(A) > bswap(B);
 #endif
 			auto memcmp_res = memcmp(left.GetDataUnsafe(), right.GetDataUnsafe(), min_length);
 			return memcmp_res > 0 || (memcmp_res == 0 && left_length > right_length);
