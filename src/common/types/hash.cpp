@@ -328,8 +328,8 @@ hash_t HashBytes(const void *ptr, size_t len) noexcept {
 	auto Y = HashBytesInner(x, len);
 	if (X != Y)
 {
-	printf("\n%d\t%s\n", len, ptr);
-	printf("%llu\t--\t%llu\n", X, Y);
+	//printf("\n%d\t%s\n", len, ptr);
+	//printf("%llu\t--\t%llu\n", X, Y);
 }
 	D_ASSERT(X == Y);
 	free(x);
