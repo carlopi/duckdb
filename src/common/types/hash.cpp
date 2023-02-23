@@ -70,7 +70,7 @@ hash_t Hash(char *val) {
 // MIT License
 // Copyright (c) 2018-2021 Martin Ankerl
 // https://github.com/martinus/robin-hood-hashing/blob/3.11.5/LICENSE
-hash_t HashBytes(const void *ptr, size_t len) noexcept {
+hash_t HashBytesInner(const void *ptr, size_t len) noexcept {
 	static constexpr uint64_t M = UINT64_C(0xc6a4a7935bd1e995);
 	static constexpr uint64_t SEED = UINT64_C(0xe17a1465);
 	static constexpr unsigned int R = 47;
@@ -78,10 +78,104 @@ hash_t HashBytes(const void *ptr, size_t len) noexcept {
 	auto const *const data64 = static_cast<uint64_t const *>(ptr);
 	uint64_t h = SEED ^ (len * M);
 
+	auto const * data8 = reinterpret_cast<uint8_t const *>(ptr);
+	uint64_t p = (uint64_t)(data8);
+uint64_t k = 0;
+	if (p % 8)
+{
+	size_t shift = ((size_t)p%8);
+	auto const * end = data8 + len;
+	
+	uint64_t s[2] = {0u, 0u};
+	for (size_t i = shift; i<8u; i++)
+	{
+		(reinterpret_cast<uint8_t*>(s+1))[i-shift] = *data8;
+		data8++;
+	}
+shift *= 8u;
+
+
+	//........hello...
+
+	
+	s[0] = s[1] << (shift);
+
+	//...hello xyzkjulm
+
+
+	while (data8 + 8 <= end)
+	{
+		s[1] = *reinterpret_cast<uint64_t const*>(data8);
+	
+		s[0] >>= (shift);
+		s[0] |= (s[1] << (64u - shift));
+
+		k = s[0];
+		//printf("div.main\t%p\n", k);
+		k *= M;
+		k ^= k >> R;
+		k *= M;
+
+		h ^= k;
+		h *= M;
+
+		data8+=8;
+	
+		s[0] = (s[1] << ( shift));
+s[0] = s[1];
+	}
+	s[1] = 0u;
+	size_t xx = 0;
+	while (data8 < end)
+	{
+		(reinterpret_cast<uint8_t*>(s+1))[xx] = *data8;
+		data8++;
+		xx++;
+	}
+
+	size_t remaining = xx + (64u - shift)/8u;
+
+		s[0] >>= (shift);
+		s[0] |= (s[1] << (64u- shift));
+		s[1] >>= (shift);
+	if (remaining >= 8u)
+	{
+		k = s[0];
+	//printf("dis.rem8u\t%p\n", k);
+		k *= M;
+		k ^= k >> R;
+		k *= M;
+
+		h ^= k;
+		h *= M;
+		s[0] = s[1];
+		s[0] = (s[1]);
+	remaining -=8u;
+	}	
+
+{
+	if (remaining > 0u)
+	{
+
+		k = s[0];
+	//printf("dis.last\t%p\n", k);
+		k *= M;
+		k ^= k >> R;
+		k *= M;
+
+		h ^= k;
+	}
+	h *= M;
+}
+
+}
+else
+{
 	size_t const n_blocks = len / 8;
 	for (size_t i = 0; i < n_blocks; ++i) {
 		auto k = Load<uint64_t>(reinterpret_cast<const_data_ptr_t>(data64 + i));
 
+	//	printf("aligned.1\t%p\n", k);
 		k *= M;
 		k ^= k >> R;
 		k *= M;
@@ -89,6 +183,8 @@ hash_t HashBytes(const void *ptr, size_t len) noexcept {
 		h ^= k;
 		h *= M;
 	}
+	data8 += n_blocks * 8u;
+	len &= 7U;
 
 	union {
 		uint64_t u64;
@@ -96,8 +192,7 @@ hash_t HashBytes(const void *ptr, size_t len) noexcept {
 	} u;
 	uint64_t &k1 = u.u64;
 	k1 = 0;
-	auto const *const data8 = reinterpret_cast<uint8_t const *>(data64 + n_blocks);
-	switch (len & 7U) {
+	switch (len) {
 	case 7:
 		u.u8[6] = data8[6];
 		DUCKDB_EXPLICIT_FALLTHROUGH;
@@ -119,6 +214,7 @@ hash_t HashBytes(const void *ptr, size_t len) noexcept {
 	case 1:
 		u.u8[0] = data8[0];
 
+		//printf("aligned.2\t%p\n", k1);
 		k1 *= M;
 		k1 ^= k1 >> R;
 		k1 *= M;
@@ -131,11 +227,31 @@ hash_t HashBytes(const void *ptr, size_t len) noexcept {
 	}
 
 	h *= M;
-
+}
 	h ^= h >> R;
 	h *= M;
 	h ^= h >> R;
 	return static_cast<hash_t>(h);
+}
+
+
+hash_t HashBytes(const void *ptr, size_t len) noexcept {
+	return HashBytesInner(ptr, len);
+
+	//printf("hashing...%d\n", len);
+	void* x = malloc(len);
+	memcpy(x, ptr, len);
+	auto X = HashBytesInner(ptr, len);
+	auto Y = HashBytesInner(x, len);
+	if (X != Y)
+{
+	printf("\n%d\t%s\n", len, ptr);
+	printf("%llu\t--\t%llu\n", X, Y);
+}
+	D_ASSERT(X == Y);
+	free(x);
+	return Y;
+
 }
 
 hash_t Hash(const char *val, size_t size) {
@@ -151,7 +267,7 @@ hash_t Hash(string_t val) {
 #ifdef DUCKDB_DEBUG_NO_INLINE
 	return HashBytes((const void *)val.GetDataUnsafe(), val.GetSize());
 #endif
-	if (val.GetSize() <= 8u) {
+	if (false && val.GetSize() <= 8u) {
 		static constexpr uint64_t M = UINT64_C(0xc6a4a7935bd1e995);
 		static constexpr uint64_t SEED = UINT64_C(0xe17a1465);
 		static constexpr unsigned int R = 47;
