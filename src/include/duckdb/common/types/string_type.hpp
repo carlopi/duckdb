@@ -178,8 +178,8 @@ public:
 			const uint32_t min_length = std::min<uint32_t>(left_length, right_length);
 
 #ifndef DUCKDB_DEBUG_NO_INLINE
-			uint32_t A = LoadAligned32<uint32_t>((uint32_t * const)left.GetPrefix());
-			uint32_t B = LoadAligned32<uint32_t>((uint32_t * const)right.GetPrefix());
+			uint32_t A = *reinterpret_cast<const uint32_t*>(left.GetPrefix());
+			uint32_t B = *reinterpret_cast<const uint32_t*>(right.GetPrefix());
 
 			auto bswap = [](uint32_t v) -> uint32_t {
 				uint32_t t1 = (v>>16u) | (v<<16u);
