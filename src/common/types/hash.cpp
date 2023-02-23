@@ -87,11 +87,53 @@ uint64_t k = 0;
 	auto const * end = data8 + len;
 	
 	uint64_t s[2] = {0u, 0u};
-	for (size_t i = shift; i<8u; i++)
+/*	for (size_t i = shift; i<8u; i++)
 	{
 		(reinterpret_cast<uint8_t*>(s+1))[i-shift] = *data8;
 		data8++;
 	}
+*/
+	uint8_t* writePtr = reinterpret_cast<uint8_t*>(s+1);
+	switch (shift) {
+	case 1:
+		*writePtr = *data8;
+		writePtr++;
+		data8++;
+		DUCKDB_EXPLICIT_FALLTHROUGH;
+	case 2:
+		*writePtr = *data8;
+		writePtr++;
+		data8++;
+		DUCKDB_EXPLICIT_FALLTHROUGH;
+	case 3:
+		*writePtr = *data8;
+		writePtr++;
+		data8++;
+		DUCKDB_EXPLICIT_FALLTHROUGH;
+	case 4:
+		*writePtr = *data8;
+		writePtr++;
+		data8++;
+		DUCKDB_EXPLICIT_FALLTHROUGH;
+	case 5:
+		*writePtr = *data8;
+		writePtr++;
+		data8++;
+		DUCKDB_EXPLICIT_FALLTHROUGH;
+	case 6:
+		*writePtr = *data8;
+		writePtr++;
+		data8++;
+		DUCKDB_EXPLICIT_FALLTHROUGH;
+	case 7:
+		*writePtr = *data8;
+		writePtr++;
+		data8++;
+		DUCKDB_EXPLICIT_FALLTHROUGH;
+	case 0:
+		break;
+	}
+
 shift *= 8u;
 
 
@@ -125,14 +167,55 @@ shift *= 8u;
 s[0] = s[1];
 	}
 	s[1] = 0u;
-	size_t xx = 0;
+
+size_t xx = end - data8;
+
+
+	union {
+		uint64_t u64;
+		uint8_t u8[8];
+	} u;
+	uint64_t &k1 = u.u64;
+	k1 = 0;
+	switch (xx) {
+	case 7:
+		u.u8[6] = data8[6];
+		DUCKDB_EXPLICIT_FALLTHROUGH;
+	case 6:
+		u.u8[5] = data8[5];
+		DUCKDB_EXPLICIT_FALLTHROUGH;
+	case 5:
+		u.u8[4] = data8[4];
+		DUCKDB_EXPLICIT_FALLTHROUGH;
+	case 4:
+		u.u8[3] = data8[3];
+		DUCKDB_EXPLICIT_FALLTHROUGH;
+	case 3:
+		u.u8[2] = data8[2];
+		DUCKDB_EXPLICIT_FALLTHROUGH;
+	case 2:
+		u.u8[1] = data8[1];
+		DUCKDB_EXPLICIT_FALLTHROUGH;
+	case 1:
+		u.u8[0] = data8[0];
+
+		break;
+	case 0:
+		break;
+	}
+
+	s[1] = k1;
+
+
+
+/*
 	while (data8 < end)
 	{
 		(reinterpret_cast<uint8_t*>(s+1))[xx] = *data8;
 		data8++;
 		xx++;
 	}
-
+*/
 	size_t remaining = xx + (64u - shift)/8u;
 
 		s[0] >>= (shift);
@@ -267,7 +350,7 @@ hash_t Hash(string_t val) {
 #ifdef DUCKDB_DEBUG_NO_INLINE
 	return HashBytes((const void *)val.GetDataUnsafe(), val.GetSize());
 #endif
-	if (false && val.GetSize() <= 8u) {
+	if (val.GetSize() <= 8u) {
 		static constexpr uint64_t M = UINT64_C(0xc6a4a7935bd1e995);
 		static constexpr uint64_t SEED = UINT64_C(0xe17a1465);
 		static constexpr unsigned int R = 47;
