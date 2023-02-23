@@ -350,7 +350,7 @@ hash_t Hash(string_t val) {
 #ifdef DUCKDB_DEBUG_NO_INLINE
 	return HashBytes((const void *)val.GetDataUnsafe(), val.GetSize());
 #endif
-	if (val.GetSize() <= 8u) {
+	if (val.GetSize() <= 12u) {
 		static constexpr uint64_t M = UINT64_C(0xc6a4a7935bd1e995);
 		static constexpr uint64_t SEED = UINT64_C(0xe17a1465);
 		static constexpr unsigned int R = 47;
@@ -371,7 +371,7 @@ hash_t Hash(string_t val) {
 		h ^= k;
 		h *= M;
 
-/*		k = *(reinterpret_cast<const uint32_t *>(data64) + 2);
+		k = *(reinterpret_cast<const uint32_t *>(data64) + 2);
 		k <<= 32u;
 		k *= M;
 		k ^= k >> R;
@@ -379,7 +379,7 @@ hash_t Hash(string_t val) {
 
 		h ^= k;
 		h *= M;
-*/
+
 		h ^= h >> R;
 		h *= M;
 		h ^= h >> R;
