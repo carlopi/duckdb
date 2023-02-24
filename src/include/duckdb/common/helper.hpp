@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "duckdb/common/assert.hpp"
 #include "duckdb/common/constants.hpp"
 #include "duckdb/common/shared_ptr.hpp"
 #include <string.h>
@@ -206,6 +207,25 @@ const T Load(const_data_ptr_t ptr) {
 template <typename T>
 void Store(const T &val, data_ptr_t ptr) {
 	memcpy(ptr, (void *)&val, sizeof(val)); // NOLINT
+}
+
+template <typename T>
+T LoadAligned4Bytes(const_data_ptr_t ptr);
+
+template <>
+inline uint32_t LoadAligned4Bytes<uint32_t>(const_data_ptr_t ptr)
+{
+	D_ASSERT((uint64_t)ptr % 4 == 0);
+	return *reinterpret_cast<const uint32_t*>(ptr);
+}
+
+template <>
+inline uint64_t LoadAligned4Bytes<uint64_t>(const_data_ptr_t ptr)
+{
+	D_ASSERT((uint64_t)ptr % 4 == 0);
+	const uint64_t low = *reinterpret_cast<const uint32_t*>(ptr);
+	const uint64_t high = *(reinterpret_cast<const uint32_t*>(ptr) + 1);
+	return (high << 32ull) | low;
 }
 
 //! This assigns a shared pointer, but ONLY assigns if "target" is not equal to "source"
