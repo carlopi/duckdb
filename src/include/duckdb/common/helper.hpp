@@ -209,24 +209,9 @@ void Store(const T &val, data_ptr_t ptr) {
 	memcpy(ptr, (void *)&val, sizeof(val)); // NOLINT
 }
 
-template <typename T>
-T LoadAligned4Bytes(const_data_ptr_t ptr);
+#define LOAD32_ALIGNED4(ptr) (*reinterpret_cast<const uint32_t*>((ptr)))
 
-template <>
-inline uint32_t LoadAligned4Bytes<uint32_t>(const_data_ptr_t ptr)
-{
-	D_ASSERT((uint64_t)ptr % 4 == 0);
-	return *reinterpret_cast<const uint32_t*>(ptr);
-}
-
-template <>
-inline uint64_t LoadAligned4Bytes<uint64_t>(const_data_ptr_t ptr)
-{
-	D_ASSERT((uint64_t)ptr % 4 == 0);
-	const uint64_t low = *reinterpret_cast<const uint32_t*>(ptr);
-	const uint64_t high = *(reinterpret_cast<const uint32_t*>(ptr) + 1);
-	return (high << 32ull) | low;
-}
+#define LOAD64_ALIGNED4(ptr) ((uint64_t)*reinterpret_cast<const uint32_t*>((ptr)) + ((uint64_t)(*(reinterpret_cast<const uint32_t*>((ptr))+1))<<(uint64_t)32ull) )
 
 //! This assigns a shared pointer, but ONLY assigns if "target" is not equal to "source"
 //! If this is often the case, this manner of assignment is significantly faster (~20X faster)
