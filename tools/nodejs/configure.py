@@ -54,7 +54,7 @@ elif 'DUCKDB_NODE_BINDIR' in os.environ:
         libraries.append(find_library_path(libdir, libname))
 
     source_list = []
-    cflags = []
+    cflags = ['-frtti']
     windows_options = []
     if os.name == 'nt':
         windows_options = [x for x in os.environ['DUCKDB_NODE_CFLAGS'].split(' ') if x.startswith('/')]
