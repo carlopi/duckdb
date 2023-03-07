@@ -387,7 +387,7 @@ jobs:
       CPP: /home/runner/work/llvm/bin/clang-cpp
       CXX: /home/runner/work/llvm/bin/clang++
       LD: /home/runner/work/llvm/bin/ld.lld
-      EXTENSION_STATIC_BUILD: 1
+      EXTENSION_STATIC_BUILD: 0
       BUILD_JSON: 1
       TREAT_WARNINGS_AS_ERRORS: 1
 
