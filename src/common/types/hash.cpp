@@ -63,11 +63,6 @@ hash_t Hash(const char *str) {
 }
 
 template <>
-hash_t Hash(string_t val) {
-	return Hash(val.GetDataUnsafe(), val.GetSize());
-}
-
-template <>
 hash_t Hash(char *val) {
 	return Hash<const char *>(val);
 }
@@ -96,32 +91,41 @@ hash_t HashBytes(void *ptr, size_t len) noexcept {
 	}
 
 	auto const *const data8 = reinterpret_cast<uint8_t const *>(data64 + n_blocks);
+	uint64_t k1 = 0u;
 	switch (len & 7U) {
 	case 7:
-		h ^= static_cast<uint64_t>(data8[6]) << 48U;
+		k1 ^= static_cast<uint64_t>(data8[6]) << 48U;
 		DUCKDB_EXPLICIT_FALLTHROUGH;
 	case 6:
-		h ^= static_cast<uint64_t>(data8[5]) << 40U;
+		k1 ^= static_cast<uint64_t>(data8[5]) << 40U;
 		DUCKDB_EXPLICIT_FALLTHROUGH;
 	case 5:
-		h ^= static_cast<uint64_t>(data8[4]) << 32U;
+		k1 ^= static_cast<uint64_t>(data8[4]) << 32U;
 		DUCKDB_EXPLICIT_FALLTHROUGH;
 	case 4:
-		h ^= static_cast<uint64_t>(data8[3]) << 24U;
+		k1 ^= static_cast<uint64_t>(data8[3]) << 24U;
 		DUCKDB_EXPLICIT_FALLTHROUGH;
 	case 3:
-		h ^= static_cast<uint64_t>(data8[2]) << 16U;
+		k1 ^= static_cast<uint64_t>(data8[2]) << 16U;
 		DUCKDB_EXPLICIT_FALLTHROUGH;
 	case 2:
-		h ^= static_cast<uint64_t>(data8[1]) << 8U;
+		k1 ^= static_cast<uint64_t>(data8[1]) << 8U;
 		DUCKDB_EXPLICIT_FALLTHROUGH;
 	case 1:
-		h ^= static_cast<uint64_t>(data8[0]);
+		k1 ^= static_cast<uint64_t>(data8[0]);
+
+		k1 *= M;
+		k1 ^= k1 >> R;
+		k1 *= M;
+
+		h ^= k1;
 		h *= M;
-		DUCKDB_EXPLICIT_FALLTHROUGH;
-	default:
+		break;
+	case 0:
+		// Nothing to do;
 		break;
 	}
+
 	h ^= h >> R;
 	h *= M;
 	h ^= h >> R;
@@ -134,6 +138,35 @@ hash_t Hash(const char *val, size_t size) {
 
 hash_t Hash(uint8_t *val, size_t size) {
 	return HashBytes((void *)val, size);
+}
+
+template <>
+hash_t Hash(string_t val) {
+#ifndef DUCKDB_DEBUG_NO_INLINE
+	if (val.GetSize() <= 8) {
+		static constexpr uint64_t M = UINT64_C(0xc6a4a7935bd1e995);
+		static constexpr uint64_t SEED = UINT64_C(0xe17a1465);
+		static constexpr unsigned int R = 47;
+
+		const_data_ptr_t data64 = static_cast<const_data_ptr_t>((uint8_t*)&val + 4);
+		uint64_t h = SEED ^ (val.GetSize() * M);
+
+		uint64_t k = Load<uint64_t>(data64);
+
+		k *= M;
+		k ^= k >> R;
+		k *= M;
+
+		h ^= k;
+		h *= M;
+
+		h ^= h >> R;
+		h *= M;
+		h ^= h >> R;
+		return static_cast<hash_t>(h);
+	}
+#endif
+	return HashBytes((void *)val.GetDataUnsafe(), val.GetSize());
 }
 
 } // namespace duckdb
