@@ -87,6 +87,7 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const
 		}
 	}
 	auto my_hdl = dlopen(0, RTLD_NOW | RTLD_GLOBAL);
+	(void)my_hdl;
 	auto lib_hdl = dlopen(filename.c_str(), RTLD_NOW | RTLD_LOCAL);
 	if (!lib_hdl) {
 		throw IOException("Extension \"%s\" could not be loaded: %s", filename, GetDLError());
