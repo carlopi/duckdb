@@ -11,16 +11,38 @@
 
 // duplicate of duckdb/main/winapi.hpp
 #ifndef DUCKDB_API
-#ifdef _WIN32
+#if defined(_MSC_VER)
+    //  Microsoft 
 #if defined(DUCKDB_BUILD_LIBRARY) && !defined(DUCKDB_BUILD_LOADABLE_EXTENSION)
-#define DUCKDB_API __declspec(dllexport)
+    #define DUCKDB_API __declspec(dllexport)
 #else
-#define DUCKDB_API __declspec(dllimport)
+    #define DUCKDB_API __declspec(dllimport)
+#endif
+#elif defined(__GNUC__)
+    //  GCC
+#if defined(DUCKDB_BUILD_LIBRARY) && !defined(DUCKDB_BUILD_LOADABLE_EXTENSION)
+    #define DUCKDB_API __attribute__((visibility("default")))
+#else
+    #define DUCKDB_API
+#endif
+#elif defined(__CLANG__)
+    //  GCC
+#if defined(DUCKDB_BUILD_LIBRARY) && !defined(DUCKDB_BUILD_LOADABLE_EXTENSION)
+    #define DUCKDB_API __attribute__((visibility("default")))
+#else
+    #define DUCKDB_API
 #endif
 #else
-#define DUCKDB_API
+    //  do nothing and hope for the best?
+#if defined(DUCKDB_BUILD_LIBRARY) && !defined(DUCKDB_BUILD_LOADABLE_EXTENSION)
+    #define DUCKDB_API
+#else
+    #define DUCKDB_API
+#endif
+    #pragma warning Unknown dynamic link import/export semantics.
 #endif
 #endif
+
 
 // duplicate of duckdb/main/winapi.hpp
 #ifndef DUCKDB_EXTENSION_API
