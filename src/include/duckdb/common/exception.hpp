@@ -81,7 +81,7 @@ enum class ExceptionType {
 };
 class HTTPException;
 
-class Exception : public std::exception {
+class DUCKDB_API Exception : public std::exception {
 public:
 	DUCKDB_API explicit Exception(const string &msg);
 	DUCKDB_API Exception(ExceptionType exception_type, const string &message);
