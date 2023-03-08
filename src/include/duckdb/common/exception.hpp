@@ -83,22 +83,22 @@ class HTTPException;
 
 class DUCKDB_API Exception : public std::exception {
 public:
-	DUCKDB_API explicit Exception(const string &msg);
-	DUCKDB_API Exception(ExceptionType exception_type, const string &message);
+	explicit Exception(const string &msg);
+	Exception(ExceptionType exception_type, const string &message);
 
 	ExceptionType type;
 
 public:
-	DUCKDB_API const char *what() const noexcept override;
-	DUCKDB_API const string &RawMessage() const;
+	const char *what() const noexcept override;
+	const string &RawMessage() const;
 
-	DUCKDB_API static string ExceptionTypeToString(ExceptionType type);
+	static string ExceptionTypeToString(ExceptionType type);
 	[[noreturn]] DUCKDB_API static void ThrowAsTypeWithMessage(ExceptionType type, const string &message,
 	                                                           const std::shared_ptr<Exception> &original);
 	virtual std::shared_ptr<Exception> Copy() const {
 		return make_shared<Exception>(type, raw_message_);
 	}
-	DUCKDB_API const HTTPException &AsHTTPException() const;
+	const HTTPException &AsHTTPException() const;
 
 	template <typename... Args>
 	static string ConstructMessage(const string &msg, Args... params) {
@@ -106,7 +106,7 @@ public:
 		return ConstructMessageRecursive(msg, values, params...);
 	}
 
-	DUCKDB_API static string ConstructMessageRecursive(const string &msg, vector<ExceptionFormatValue> &values);
+	static string ConstructMessageRecursive(const string &msg, vector<ExceptionFormatValue> &values);
 
 	template <class T, typename... Args>
 	static string ConstructMessageRecursive(const string &msg, vector<ExceptionFormatValue> &values, T param,
@@ -115,9 +115,9 @@ public:
 		return ConstructMessageRecursive(msg, values, params...);
 	}
 
-	DUCKDB_API static bool UncaughtException();
+	static bool UncaughtException();
 
-	DUCKDB_API static string GetStackTrace(int max_depth = 120);
+	static string GetStackTrace(int max_depth = 120);
 
 private:
 	string exception_message_;
