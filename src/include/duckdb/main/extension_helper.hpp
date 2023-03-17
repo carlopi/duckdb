@@ -45,8 +45,10 @@ public:
 	static void LoadExternalExtension(ClientContext &context, const string &extension);
 	static void LoadExternalExtension(DatabaseInstance &db, FileOpener *opener, const string &extension);
 
+#ifndef WASM_LOADABLE_EXTENSIONS
 	static string ExtensionDirectory(ClientContext &context);
 	static string ExtensionDirectory(DBConfig &config, FileSystem &fs, FileOpener *opener);
+#endif //WASM_LOADABLE_EXTENSIONS
 
 	static idx_t DefaultExtensionCount();
 	static DefaultExtension GetDefaultExtension(idx_t index);
