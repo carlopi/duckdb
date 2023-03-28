@@ -1,11 +1,14 @@
-if (${WASM_LOADABLE_EXTENSIONS})
-  file(GLOB sources_list LIST_DIRECTORIES true "*")
+if(${WASM_LOADABLE_EXTENSIONS})
+  file(
+    GLOB sources_list
+    LIST_DIRECTORIES true
+    "*")
   foreach(dir ${sources_list})
-    IF(IS_DIRECTORY ${dir})
-      add_subdirectory(${dir})
-    ELSE()
-      CONTINUE()
-    ENDIF()
+    if(IS_DIRECTORY ${dir})
+       add_subdirectory(${dir})
+    else()
+      continue()
+    endif()
   endforeach()
   return()
 endif()
