@@ -39,9 +39,9 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const
 	if (!ExtensionHelper::IsFullPath(extension)) {
 #ifdef WASM_LOADABLE_EXTENSIONS
 		// This to be refactored away
-		char *str = (char*)EM_ASM_PTR({
+		char *str = (char *)EM_ASM_PTR({
 			var jsString = self.location.href;
-			var lengthBytes = lengthBytesUTF8(jsString)+1;
+			var lengthBytes = lengthBytesUTF8(jsString) + 1;
 			// 'jsString.length' would return the length of the string as UTF-16
 			// units, but Emscripten C strings operate as UTF-8.
 			var stringOnWasmHeap = _malloc(lengthBytes);
@@ -113,16 +113,18 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const
 	auto basename = fs.ExtractBaseName(filename);
 
 #ifdef WASM_LOADABLE_EXTENSIONS
-	EM_ASM({
-		const xhr=new XMLHttpRequest();
-		xhr.open("GET", UTF8ToString($0), false);
-		xhr.responseType = "arraybuffer";
-		xhr.send(null);
-		var uInt8Array = xhr.response;
-		WebAssembly.validate(uInt8Array);
-		FS.writeFile(UTF8ToString($1), new Uint8Array(uInt8Array));
-		console.log('Loading extension ', UTF8ToString($1));
-	}, filename.c_str(), basename.c_str());
+	EM_ASM(
+	    {
+		    const xhr = new XMLHttpRequest();
+		    xhr.open("GET", UTF8ToString($0), false);
+		    xhr.responseType = "arraybuffer";
+		    xhr.send(null);
+		    var uInt8Array = xhr.response;
+		    WebAssembly.validate(uInt8Array);
+		    FS.writeFile(UTF8ToString($1), new Uint8Array(uInt8Array));
+		    console.log('Loading extension ', UTF8ToString($1));
+	    },
+	    filename.c_str(), basename.c_str());
 #endif
 
 	auto lib_hdl = dlopen(basename.c_str(), RTLD_NOW | RTLD_LOCAL);
