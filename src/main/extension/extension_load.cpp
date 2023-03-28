@@ -4,6 +4,10 @@
 #include "duckdb/main/error_manager.hpp"
 #include "mbedtls_wrapper.hpp"
 
+#ifdef WASM_LOADABLE_EXTENSIONS
+#include <emscripten.h>
+#endif
+
 namespace duckdb {
 
 //===--------------------------------------------------------------------===//
@@ -33,6 +37,25 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const
 
 	// shorthand case
 	if (!ExtensionHelper::IsFullPath(extension)) {
+#ifdef WASM_LOADABLE_EXTENSIONS
+		// This to be refactored away
+		char *str = (char *)EM_ASM_PTR({
+			var jsString = self.location.href;
+			var lengthBytes = lengthBytesUTF8(jsString) + 1;
+			// 'jsString.length' would return the length of the string as UTF-16
+			// units, but Emscripten C strings operate as UTF-8.
+			var stringOnWasmHeap = _malloc(lengthBytes);
+			stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
+			return stringOnWasmHeap;
+		});
+		std::string base(str);
+		free(str);
+
+		while (base.back() != '/')
+			base.pop_back();
+
+		filename = base + "extensions/" + filename + ".extension.wasm";
+#else
 		string local_path = !config.options.extension_directory.empty() ? config.options.extension_directory
 		                                                                : fs.GetHomeDirectory(opener);
 
@@ -46,6 +69,7 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const
 		}
 		string extension_name = ApplyExtensionAlias(extension);
 		filename = fs.JoinPath(local_path, extension_name + ".duckdb_extension");
+#endif
 	}
 	if (!fs.FileExists(filename)) {
 		string message;
@@ -86,12 +110,27 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const
 			throw IOException(config.error_manager->FormatException(ErrorType::UNSIGNED_EXTENSION, filename));
 		}
 	}
-	auto lib_hdl = dlopen(filename.c_str(), RTLD_NOW | RTLD_LOCAL);
+	auto basename = fs.ExtractBaseName(filename);
+
+#ifdef WASM_LOADABLE_EXTENSIONS
+	EM_ASM(
+	    {
+		    const xhr = new XMLHttpRequest();
+		    xhr.open("GET", UTF8ToString($0), false);
+		    xhr.responseType = "arraybuffer";
+		    xhr.send(null);
+		    var uInt8Array = xhr.response;
+		    WebAssembly.validate(uInt8Array);
+		    FS.writeFile(UTF8ToString($1), new Uint8Array(uInt8Array));
+		    console.log('Loading extension ', UTF8ToString($1));
+	    },
+	    filename.c_str(), basename.c_str());
+#endif
+
+	auto lib_hdl = dlopen(basename.c_str(), RTLD_NOW | RTLD_LOCAL);
 	if (!lib_hdl) {
 		throw IOException("Extension \"%s\" could not be loaded: %s", filename, GetDLError());
 	}
-
-	auto basename = fs.ExtractBaseName(filename);
 
 	ext_version_fun_t version_fun;
 	auto version_fun_name = basename + "_version";
