@@ -37,6 +37,25 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const
 
 	// shorthand case
 	if (!ExtensionHelper::IsFullPath(extension)) {
+#ifdef WASM_LOADABLE_EXTENSIONS
+		// This to be refactored away
+		char *str = (char *)EM_ASM_PTR({
+			var jsString = self.location.href;
+			var lengthBytes = lengthBytesUTF8(jsString) + 1;
+			// 'jsString.length' would return the length of the string as UTF-16
+			// units, but Emscripten C strings operate as UTF-8.
+			var stringOnWasmHeap = _malloc(lengthBytes);
+			stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
+			return stringOnWasmHeap;
+		});
+		std::string base(str);
+		free(str);
+
+		while (base.back() != '/')
+			base.pop_back();
+
+		filename = base + "extensions/" + filename + ".extension.wasm";
+#else
 		string local_path = !config.options.extension_directory.empty() ? config.options.extension_directory
 		                                                                : fs.GetHomeDirectory(opener);
 
@@ -50,6 +69,7 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const
 		}
 		string extension_name = ApplyExtensionAlias(extension);
 		filename = fs.JoinPath(local_path, extension_name + ".duckdb_extension");
+#endif
 	}
 	if (!fs.FileExists(filename)) {
 		string message;
