@@ -19,11 +19,13 @@ idx_t ExtensionHelper::ExtensionAliasCount() {
 }
 
 ExtensionAlias ExtensionHelper::GetExtensionAlias(idx_t index) {
+	logme();
 	D_ASSERT(index < ExtensionAliasCount());
 	return internal_aliases[index];
 }
 
 string ExtensionHelper::ApplyExtensionAlias(string extension_name) {
+	logme();
 	auto lname = StringUtil::Lower(extension_name);
 	for (idx_t index = 0; internal_aliases[index].alias; index++) {
 		if (lname == internal_aliases[index].alias) {

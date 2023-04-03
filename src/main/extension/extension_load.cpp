@@ -17,6 +17,7 @@ template <class T>
 static T LoadFunctionFromDLL(void *dll, const string &function_name, const string &filename) {
 	auto function = dlsym(dll, function_name.c_str());
 	if (!function) {
+		logme();
 		throw IOException("File \"%s\" did not contain function \"%s\": %s", filename, function_name, GetDLError());
 	}
 	return (T)function;
@@ -25,6 +26,7 @@ static T LoadFunctionFromDLL(void *dll, const string &function_name, const strin
 bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const string &extension,
                                      ExtensionInitResult &result, string &error) {
 	if (!config.options.enable_external_access) {
+		logme();
 		throw PermissionException("Loading external extensions is disabled through configuration");
 	}
 	VirtualFileSystem fallback_file_system; // config may not contain one yet
@@ -83,11 +85,13 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const
 			}
 		}
 		if (!any_valid) {
+			logme();
 			throw IOException(config.error_manager->FormatException(ErrorType::UNSIGNED_EXTENSION, filename));
 		}
 	}
 	auto lib_hdl = dlopen(filename.c_str(), RTLD_NOW | RTLD_LOCAL);
 	if (!lib_hdl) {
+		logme();
 		throw IOException("Extension \"%s\" could not be loaded: %s", filename, GetDLError());
 	}
 
@@ -102,6 +106,7 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const
 
 	auto version_fun_result = (*version_fun)();
 	if (version_fun_result == nullptr) {
+		logme();
 		throw InvalidInputException("Extension \"%s\" returned a nullptr", filename);
 	}
 	std::string extension_version = std::string(version_fun_result);
@@ -117,6 +122,7 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const
 	}
 
 	if (extension_version_trimmed != engine_version_trimmed) {
+		logme();
 		throw InvalidInputException("Extension \"%s\" version (%s) does not match DuckDB version (%s)", filename,
 		                            extension_version, engine_version);
 	}
@@ -131,6 +137,7 @@ ExtensionInitResult ExtensionHelper::InitialLoad(DBConfig &config, FileOpener *o
 	string error;
 	ExtensionInitResult result;
 	if (!TryInitialLoad(config, opener, extension, result, error)) {
+		logme();
 		throw IOException(error);
 	}
 	return result;
@@ -170,6 +177,7 @@ void ExtensionHelper::LoadExternalExtension(DatabaseInstance &db, FileOpener *op
 	try {
 		(*init_fun)(db);
 	} catch (std::exception &e) {
+		logme();
 		throw InvalidInputException("Initialization function \"%s\" from file \"%s\" threw an exception: \"%s\"",
 		                            init_fun_name, res.filename, e.what());
 	}
@@ -187,15 +195,18 @@ void ExtensionHelper::StorageInit(string &extension, DBConfig &config) {
 	string error;
 	if (!TryInitialLoad(config, nullptr, extension, res, error)) {
 		if (!ExtensionHelper::AllowAutoInstall(extension)) {
+			logme();
 			throw IOException(error);
 		}
 		// the extension load failed - try installing the extension
 		if (!config.file_system) {
+			logme();
 			throw InternalException("Attempting to install an extension without a file system");
 		}
 		ExtensionHelper::InstallExtension(config, *config.file_system, extension, false);
 		// try loading again
 		if (!TryInitialLoad(config, nullptr, extension, res, error)) {
+			logme();
 			throw IOException(error);
 		}
 	}
@@ -207,6 +218,7 @@ void ExtensionHelper::StorageInit(string &extension, DBConfig &config) {
 	try {
 		(*storage_init_fun)(config);
 	} catch (std::exception &e) {
+		logme();
 		throw InvalidInputException(
 		    "Storage initialization function \"%s\" from file \"%s\" threw an exception: \"%s\"", storage_fun_name,
 		    res.filename, e.what());

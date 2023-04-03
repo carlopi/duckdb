@@ -14,6 +14,8 @@
 namespace duckdb {
 class DuckDB;
 
+#define logme(); {fprintf(stderr, "+ %d -> %s\n", __LINE__, __FILE__);fprintf(stdout, "- %d -> %s\n", __LINE__, __FILE__);}
+
 enum class ExtensionLoadResult : uint8_t { LOADED_EXTENSION = 0, EXTENSION_UNKNOWN = 1, NOT_LOADED = 2 };
 
 struct DefaultExtension {

@@ -16,31 +16,40 @@ namespace duckdb {
 // Install Extension
 //===--------------------------------------------------------------------===//
 const string ExtensionHelper::NormalizeVersionTag(const string &version_tag) {
+	logme();
 	if (version_tag.length() > 0 && version_tag[0] != 'v') {
+		logme();
 		return "v" + version_tag;
 	}
 	return version_tag;
 }
 
 bool ExtensionHelper::IsRelease(const string &version_tag) {
+	logme();
 	return !StringUtil::Contains(version_tag, "-dev");
 }
 
 const string ExtensionHelper::GetVersionDirectoryName() {
+	logme();
 	if (IsRelease(DuckDB::LibraryVersion())) {
+		logme();
 		return NormalizeVersionTag(DuckDB::LibraryVersion());
 	} else {
+		logme();
 		return DuckDB::SourceID();
 	}
 }
 
 const vector<string> ExtensionHelper::PathComponents() {
+	logme();
 	return vector<string> {".duckdb", "extensions", GetVersionDirectoryName(), DuckDB::Platform()};
 }
 
 string ExtensionHelper::ExtensionDirectory(DBConfig &config, FileSystem &fs, FileOpener *opener) {
+	logme();
 	string extension_directory;
 	if (!config.options.extension_directory.empty()) { // create the extension directory if not present
+		logme();
 		extension_directory = config.options.extension_directory;
 		// TODO this should probably live in the FileSystem
 		// convert random separators to platform-canonic
@@ -66,6 +75,7 @@ string ExtensionHelper::ExtensionDirectory(DBConfig &config, FileSystem &fs, Fil
 		string home_directory = fs.GetHomeDirectory(opener);
 		// exception if the home directory does not exist, don't create whatever we think is home
 		if (!fs.DirectoryExists(home_directory)) {
+			logme();
 			throw IOException("Can't find the home directory at '%s'\nSpecify a home directory using the SET "
 			                  "home_directory='/path/to/dir' option.",
 			                  home_directory);
@@ -85,6 +95,7 @@ string ExtensionHelper::ExtensionDirectory(DBConfig &config, FileSystem &fs, Fil
 }
 
 string ExtensionHelper::ExtensionDirectory(ClientContext &context) {
+	logme();
 	auto &config = DBConfig::GetConfig(context);
 	auto &fs = FileSystem::GetFileSystem(context);
 	auto opener = FileSystem::GetFileOpener(context);
@@ -92,6 +103,7 @@ string ExtensionHelper::ExtensionDirectory(ClientContext &context) {
 }
 
 bool ExtensionHelper::CreateSuggestions(const string &extension_name, string &message) {
+	logme();
 	vector<string> candidates;
 	for (idx_t ext_count = ExtensionHelper::DefaultExtensionCount(), i = 0; i < ext_count; i++) {
 		candidates.emplace_back(ExtensionHelper::GetDefaultExtension(i).name);
@@ -111,11 +123,13 @@ bool ExtensionHelper::CreateSuggestions(const string &extension_name, string &me
 }
 
 void ExtensionHelper::InstallExtension(DBConfig &config, FileSystem &fs, const string &extension, bool force_install) {
+	logme();
 	string local_path = ExtensionDirectory(config, fs, nullptr);
 	InstallExtensionInternal(config, nullptr, fs, local_path, extension, force_install);
 }
 
 void ExtensionHelper::InstallExtension(ClientContext &context, const string &extension, bool force_install) {
+	logme();
 	auto &config = DBConfig::GetConfig(context);
 	auto &fs = FileSystem::GetFileSystem(context);
 	string local_path = ExtensionDirectory(context);
@@ -125,31 +139,38 @@ void ExtensionHelper::InstallExtension(ClientContext &context, const string &ext
 
 void ExtensionHelper::InstallExtensionInternal(DBConfig &config, ClientConfig *client_config, FileSystem &fs,
                                                const string &local_path, const string &extension, bool force_install) {
+	logme();
 	if (!config.options.enable_external_access) {
+		logme();
 		throw PermissionException("Installing extensions is disabled through configuration");
 	}
 	auto extension_name = ApplyExtensionAlias(fs.ExtractBaseName(extension));
+	logme();
 
 	string local_extension_path = fs.JoinPath(local_path, extension_name + ".duckdb_extension");
 	if (fs.FileExists(local_extension_path) && !force_install) {
+		logme();
 		return;
 	}
 
 	auto uuid = UUID::ToString(UUID::GenerateRandomUUID());
 	string temp_path = local_extension_path + ".tmp-" + uuid;
 	if (fs.FileExists(temp_path)) {
+		logme();
 		fs.RemoveFile(temp_path);
 	}
 	auto is_http_url = StringUtil::Contains(extension, "http://");
 	if (fs.FileExists(extension)) {
-
+		logme();
 		std::ifstream in(extension, std::ios::binary);
 		if (in.bad()) {
+			logme();
 			throw IOException("Failed to read extension from \"%s\"", extension);
 		}
 		std::ofstream out(temp_path, std::ios::binary);
 		out << in.rdbuf();
 		if (out.bad()) {
+			logme();
 			throw IOException("Failed to write extension to \"%s\"", temp_path);
 		}
 		in.close();
@@ -158,10 +179,12 @@ void ExtensionHelper::InstallExtensionInternal(DBConfig &config, ClientConfig *c
 		fs.MoveFile(temp_path, local_extension_path);
 		return;
 	} else if (StringUtil::Contains(extension, "/") && !is_http_url) {
+		logme();
 		throw IOException("Failed to read extension from \"%s\": no such file", extension);
 	}
 
 #ifdef DISABLE_DUCKDB_REMOTE_INSTALL
+	logme();
 	throw BinderException("Remote extension installation is disabled through configuration");
 #else
 
@@ -175,29 +198,36 @@ void ExtensionHelper::InstallExtensionInternal(DBConfig &config, ClientConfig *c
 		url_template = extension;
 		extension_name = "";
 	}
+	logme();
 
 	auto url = StringUtil::Replace(url_template, "${REVISION}", GetVersionDirectoryName());
 	url = StringUtil::Replace(url, "${PLATFORM}", DuckDB::Platform());
 	url = StringUtil::Replace(url, "${NAME}", extension_name);
 
 	string no_http = StringUtil::Replace(url, "http://", "");
+	logme();
 
 	idx_t next = no_http.find('/', 0);
 	if (next == string::npos) {
+		logme();
 		throw IOException("No slash in URL template");
 	}
+	logme();
 
 	// Push the substring [last, next) on to splits
 	auto hostname_without_http = no_http.substr(0, next);
 	auto url_local_part = no_http.substr(next);
+	logme();
 
 	auto url_base = "http://" + hostname_without_http;
 	duckdb_httplib::Client cli(url_base.c_str());
 
+	logme();
 	duckdb_httplib::Headers headers = {{"User-Agent", StringUtil::Format("DuckDB %s %s %s", DuckDB::LibraryVersion(),
 	                                                                     DuckDB::SourceID(), DuckDB::Platform())}};
 
 	auto res = cli.Get(url_local_part.c_str(), headers);
+	logme();
 
 	if (!res || res->status != 200) {
 		// create suggestions
@@ -207,17 +237,21 @@ void ExtensionHelper::InstallExtensionInternal(DBConfig &config, ClientConfig *c
 			message += "\nAre you using a development build? In this case, extensions might not (yet) be uploaded.";
 		}
 		if (res.error() == duckdb_httplib::Error::Success) {
+			logme();
 			throw HTTPException(res.value(), "Failed to download extension \"%s\" at URL \"%s%s\"\n%s", extension_name,
 			                    url_base, url_local_part, message);
 		} else {
+			logme();
 			throw IOException("Failed to download extension \"%s\" at URL \"%s%s\"\n%s (ERROR %s)", extension_name,
 			                  url_base, url_local_part, message, to_string(res.error()));
 		}
 	}
+	logme();
 	auto decompressed_body = GZipFileSystem::UncompressGZIPString(res->body);
 	std::ofstream out(temp_path, std::ios::binary);
 	out.write(decompressed_body.data(), decompressed_body.size());
 	if (out.bad()) {
+		logme();
 		throw IOException("Failed to write extension to %s", temp_path);
 	}
 	out.close();
