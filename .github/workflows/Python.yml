@@ -291,16 +291,14 @@ jobs:
           export DISTUTILS_C_COMPILER_LAUNCHER=ccache
           # TODO: Use ccache inside container, see https://github.com/pypa/cibuildwheel/issues/1030
           cibuildwheel --output-dir wheelhouse --config-file cibw.toml duckdb_tarball
+          ls wheelhouse
+          zip -r wheelhouse wheelhouzy
 
-      - name: Deploy
-        env:
-          TWINE_USERNAME: 'hfmuehleisen'
-          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
-        shell: bash
-        run: |
-          if [[ "$GITHUB_REF" =~ ^(refs/heads/master|refs/tags/v.+)$ && "$GITHUB_REPOSITORY" = "duckdb/duckdb" ]] ; then
-            twine upload --non-interactive --disable-progress-bar --skip-existing tools/pythonpkg/wheelhouse/*.whl
-          fi
+      - uses: actions/upload-artifact@v3
+        with:
+          name: artifact-${{ matrix.python_build }}
+          path: |
+            tools/pythonpkg/wheelhouzy
 
    linux-tarball:
       name: Python 3 Tarball
