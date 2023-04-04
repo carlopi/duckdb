@@ -37,7 +37,7 @@ public:
 	}
 	unique_ptr(std::unique_ptr<_Tp, _Dp>&& ptr) : std::unique_ptr<_Tp, _Dp>(std::move(ptr)) {
 	}
-	operator std::unique_ptr<_Tp, _Dp> () {
+	operator std::unique_ptr<_Tp, _Dp> () && {
 		return std::move(this);
 	}
 #ifdef DUCKDB_CLANG_TIDY
