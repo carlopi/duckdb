@@ -35,6 +35,8 @@ public:
 		__unique_ptr_utils::AssertNotNull((void *)original::get());
 		return original::get();
 	}
+	unique_ptr(std::unique_ptr<_Tp, _Dp>&& ptr) : std::unique_ptr<_Tp, _Dp>(std::move(ptr)) {
+	}
 
 #ifdef DUCKDB_CLANG_TIDY
 	// This is necessary to tell clang-tidy that it reinitializes the variable after a move
