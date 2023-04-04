@@ -37,7 +37,9 @@ public:
 	}
 	unique_ptr(std::unique_ptr<_Tp, _Dp>&& ptr) : std::unique_ptr<_Tp, _Dp>(std::move(ptr)) {
 	}
-
+	operator std::unique_ptr<_Tp, _Dp> () {
+		return std::move(this);
+	}
 #ifdef DUCKDB_CLANG_TIDY
 	// This is necessary to tell clang-tidy that it reinitializes the variable after a move
 	[[clang::reinitializes]]
