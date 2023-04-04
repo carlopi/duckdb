@@ -37,6 +37,9 @@ public:
 	}
 	unique_ptr(std::unique_ptr<_Tp, _Dp>&& ptr) : std::unique_ptr<_Tp, _Dp>(std::move(ptr)) {
 	}
+template <class X, class DX = std::default_delete<X>>
+	unique_ptr(std::unique_ptr<X, DX>&& ptr) : std::unique_ptr<_Tp, _Dp>(std::move(ptr)) {
+	}
 	operator std::unique_ptr<_Tp, _Dp> () && {
 		return std::move(this);
 	}
