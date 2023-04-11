@@ -50,7 +50,7 @@ jobs:
 
     - name: Build
       shell: bash
-      run: GEN=ninja make debug
+      run: brew install ninja
 
     - name: Build
       shell: bash
