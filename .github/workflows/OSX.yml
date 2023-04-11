@@ -50,7 +50,11 @@ jobs:
 
     - name: Build
       shell: bash
-      run: make debug
+      run: GEN=ninja make debug
+
+    - name: Build
+      shell: bash
+      run: GEN=ninja make debug
 
     - name: Amalgamation
       shell: bash
