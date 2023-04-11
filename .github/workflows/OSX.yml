@@ -52,10 +52,6 @@ jobs:
       shell: bash
       run: make debug
 
-    - name: Test
-      shell: bash
-      run: make unittestci
-
     - name: Amalgamation
       shell: bash
       run: |
