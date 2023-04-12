@@ -38,7 +38,7 @@ const vector<string> ExtensionHelper::PathComponents() {
 	return vector<string> {".duckdb", "extensions", GetVersionDirectoryName(), DuckDB::Platform()};
 }
 
-#ifndef WASM_LOADABLE_EXTENSIONS
+#ifndef EMSCRIPTEN
 string ExtensionHelper::ExtensionDirectory(DBConfig &config, FileSystem &fs, FileOpener *opener) {
 	string extension_directory;
 	if (!config.options.extension_directory.empty()) { // create the extension directory if not present
@@ -91,7 +91,7 @@ string ExtensionHelper::ExtensionDirectory(ClientContext &context) {
 	auto opener = FileSystem::GetFileOpener(context);
 	return ExtensionDirectory(config, fs, opener);
 }
-#endif //WASM_LOADABLE_EXTENSIONS
+#endif
 
 bool ExtensionHelper::CreateSuggestions(const string &extension_name, string &message) {
 	vector<string> candidates;
@@ -113,7 +113,7 @@ bool ExtensionHelper::CreateSuggestions(const string &extension_name, string &me
 }
 
 void ExtensionHelper::InstallExtension(DBConfig &config, FileSystem &fs, const string &extension, bool force_install) {
-#ifdef WASM_LOADABLE_EXTENSIONS
+#ifdef EMSCRIPTEN
 	// Install is a no-op
 #else
 	string local_path = ExtensionDirectory(config, fs, nullptr);
@@ -122,7 +122,7 @@ void ExtensionHelper::InstallExtension(DBConfig &config, FileSystem &fs, const s
 }
 
 void ExtensionHelper::InstallExtension(ClientContext &context, const string &extension, bool force_install) {
-#ifdef WASM_LOADABLE_EXTENSIONS
+#ifdef EMSCRIPTEN
 	// Install is a no-op
 #else
 	auto &config = DBConfig::GetConfig(context);

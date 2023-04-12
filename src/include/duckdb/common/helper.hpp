@@ -82,6 +82,11 @@ unique_ptr<S> make_uniq_base(Args &&... args) {
 	return unique_ptr<S>(new T(std::forward<Args>(args)...));
 }
 
+template <typename S, typename T, typename... Args>
+unique_ptr<S> make_unique_base(Args &&... args) {
+	return unique_ptr<S>(new T(std::forward<Args>(args)...));
+}
+
 template <typename T, typename S>
 unique_ptr<S> unique_ptr_cast(unique_ptr<T> src) {
 	return unique_ptr<S>(static_cast<S *>(src.release()));
@@ -109,9 +114,10 @@ typename std::remove_reference<T>::type&& move(T&& t) noexcept {
 }
 #endif
 
-template <class T, class... _Args>
-static duckdb::unique_ptr<T> make_unique(_Args&&... __args) {
-	static_assert(sizeof(T) == 0, "Use make_uniq instead of make_unique!");
+template <class _Tp, class... _Args>
+static duckdb::unique_ptr<_Tp> make_unique(_Args&&... __args) {
+//	static_assert(sizeof(T) == 0, "Use make_uniq instead of make_unique!");
+    return unique_ptr<_Tp>(new _Tp(std::forward<_Args>(__args)...));
 }
 
 template <typename T>

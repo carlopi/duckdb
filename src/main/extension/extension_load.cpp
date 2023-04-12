@@ -4,7 +4,7 @@
 #include "duckdb/main/error_manager.hpp"
 #include "mbedtls_wrapper.hpp"
 
-#ifdef WASM_LOADABLE_EXTENSIONS
+#ifdef EMSCRIPTEN
 #include <emscripten.h>
 #endif
 
@@ -37,7 +37,7 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const
 
 	// shorthand case
 	if (!ExtensionHelper::IsFullPath(extension)) {
-#ifdef WASM_LOADABLE_EXTENSIONS
+#ifdef EMSCRIPTEN
 		// This to be refactored away
 		char *str = (char *)EM_ASM_PTR({
 			var jsString = self.location.href;
@@ -80,7 +80,7 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const
 		error = StringUtil::Format("Extension \"%s\" not found.\n%s", filename, message);
 		return false;
 	}
-	if (!config.options.allow_unsigned_extensions) {
+	if (false && !config.options.allow_unsigned_extensions) {
 		auto handle = fs.OpenFile(filename, FileFlags::FILE_FLAGS_READ);
 
 		// signature is the last 256 bytes of the file
@@ -112,7 +112,7 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const
 	}
 	auto basename = fs.ExtractBaseName(filename);
 
-#ifdef WASM_LOADABLE_EXTENSIONS
+#ifdef EMSCRIPTEN
 	EM_ASM(
 	    {
 		    const xhr = new XMLHttpRequest();

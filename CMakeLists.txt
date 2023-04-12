@@ -800,7 +800,7 @@ function(build_loadable_extension_directory NAME OUTPUT_DIRECTORY PARAMETERS)
   #    The DuckDB symbols required by the loadable extensions are left unresolved. This will reduce the size of the binaries
   #    and works well when running the DuckDB cli directly. For windows this uses delay loading. For MacOS and linux the
   #    dynamic loader will look up the missing symbols when the extension is dlopen-ed.
-  if(WASM_LOADABLE_EXTENSIONS)
+  if(__EMSCRIPTEN__)
     set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -sSIDE_MODULE=1 -DWASM_LOADABLE_EXTENSIONS")
   elseif (EXTENSION_STATIC_BUILD)
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
