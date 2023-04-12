@@ -82,12 +82,20 @@ struct CastLocalStateParameters {
 
 typedef bool (*cast_function_t)(Vector &source, Vector &result, idx_t count, CastParameters &parameters);
 typedef unique_ptr<FunctionLocalState> (*init_cast_local_state_t)(CastLocalStateParameters &parameters);
+typedef unique_ptr<FunctionLocalState> (*init_cast_local_state_t2)(ClientContext &parameters);
+
+//static_assert( 
 
 struct BoundCastInfo {
 	DUCKDB_API
 	BoundCastInfo(
 	    cast_function_t function, unique_ptr<BoundCastData> cast_data = nullptr,
 	    init_cast_local_state_t init_local_state = nullptr); // NOLINT: allow explicit cast from cast_function_t
+
+	BoundCastInfo(
+	    cast_function_t function, unique_ptr<BoundCastData> cast_data,
+	    init_cast_local_state_t2 init_cast_local_state) : BoundCastInfo(std::move(function), std::move(cast_data), (init_cast_local_state_t)std::move(init_cast_local_state)){} // NOLINT: allow explicit cast from cast_function_t
+
 	cast_function_t function;
 	init_cast_local_state_t init_local_state;
 	unique_ptr<BoundCastData> cast_data;

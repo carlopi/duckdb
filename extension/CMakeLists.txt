@@ -1,4 +1,4 @@
-if(${WASM_LOADABLE_EXTENSIONS})
+if(1)
   file(
     GLOB sources_list
     LIST_DIRECTORIES true
