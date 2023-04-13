@@ -65,6 +65,10 @@ jobs:
         bash scripts/wasm_build_lib.sh relsize mvp $(pwd)/..
         bash scripts/wasm_build_lib.sh relsize eh $(pwd)/..
         bash scripts/wasm_build_lib.sh relsize coi $(pwd)/..
+        cd packages/duckdb-wasm
+        yarn run build:release
+        yarn run build:debug
+        yarn run test:browser
 
     - name: Package
       shell: bash
@@ -107,6 +111,10 @@ jobs:
         WASM_LOADABLE_EXTENSIONS=1 bash scripts/wasm_build_lib.sh relsize mvp $(pwd)/..
         WASM_LOADABLE_EXTENSIONS=1 bash scripts/wasm_build_lib.sh relsize eh $(pwd)/..
         WASM_LOADABLE_EXTENSIONS=1 bash scripts/wasm_build_lib.sh relsize coi $(pwd)/..
+        cd packages/duckdb-wasm
+        yarn run build:release
+        yarn run build:debug
+        yarn run test:browser
 
     - name: Package
       shell: bash
