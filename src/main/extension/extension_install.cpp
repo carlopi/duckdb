@@ -38,7 +38,6 @@ const vector<string> ExtensionHelper::PathComponents() {
 	return vector<string> {".duckdb", "extensions", GetVersionDirectoryName(), DuckDB::Platform()};
 }
 
-#ifndef EMSCRIPTEN
 string ExtensionHelper::ExtensionDirectory(DBConfig &config, FileSystem &fs, FileOpener *opener) {
 #ifdef WASM_LOADABLE_EXTENSIONS
 	static_assertion(0, "ExtensionDirectory functionality is not supported in duckdb-wasm");
@@ -94,7 +93,6 @@ string ExtensionHelper::ExtensionDirectory(ClientContext &context) {
 	auto opener = FileSystem::GetFileOpener(context);
 	return ExtensionDirectory(config, fs, opener);
 }
-#endif
 
 bool ExtensionHelper::CreateSuggestions(const string &extension_name, string &message) {
 	vector<string> candidates;

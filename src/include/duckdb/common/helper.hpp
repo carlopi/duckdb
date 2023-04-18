@@ -16,6 +16,7 @@
 #ifdef _MSC_VER
 #define suint64_t int64_t
 #endif
+#define DUCKDB_ENABLE_DEPRECATED_API
 
 #if defined(_WIN32) || defined(_WIN64)
 #define DUCKDB_WINDOWS
