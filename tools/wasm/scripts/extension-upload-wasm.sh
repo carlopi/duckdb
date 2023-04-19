@@ -5,8 +5,9 @@
 set -e
 
 echo "$DUCKDB_EXTENSION_SIGNING_PK" > private.pem
+mkdir EXTENSIONS
 
-FILES="build/$1/extensions/*/*.duckdb_extension.wasm"
+FILES="built-extensions/*.duckdb_extension.wasm"
 for f in $FILES
 do
 	# validate input file
@@ -43,7 +44,9 @@ do
 	# compress extension binary
 	gzip < $f.append > "$f.gz"
 	# upload compressed extension binary to S3
-	aws s3 cp $f.gz s3://duckdb-extensions/$2/wasm-$1/$ext.duckdb_extension.wasm --acl public-read --content-encoding gzip
+	cp $f.gz EXTENSIONS
+	#aws s3 cp $f.gz s3://duckdb-extensions/$2/wasm-$1/$ext.duckdb_extension.wasm --acl public-read --content-encoding gzip
 done
 
+ls -la EXTENSIONS
 rm private.pem
