@@ -97,7 +97,7 @@ jobs:
       run: |
         git clone --recurse-submodules https://github.com/carlopi/duckdb-wasm
         cd duckdb-wasm
-	sudo apt-get install -y wabt
+        sudo apt-get install -y wabt
 
     - name: Setup Ccache
       uses: hendrikmuhs/ccache-action@main
