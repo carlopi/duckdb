@@ -104,14 +104,14 @@ jobs:
       shell: bash
       run: |
         cd duckdb-wasm
-        DUCKDUB_WASM_LOADABLE_EXTENSIONS=1 bash scripts/wasm_build_lib.sh relsize eh $(pwd)/..
+        DUCKDB_WASM_LOADABLE_EXTENSIONS=1 bash scripts/wasm_build_lib.sh relsize eh $(pwd)/..
 
     - name: Generate Extensions
       shell: bash
       run: |
         mkdir built-extensions
-        emcc duckdb-wasm/build/third_party/duckdb/src/duckdb_ep-build/extension/fts/fts.duckdb_extension -o built-extensions/fts.extension.wasm -sSIDE_MODULE -O3
-        emcc duckdb-wasm/build/third_party/duckdb/src/duckdb_ep-build/extension/icu/icu.duckdb_extension -o built-extensions/icu.extension.wasm -sSIDE_MODULE -O3
+        emcc duckdb-wasm/build/third_party/duckdb/src/duckdb_ep-build/extension/fts/fts.duckdb_extension -o built-extensions/fts.duckdb_extension.wasm -sSIDE_MODULE -O3
+        emcc duckdb-wasm/build/third_party/duckdb/src/duckdb_ep-build/extension/icu/icu.duckdb_extension -o built-extensions/icu.duckdb_extension.wasm -sSIDE_MODULE -O3
 
     - name: Sign
       shell: bash
