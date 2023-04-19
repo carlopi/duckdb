@@ -110,8 +110,8 @@ jobs:
       shell: bash
       run: |
         mkdir built-extensions
-        emcc ducdb-wasm/build/third_party/duckdb/src/duckdb_ep-build/extension/fts/fts.duckdb_extension -o built-extensions/fts.extension.wasm -sSIDE_MODULE -O3
-        emcc ducdb-wasm/build/third_party/duckdb/src/duckdb_ep-build/extension/icu/icu.duckdb_extension -o built-extensions/icu.extension.wasm -sSIDE_MODULE -O3
+        emcc duckdb-wasm/build/third_party/duckdb/src/duckdb_ep-build/extension/fts/fts.duckdb_extension -o built-extensions/fts.extension.wasm -sSIDE_MODULE -O3
+        emcc duckdb-wasm/build/third_party/duckdb/src/duckdb_ep-build/extension/icu/icu.duckdb_extension -o built-extensions/icu.extension.wasm -sSIDE_MODULE -O3
 
     - name: Sign
       shell: bash
