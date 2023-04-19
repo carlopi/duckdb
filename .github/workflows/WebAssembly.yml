@@ -105,9 +105,7 @@ jobs:
       shell: bash
       run: |
         cd duckdb-wasm
-        WASM_LOADABLE_EXTENSIONS=1 bash scripts/wasm_build_lib.sh relsize mvp $(pwd)/..
-        WASM_LOADABLE_EXTENSIONS=1 bash scripts/wasm_build_lib.sh relsize eh $(pwd)/..
-        WASM_LOADABLE_EXTENSIONS=1 bash scripts/wasm_build_lib.sh relsize coi $(pwd)/..
+        DUCKDUB_WASM_LOADABLE_EXTENSIONS=1 bash scripts/wasm_build_lib.sh relsize eh $(pwd)/..
 
     - name: Package
       shell: bash
