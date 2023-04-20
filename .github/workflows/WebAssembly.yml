@@ -1,4 +1,5 @@
 name: WebAssembly
+
 on:
   workflow_dispatch:
   repository_dispatch:
@@ -108,7 +109,7 @@ jobs:
       shell: bash
       run: |
         cd duckdb-wasm
-        DUCKDB_WASM_LOADABLE_EXTENSIONS=1 bash scripts/wasm_build_lib.sh relsize eh $(pwd)/..
+        DUCKDB_WASM_LOADABLE_EXTENSIONS=1 WASM_LOADABLE_EXTENSIONS=1 bash scripts/wasm_build_lib.sh relsize eh $(pwd)/..
 
     - name: Generate Extensions
       shell: bash
