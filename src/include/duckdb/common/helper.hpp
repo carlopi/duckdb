@@ -195,7 +195,11 @@ bool RefersToSameObject(const reference<T> &A, const reference<T> &B) {
 std::string getMissingExtensionMessage(const std::string& extension)
 {
 	std::string message;
+#ifndef DUCKDB_WASM_BUNDLE_NAME
 	message = std::string("To install and load the extension, run:\nINSTALL ") + extension + std::string(";\nLOAD ") + extension + std::string(";");
+#else
+	message = std::string("To load the extension, run:\nLOAD ") + extension + std::string(";");
+#endif  // DUCKDB_WASM_BUNDLE_NAME
 	return message;
 }
 
