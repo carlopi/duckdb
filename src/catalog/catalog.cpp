@@ -430,9 +430,8 @@ CatalogException Catalog::UnrecognizedConfigurationError(ClientContext &context,
 	auto extension_name = FindExtensionForSetting(name);
 	if (!extension_name.empty()) {
 		return CatalogException(
-		    "Setting with name \"%s\" is not in the catalog, but it exists in the %s extension.\n\nTo "
-		    "install and load the extension, run:\nINSTALL %s;\nLOAD %s;",
-		    name, extension_name, extension_name, extension_name);
+		    "Setting with name \"%s\" is not in the catalog, but it exists in the %s extension.\n\n%s",
+		    name, extension_name, getMissingExtensionMessage(extension_name));
 	}
 	// the setting is not in an extension
 	// get a list of all options
@@ -467,11 +466,11 @@ CatalogException Catalog::CreateMissingEntryException(ClientContext &context, co
 		auto extension_name = FindExtensionForFunction(entry_name);
 		if (!extension_name.empty()) {
 			return CatalogException(
-			    "Function with name \"%s\" is not in the catalog, but it exists in the %s extension.\n\nTo "
-			    "install and load the extension, run:\nINSTALL %s;\nLOAD %s;",
-			    entry_name, extension_name, extension_name, extension_name);
+			    "Function with name \"%s\" is not in the catalog, but it exists in the %s extension.\n\n%s",
+			    entry_name, extension_name, getMissingExtensionMessage(extension_name));
 		}
 	}
+
 	auto unseen_entry = SimilarEntryInSchemas(context, entry_name, type, unseen_schemas);
 	string did_you_mean;
 	if (unseen_entry.Found() && unseen_entry.distance < entry.distance) {

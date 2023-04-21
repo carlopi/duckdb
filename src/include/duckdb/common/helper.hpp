@@ -192,4 +192,11 @@ bool RefersToSameObject(const reference<T> &A, const reference<T> &B) {
 	return &A.get() == &B.get();
 }
 
+std::string getMissingExtensionMessage(const std::string& extension)
+{
+	std::string message;
+	message = std::string("To install and load the extension, run:\nINSTALL ") + extension + std::string(";\nLOAD ") + extension + std::string(";");
+	return message;
+}
+
 } // namespace duckdb
