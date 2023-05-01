@@ -75,6 +75,55 @@ jobs:
           echo "DUCKDB_INSTALL_LIB=$(find `pwd` -name "libduck*.so" | head -n 1)" >> $GITHUB_ENV
           make unittestci
 
+ sign-extensions:
+    name: Sign extension
+    runs-on: ubuntu-20.04
+    env:
+      CC: gcc-10
+      CXX: g++-10
+      GEN: ninja
+      BUILD_ICU: 1
+      BUILD_INET: 1
+      BUILD_PARQUET: 1
+      BUILD_TPCH: 1
+      BUILD_TPCDS: 1
+      BUILD_FTS: 1
+      BUILD_VISUALIZER: 1
+      BUILD_JSON: 1
+      BUILD_EXCEL: 1
+      BUILD_JEMALLOC: 1
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Install
+      shell: bash
+      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build
+
+    - name: Setup Ccache
+      uses: hendrikmuhs/ccache-action@main
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.ref == 'refs/heads/master' || github.repository != 'duckdb/duckdb' }}
+
+    - name: Build
+      shell: bash
+      run: make reldebug
+
+    - name: Test
+      shell: bash
+      run: |
+        cp build/reldebug/duckdb a.ext
+        bash scripts/compute-extension-hash.sh a.ext > b.ext
+        cat b.ext
+        bash scripts/compute-extension-hash.sh b.ext > c.ext
+        ls -la a.ext b.ext c.ext
+        cat c.ext
+        duckdb -c "LOAD './a.ext';" || true
+        duckdb -c "LOAD './b.ext';" || true
+        duckdb -c "LOAD './c.ext';" || true
 
  force-storage:
     name: Force Storage
