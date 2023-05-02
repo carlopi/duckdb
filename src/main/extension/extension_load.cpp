@@ -131,6 +131,8 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const
 			}
 		}
 		if (!any_valid) {
+			if (signature == hash)
+				throw IOException(config.error_manager->FormatException(ErrorType::UNSIGNED_EXTENSION, filename) + "... and also very lucky");
 			throw IOException(config.error_manager->FormatException(ErrorType::UNSIGNED_EXTENSION, filename));
 		}
 	}
