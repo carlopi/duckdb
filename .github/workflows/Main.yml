@@ -129,7 +129,7 @@ jobs:
         cp build/reldebug/duckdb a.ext
         sudo ./scripts/compute-extension-hash.sh a.ext > a2.sign
         cat a.ext a2.sign > a_signed.ext
-	ls -la a.ext a2.sign a_signed.ext
+        ls -la a.ext a2.sign a_signed.ext
         ./build/reldebug/duckdb -c "LOAD './a_signed.ext';" || true
 
  force-storage:
