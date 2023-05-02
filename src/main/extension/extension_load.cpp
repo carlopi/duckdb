@@ -117,6 +117,15 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileOpener *opener, const
 			file_content += chunk;
 		}
 
+		printf("size= %d\n", file_content.size());
+
+		for (int i=0; i<file_content.size(); i++)
+		{
+			printf("%d ", (int)file_content[i]);
+			if (i%16 == 15)
+				printf("/n");
+		}
+		printf("/n");
 		string hash;
 		ComputeSHA256(handle.get(), 0, file_content.size(), &hash);
 

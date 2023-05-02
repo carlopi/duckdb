@@ -14,6 +14,9 @@ do
 done
 
 # sha256 the concatenation
+hexdump -C hash_concats
 scripts/compute-hash.sh hash_concats > hash_composite
+hexdump -C hash_composite
+ls -la hash_concats hash_composite
 
 cat hash_composite
