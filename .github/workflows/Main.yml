@@ -111,6 +111,8 @@ jobs:
     - name: Test
       shell: bash
       run: |
+	chmod +x ./scripts/compute-extension-hash.sh
+	chmod +x ./scripts/compute-hash.sh
         cp ./scripts/compute-extension-hash.sh a.ext
         sudo ./scripts/compute-extension-hash.sh a.ext > a.sign
 	cp a.ext a.signed.ext
