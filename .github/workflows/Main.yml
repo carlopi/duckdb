@@ -108,6 +108,15 @@ jobs:
         key: ${{ github.job }}
         save: ${{ github.ref == 'refs/heads/master' || github.repository != 'duckdb/duckdb' }}
 
+    - name: Test
+      shell: bash
+      run: |
+        cp ./scripts/compute-extension-hash.sh a.ext
+        sudo ./scripts/compute-extension-hash.sh a.ext > a.sign
+	cp a.ext a.signed.ext
+	cat a.ext a.sign > a_signed.ext
+        ./build/reldebug/duckdb -c "LOAD './a_signed.ext';" || true
+
     - name: Build
       shell: bash
       run: make reldebug
@@ -116,14 +125,10 @@ jobs:
       shell: bash
       run: |
         cp build/reldebug/duckdb a.ext
-        bash scripts/compute-extension-hash.sh a.ext > b.ext
-        cat b.ext
-        bash scripts/compute-extension-hash.sh b.ext > c.ext
-        ls -la a.ext b.ext c.ext
-        cat c.ext
-        duckdb -c "LOAD './a.ext';" || true
-        duckdb -c "LOAD './b.ext';" || true
-        duckdb -c "LOAD './c.ext';" || true
+        sudo ./scripts/compute-extension-hash.sh a.ext > a.sign
+	cp a.ext a.signed.ext
+	cat a.ext a.sign > a_signed.ext
+        ./build/reldebug/duckdb -c "LOAD './a_signed.ext';" || true
 
  force-storage:
     name: Force Storage
