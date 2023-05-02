@@ -111,12 +111,12 @@ jobs:
     - name: Test
       shell: bash
       run: |
-	chmod +x ./scripts/compute-extension-hash.sh
-	chmod +x ./scripts/compute-hash.sh
+        chmod +x ./scripts/compute-extension-hash.sh
+        chmod +x ./scripts/compute-hash.sh
         cp ./scripts/compute-extension-hash.sh a.ext
         sudo ./scripts/compute-extension-hash.sh a.ext > a.sign
-	cp a.ext a.signed.ext
-	cat a.ext a.sign > a_signed.ext
+        cp a.ext a.signed.ext
+        cat a.ext a.sign > a_signed.ext
         ./build/reldebug/duckdb -c "LOAD './a_signed.ext';" || true
 
     - name: Build
@@ -128,8 +128,8 @@ jobs:
       run: |
         cp build/reldebug/duckdb a.ext
         sudo ./scripts/compute-extension-hash.sh a.ext > a.sign
-	cp a.ext a.signed.ext
-	cat a.ext a.sign > a_signed.ext
+        cp a.ext a.signed.ext
+        cat a.ext a.sign > a_signed.ext
         ./build/reldebug/duckdb -c "LOAD './a_signed.ext';" || true
 
  force-storage:
