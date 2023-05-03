@@ -4,6 +4,9 @@
 
 set -e
 
+chmod +x scripts/compute-extension-hash.sh
+chmod +x scripts/compute-hash.sh
+
 echo "$DUCKDB_EXTENSION_SIGNING_PK" > private.pem
 
 FILES="build/release/extension/*/*.duckdb_extension"
