@@ -32,8 +32,7 @@ struct ExpressionEquality {
 };
 
 template <typename T>
-using expression_map_t =
-    unordered_map<reference<Expression>, T, ExpressionHashFunction<Expression>, ExpressionEquality<Expression>>;
+using expression_map_t = ankerl::unordered_dense::unordered_map<reference<Expression>, T, ExpressionHashFunction<Expression>, ExpressionEquality<Expression>>;
 
 using expression_set_t =
     unordered_set<reference<Expression>, ExpressionHashFunction<Expression>, ExpressionEquality<Expression>>;

@@ -50,13 +50,13 @@ private:
 	//! Set of all relations considered in the join optimizer
 	vector<unique_ptr<SingleJoinRelation>> relations;
 	//! A mapping of base table index -> index into relations array (relation number)
-	unordered_map<idx_t, idx_t> relation_mapping;
+	ankerl::unordered_dense::unordered_map<idx_t, idx_t> relation_mapping;
 	//! A structure holding all the created JoinRelationSet objects
 	JoinRelationSetManager set_manager;
 	//! The set of edges used in the join optimizer
 	QueryGraph query_graph;
 	//! The optimal join plan found for the specific JoinRelationSet*
-	unordered_map<JoinRelationSet *, unique_ptr<JoinNode>> plans;
+	ankerl::unordered_dense::unordered_map<JoinRelationSet *, unique_ptr<JoinNode>> plans;
 
 	//! The set of filters extracted from the query graph
 	vector<unique_ptr<Expression>> filters;

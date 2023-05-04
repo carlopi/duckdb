@@ -34,7 +34,7 @@ class DuckCatalog;
 class TableCatalogEntry;
 class SequenceCatalogEntry;
 
-typedef unordered_map<CatalogSet *, unique_lock<mutex>> set_lock_map_t;
+typedef ankerl::unordered_dense::unordered_map<CatalogSet *, unique_lock<mutex>> set_lock_map_t;
 
 struct EntryValue {
 	EntryValue() {
@@ -160,7 +160,7 @@ private:
 	//! The catalog lock is used to make changes to the data
 	mutex catalog_lock;
 	//! The set of catalog entries
-	unordered_map<idx_t, EntryValue> entries;
+	ankerl::unordered_dense::unordered_map<idx_t, EntryValue> entries;
 	//! Mapping of string to catalog entry
 	case_insensitive_map_t<unique_ptr<MappingValue>> mapping;
 	//! The current catalog entry index

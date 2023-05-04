@@ -42,7 +42,7 @@ struct IndexScanState {
 	}
 };
 
-typedef unordered_map<block_id_t, BufferHandle> buffer_handle_set_t;
+typedef ankerl::unordered_dense::unordered_map<block_id_t, BufferHandle> buffer_handle_set_t;
 
 struct ColumnScanState {
 	//! The column segment that is currently being scanned

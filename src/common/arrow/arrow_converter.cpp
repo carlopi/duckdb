@@ -8,7 +8,6 @@
 #include "duckdb/common/types/interval.hpp"
 #include "duckdb/common/types/sel_cache.hpp"
 #include "duckdb/common/types/vector_cache.hpp"
-#include "duckdb/common/unordered_map.hpp"
 #include "duckdb/common/vector.hpp"
 #include <list>
 #include "duckdb/common/arrow/arrow_appender.hpp"

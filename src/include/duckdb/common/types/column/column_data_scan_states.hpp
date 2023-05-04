@@ -34,7 +34,7 @@ enum class ColumnDataScanProperties : uint8_t {
 };
 
 struct ChunkManagementState {
-	unordered_map<idx_t, BufferHandle> handles;
+	ankerl::unordered_dense::unordered_map<idx_t, BufferHandle> handles;
 	ColumnDataScanProperties properties = ColumnDataScanProperties::INVALID;
 };
 

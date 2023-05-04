@@ -15,6 +15,6 @@ namespace duckdb {
 
 struct BoundParameterData;
 
-using bound_parameter_map_t = unordered_map<idx_t, shared_ptr<BoundParameterData>>;
+using bound_parameter_map_t = ankerl::unordered_dense::unordered_map<idx_t, shared_ptr<BoundParameterData>>;
 
 } // namespace duckdb

@@ -37,7 +37,7 @@ struct FilterInfo {
 
 struct FilterNode {
 	vector<reference<FilterInfo>> filters;
-	unordered_map<idx_t, unique_ptr<FilterNode>> children;
+	ankerl::unordered_dense::unordered_map<idx_t, unique_ptr<FilterNode>> children;
 };
 
 struct NeighborInfo {
@@ -54,7 +54,7 @@ public:
 	//! Contains a node with info about neighboring relations and child edge infos
 	struct QueryEdge {
 		vector<unique_ptr<NeighborInfo>> neighbors;
-		unordered_map<idx_t, unique_ptr<QueryEdge>> children;
+		ankerl::unordered_dense::unordered_map<idx_t, unique_ptr<QueryEdge>> children;
 	};
 
 public:

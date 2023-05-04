@@ -75,9 +75,9 @@ public:
 	//! Whether or not the query is interrupted
 	atomic<bool> interrupted;
 	//! External Objects (e.g., Python objects) that views depend of
-	unordered_map<string, vector<shared_ptr<ExternalDependency>>> external_dependencies;
+	ankerl::unordered_dense::unordered_map<string, vector<shared_ptr<ExternalDependency>>> external_dependencies;
 	//! Set of optional states (e.g. Caches) that can be held by the ClientContext
-	unordered_map<string, shared_ptr<ClientContextState>> registered_state;
+	ankerl::unordered_dense::unordered_map<string, shared_ptr<ClientContextState>> registered_state;
 	//! The client configuration
 	ClientConfig config;
 	//! The set of client-specific data

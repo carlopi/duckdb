@@ -51,7 +51,7 @@ public:
 
 class TableFilterSet {
 public:
-	unordered_map<idx_t, unique_ptr<TableFilter>> filters;
+	ankerl::unordered_dense::unordered_map<idx_t, unique_ptr<TableFilter>> filters;
 
 public:
 	void PushFilter(idx_t table_index, unique_ptr<TableFilter> filter);

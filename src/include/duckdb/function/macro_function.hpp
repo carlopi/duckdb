@@ -28,7 +28,7 @@ public:
 	//! The positional parameters
 	vector<unique_ptr<ParsedExpression>> parameters;
 	//! The default parameters and their associated values
-	unordered_map<string, unique_ptr<ParsedExpression>> default_parameters;
+	ankerl::unordered_dense::unordered_map<string, unique_ptr<ParsedExpression>> default_parameters;
 
 public:
 	virtual ~MacroFunction() {
@@ -41,7 +41,7 @@ public:
 	static string ValidateArguments(MacroFunction &macro_function, const string &name,
 	                                FunctionExpression &function_expr,
 	                                vector<unique_ptr<ParsedExpression>> &positionals,
-	                                unordered_map<string, unique_ptr<ParsedExpression>> &defaults);
+	                                ankerl::unordered_dense::unordered_map<string, unique_ptr<ParsedExpression>> &defaults);
 
 	virtual string ToSQL(const string &schema, const string &name) const;
 

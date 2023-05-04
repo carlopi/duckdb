@@ -48,7 +48,7 @@ public:
 	idx_t entry_size;
 
 	RowLayout blob_layout;
-	unordered_map<idx_t, idx_t> sorting_to_blob_col;
+	ankerl::unordered_dense::unordered_map<idx_t, idx_t> sorting_to_blob_col;
 };
 
 struct GlobalSortState {

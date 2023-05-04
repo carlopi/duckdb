@@ -795,7 +795,7 @@ static void ColumnArrowToDuckDBDictionary(Vector &vector, ArrowArray &array, Arr
 }
 
 void ArrowTableFunction::ArrowToDuckDB(ArrowScanLocalState &scan_state,
-                                       unordered_map<idx_t, unique_ptr<ArrowConvertData>> &arrow_convert_data,
+                                       std::unordered_map<idx_t, unique_ptr<ArrowConvertData>> &arrow_convert_data,
                                        DataChunk &output, idx_t start, bool arrow_scan_is_projected) {
 	for (idx_t idx = 0; idx < output.ColumnCount(); idx++) {
 		auto col_idx = scan_state.column_ids[idx];

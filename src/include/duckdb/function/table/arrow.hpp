@@ -14,7 +14,7 @@
 #include "duckdb/common/mutex.hpp"
 #include "duckdb/common/pair.hpp"
 #include "duckdb/common/thread.hpp"
-#include "duckdb/common/unordered_map.hpp"
+#include <unordered_map>
 #include "duckdb/function/built_in_functions.hpp"
 
 namespace duckdb {
@@ -59,7 +59,7 @@ struct ArrowConvertData {
 };
 
 struct ArrowProjectedColumns {
-	unordered_map<idx_t, string> projection_map;
+	std::unordered_map<idx_t, string> projection_map;
 	vector<string> columns;
 };
 
@@ -77,7 +77,7 @@ struct ArrowScanFunctionData : public PyTableFunctionData {
 	    : lines_read(0), stream_factory_ptr(stream_factory_ptr_p), scanner_producer(scanner_producer_p) {
 	}
 	//! This holds the original list type (col_idx, [ArrowListType,size])
-	unordered_map<idx_t, unique_ptr<ArrowConvertData>> arrow_convert_data;
+	std::unordered_map<idx_t, unique_ptr<ArrowConvertData>> arrow_convert_data;
 	vector<LogicalType> all_types;
 	atomic<idx_t> lines_read;
 	ArrowSchemaWrapper schema_root;
@@ -98,7 +98,7 @@ struct ArrowScanLocalState : public LocalTableFunctionState {
 	idx_t batch_index = 0;
 	vector<column_t> column_ids;
 	//! Store child vectors for Arrow Dictionary Vectors (col-idx,vector)
-	unordered_map<idx_t, unique_ptr<Vector>> arrow_dictionary_vectors;
+	std::unordered_map<idx_t, unique_ptr<Vector>> arrow_dictionary_vectors;
 	TableFilterSet *filters = nullptr;
 	//! The DataChunk containing all read columns (even filter columns that are immediately removed)
 	DataChunk all_columns;

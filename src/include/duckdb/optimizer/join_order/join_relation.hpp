@@ -46,7 +46,7 @@ public:
 	// FIXME: this structure is inefficient, could use a bitmap for lookup instead (todo: profile)
 	struct JoinRelationTreeNode {
 		unique_ptr<JoinRelationSet> relation;
-		unordered_map<idx_t, unique_ptr<JoinRelationTreeNode>> children;
+		ankerl::unordered_dense::unordered_map<idx_t, unique_ptr<JoinRelationTreeNode>> children;
 	};
 
 public:

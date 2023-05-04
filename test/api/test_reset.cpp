@@ -28,7 +28,7 @@ void RequireValueEqual(ConfigurationOption *op, const Value &left, const Value &
 #define REQUIRE_VALUE_EQUAL(op, lhs, rhs) RequireValueEqual(op, lhs, rhs, __LINE__)
 
 OptionValuePair &GetValueForOption(const string &name) {
-	static unordered_map<string, OptionValuePair> value_map = {
+	static std::unordered_map<string, OptionValuePair> value_map = {
 	    {"access_mode", {Value("READ_ONLY"), Value("read_only")}},
 	    {"threads", {Value::BIGINT(42), Value::BIGINT(42)}},
 	    {"checkpoint_threshold", {"4.2GB"}},

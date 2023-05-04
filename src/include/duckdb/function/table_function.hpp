@@ -138,7 +138,7 @@ enum ScanType { TABLE, PARQUET };
 struct BindInfo {
 public:
 	explicit BindInfo(ScanType type_p) : type(type_p) {};
-	unordered_map<string, Value> options;
+	ankerl::unordered_dense::unordered_map<string, Value> options;
 	ScanType type;
 	void InsertOption(const string &name, Value value) {
 		if (options.find(name) != options.end()) {

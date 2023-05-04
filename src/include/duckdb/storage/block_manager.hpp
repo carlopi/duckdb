@@ -81,8 +81,8 @@ private:
 	//! The lock for the set of blocks
 	mutex blocks_lock;
 	//! A mapping of block id -> BlockHandle
-	unordered_map<block_id_t, weak_ptr<BlockHandle>> blocks;
+	ankerl::unordered_dense::unordered_map<block_id_t, weak_ptr<BlockHandle>> blocks;
 	//! A map to cache the BlockHandles of meta blocks
-	unordered_map<block_id_t, shared_ptr<BlockHandle>> meta_blocks;
+	ankerl::unordered_dense::unordered_map<block_id_t, shared_ptr<BlockHandle>> meta_blocks;
 };
 } // namespace duckdb

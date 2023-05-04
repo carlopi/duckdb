@@ -167,7 +167,7 @@ LogicalType ArrowTableFunction::GetArrowLogicalType(
 }
 
 void ArrowTableFunction::RenameArrowColumns(vector<string> &names) {
-	unordered_map<string, idx_t> name_map;
+	std::unordered_map<string, idx_t> name_map;
 	for (auto &column_name : names) {
 		// put it all lower_case
 		auto low_column_name = StringUtil::Lower(column_name);
