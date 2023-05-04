@@ -30,7 +30,7 @@ class TableFunctionCatalogEntry;
 
 struct UsingColumnSet {
 	string primary_binding;
-	unordered_set<string> bindings;
+	ankerl::unordered_dense::unordered_set<string> bindings;
 };
 
 //! The BindContext object keeps track of all the tables and columns that are
@@ -46,7 +46,7 @@ public:
 	string GetMatchingBinding(const string &column_name);
 	//! Like GetMatchingBinding, but instead of throwing an error if multiple tables have the same binding it will
 	//! return a list of all the matching ones
-	unordered_set<string> GetMatchingBindings(const string &column_name);
+	ankerl::unordered_dense::unordered_set<string> GetMatchingBindings(const string &column_name);
 	//! Like GetMatchingBindings, but returns the top 3 most similar bindings (in levenshtein distance) instead of the
 	//! matching ones
 	vector<string> GetSimilarBindings(const string &column_name);

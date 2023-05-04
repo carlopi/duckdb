@@ -148,7 +148,7 @@ struct DBConfigOptions {
 	//! Debug setting - how to initialize  blocks in the storage layer when allocating
 	DebugInitialize debug_initialize = DebugInitialize::NO_INITIALIZE;
 	//! The set of unrecognized (other) options
-	unordered_map<string, Value> unrecognized_options;
+	std::unordered_map<string, Value> unrecognized_options;
 	//! Whether to print bindings when printing the plan (debug mode only)
 	static bool debug_print_bindings;
 

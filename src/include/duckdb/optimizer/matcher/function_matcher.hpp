@@ -47,7 +47,7 @@ private:
 //! The ManyFunctionMatcher class matches a set of functions
 class ManyFunctionMatcher : public FunctionMatcher {
 public:
-	explicit ManyFunctionMatcher(unordered_set<string> names) : names(std::move(names)) {
+	explicit ManyFunctionMatcher(ankerl::unordered_dense::unordered_set<string> names) : names(std::move(names)) {
 	}
 
 	bool Match(string &name) override {
@@ -55,7 +55,7 @@ public:
 	}
 
 private:
-	unordered_set<string> names;
+	ankerl::unordered_dense::unordered_set<string> names;
 };
 
 } // namespace duckdb

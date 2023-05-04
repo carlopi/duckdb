@@ -46,7 +46,7 @@ private:
 	//! The partial block manager (if we created one yet)
 	unique_ptr<PartialBlockManager> partial_manager;
 	//! The set of blocks that have been pre-emptively written to disk
-	unordered_set<block_id_t> written_blocks;
+	ankerl::unordered_dense::unordered_set<block_id_t> written_blocks;
 };
 
 class LocalTableStorage : public std::enable_shared_from_this<LocalTableStorage> {

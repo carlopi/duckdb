@@ -53,7 +53,7 @@ public:
 	//! Create or get a JoinRelationSet from a single node with the given index
 	JoinRelationSet &GetJoinRelation(idx_t index);
 	//! Create or get a JoinRelationSet from a set of relation bindings
-	JoinRelationSet &GetJoinRelation(unordered_set<idx_t> &bindings);
+	JoinRelationSet &GetJoinRelation(ankerl::unordered_dense::unordered_set<idx_t> &bindings);
 	//! Create or get a JoinRelationSet from a (sorted, duplicate-free!) list of relations
 	JoinRelationSet &GetJoinRelation(unique_ptr<idx_t[]> relations, idx_t count);
 	//! Union two sets of relations together and create a new relation set

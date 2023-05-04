@@ -41,8 +41,8 @@ public:
 	TableIOManager &table_io_manager;
 	//! Column identifiers to extract key columns from the base table
 	vector<column_t> column_ids;
-	//! Unordered set of column_ids used by the index
-	unordered_set<column_t> column_id_set;
+	//! Unordered_set of column_ids used by the index
+	ankerl::unordered_dense::unordered_set<column_t> column_id_set;
 	//! Unbound expressions used by the index during optimizations
 	vector<unique_ptr<Expression>> unbound_expressions;
 	//! The physical types stored in the index

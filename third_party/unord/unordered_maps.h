@@ -1521,6 +1521,13 @@ template <class Key,
           class Bucket = bucket_type::standard>
 using unordered_map = detail::table<Key, T, Hash, KeyEqual, AllocatorOrContainer, Bucket>;
 
+
+template <class Key,
+          class Hash = hash<Key>,
+          class KeyEqual = std::equal_to<Key>,
+          class AllocatorOrContainer = std::allocator<Key>,
+          class Bucket = bucket_type::standard>
+using unordered_set = detail::table<Key, void, Hash, KeyEqual, AllocatorOrContainer, Bucket>;
 template <class Key,
           class Hash = hash<Key>,
           class KeyEqual = std::equal_to<Key>,

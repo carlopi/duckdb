@@ -184,7 +184,7 @@ public:
 	void SetBindingMode(BindingMode mode);
 	BindingMode GetBindingMode();
 	void AddTableName(string table_name);
-	const unordered_set<string> &GetTableNames();
+	const std::unordered_set<string> &GetTableNames();
 	optional_ptr<SQLStatement> GetRootStatement() {
 		return root_statement;
 	}
@@ -211,7 +211,7 @@ private:
 	//! Binding mode
 	BindingMode mode = BindingMode::STANDARD_BINDING;
 	//! Table names extracted for BindingMode::EXTRACT_NAMES
-	unordered_set<string> table_names;
+	std::unordered_set<string> table_names;
 	//! The set of bound views
 	reference_set_t<ViewCatalogEntry> bound_views;
 

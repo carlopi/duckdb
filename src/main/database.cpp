@@ -369,7 +369,7 @@ idx_t DatabaseInstance::NumberOfThreads() {
 	return scheduler->NumberOfThreads();
 }
 
-const unordered_set<std::string> &DatabaseInstance::LoadedExtensions() {
+const std::unordered_set<std::string> &DatabaseInstance::LoadedExtensions() {
 	return loaded_extensions;
 }
 

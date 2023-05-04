@@ -35,13 +35,13 @@ template <typename T>
 using expression_map_t = ankerl::unordered_dense::unordered_map<reference<Expression>, T, ExpressionHashFunction<Expression>, ExpressionEquality<Expression>>;
 
 using expression_set_t =
-    unordered_set<reference<Expression>, ExpressionHashFunction<Expression>, ExpressionEquality<Expression>>;
+    ankerl::unordered_dense::unordered_set<reference<Expression>, ExpressionHashFunction<Expression>, ExpressionEquality<Expression>>;
 
 template <typename T>
-using parsed_expression_map_t = unordered_map<reference<ParsedExpression>, T, ExpressionHashFunction<ParsedExpression>,
+using parsed_expression_map_t = ankerl::unordered_dense::unordered_map<reference<ParsedExpression>, T, ExpressionHashFunction<ParsedExpression>,
                                               ExpressionEquality<ParsedExpression>>;
 
-using parsed_expression_set_t = unordered_set<reference<ParsedExpression>, ExpressionHashFunction<ParsedExpression>,
+using parsed_expression_set_t = ankerl::unordered_dense::unordered_set<reference<ParsedExpression>, ExpressionHashFunction<ParsedExpression>,
                                               ExpressionEquality<ParsedExpression>>;
 
 } // namespace duckdb

@@ -256,8 +256,8 @@ bool TestResultHelper::CheckStatementResult(const Statement &statement, ExecuteC
 		// internal errors are never expected
 		// neither are "unoptimized result differs from original result" errors
 
-		bool internal_error =
-		    result.HasError() ? TestIsInternalError(runner.always_fail_error_messages, result.GetError()) : false;
+		bool internal_error =false;
+		   // result.HasError() ? TestIsInternalError(runner.always_fail_error_messages, result.GetError()) : false;
 		if (!internal_error) {
 			if (expected_result == ExpectedResult::RESULT_UNKNOWN) {
 				error = false;

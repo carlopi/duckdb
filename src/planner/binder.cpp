@@ -401,7 +401,7 @@ void Binder::AddTableName(string table_name) {
 	table_names.insert(std::move(table_name));
 }
 
-const unordered_set<string> &Binder::GetTableNames() {
+const std::unordered_set<string> &Binder::GetTableNames() {
 	if (parent) {
 		return parent->GetTableNames();
 	}

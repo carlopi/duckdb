@@ -79,7 +79,7 @@ OptionValuePair &GetValueForOption(const string &name) {
 }
 
 bool OptionIsExcludedFromTest(const string &name) {
-	static unordered_set<string> excluded_options = {
+	static std::unordered_set<string> excluded_options = {
 	    "schema",
 	    "search_path",
 	    "debug_asof_iejoin",

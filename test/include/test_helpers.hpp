@@ -40,7 +40,7 @@ void TestChangeDirectory(string path);
 string TestDirectoryPath();
 string TestCreatePath(string suffix);
 unique_ptr<DBConfig> GetTestConfig();
-bool TestIsInternalError(unordered_set<string> &internal_error_messages, const string &error);
+bool TestIsInternalError(std::unordered_set<string> &internal_error_messages, const string &error);
 void SetTestDirectory(string path);
 void SetDebugInitialize(int value);
 void SetSingleThreaded();

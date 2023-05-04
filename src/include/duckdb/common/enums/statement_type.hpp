@@ -67,7 +67,7 @@ struct StatementProperties {
 	}
 
 	//! The set of databases this statement will modify
-	unordered_set<string> modified_databases;
+	ankerl::unordered_dense::unordered_set<string> modified_databases;
 	//! Whether or not the statement requires a valid transaction. Almost all statements require this, with the
 	//! exception of
 	bool requires_valid_transaction;

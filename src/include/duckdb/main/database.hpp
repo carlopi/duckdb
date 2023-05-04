@@ -49,7 +49,7 @@ public:
 
 	DUCKDB_API static DatabaseInstance &GetDatabase(ClientContext &context);
 
-	DUCKDB_API const unordered_set<std::string> &LoadedExtensions();
+	DUCKDB_API const std::unordered_set<std::string> &LoadedExtensions();
 	DUCKDB_API bool ExtensionIsLoaded(const std::string &name);
 
 	DUCKDB_API bool TryGetCurrentSetting(const std::string &key, Value &result);
@@ -70,7 +70,7 @@ private:
 	unique_ptr<TaskScheduler> scheduler;
 	unique_ptr<ObjectCache> object_cache;
 	unique_ptr<ConnectionManager> connection_manager;
-	unordered_set<std::string> loaded_extensions;
+	std::unordered_set<std::string> loaded_extensions;
 	ValidChecker db_validity;
 };
 

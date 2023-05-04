@@ -31,6 +31,6 @@ template <typename T>
 using case_insensitive_map_t =
     ankerl::unordered_dense::unordered_map<string, T, CaseInsensitiveStringHashFunction, CaseInsensitiveStringEquality>;
 
-using case_insensitive_set_t = unordered_set<string, CaseInsensitiveStringHashFunction, CaseInsensitiveStringEquality>;
+using case_insensitive_set_t = ankerl::unordered_dense::unordered_set<string, CaseInsensitiveStringHashFunction, CaseInsensitiveStringEquality>;
 
 } // namespace duckdb
