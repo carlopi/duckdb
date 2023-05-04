@@ -38,7 +38,7 @@ protected:
 	SelectNode &node;
 	case_insensitive_map_t<idx_t> &alias_map;
 	case_insensitive_map_t<idx_t> &group_alias_map;
-	unordered_set<idx_t> used_aliases;
+	std::unordered_set<idx_t> used_aliases;
 
 	idx_t group_index;
 };

@@ -27,6 +27,6 @@ struct QualifiedColumnEquality {
 	}
 };
 
-using qualified_column_set_t = ankerl::unordered_dense::unordered_set<QualifiedColumnName, QualifiedColumnHashFunction, QualifiedColumnEquality>;
+using qualified_column_set_t = std::unordered_set<QualifiedColumnName, QualifiedColumnHashFunction, QualifiedColumnEquality>;
 
 } // namespace duckdb

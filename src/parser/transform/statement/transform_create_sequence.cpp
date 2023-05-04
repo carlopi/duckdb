@@ -19,7 +19,7 @@ unique_ptr<CreateStatement> Transformer::TransformCreateSequence(duckdb_libpgque
 	info->name = qname.name;
 
 	if (stmt->options) {
-		unordered_set<SequenceInfo, EnumClassHash> used;
+		std::unordered_set<SequenceInfo, EnumClassHash> used;
 		duckdb_libpgquery::PGListCell *cell = nullptr;
 		for_each_cell(cell, stmt->options->head) {
 			auto *def_elem = reinterpret_cast<duckdb_libpgquery::PGDefElem *>(cell->data.ptr_value);

@@ -21,7 +21,7 @@ unique_ptr<AlterStatement> Transformer::TransformAlterSequence(duckdb_libpgquery
 		throw InternalException("Expected an argument for ALTER SEQUENCE.");
 	}
 
-	unordered_set<SequenceInfo, EnumClassHash> used;
+	std::unordered_set<SequenceInfo, EnumClassHash> used;
 	duckdb_libpgquery::PGListCell *cell = nullptr;
 	for_each_cell(cell, stmt->options->head) {
 		auto *def_elem = reinterpret_cast<duckdb_libpgquery::PGDefElem *>(cell->data.ptr_value);

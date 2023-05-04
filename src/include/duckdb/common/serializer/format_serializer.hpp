@@ -125,7 +125,7 @@ protected:
 	// UnorderedSet
 	// Serialized the same way as a list/vector
 	template <class T, class HASH, class CMP>
-	void WriteValue(const unordered_set<T, HASH, CMP> &set) {
+	void WriteValue(const std::unordered_set<T, HASH, CMP> &set) {
 		auto count = set.size();
 		OnListBegin(count);
 		for (auto &item : set) {

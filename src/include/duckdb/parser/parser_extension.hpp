@@ -63,7 +63,7 @@ struct ParserExtensionPlanResult {
 	//! Parameters to the function
 	vector<Value> parameters;
 	//! The set of databases that will be modified by this statement (empty for a read-only statement)
-	ankerl::unordered_dense::unordered_set<string> modified_databases;
+	std::unordered_set<string> modified_databases;
 	//! Whether or not the statement requires a valid transaction to be executed
 	bool requires_valid_transaction = true;
 	//! What type of result set the statement returns

@@ -40,7 +40,7 @@ public:
 	bool has_table;
 	unique_ptr<TableRef> ref;
 	optional_ptr<TableCatalogEntry> table;
-	unordered_map<idx_t, idx_t> column_id_map;
+	std::unordered_map<idx_t, idx_t> column_id_map;
 	vector<string> columns;
 };
 
