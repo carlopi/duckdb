@@ -28,10 +28,10 @@ struct CatalogEntryEquality {
 	}
 };
 
-using catalog_entry_set_t = unordered_set<reference<CatalogEntry>, CatalogEntryHashFunction, CatalogEntryEquality>;
+using catalog_entry_set_t = std::unordered_set<reference<CatalogEntry>, CatalogEntryHashFunction, CatalogEntryEquality>;
 
 template <typename T>
-using catalog_entry_map_t = unordered_map<reference<CatalogEntry>, T, CatalogEntryHashFunction, CatalogEntryEquality>;
+using catalog_entry_map_t = std::unordered_map<reference<CatalogEntry>, T, CatalogEntryHashFunction, CatalogEntryEquality>;
 
 using catalog_entry_vector_t = vector<reference<CatalogEntry>>;
 

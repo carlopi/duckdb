@@ -155,6 +155,6 @@ private:
 	shared_ptr<Task> task;
 
 	//! Task that have been descheduled
-	unordered_map<Task *, shared_ptr<Task>> to_be_rescheduled_tasks;
+	std::unordered_map<Task *, shared_ptr<Task>> to_be_rescheduled_tasks;
 };
 } // namespace duckdb
