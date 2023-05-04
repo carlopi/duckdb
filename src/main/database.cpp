@@ -190,7 +190,7 @@ void DatabaseInstance::CreateDatabase(const string &database_type) {
 	initial_database->Initialize();
 }
 
-void ThrowExtensionSetUnrecognizedOptions(const unordered_map<string, Value> &unrecognized_options) {
+void ThrowExtensionSetUnrecognizedOptions(const std::unordered_map<string, Value> &unrecognized_options) {
 	auto unrecognized_options_iter = unrecognized_options.begin();
 	string unrecognized_option_keys = unrecognized_options_iter->first;
 	for (; unrecognized_options_iter == unrecognized_options.end(); ++unrecognized_options_iter) {
