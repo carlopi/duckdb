@@ -359,6 +359,7 @@ jobs:
       LD: /home/runner/work/llvm/bin/ld.lld
       EXTENSION_STATIC_BUILD: 1
       BUILD_JSON: 1
+      BUILD_PARQUET: 0
       TREAT_WARNINGS_AS_ERRORS: 1
 
     steps:
