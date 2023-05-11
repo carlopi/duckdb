@@ -348,43 +348,6 @@ jobs:
           libduckdb-linux-rpi.zip
           duckdb_cli-linux-rpi.zip
 
-
- linux-clang:
-    name: Clang 17
-    runs-on: ubuntu-22.04
-
-    env:
-      EXTENSION_STATIC_BUILD: 1
-      BUILD_JSON: 1
-      TREAT_WARNINGS_AS_ERRORS: 1
-
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-
-    - name: Install LLVM and Clang
-      uses: KyleMayes/install-llvm-action@v1
-      with:
-        version: "15.0"
-        directory: '/home/runner/work/llvm'
-
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.7'
-
-    - name: Build
-      shell: bash
-      run: apt install llvm -yy
-
-    - name: Build
-      shell: bash
-      run: make reldebug
-
-    - name: Test
-      shell: bash
-      run: make allunit
-
  linux-clang:
     name: Clang 17
     runs-on: ubuntu-22.04
@@ -421,7 +384,7 @@ jobs:
 
     - name: Build
       shell: bash
-      run: make reldebug
+      run: make
 
     - name: Test
       shell: bash
