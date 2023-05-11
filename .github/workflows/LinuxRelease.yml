@@ -370,7 +370,7 @@ jobs:
     - name: Install LLVM and Clang
       uses: KyleMayes/install-llvm-action@v1
       with:
-        version: "17.0"
+        version: "16.0"
         directory: '/home/runner/work/llvm'
 
     - uses: actions/setup-python@v4
@@ -636,7 +636,7 @@ jobs:
     - name: Install LLVM and Clang
       uses: KyleMayes/install-llvm-action@v1
       with:
-        version: "17.0"
+        version: "16.0"
 
     - name: Generate Amalgamation
       shell: bash
