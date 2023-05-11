@@ -360,6 +360,7 @@ jobs:
       EXTENSION_STATIC_BUILD: 1
       BUILD_JSON: 1
       BUILD_PARQUET: 0
+      DISABLE_PARQUET: 1
       TREAT_WARNINGS_AS_ERRORS: 0
 
     steps:
