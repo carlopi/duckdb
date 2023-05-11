@@ -33,7 +33,6 @@ jobs:
     name: Linux (64 Bit)
     runs-on: ubuntu-latest
     env:
-      GEN: ninja
       BUILD_BENCHMARK: 1
       BUILD_ICU: 1
       BUILD_INET: 1
@@ -85,7 +84,6 @@ jobs:
    name: Linux (AARCH64)
    runs-on: ubuntu-latest
    env:
-     GEN: ninja
      BUILD_BENCHMARK: 1
      BUILD_ICU: 1
      BUILD_INET: 1
@@ -221,7 +219,6 @@ jobs:
     env:
       CC: gcc-10
       CXX: g++-10
-      GEN: ninja
 
     steps:
     - uses: actions/checkout@v3
@@ -265,7 +262,6 @@ jobs:
     runs-on: ubuntu-latest
     container: ubuntu:16.04
     env:
-      GEN: ninja
 
     steps:
     - uses: actions/checkout@v3
@@ -441,7 +437,6 @@ jobs:
     env:
       CC: gcc-10
       CXX: g++-10
-      GEN: ninja
       BUILD_ICU: 1
       BUILD_INET: 1
       BUILD_TPCH: 1
@@ -536,7 +531,6 @@ jobs:
     name: Linux Memory Leaks
     runs-on: ubuntu-20.04
     env:
-      GEN: ninja
 
     steps:
     - uses: actions/checkout@v3
@@ -583,7 +577,6 @@ jobs:
       DUCKDB_S3_ENDPOINT: duckdb-minio.com:9000
       DUCKDB_S3_USE_SSL: false
 
-      GEN: ninja
 
     steps:
     - uses: actions/checkout@v3
