@@ -349,7 +349,7 @@ jobs:
           duckdb_cli-linux-rpi.zip
 
  linux-clang:
-    name: Clang 17
+    name: Clang 17 a
     runs-on: ubuntu-22.04
 
     env:
