@@ -169,8 +169,7 @@ void Planner::VerifyPlan(ClientContext &context, unique_ptr<LogicalOperator> &op
 	try {
 		op->Serialize(serializer);
 	} catch (NotImplementedException &ex) {
-		// ignore for now (FIXME)
-		return;
+		throw FatalException("Unimplemented serialization: %s", ex.what());
 	}
 	auto data = serializer.GetData();
 	auto deserializer = BufferedContextDeserializer(context, data.data.get(), data.size);
