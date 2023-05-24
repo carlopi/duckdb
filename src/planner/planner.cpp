@@ -141,35 +141,12 @@ void Planner::CreatePlan(unique_ptr<SQLStatement> statement) {
 	}
 }
 
-static bool OperatorSupportsSerialization(LogicalOperator &op) {
-	switch (op.type) {
-	case LogicalOperatorType::LOGICAL_PREPARE:
-	case LogicalOperatorType::LOGICAL_EXECUTE:
-	case LogicalOperatorType::LOGICAL_PRAGMA:
-	case LogicalOperatorType::LOGICAL_COPY_TO_FILE:
-		// unsupported (for now)
-		return false;
-	default:
-		break;
-	}
-	for (auto &child : op.children) {
-		if (!OperatorSupportsSerialization(*child)) {
-			return false;
-		}
-	}
-	return true;
-}
-
 void Planner::VerifyPlan(ClientContext &context, unique_ptr<LogicalOperator> &op, bound_parameter_map_t *map) {
 #ifdef DUCKDB_ALTERNATIVE_VERIFY
 	// if alternate verification is enabled we run the original operator
 	return;
 #endif
 	if (!op || !ClientConfig::GetConfig(context).verify_serializer) {
-		return;
-	}
-	//! SELECT only for now
-	if (!OperatorSupportsSerialization(*op)) {
 		return;
 	}
 
