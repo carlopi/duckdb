@@ -422,6 +422,40 @@ static void WriteCSVSink(ExecutionContext &context, FunctionData &bind_data, Glo
 		local_data.written_anything = false;
 	}
 }
+/*
+        //! The SQL types to write
+        vector<LogicalType> sql_types;
+        //! The newline string to write
+        string newline = "\n";
+        //! Whether or not we are writing a simple CSV (delimiter, quote and escape are all 1 byte in length)
+        bool is_simple;
+        //! The size of the CSV file (in bytes) that we buffer before we flush it to disk
+        idx_t flush_size = 4096 * 8;
+        //! For each byte whether or not the CSV file requires quotes when containing the byte
+        unsafe_unique_array<bool> requires_quotes;
+*/
+static void CSVCopySerialize(FieldWriter &writer, const FunctionData &bind_data_p,
+				 const CopyFunction &function) {
+	auto &bind_data = bind_data_p.Cast<WriteCSVData>();
+	writer.WriteList<string>(function.file_path);
+	writer.WriteRegularSerializableList<LogicalType>(bind_data.sql_types);
+	writer.WriteString(bind_data.newline);
+	writer.WriteField<bool>(bind_data.is_simple);
+	writer.WriteField<idx_t>(bind_data.flush_size);
+}
+//WriteCSVData(string file_path, vector<LogicalType> sql_types, vector<string> names)
+static unique_ptr<FunctionData> CSVCopyDeserialize(ClientContext &context, FieldReader &reader,
+						       CopyFunction &function) {
+	auto file_path = reader.ReadRequiredList<string>();
+	auto sql_types = reader.ReadRequiredSerializableList<LogicalType, LogicalType>();
+	unique_ptr<WriteCSVData> data = make_uniq<WriteCSVData>(file_path, std::move(sql_types), );
+
+	data->newline = reader.ReadRequired<string>();
+	data->is_simple = reader.ReadRequired<bool>();
+	data->flush_size = reader.ReadRequired<idx_t>();
+
+	return std::move(data);
+}
 
 //===--------------------------------------------------------------------===//
 // Combine
@@ -523,6 +557,8 @@ void CSVCopyFunction::RegisterFunction(BuiltinFunctions &set) {
 	info.execution_mode = WriteCSVExecutionMode;
 	info.prepare_batch = WriteCSVPrepareBatch;
 	info.flush_batch = WriteCSVFlushBatch;
+	info.serialize = CSVCopySerialize;
+	info.deserialize = CSVCopyDeserialize;
 
 	info.copy_from_bind = ReadCSVBind;
 	info.copy_from_function = ReadCSVTableFunction::GetFunction();
