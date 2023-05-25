@@ -1153,16 +1153,15 @@ AggregateFunction GetMedianAbsoluteDeviationAggregateFunction(const LogicalType 
 
 static void QuantileSerialize(FieldWriter &writer, const FunctionData *bind_data_p, const AggregateFunction &function) {
 	D_ASSERT(bind_data_p);
-	throw NotImplementedException("FIXME: serializing quantiles is not supported right now");
-	//
-	//	auto bind_data = (QuantileBindData *)bind_data_p;
-	//	writer.WriteList<Value>(bind_data->quantiles);
+	auto bind_data = dynamic_cast<const QuantileBindData *>(bind_data_p);
+	D_ASSERT(bind_data);
+	writer.WriteRegularSerializableList<Value>(bind_data->quantiles);
 }
 
 unique_ptr<FunctionData> QuantileDeserialize(ClientContext &context, FieldReader &reader,
                                              AggregateFunction &bound_function) {
-	auto quantiles = reader.ReadRequiredList<Value>();
-	return make_uniq<QuantileBindData>(std::move(quantiles));
+	auto quantiles = reader.ReadRequiredSerializableList<Value, Value>();
+	return std::move(make_uniq<QuantileBindData>(quantiles));
 }
 
 unique_ptr<FunctionData> BindMedian(ClientContext &context, AggregateFunction &function,
