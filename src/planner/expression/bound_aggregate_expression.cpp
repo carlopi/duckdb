@@ -84,7 +84,9 @@ unique_ptr<Expression> BoundAggregateExpression::Copy() {
 void BoundAggregateExpression::Serialize(FieldWriter &writer) const {
 	writer.WriteField(IsDistinct());
 	writer.WriteOptional(filter);
-	writer.WriteOptional(order_bys);
+	if (order_bys) {
+		throw NotImplementedException("Serialization of ORDER BY aggregate not yet supported");
+	}
 	FunctionSerializer::Serialize<AggregateFunction>(writer, function, return_type, children, bind_info.get());
 }
 
@@ -92,16 +94,13 @@ unique_ptr<Expression> BoundAggregateExpression::Deserialize(ExpressionDeseriali
                                                              FieldReader &reader) {
 	auto distinct = reader.ReadRequired<bool>();
 	auto filter = reader.ReadOptional<Expression>(nullptr, state.gstate);
-	auto order_bys = reader.ReadOptional<BoundOrderModifier>(nullptr, state.gstate);
 	vector<unique_ptr<Expression>> children;
 	unique_ptr<FunctionData> bind_info;
 	auto function = FunctionSerializer::Deserialize<AggregateFunction, AggregateFunctionCatalogEntry>(
 	    reader, state, CatalogType::AGGREGATE_FUNCTION_ENTRY, children, bind_info);
 
-	auto x = make_uniq<BoundAggregateExpression>(function, std::move(children), std::move(filter), std::move(bind_info),
-	                                             distinct ? AggregateType::DISTINCT : AggregateType::NON_DISTINCT);
-	x->order_bys = std::move(order_bys);
-	return std::move(x);
+	return make_uniq<BoundAggregateExpression>(function, std::move(children), std::move(filter), std::move(bind_info),
+	                                           distinct ? AggregateType::DISTINCT : AggregateType::NON_DISTINCT);
 }
 
 } // namespace duckdb
