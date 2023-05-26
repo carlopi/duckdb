@@ -81,7 +81,10 @@ void BoundOrderByNode::Serialize(Serializer &serializer) const {
 	writer.WriteField(type);
 	writer.WriteField(null_order);
 	writer.WriteSerializable(*expression);
-	// FIXME: writer.WriteSerializable(*stats);
+	writer.WriteField(!!stats);
+	if (stats) {
+		writer.WriteSerializable(*stats);
+	}
 	writer.Finalize();
 }
 
@@ -90,10 +93,12 @@ BoundOrderByNode BoundOrderByNode::Deserialize(Deserializer &source, PlanDeseria
 	auto type = reader.ReadRequired<OrderType>();
 	auto null_order = reader.ReadRequired<OrderByNullType>();
 	auto expression = reader.ReadRequiredSerializable<Expression>(state);
-	// FIXME: auto stats = reader.ReadRequiredSerializable<BaseStatistics>(type);
+	unique_ptr<BaseStatistics> stats;
+	if (reader.ReadRequired<bool>()) {
+		stats = make_uniq<BaseStatistics>(std::move(reader.ReadRequiredSerializable<BaseStatistics,BaseStatistics>(expression->return_type)));
+	}
 	reader.Finalize();
-	return BoundOrderByNode(type, null_order, std::move(expression));
-	// FIXME: return BoundOrderByNode(type, null_order, std::move(expression), std::move(stats));
+	return BoundOrderByNode(type, null_order, std::move(expression), std::move(stats));
 }
 
 unique_ptr<BoundOrderModifier> BoundOrderModifier::Copy() const {
