@@ -56,7 +56,7 @@ unique_ptr<TableRef> BaseTableRef::Deserialize(FieldReader &reader) {
 	result->schema_name = reader.ReadRequired<string>();
 	result->table_name = reader.ReadRequired<string>();
 	result->column_name_alias = reader.ReadRequiredList<string>();
-	result->catalog_name = reader.ReadField<string>(INVALID_CATALOG);
+	result->catalog_name = reader.ReadRequired<string>();
 
 	return std::move(result);
 }
