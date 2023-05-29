@@ -37,8 +37,8 @@ void FieldWriter::Finalize() {
 	D_ASSERT(buffer);
 	D_ASSERT(!finalized);
 	finalized = true;
-	serializer.Write<uint32_t>(field_count);
-	serializer.Write<uint64_t>(buffer->blob.size);
+	serializer.Serialize<uint32_t>(field_count);
+	serializer.Serialize<uint64_t>(buffer->blob.size);
 	serializer.WriteData(buffer->blob.data.get(), buffer->blob.size);
 
 	buffer.reset();
