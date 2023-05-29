@@ -230,6 +230,19 @@ public:
 	}
 
 	void ReadStringVector(vector<string> &list);
+
+	template <typename T, typename std::enable_if<std::is_integral<T>::value || std::is_enum<T>::value || std::is_floating_point<T>::value, bool>::type = true>
+	explicit operator T() {
+		return Read<T>();
+	}
+	template <typename T>
+	explicit operator unique_ptr<T>() {
+		auto has_entry = Read<bool>();
+		if (has_entry) {
+			return make_uniq<T>(*this);
+		}
+		return nullptr;
+	}
 };
 
 template <>
