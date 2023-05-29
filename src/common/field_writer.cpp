@@ -26,8 +26,8 @@ void FieldWriter::WriteData(const_data_ptr_t buffer_ptr, idx_t write_size) {
 }
 
 template <>
-void FieldWriter::Write(const string &val) {
-	Write<uint32_t>((uint32_t)val.size());
+void FieldWriter::WriteImpl(const string &val) {
+	WriteImpl<uint32_t>((uint32_t)val.size());
 	if (!val.empty()) {
 		WriteData(const_data_ptr_cast(val.c_str()), val.size());
 	}

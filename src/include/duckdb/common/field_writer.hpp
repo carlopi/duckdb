@@ -43,7 +43,7 @@ public:
 	}
 	void WriteStringLen(const_data_ptr_t val, idx_t len) {
 		AddField();
-		Write<uint32_t>((uint32_t)len);
+		WriteImpl<uint32_t>((uint32_t)len);
 		if (len > 0) {
 			WriteData(val, len);
 		}
@@ -58,18 +58,18 @@ public:
 	template <class T, class CONTAINER_TYPE = vector<T>>
 	void WriteList(const CONTAINER_TYPE &elements) {
 		AddField();
-		Write<uint32_t>(elements.size());
+		WriteImpl<uint32_t>(elements.size());
 		for (auto &element : elements) {
-			Write<T>(element);
+			WriteImpl<T>(element);
 		}
 	}
 
 	template <class T, class SRC, class OP, class CONTAINER_TYPE = vector<SRC>>
 	void WriteGenericList(const CONTAINER_TYPE &elements) {
 		AddField();
-		Write<uint32_t>(elements.size());
+		WriteImpl<uint32_t>(elements.size());
 		for (auto &element : elements) {
-			Write<T>(OP::template Operation<SRC, T>(element));
+			WriteImpl<T>(OP::template Operation<SRC, T>(element));
 		}
 	}
 
@@ -82,9 +82,9 @@ public:
 	template <class T, class CONTAINER_TYPE = vector<T>>
 	void WriteListNoReference(const CONTAINER_TYPE &elements) {
 		AddField();
-		Write<uint32_t>(elements.size());
+		WriteImpl<uint32_t>(elements.size());
 		for (auto element : elements) {
-			Write<T>(element);
+			WriteImpl<T>(element);
 		}
 	}
 
@@ -97,7 +97,7 @@ public:
 	template <class T>
 	void WriteSerializableList(const vector<unique_ptr<T>> &elements) {
 		AddField();
-		Write<uint32_t>(elements.size());
+		WriteImpl<uint32_t>(elements.size());
 		for (idx_t i = 0; i < elements.size(); i++) {
 			elements[i]->Serialize(*buffer);
 		}
@@ -106,7 +106,7 @@ public:
 	template <class T>
 	void WriteRegularSerializableList(const vector<T> &elements) {
 		AddField();
-		Write<uint32_t>(elements.size());
+		WriteImpl<uint32_t>(elements.size());
 		for (idx_t i = 0; i < elements.size(); i++) {
 			elements[i].Serialize(*buffer);
 		}
@@ -115,7 +115,7 @@ public:
 	template <class T>
 	void WriteOptional(const unique_ptr<T> &element) {
 		AddField();
-		Write<bool>(element ? true : false);
+		WriteImpl<bool>(element ? true : false);
 		if (element) {
 			element->Serialize(*buffer);
 		}
@@ -134,8 +134,14 @@ public:
 
 private:
 	template <class T>
-	void Write(const T &element) {
+	void WriteImpl(const T &element) {
 		WriteData(const_data_ptr_cast(&element), sizeof(T));
+	}
+
+	template <class T>
+	void Serialize(const T &element) {
+		D_ASSERT(buffer);
+		buffer->Serialize(element);
 	}
 
 	DUCKDB_API void WriteData(const_data_ptr_t buffer, idx_t write_size);
@@ -148,7 +154,7 @@ private:
 };
 
 template <>
-DUCKDB_API void FieldWriter::Write(const string &val);
+DUCKDB_API void FieldWriter::WriteImpl(const string &val);
 
 class FieldDeserializer : public Deserializer {
 public:
