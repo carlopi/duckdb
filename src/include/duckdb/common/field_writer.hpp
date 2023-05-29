@@ -121,6 +121,12 @@ public:
 		}
 	}
 
+	template <class T>
+	void Write(const T& element) {
+		AddField();
+		Serialize(element);
+	}
+
 	// Called after all fields have been written. Should always be called.
 	DUCKDB_API void Finalize();
 
