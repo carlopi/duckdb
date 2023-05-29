@@ -86,6 +86,41 @@ public:
 			element->Serialize(*this);
 		}
 	}
+
+	template <typename T, typename std::enable_if<std::is_integral<T>::value, bool>::type = true>
+	void Serialize(const T& x) {
+		WriteData(const_data_ptr_cast(&x), sizeof(T));
+	}
+	template <class T, typename std::enable_if<!std::is_integral<T>::value, bool>::type = true>
+	void Serialize(const T& t) {
+		t.Serialize(*this);
+	}
+	template <class T>
+	void Serialize(const std::vector<T>& v) {
+		Serialize(v.size());
+		for (auto& x : v)
+			Serialize(x);
+	}
+	template <class T>
+	void Serialize(const vector<T>& v) {
+		Serialize(v.size());
+		for (auto& x : v)
+			Serialize(x);
+	}
+	template <class T>
+	void Serialize(const std::unique_ptr<T>& v) {
+		Serialize<bool>(v ? true : false);
+		if (v) {
+			Serialize<T>(*v);
+		}
+	}
+	template <class T>
+	void Serialize(const unique_ptr<T>& v) {
+		Serialize<bool>(v ? true : false);
+		if (v) {
+			Serialize<T>(*v);
+		}
+	}
 };
 
 //! The Deserializer class assists in deserializing a binary blob back into an
