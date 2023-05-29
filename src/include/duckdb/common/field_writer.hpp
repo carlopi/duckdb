@@ -57,11 +57,7 @@ public:
 
 	template <class T, class CONTAINER_TYPE = vector<T>>
 	void WriteList(const CONTAINER_TYPE &elements) {
-		AddField();
-		WriteImpl<uint32_t>(elements.size());
-		for (auto &element : elements) {
-			WriteImpl<T>(element);
-		}
+		Write(elements);
 	}
 
 	template <class T, class SRC, class OP, class CONTAINER_TYPE = vector<SRC>>
@@ -81,44 +77,27 @@ public:
 	// vector<bool> yay
 	template <class T, class CONTAINER_TYPE = vector<T>>
 	void WriteListNoReference(const CONTAINER_TYPE &elements) {
-		AddField();
-		WriteImpl<uint32_t>(elements.size());
-		for (auto element : elements) {
-			WriteImpl<T>(element);
-		}
+		Write(elements);
 	}
 
 	template <class T>
 	void WriteSerializable(const T &element) {
-		AddField();
-		element.Serialize(*buffer);
+		Write(element);
 	}
 
 	template <class T>
 	void WriteSerializableList(const vector<unique_ptr<T>> &elements) {
-		AddField();
-		WriteImpl<uint32_t>(elements.size());
-		for (idx_t i = 0; i < elements.size(); i++) {
-			elements[i]->Serialize(*buffer);
-		}
+		Write(elements);
 	}
 
 	template <class T>
 	void WriteRegularSerializableList(const vector<T> &elements) {
-		AddField();
-		WriteImpl<uint32_t>(elements.size());
-		for (idx_t i = 0; i < elements.size(); i++) {
-			elements[i].Serialize(*buffer);
-		}
+		Write(elements);
 	}
 
 	template <class T>
 	void WriteOptional(const unique_ptr<T> &element) {
-		AddField();
-		WriteImpl<bool>(element ? true : false);
-		if (element) {
-			element->Serialize(*buffer);
-		}
+		Write(element);
 	}
 
 	template <class T>
