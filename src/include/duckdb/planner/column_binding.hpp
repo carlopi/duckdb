@@ -10,6 +10,7 @@
 
 #include "duckdb/common/common.hpp"
 #include "duckdb/common/to_string.hpp"
+#include "duckdb/common/serializer.hpp"
 
 #include <functional>
 
@@ -23,6 +24,10 @@ struct ColumnBinding {
 	ColumnBinding() : table_index(DConstants::INVALID_INDEX), column_index(DConstants::INVALID_INDEX) {
 	}
 	ColumnBinding(idx_t table, idx_t column) : table_index(table), column_index(column) {
+	}
+	void Serialize(Serializer& s) const {
+		s.Serialize(table_index);
+		s.Serialize(column_index);
 	}
 
 	string ToString() const {

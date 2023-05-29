@@ -10,12 +10,16 @@
 
 #include "duckdb/common/constants.hpp"
 #include "duckdb/common/vector.hpp"
+#include "duckdb/common/serializer.hpp"
 
 namespace duckdb {
 
 template <class T, class INDEX_TYPE>
 class IndexVector {
 public:
+	void Serialize(Serializer& s) const {
+		s.Serialize(internal_vector);
+	}
 	void push_back(T element) {
 		internal_vector.push_back(std::move(element));
 	}
@@ -58,7 +62,6 @@ public:
 	typename vector<T>::const_iterator end() const {
 		return internal_vector.end();
 	}
-
 private:
 	vector<T> internal_vector;
 };

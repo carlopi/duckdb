@@ -10,7 +10,7 @@ string SampleMethodToString(SampleMethod method) {
 	return EnumUtil::ToString(method);
 }
 
-void SampleOptions::Serialize(Serializer &serializer) {
+void SampleOptions::Serialize(Serializer &serializer) const {
 	FieldWriter writer(serializer);
 	writer.WriteSerializable(sample_size);
 	writer.WriteField<bool>(is_percentage);
