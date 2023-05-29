@@ -13,6 +13,8 @@
 #include "duckdb/common/exception.hpp"
 #include "duckdb/common/vector.hpp"
 #include <type_traits>
+#include <unordered_set>
+#include <set>
 
 namespace duckdb {
 
@@ -87,13 +89,21 @@ public:
 		}
 	}
 
-	template <typename T, typename std::enable_if<std::is_integral<T>::value, bool>::type = true>
+	template <typename T, typename std::enable_if<std::is_integral<T>::value || std::is_enum<T>::value || std::is_floating_point<T>::value, bool>::type = true>
 	void Serialize(const T& x) {
 		WriteData(const_data_ptr_cast(&x), sizeof(T));
 	}
-	template <class T, typename std::enable_if<!std::is_integral<T>::value, bool>::type = true>
+	template <class T, typename std::enable_if<!std::is_integral<T>::value && !std::is_enum<T>::value && !std::is_floating_point<T>::value, bool>::type = true>
 	void Serialize(const T& t) {
 		t.Serialize(*this);
+	}
+	template <>
+	void Serialize(const bool& t) {
+		Write<bool>(t);
+	}
+	template <>
+	void Serialize(const string& t) {
+		WriteString(t);
 	}
 	template <class T>
 	void Serialize(const std::vector<T>& v) {
@@ -102,10 +112,45 @@ public:
 			Serialize(x);
 	}
 	template <class T>
-	void Serialize(const vector<T>& v) {
+	void Serialize(const std::unordered_set<T>& v) {
+		// FIXME: Should be somehow ordered???
 		Serialize(v.size());
 		for (auto& x : v)
 			Serialize(x);
+	}
+	template <class T>
+	void Serialize(const std::set<T>& v) {
+		Serialize(v.size());
+		for (auto& x : v)
+			Serialize(x);
+	}
+	template <class T>
+	void Serialize(const vector<T, true>& v) {
+		Serialize(v.size());
+		for (auto& x : v)
+			Serialize(x);
+	}
+	template <class T>
+	void Serialize(const vector<T, false>& v) {
+		Serialize(v.size());
+		for (auto& x : v)
+			Serialize(x);
+	}
+	template <>
+	void Serialize(const std::vector<bool>& v) {
+		Serialize(v.size());
+		for (int i=0; i<v.size(); i++)
+			Serialize((bool)v[i]);
+	}
+	void Serialize(const vector<bool, false>& v) {
+		Serialize(v.size());
+		for (int i=0; i<v.size(); i++)
+			Serialize((bool)v[i]);
+	}
+	void Serialize(const vector<bool, true>& v) {
+		Serialize(v.size());
+		for (int i=0; i<v.size(); i++)
+			Serialize((bool)v[i]);
 	}
 	template <class T>
 	void Serialize(const std::unique_ptr<T>& v) {
