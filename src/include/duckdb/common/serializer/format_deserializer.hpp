@@ -42,7 +42,7 @@ public:
 		return Read<T>();
 	}
 
-	inline ConversionHelper &&ReadProperty(const char *tag);
+	inline ConversionHelper ReadProperty(const char *tag);
 
 	// Read optional property and return a value, or forward a default value
 	template <typename T>
@@ -396,8 +396,8 @@ public:
 	}
 };
 
-ConversionHelper &&FormatDeserializer::ReadProperty(const char *tag) {
-	return std::move(ConversionHelper(*this, tag));
+ConversionHelper FormatDeserializer::ReadProperty(const char *tag) {
+	return ConversionHelper(*this, tag);
 }
 
 } // namespace duckdb
