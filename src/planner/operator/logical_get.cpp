@@ -143,7 +143,7 @@ unique_ptr<LogicalOperator> LogicalGet::Deserialize(LogicalDeserializationState 
 	unique_ptr<FunctionData> bind_data;
 	bool has_deserialize;
 	auto function = FunctionSerializer::DeserializeBaseInternal<TableFunction, TableFunctionCatalogEntry>(
-	    reader, state.gstate, CatalogType::TABLE_FUNCTION_ENTRY, bind_data, has_deserialize);
+	    reader, state.gstate.context, CatalogType::TABLE_FUNCTION_ENTRY, bind_data, has_deserialize);
 
 	vector<Value> parameters;
 	named_parameter_map_t named_parameters;

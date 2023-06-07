@@ -25,7 +25,7 @@ unique_ptr<LogicalOperator> LogicalCreateIndex::Deserialize(LogicalDeserializati
 	unique_ptr<FunctionData> bind_data;
 	bool has_deserialize;
 	auto function = FunctionSerializer::DeserializeBaseInternal<TableFunction, TableFunctionCatalogEntry>(
-	    reader, state.gstate, CatalogType::TABLE_FUNCTION_ENTRY, bind_data, has_deserialize);
+	    reader, state.gstate.context, CatalogType::TABLE_FUNCTION_ENTRY, bind_data, has_deserialize);
 	auto unbound_expressions = reader.ReadRequiredSerializableList<Expression>(state.gstate);
 	if (info->type != CatalogType::INDEX_ENTRY) {
 		throw InternalException("Unexpected type: '%s', expected '%s'", CatalogTypeToString(info->type),
