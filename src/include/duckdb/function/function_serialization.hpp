@@ -73,12 +73,6 @@ public:
 		return function;
 	}
 	template <class FUNC, class CATALOG_ENTRY>
-	static FUNC DeserializeBase(FieldReader &reader, PlanDeserializationState &state, CatalogType type,
-	                            unique_ptr<FunctionData> &bind_info) {
-		bool has_deserialize;
-		return DeserializeBaseInternal<FUNC, CATALOG_ENTRY>(reader, state.context, type, bind_info, has_deserialize);
-	}
-	template <class FUNC, class CATALOG_ENTRY>
 	static FUNC DeserializeBase(FieldReader &reader, ClientContext &context, CatalogType type,
 	                            unique_ptr<FunctionData> &bind_info) {
 		bool has_deserialize;
