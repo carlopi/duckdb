@@ -5,6 +5,8 @@
 
 namespace duckdb {
 
+
+
 string_t FSSTPrimitives::DecompressValue(void *duckdb_fsst_decoder, Vector &result, const char *compressed_string,
                                          idx_t compressed_string_len) {
 	D_ASSERT(result.GetVectorType() == VectorType::FLAT_VECTOR);
