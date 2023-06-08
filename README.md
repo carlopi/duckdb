@@ -1,6 +1,6 @@
 <div align="center">
   <img src="https://duckdb.org/images/DuckDB_Logo_dl.png" height="50">
-</div>
+asd</div>
 <p>&nbsp;</p>
 
 <p align="center">
