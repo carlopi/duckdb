@@ -206,7 +206,7 @@ public:
 	}
 	template <>
 	bool ReadRequired() {
-		ReadRequired<uint32_t>();
+		return ReadRequired<uint32_t>();
 	}
 
 	template <class T>
