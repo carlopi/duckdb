@@ -36,6 +36,11 @@ public:
 		AddField();
 		WriteData(const_data_ptr_cast(&element), sizeof(T));
 	}
+	template <>
+	void WriteField(const bool &element) {
+		uint32_t X = element ? 123 : 0;
+		WriteField<uint32_t>(X);
+	}
 
 	//! Write a string with a length prefix
 	void WriteString(const string &val) {
@@ -198,6 +203,10 @@ public:
 		// field is there, read the actual value
 		AddField();
 		return source.Read<T>();
+	}
+	template <>
+	bool ReadRequired() {
+		ReadRequired<uint32_t>();
 	}
 
 	template <class T>
