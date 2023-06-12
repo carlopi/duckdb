@@ -36,7 +36,6 @@ public:
 		AddField();
 		WriteData(const_data_ptr_cast(&element), sizeof(T));
 	}
-	template <>
 	void WriteField(const bool &element) {
 		uint32_t X = element ? 123 : 0;
 		WriteField<uint32_t>(X);
@@ -204,7 +203,6 @@ public:
 		AddField();
 		return source.Read<T>();
 	}
-	template <>
 	bool ReadRequired() {
 		return ReadRequired<uint32_t>();
 	}
