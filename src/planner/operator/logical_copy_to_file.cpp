@@ -29,7 +29,7 @@ void LogicalCopyToFile::Serialize(FieldWriter &writer) const {
 unique_ptr<LogicalOperator> LogicalCopyToFile::Deserialize(LogicalDeserializationState &state, FieldReader &reader) {
 	auto file_path = reader.ReadRequired<string>();
 	auto use_tmp_file = reader.ReadRequired<bool>();
-	auto overwrite_or_ignore = reader.ReadRequired<bool>();
+	auto overwrite_or_ignore = reader.ReadRequired<int>();
 	auto per_thread_output = reader.ReadRequired<bool>();
 	auto partition_columns = reader.ReadRequiredList<idx_t>();
 
