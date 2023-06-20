@@ -2,7 +2,7 @@
 name: Draft on Open
 on:
   pull_request:
-    types: [ syncronize ]
+    types: [ synchronize ]
 
 jobs:
   mark-as-draft:
