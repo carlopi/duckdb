@@ -5,7 +5,7 @@ on:
     types: [ synchronize, ready_for_review ]
 
 env:
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
   mark-as-draft:
@@ -14,6 +14,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Mark as draft
-        uses: voiceflow/draft-pr@latest
-        with:
-          token: ${{ env.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          echo ${{ env.TOKEN }} | gh auth login --with-token
+          gh api graphql -F id=${{ github.event.pull_request.node_id }} -f query='
+            mutation($id: ID!) {
+              convertPullRequestToDraft(input: { pullRequestId: $id }) {
+                pullRequest {
+                  id
+                  number
+                  isDraft
+                }
+              }
+            }
+          '
