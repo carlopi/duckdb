@@ -38,10 +38,8 @@ env:
 jobs:
  regression-test-benchmark-runner:
   name: Regression Tests
-  runs-on: ubuntu-20.04
+  runs-on: ubuntu-latest
   env:
-    CC: gcc-10
-    CXX: g++-10
     GEN: ninja
     BUILD_BENCHMARK: 1
     BUILD_TPCH: 1
@@ -53,6 +51,12 @@ jobs:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
+    - name: Install LLVM and Clang
+      uses: KyleMayes/install-llvm-action@v1
+      with:
+        version: "16.0"
+        directory: '/home/runner/work/llvm'
+        env: true
 
     - uses: actions/setup-python@v4
       with:
@@ -116,8 +120,6 @@ jobs:
   name: Regression Tests between safe and unsafe builds
   runs-on: ubuntu-20.04
   env:
-    CC: gcc-10
-    CXX: g++-10
     GEN: ninja
     BUILD_BENCHMARK: 1
     BUILD_TPCH: 1
@@ -131,12 +133,13 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Checkout tools repo
-      uses: actions/checkout@v3
+    - name: Install LLVM and Clang
+      uses: KyleMayes/install-llvm-action@v1
       with:
-        fetch-depth: 0
-        path: unsafe
-
+        version: "16.0"
+        directory: '/home/runner/work/llvm'
+        env: true
+    
     - uses: actions/setup-python@v4
       with:
         python-version: '3.7'
@@ -198,8 +201,6 @@ jobs:
   name: Storage Size Regression Test
   runs-on: ubuntu-20.04
   env:
-    CC: gcc-10
-    CXX: g++-10
     GEN: ninja
     BUILD_TPCH: 1
     BUILD_TPCDS: 1
@@ -279,14 +280,18 @@ jobs:
   name: Regression Test (Python Client)
   runs-on: ubuntu-20.04
   env:
-    CC: gcc-10
-    CXX: g++-10
     GEN: ninja
 
   steps:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
+    - name: Install LLVM and Clang
+      uses: KyleMayes/install-llvm-action@v1
+      with:
+        version: "16.0"
+        directory: '/home/runner/work/llvm'
+        env: true
 
     - uses: actions/setup-python@v4
       with:
@@ -346,8 +351,6 @@ jobs:
   name: Regression Test Join Order Plan Cost
   runs-on: ubuntu-20.04
   env:
-    CC: gcc-10
-    CXX: g++-10
     GEN: ninja
     BUILD_TPCH: 1
     BUILD_HTTPFS: 1
@@ -356,6 +359,12 @@ jobs:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
+    - name: Install LLVM and Clang
+      uses: KyleMayes/install-llvm-action@v1
+      with:
+        version: "16.0"
+        directory: '/home/runner/work/llvm'
+        env: true
 
     - uses: actions/setup-python@v4
       with:
