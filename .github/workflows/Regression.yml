@@ -118,7 +118,7 @@ jobs:
 
  regression-test-memory-safety:
   name: Regression Tests between safe and unsafe builds
-  runs-on: ubuntu-20.04
+  runs-on: ubuntu-latest
   env:
     GEN: ninja
     BUILD_BENCHMARK: 1
@@ -199,7 +199,7 @@ jobs:
 
  regression-test-storage:
   name: Storage Size Regression Test
-  runs-on: ubuntu-20.04
+  runs-on: ubuntu-latest
   env:
     GEN: ninja
     BUILD_TPCH: 1
@@ -278,7 +278,7 @@ jobs:
 
  regression-test-python:
   name: Regression Test (Python Client)
-  runs-on: ubuntu-20.04
+  runs-on: ubuntu-latest
   env:
     GEN: ninja
 
@@ -349,7 +349,7 @@ jobs:
 
  regression-test-plan-cost:
   name: Regression Test Join Order Plan Cost
-  runs-on: ubuntu-20.04
+  runs-on: ubuntu-latest
   env:
     GEN: ninja
     BUILD_TPCH: 1
