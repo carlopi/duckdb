@@ -24,6 +24,9 @@ else ()
   set (CMAKE_CXX_STANDARD 11)
 endif ()
 
+include(CheckIPOSupported)
+check_ipo_supported()
+set_target_properties(myProject PROPERTIES INTERPROCEDURAL_OPTIMIZATION TRUE)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
