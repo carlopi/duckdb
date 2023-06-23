@@ -70,8 +70,21 @@ jobs:
       shell: bash
       run: |
         cd duckdb-wasm
+        emcc --version
         bash scripts/wasm_build_lib.sh relsize mvp $(pwd)/..
+
+    - name: Build WebAssembly
+      shell: bash
+      run: |
+        cd duckdb-wasm
+        emcc --version
         bash scripts/wasm_build_lib.sh relsize eh $(pwd)/..
+
+    - name: Build WebAssembly
+      shell: bash
+      run: |
+        cd duckdb-wasm
+        emcc --version
         bash scripts/wasm_build_lib.sh relsize coi $(pwd)/..
 
     - name: Package
