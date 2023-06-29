@@ -14,6 +14,19 @@ on:
       - '.github/workflows/**'
       - '!.github/workflows/NightlyTests.yml'
       - '.github/config/uncovered_files.csv'
+  pull_request:
+    types: [opened, reopened, ready_for_review, labeled]
+    branches:
+      - '**'
+      - '!master'
+      - '!feature'
+    tags:
+      - '**'
+    paths-ignore:
+      - '**.md'
+      - '.github/workflows/**'
+      - '!.github/workflows/NightlyTests.yml'
+      - '.github/config/uncovered_files.csv'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.head_ref || '' }}-${{ github.base_ref || '' }}-${{ github.ref != 'refs/heads/master' || github.sha }}
@@ -27,6 +40,7 @@ env:
 jobs:
   linux-memory-leaks:
      name: Linux Memory Leaks
+     if: github.event_name != 'pull_request' || contains( github.event.pull_request.labels.*.name, 'extra checks')
      runs-on: ubuntu-20.04
      env:
        GEN: ninja
@@ -653,6 +667,7 @@ jobs:
 
   linux-wasm-experimental:
     name: WebAssembly duckdb-wasm builds
+    needs: linux-memory-leaks
     runs-on: ubuntu-22.04
     steps:
     - uses: actions/checkout@v3
