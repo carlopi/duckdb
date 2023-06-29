@@ -11,7 +11,7 @@ namespace duckdb {
 //===--------------------------------------------------------------------===//
 
 WindowAggregateState::WindowAggregateState(AggregateObject aggr, const LogicalType &result_type_p)
-    : aggr(std::move(aggr)), result_type(result_type_p), state(aggr.function.state_size()),
+    : aggr(std::move(aggr)), result_type(result_type_p), state(this->aggr.function.state_size()),
       statev(Value::POINTER(CastPointerToValue(state.data()))),
       statep(Value::POINTER(CastPointerToValue(state.data()))) {
 	statev.SetVectorType(VectorType::FLAT_VECTOR); // Prevent conversion of results to constants
