@@ -9,6 +9,7 @@
 #include "duckdb/planner/expression/bound_function_expression.hpp"
 
 
+
 namespace duckdb {
 
 FunctionData::~FunctionData() {
