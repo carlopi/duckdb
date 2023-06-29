@@ -29,7 +29,7 @@ on:
       - '.github/config/uncovered_files.csv'
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.head_ref || '' }}-${{ github.base_ref || '' }}-${{ github.ref != 'refs/heads/master' || github.sha }}-${{contains( github.event.pull_request.labels.*.name, 'extra checks') }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.head_ref || '' }}-${{ github.base_ref || '' }}-${{ github.ref != 'refs/heads/master' || github.sha }}-${{contains( github.event.pull_request.labels.*.name, 'extra checks') && 'check' || 'nop' }}
   cancel-in-progress: true
 
 env:
