@@ -8,6 +8,7 @@
 #include "duckdb/planner/expression/bound_aggregate_expression.hpp"
 #include "duckdb/planner/expression/bound_function_expression.hpp"
 
+
 namespace duckdb {
 
 FunctionData::~FunctionData() {
