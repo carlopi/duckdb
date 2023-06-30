@@ -43,8 +43,14 @@ struct ModeState {
 	};
 	using Counts = unordered_map<KEY_TYPE, ModeAttr>;
 
-	Counts *frequency_map;
-	KEY_TYPE *mode;
+	ModeState () {}
+	~ModeState () {
+		D_ASSERT(mode == nullptr);
+		D_ASSERT(frequency_map == nullptr);
+	}
+	
+	Counts *frequency_map = {};
+	KEY_TYPE *mode = {};
 	size_t nonzero;
 	bool valid;
 	size_t count;
