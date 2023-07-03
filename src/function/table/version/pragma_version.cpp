@@ -52,7 +52,7 @@ struct PragmaExtensionVersionData : public GlobalTableFunctionState {
 };
 
 static unique_ptr<FunctionData> PragmaExtensionVersionBind(ClientContext &context, TableFunctionBindInput &input,
-                                                  vector<LogicalType> &return_types, vector<string> &names) {
+                                                           vector<LogicalType> &return_types, vector<string> &names) {
 	names.emplace_back("extension_version");
 	return_types.emplace_back(LogicalType::VARCHAR);
 	names.emplace_back("platform");
@@ -60,7 +60,8 @@ static unique_ptr<FunctionData> PragmaExtensionVersionBind(ClientContext &contex
 	return nullptr;
 }
 
-static unique_ptr<GlobalTableFunctionState> PragmaExtensionVersionInit(ClientContext &context, TableFunctionInitInput &input) {
+static unique_ptr<GlobalTableFunctionState> PragmaExtensionVersionInit(ClientContext &context,
+                                                                       TableFunctionInitInput &input) {
 	return make_uniq<PragmaExtensionVersionData>();
 }
 
@@ -107,7 +108,7 @@ static bool IsRelease(const string &version_tag) {
 }
 
 #define QUOTE_IMPL(x) #x
-#define QUOTE(x) QUOTE_IMPL(x)
+#define QUOTE(x)      QUOTE_IMPL(x)
 
 string DuckDB::ExtensionFolder() {
 	string duckdb_version;
@@ -126,7 +127,7 @@ string DuckDB::Platform() {
 	string os = "linux";
 
 #if defined(CUSTOM_PLATFORM)
-//	Iff CUSTOM_PLATFORM is defined, use that (quoted) as platform
+	//	Iff CUSTOM_PLATFORM is defined, use that (quoted) as platform
 	return QUOTE(CUSTOM_PLATFORM);
 #endif
 #if defined(DUCKDB_WASM_HASH)
