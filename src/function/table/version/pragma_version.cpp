@@ -110,11 +110,16 @@ static bool IsRelease(const string &version_tag) {
 #define QUOTE(x) QUOTE_IMPL(x)
 
 string DuckDB::ExtensionFolder() {
+	string duckdb_version;
 	if (IsRelease(DuckDB::LibraryVersion())) {
-		return NormalizeVersionTag(DuckDB::LibraryVersion());
+		duckdb_version = NormalizeVersionTag(DuckDB::LibraryVersion());
 	} else {
-		return DuckDB::SourceID();
+		duckdb_version = DuckDB::SourceID();
 	}
+#if defined(DUCKDB_WASM_HASH)
+	duckdb_version += "-wasm" + QUOTE(DUCKDB_WASM_HASH);
+#endif
+	return duckdb_version;
 }
 
 string DuckDB::Platform() {
