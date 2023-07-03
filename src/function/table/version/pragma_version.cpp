@@ -53,7 +53,7 @@ struct PragmaExtensionVersionData : public GlobalTableFunctionState {
 
 static unique_ptr<FunctionData> PragmaExtensionVersionBind(ClientContext &context, TableFunctionBindInput &input,
                                                            vector<LogicalType> &return_types, vector<string> &names) {
-	names.emplace_back("extension_version");
+	names.emplace_back("extension_folder");
 	return_types.emplace_back(LogicalType::VARCHAR);
 	names.emplace_back("platform");
 	return_types.emplace_back(LogicalType::VARCHAR);
