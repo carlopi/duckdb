@@ -106,6 +106,8 @@ static bool IsRelease(const string &version_tag) {
 	return !StringUtil::Contains(version_tag, "-dev");
 }
 
+#define QUOTE_IMPL(x) #x
+#define QUOTE(x) QUOTE_IMPL(x)
 
 string DuckDB::ExtensionFolder() {
 	if (IsRelease(DuckDB::LibraryVersion())) {
@@ -117,6 +119,16 @@ string DuckDB::ExtensionFolder() {
 
 string DuckDB::Platform() {
 	string os = "linux";
+
+#if defined(CUSTOM_PLATFORM)
+//	Iff CUSTOM_PLATFORM is defined, use that (quoted) as platform
+	return QUOTE(CUSTOM_PLATFORM);
+#endif
+#if defined(DUCKDB_WASM_HASH)
+	// DUCKDB_WASM requires CUSTOM_PLATFORM to be defined
+	static_assert(0, "DUCKDB_WASM_HASH should rely on CUSTOM_PLATFORM being provided");
+#endif
+
 #if INTPTR_MAX == INT64_MAX
 	string arch = "amd64";
 #elif INTPTR_MAX == INT32_MAX
