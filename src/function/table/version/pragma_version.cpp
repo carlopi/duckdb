@@ -108,7 +108,7 @@ static bool IsRelease(const string &version_tag) {
 }
 
 #define QUOTE_IMPL(x) #x
-#define QUOTE_ME(x)      QUOTE_IMPL(x)
+#define QUOTE_ME(x)   QUOTE_IMPL(x)
 
 string DuckDB::ExtensionFolder() {
 	string duckdb_version;
