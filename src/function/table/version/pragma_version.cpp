@@ -108,7 +108,7 @@ static bool IsRelease(const string &version_tag) {
 }
 
 #define QUOTE_IMPL(x) #x
-#define QUOTE(x)      QUOTE_IMPL(x)
+#define QUOTE_ME(x)      QUOTE_IMPL(x)
 
 string DuckDB::ExtensionFolder() {
 	string duckdb_version;
@@ -118,7 +118,7 @@ string DuckDB::ExtensionFolder() {
 		duckdb_version = DuckDB::SourceID();
 	}
 #if defined(DUCKDB_WASM_HASH)
-	duckdb_version += "-wasm" + QUOTE(DUCKDB_WASM_HASH);
+	duckdb_version += "-wasm" + QUOTE_ME(DUCKDB_WASM_HASH);
 #endif
 	return duckdb_version;
 }
