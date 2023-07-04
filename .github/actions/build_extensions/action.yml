@@ -101,7 +101,7 @@ runs:
         echo ${{ inputs.deploy_as }} > DEPLOY_AS
         cmp PLATFORM DEPLOY_AS || exit 1
         ./build/release/duckdb -csv -c "SELECT extension_folder FROM pragma_extension_version()" | tail -n 1 > EXTENSION_FOLDER
-        if [[ -z "${{ inputs.deploy_version }}" ]] ; then
+        if [[ ! -z "${{ inputs.deploy_version }}" ]] ; then
           echo ${{ inputs.deploy_version }} > DEPLOY_VERSION
           cmp EXTENSION_FOLDER DEPLOY_VERSION || exit 1
         fi
