@@ -276,7 +276,11 @@ inline const unsigned char *ASN1_STRING_get0_data(const ASN1_STRING *asn1) {
 #endif
 
 #ifdef CPPHTTPLIB_ZLIB_SUPPORT
-#include <zlib.h>
+#include "miniz.hpp"
+typedef unsigned char Bytef;
+typedef uint32_t uInt;
+#define Z_NULL nullptr
+#define Z_OK duckdb_miniz::MZ_OK
 #endif
 
 #ifdef CPPHTTPLIB_BROTLI_SUPPORT
@@ -1800,7 +1804,7 @@ public:
 
 private:
 	bool is_valid_ = false;
-	z_stream strm_;
+	duckdb_miniz::mz_stream strm_;
 };
 
 class gzip_decompressor : public decompressor {
@@ -1815,7 +1819,7 @@ public:
 
 private:
 	bool is_valid_ = false;
-	z_stream strm_;
+	duckdb_miniz::mz_stream strm_;
 };
 #endif
 
@@ -2996,7 +3000,7 @@ inline EncodingType encoding_type(const Request &req, const Response &res) {
 #ifdef CPPHTTPLIB_ZLIB_SUPPORT
 	// TODO: 'Accept-Encoding' has gzip, not gzip;q=0
 	ret = s.find("gzip") != std::string::npos;
-	if (ret) { return EncodingType::Gzip; }
+	if (ret) {return EncodingType::Gzip; }
 #endif
 
 	return EncodingType::None;
@@ -3015,11 +3019,11 @@ inline gzip_compressor::gzip_compressor() {
 	strm_.zfree = Z_NULL;
 	strm_.opaque = Z_NULL;
 
-	is_valid_ = deflateInit2(&strm_, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 31, 8,
-	                         Z_DEFAULT_STRATEGY) == Z_OK;
+	is_valid_ = mz_deflateInit2(&strm_, duckdb_miniz::MZ_DEFAULT_COMPRESSION, MZ_DEFLATED, 31, 8,
+	                         duckdb_miniz::MZ_DEFAULT_STRATEGY) == duckdb_miniz::MZ_OK;
 }
 
-inline gzip_compressor::~gzip_compressor() { deflateEnd(&strm_); }
+inline gzip_compressor::~gzip_compressor() { mz_deflateEnd(&strm_); }
 
 inline bool gzip_compressor::compress(const char *data, size_t data_length,
                                       bool last, Callback callback) {
@@ -3036,7 +3040,7 @@ inline bool gzip_compressor::compress(const char *data, size_t data_length,
 		data_length -= strm_.avail_in;
 		data += strm_.avail_in;
 
-		auto flush = (last && data_length == 0) ? Z_FINISH : Z_NO_FLUSH;
+		auto flush = (last && data_length == 0) ? duckdb_miniz::MZ_FINISH : duckdb_miniz::MZ_NO_FLUSH;
 		int ret = Z_OK;
 
 		std::array<char, CPPHTTPLIB_COMPRESSION_BUFSIZ> buff{};
@@ -3044,8 +3048,8 @@ inline bool gzip_compressor::compress(const char *data, size_t data_length,
 			strm_.avail_out = static_cast<uInt>(buff.size());
 			strm_.next_out = reinterpret_cast<Bytef *>(buff.data());
 
-			ret = deflate(&strm_, flush);
-			if (ret == Z_STREAM_ERROR) { return false; }
+			ret = mz_deflate(&strm_, flush);
+			if (ret == duckdb_miniz::MZ_STREAM_ERROR) { return false; }
 
 			if (!callback(buff.data(), buff.size() - strm_.avail_out)) {
 				return false;
@@ -3053,7 +3057,7 @@ inline bool gzip_compressor::compress(const char *data, size_t data_length,
 		} while (strm_.avail_out == 0);
 
 		assert((flush == Z_FINISH && ret == Z_STREAM_END) ||
-		       (flush == Z_NO_FLUSH && ret == Z_OK));
+		       (flush == duckdb_miniz::MZ_NO_FLUSH && ret == Z_OK));
 		assert(strm_.avail_in == 0);
 
 	} while (data_length > 0);
@@ -3071,10 +3075,10 @@ inline gzip_decompressor::gzip_decompressor() {
 	// to ensure that any gzip stream can be decoded. The offset of 32 specifies
 	// that the stream type should be automatically detected either gzip or
 	// deflate.
-	is_valid_ = inflateInit2(&strm_, 32 + 15) == Z_OK;
+	is_valid_ = duckdb_miniz::mz_inflateInit2(&strm_, 32 + 15) == Z_OK;
 }
 
-inline gzip_decompressor::~gzip_decompressor() { inflateEnd(&strm_); }
+inline gzip_decompressor::~gzip_decompressor() { duckdb_miniz::mz_inflateEnd(&strm_); }
 
 inline bool gzip_decompressor::is_valid() const { return is_valid_; }
 
@@ -3102,15 +3106,15 @@ inline bool gzip_decompressor::decompress(const char *data, size_t data_length,
 
 			auto prev_avail_in = strm_.avail_in;
 
-			ret = inflate(&strm_, Z_NO_FLUSH);
+			ret = duckdb_miniz::mz_inflate(&strm_, duckdb_miniz::MZ_NO_FLUSH);
 
 			if (prev_avail_in - strm_.avail_in == 0) { return false; }
 
 			assert(ret != Z_STREAM_ERROR);
 			switch (ret) {
-			case Z_NEED_DICT:
-			case Z_DATA_ERROR:
-			case Z_MEM_ERROR: inflateEnd(&strm_); return false;
+			case duckdb_miniz::MZ_NEED_DICT:
+			case duckdb_miniz::MZ_DATA_ERROR:
+			case duckdb_miniz::MZ_MEM_ERROR: duckdb_miniz::mz_inflateEnd(&strm_); return false;
 			}
 
 			if (!callback(buff.data(), buff.size() - strm_.avail_out)) {
@@ -3118,7 +3122,7 @@ inline bool gzip_decompressor::decompress(const char *data, size_t data_length,
 			}
 		}
 
-		if (ret != Z_OK && ret != Z_STREAM_END) return false;
+		if (ret != Z_OK && ret != duckdb_miniz::MZ_STREAM_END) return false;
 
 	} while (data_length > 0);
 
