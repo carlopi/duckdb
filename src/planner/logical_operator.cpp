@@ -99,7 +99,7 @@ string LogicalOperator::ToString() const {
 }
 
 void LogicalOperator::Verify(ClientContext &context) {
-#ifdef DEBUG
+#ifdef VERIFY_ROUND_TRIP
 	// verify expressions
 	for (idx_t expr_idx = 0; expr_idx < expressions.size(); expr_idx++) {
 		auto str = expressions[expr_idx]->ToString();
