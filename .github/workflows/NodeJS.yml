@@ -70,7 +70,7 @@ jobs:
       DUCKDB_NODE_BUILD_CACHE: 0
     strategy:
       matrix:
-        node: [ '10', '12', '14', '15', '16', '17', '18', '19', '20' ]
+        node: [ '10', '12', '14', '16', '17', '18', '19', '20' ]
         target_arch: [ x64, arm64 ]
         isRelease:
           - ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/master' }}
@@ -83,9 +83,6 @@ jobs:
             target_arch: x64
           - isRelease: false
             node: 14
-            target_arch: x64
-          - isRelease: false
-            node: 15
             target_arch: x64
           - isRelease: false
             node: 16
@@ -107,9 +104,6 @@ jobs:
             target_arch: arm64
           - isRelease: false
             node: 14
-            target_arch: arm64
-          - isRelease: false
-            node: 15
             target_arch: arm64
           - isRelease: false
             node: 16
@@ -188,7 +182,7 @@ jobs:
     strategy:
       matrix:
         target_arch: [ x64, arm64 ]
-        node: [ '10', '12', '14', '15', '16', '17', '18', '19', '20' ]
+        node: [ '10', '12', '14', '16', '17', '18', '19', '20' ]
         isRelease:
           - ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/master' }}
         exclude:
@@ -198,8 +192,6 @@ jobs:
             node: 12
           - isRelease: false
             node: 14
-          - isRelease: false
-            node: 15
           - isRelease: false
             node: 16
           - isRelease: false
@@ -212,8 +204,6 @@ jobs:
             node: 12
           - target_arch: arm64
             node: 14
-          - target_arch: arm64
-            node: 15
         # these older versions of NodeJS don't have M1 support
 
     env:
@@ -269,7 +259,7 @@ jobs:
 
     strategy:
       matrix:
-        node: [ '10', '12', '14', '15', '16', '17', '18', '19', '20' ]
+        node: [ '10', '12', '14', '16', '17', '18', '19', '20' ]
         isRelease:
           - ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/master' }}
         exclude:
@@ -279,8 +269,6 @@ jobs:
             node: 12
           - isRelease: false
             node: 14
-          - isRelease: false
-            node: 15
           - isRelease: false
             node: 16
           - isRelease: false
