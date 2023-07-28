@@ -705,7 +705,7 @@ jobs:
     - name: Setup Ccache
       uses: hendrikmuhs/ccache-action@main
       with:
-        key: ${{ github.job }}
+        key: ${{ github.job }}-asd
         save: ${{ env.CCACHE_SAVE }}
 
     - name: Print version
