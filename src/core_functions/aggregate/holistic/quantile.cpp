@@ -1178,7 +1178,7 @@ AggregateFunction GetMedianAbsoluteDeviationAggregateFunction(const LogicalType 
 
 static void QuantileSerialize(FieldWriter &writer, const FunctionData *bind_data_p, const AggregateFunction &function) {
 	D_ASSERT(bind_data_p);
-	auto bind_data = dynamic_cast<const QuantileBindData *>(bind_data_p);
+	auto bind_data = static_cast<const QuantileBindData *>(bind_data_p);
 	D_ASSERT(bind_data);
 	writer.WriteRegularSerializableList<Value>(bind_data->quantiles);
 	writer.WriteList<idx_t>(bind_data->order);

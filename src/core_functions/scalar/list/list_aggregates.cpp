@@ -37,7 +37,7 @@ struct ListAggregatesBindData : public FunctionData {
 		return stype == other.stype && aggr_expr->Equals(*other.aggr_expr);
 	}
 	static void Serialize(FieldWriter &writer, const FunctionData *bind_data_p, const ScalarFunction &function) {
-		auto bind_data = dynamic_cast<const ListAggregatesBindData *>(bind_data_p);
+		auto bind_data = static_cast<const ListAggregatesBindData *>(bind_data_p);
 		if (!bind_data) {
 			writer.WriteField<bool>(false);
 		} else {

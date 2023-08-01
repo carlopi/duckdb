@@ -167,7 +167,7 @@ optional_ptr<Index> CheckIndexJoin(ClientContext &context, LogicalComparisonJoin
 		return nullptr;
 	}
 	auto &tbl_scan = plan.Cast<PhysicalTableScan>();
-	auto tbl_data = dynamic_cast<TableScanBindData *>(tbl_scan.bind_data.get());
+	auto tbl_data = static_cast<TableScanBindData *>(tbl_scan.bind_data.get());
 	if (!tbl_data) {
 		return nullptr;
 	}
