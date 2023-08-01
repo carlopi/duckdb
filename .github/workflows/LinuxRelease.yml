@@ -28,6 +28,7 @@ on:
       - '!.github/workflows/LinuxRelease.yml'
       - '.github/config/uncovered_files.csv'
 
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.head_ref || '' }}-${{ github.base_ref || '' }}-${{ github.ref != 'refs/heads/master' || github.sha }}
   cancel-in-progress: true
@@ -322,7 +323,6 @@ jobs:
  linux-httpfs:
     name: Linux HTTPFS
     runs-on: ubuntu-20.04
-    needs: linux-release-64
     env:
       BUILD_VISUALIZER: 1
       BUILD_HTTPFS: 1
@@ -330,6 +330,7 @@ jobs:
       BUILD_TPCDS: 1
       BUILD_PARQUET: 1
       BUILD_JSON: 1
+      FORCE_SANITIZER: 1
       S3_TEST_SERVER_AVAILABLE: 1
       AWS_DEFAULT_REGION: eu-west-1
       AWS_ACCESS_KEY_ID: minio_duckdb_user
@@ -369,12 +370,457 @@ jobs:
         ./scripts/generate_presigned_url.sh
         source ./scripts/run_s3_test_server.sh
         sleep 60
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
 
-    - name: Test
+ linux-httpfs-2:
+    name: Linux HTTPFS 2
+    runs-on: ubuntu-22.04
+    env:
+      BUILD_VISUALIZER: 1
+      BUILD_HTTPFS: 1
+      BUILD_TPCH: 1
+      BUILD_TPCDS: 1
+      BUILD_PARQUET: 1
+      BUILD_JSON: 1
+      FORCE_SANITIZER: 1
+      S3_TEST_SERVER_AVAILABLE: 1
+      AWS_DEFAULT_REGION: eu-west-1
+      AWS_ACCESS_KEY_ID: minio_duckdb_user
+      AWS_SECRET_ACCESS_KEY: minio_duckdb_user_password
+      DUCKDB_S3_ENDPOINT: duckdb-minio.com:9000
+      DUCKDB_S3_USE_SSL: false
+
+      GEN: ninja
+      CC: clang
+      CXX: clang++
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.7'
+
+    - name: Install LLVM and Clang
+      uses: KyleMayes/install-llvm-action@v1
+      with:
+        version: "16.0"
+
+    - name: Install Ninja
+      shell: bash
+      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build
+
+    - name: Setup Ccache
+      uses: hendrikmuhs/ccache-action@main
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.ref == 'refs/heads/master' || github.repository != 'duckdb/duckdb' }}
+
+    - name: Build
+      shell: bash
+      run: make
+
+    - name: Start S3/HTTP test server
       shell: bash
       run: |
-        python3 scripts/get_test_list.py --file-contains 'require-env S3_TEST_SERVER_AVAILABLE 1' --list '"*"' > test.list
-        build/release/test/unittest -f test.list
+        sudo ./scripts/install_s3_test_server.sh
+        ./scripts/generate_presigned_url.sh
+        source ./scripts/run_s3_test_server.sh
+        sleep 60
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+
+ linux-httpfs-3:
+    name: Linux HTTPFS 3
+    runs-on: ubuntu-22.04
+    env:
+      BUILD_VISUALIZER: 1
+      BUILD_HTTPFS: 1
+      BUILD_TPCH: 1
+      BUILD_TPCDS: 1
+      BUILD_PARQUET: 1
+      BUILD_JSON: 1
+      FORCE_SANITIZER: 1
+      S3_TEST_SERVER_AVAILABLE: 1
+      AWS_DEFAULT_REGION: eu-west-1
+      AWS_ACCESS_KEY_ID: minio_duckdb_user
+      AWS_SECRET_ACCESS_KEY: minio_duckdb_user_password
+      DUCKDB_S3_ENDPOINT: duckdb-minio.com:9000
+      DUCKDB_S3_USE_SSL: false
+
+      GEN: ninja
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.7'
+
+    - name: Install Ninja
+      shell: bash
+      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build
+
+    - name: Setup Ccache
+      uses: hendrikmuhs/ccache-action@main
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.ref == 'refs/heads/master' || github.repository != 'duckdb/duckdb' }}
+
+    - name: Build
+      shell: bash
+      run: make
+
+    - name: Start S3/HTTP test server
+      shell: bash
+      run: |
+        sudo ./scripts/install_s3_test_server.sh
+        ./scripts/generate_presigned_url.sh
+        source ./scripts/run_s3_test_server.sh
+        sleep 60
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+
+ linux-httpfs-4:
+    name: Linux HTTPFS 4
+    runs-on: ubuntu-20.04
+    env:
+      BUILD_VISUALIZER: 1
+      BUILD_HTTPFS: 1
+      BUILD_TPCH: 1
+      BUILD_TPCDS: 1
+      BUILD_PARQUET: 1
+      BUILD_JSON: 1
+      FORCE_SANITIZER: 1
+      S3_TEST_SERVER_AVAILABLE: 1
+      AWS_DEFAULT_REGION: eu-west-1
+      AWS_ACCESS_KEY_ID: minio_duckdb_user
+      AWS_SECRET_ACCESS_KEY: minio_duckdb_user_password
+      DUCKDB_S3_ENDPOINT: duckdb-minio.com:9000
+      DUCKDB_S3_USE_SSL: false
+
+      GEN: ninja
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.7'
+
+    - name: Install Ninja
+      shell: bash
+      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build
+
+    - name: Setup Ccache
+      uses: hendrikmuhs/ccache-action@main
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.ref == 'refs/heads/master' || github.repository != 'duckdb/duckdb' }}
+
+    - name: Build
+      shell: bash
+      run: make
+
+    - name: Start S3/HTTP test server
+      shell: bash
+      run: |
+        sudo ./scripts/install_s3_test_server.sh
+        ./scripts/generate_presigned_url.sh
+        source ./scripts/run_s3_test_server.sh
+        sleep 60
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+
+ linux-httpfs-5:
+    name: Linux HTTPFS 5
+    runs-on: ubuntu-20.04
+    env:
+      BUILD_VISUALIZER: 1
+      BUILD_HTTPFS: 1
+      BUILD_TPCH: 1
+      BUILD_TPCDS: 1
+      BUILD_PARQUET: 1
+      BUILD_JSON: 1
+      FORCE_SANITIZER: 1
+      S3_TEST_SERVER_AVAILABLE: 1
+      AWS_DEFAULT_REGION: eu-west-1
+      AWS_ACCESS_KEY_ID: minio_duckdb_user
+      AWS_SECRET_ACCESS_KEY: minio_duckdb_user_password
+      DUCKDB_S3_ENDPOINT: duckdb-minio.com:9000
+      DUCKDB_S3_USE_SSL: false
+
+      GEN: ninja
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.7'
+
+    - name: Install Ninja
+      shell: bash
+      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build
+
+    - name: Setup Ccache
+      uses: hendrikmuhs/ccache-action@main
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.ref == 'refs/heads/master' || github.repository != 'duckdb/duckdb' }}
+
+    - name: Build
+      shell: bash
+      run: make
+
+    - name: Start S3/HTTP test server
+      shell: bash
+      run: |
+        sudo ./scripts/install_s3_test_server.sh
+        ./scripts/generate_presigned_url.sh
+        source ./scripts/run_s3_test_server.sh
+        sleep 60
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
+        build/release/test/unittest test/sql/copy/s3/glob_s3_paging.test_slow
 
  amalgamation-tests:
     name: Amalgamation Tests
