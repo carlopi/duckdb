@@ -67,7 +67,6 @@ jobs:
   release-assert:
     name: Release Assertions
     runs-on: ubuntu-20.04
-    needs: linux-memory-leaks
     env:
       CC: gcc-10
       CXX: g++-10
@@ -112,7 +111,6 @@ jobs:
   linux-clang:
     name: Clang 14
     runs-on: ubuntu-20.04
-    needs: linux-memory-leaks
     env:
       CC: /home/runner/work/llvm/bin/clang
       CPP: /home/runner/work/llvm/bin/clang-cpp
@@ -153,7 +151,6 @@ jobs:
 
   old-gcc:
     name: GCC 4.8
-    needs: linux-memory-leaks
     runs-on: ubuntu-latest
     container: quay.io/pypa/manylinux2014_x86_64
     steps:
@@ -179,7 +176,6 @@ jobs:
     name: Linux (32 Bit)
     runs-on: ubuntu-latest
     container: quay.io/pypa/manylinux2014_x86_64
-    needs: linux-memory-leaks
     env:
       CC: /usr/bin/gcc
       CXX: /usr/bin/g++
@@ -209,7 +205,6 @@ jobs:
   linux-tarball:
      name: Python 3 Tarball
      runs-on: ubuntu-20.04
-     needs: linux-memory-leaks
      steps:
      - uses: actions/checkout@v3
        with:
@@ -248,7 +243,6 @@ jobs:
   python-address-sanitizer:
      name: Python Address Sanitizer (Linux)
      runs-on: ubuntu-latest
-     needs: linux-memory-leaks
      container: ubuntu:16.04
      env:
         GEN: ninja
@@ -312,7 +306,6 @@ jobs:
   sqllogic:
      name: Sqllogic tests
      runs-on: ubuntu-20.04
-     needs: linux-memory-leaks
      env:
        CC: gcc-10
        CXX: g++-10
@@ -340,7 +333,6 @@ jobs:
   storage-initialization:
      name: Storage Initialization Verification
      runs-on: ubuntu-20.04
-     needs: linux-memory-leaks
      env:
        CC: gcc-10
        CXX: g++-10
@@ -373,7 +365,6 @@ jobs:
   no-string-inline:
     name: No String Inline / Destroy Unpinned Blocks
     runs-on: ubuntu-20.04
-    needs: linux-memory-leaks
     env:
       CC: gcc-10
       CXX: g++-10
@@ -412,12 +403,11 @@ jobs:
 
       - name: Test
         shell: bash
-        run: build/debug/test/unittest
+        run: build/debug/test/unittest "*"
 
   force-blocking-sink-source:
     name: Forcing async Sinks/Sources
     runs-on: ubuntu-20.04
-    needs: linux-memory-leaks
     env:
       CC: gcc-10
       CXX: g++-10
@@ -454,12 +444,11 @@ jobs:
 
       - name: Test
         shell: bash
-        run: build/relassert/test/unittest
+        run: build/relassert/test/unittest "*"
 
   regression-test-memory-safety:
    name: Regression Tests between safe and unsafe builds
    runs-on: ubuntu-20.04
-   needs: linux-memory-leaks
    env:
      CC: gcc-10
      CXX: g++-10
@@ -542,7 +531,6 @@ jobs:
 
   rstats-windows-warnings:
     name: R Package Windows (Warnings)
-    needs: linux-memory-leaks
     runs-on: windows-latest
     env:
       TREAT_WARNINGS_AS_ERRORS: true
@@ -584,7 +572,6 @@ jobs:
   rubsan:
     name: R UBSAN
     runs-on: ubuntu-latest
-    needs: linux-memory-leaks
     steps:
     - uses: actions/checkout@v3
       with:
@@ -606,7 +593,6 @@ jobs:
   threadsan:
     name: Thread Sanitizer
     runs-on: ubuntu-20.04
-    needs: linux-memory-leaks
     env:
       CC: gcc-10
       CXX: g++-10
@@ -644,16 +630,11 @@ jobs:
     - name: Test
       shell: bash
       run: |
-          python3 scripts/run_tests_one_by_one.py build/reldebug/test/unittest
-          python3 scripts/run_tests_one_by_one.py build/reldebug/test/unittest "[intraquery]"
-          python3 scripts/run_tests_one_by_one.py build/reldebug/test/unittest "[interquery]"
-          python3 scripts/run_tests_one_by_one.py build/reldebug/test/unittest "[detailed_profiler]"
-          python3 scripts/run_tests_one_by_one.py build/reldebug/test/unittest test/sql/tpch/tpch_sf01.test_slow
+          python3 scripts/run_tests_one_by_one.py build/reldebug/test/unittest "*"
 
   vector-sizes:
     name: Vector Sizes
     runs-on: ubuntu-20.04
-    needs: linux-memory-leaks
     env:
       CC: gcc-10
       CXX: g++-10

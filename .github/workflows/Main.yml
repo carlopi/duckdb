@@ -79,13 +79,12 @@ jobs:
       shell: bash
       run: |
           echo "DUCKDB_INSTALL_LIB=$(find `pwd` -name "libduck*.so" | head -n 1)" >> $GITHUB_ENV
-          make unittestci
+          make unittestci "*"
 
 
  force-storage:
     name: Force Storage
     runs-on: ubuntu-20.04
-    needs: linux-debug
     env:
       CC: gcc-10
       CXX: g++-10
@@ -122,12 +121,11 @@ jobs:
 
     - name: Test
       shell: bash
-      run: build/reldebug/test/unittest --force-storage
+      run: build/reldebug/test/unittest "*" --force-storage
 
  force-restart:
     name: Force Restart
     runs-on: ubuntu-20.04
-    needs: linux-debug
     env:
       CC: gcc-10
       CXX: g++-10
@@ -164,12 +162,11 @@ jobs:
 
     - name: Test
       shell: bash
-      run: build/reldebug/test/unittest --force-reload --force-storage
+      run: build/reldebug/test/unittest "*" --force-reload --force-storage
 
  valgrind:
     name: Valgrind
     runs-on: ubuntu-20.04
-    needs: linux-debug
     env:
       CC: gcc-10
       CXX: g++-10
@@ -198,12 +195,11 @@ jobs:
 
     - name: Test
       shell: bash
-      run: valgrind ./build/debug/test/unittest test/sql/tpch/tpch_sf001.test_slow
+      run: valgrind ./build/debug/test/unittest "*"
 
  docs:
     name: Website Docs
     runs-on: ubuntu-20.04
-    needs: linux-debug
     steps:
     - uses: actions/checkout@v3
       with:
@@ -227,7 +223,6 @@ jobs:
  odbc:
     name: ODBC
     runs-on: ubuntu-22.04
-    needs: linux-debug
     env:
       BUILD_ODBC: 1
       GEN: ninja
