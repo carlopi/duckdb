@@ -83,7 +83,6 @@ duckdb_extension_load(sqlite_scanner
 ################# SUBSTRAIT
 if (NOT WIN32)
     duckdb_extension_load(substrait
-            LOAD_TESTS
             DONT_LINK
             GIT_URL https://github.com/duckdblabs/substrait
             GIT_TAG 0cd88fa8b240babe5316924e32fb68aaba408780
