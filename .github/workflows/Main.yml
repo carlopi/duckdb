@@ -39,6 +39,9 @@ jobs:
  linux-debug:
     name: Linux Debug
     runs-on: ubuntu-20.04
+    outputs:
+      git_iteration: ${{ steps.tags.outputs.git_iteration }}
+      git_last_tag: ${{ steps.tags.outputs.git_last_tag }}
 
     env:
       CC: gcc-10
@@ -60,6 +63,14 @@ jobs:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
+
+    - id: tags
+      shell: bash
+      run: |
+        TAG=$(git describe --tags --abbrev=0)
+        ITER=$(git describe --tags --long)
+        echo "git_iteration=$ITER" >> "$GITHUB_OUTPUT"
+        echo "git_last_tag=$TAG" >> "$GITHUB_OUTPUT"
 
     - name: Install
       shell: bash
@@ -100,11 +111,11 @@ jobs:
       BUILD_JSON: 1
       BUILD_EXCEL: 1
       BUILD_JEMALLOC: 1
+      GIT_ITERATION: ${{needs.linux-debug.outputs.git_iteration}}
+      GIT_LAST_TAG: ${{needs.linux-debug.outputs.git_last_tag}}
 
     steps:
     - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
 
     - name: Install
       shell: bash
@@ -142,11 +153,11 @@ jobs:
       BUILD_JSON: 1
       BUILD_EXCEL: 1
       BUILD_JEMALLOC: 1
+      GIT_ITERATION: ${{needs.linux-debug.outputs.git_iteration}}
+      GIT_LAST_TAG: ${{needs.linux-debug.outputs.git_last_tag}}
 
     steps:
     - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
 
     - name: Install
       shell: bash
@@ -176,11 +187,11 @@ jobs:
       DISABLE_SANITIZER: 1
       BUILD_JEMALLOC: 1
       GEN: ninja
+      GIT_ITERATION: ${{needs.linux-debug.outputs.git_iteration}}
+      GIT_LAST_TAG: ${{needs.linux-debug.outputs.git_last_tag}}
 
     steps:
     - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
 
     - name: Install
       shell: bash
@@ -231,11 +242,11 @@ jobs:
     env:
       BUILD_ODBC: 1
       GEN: ninja
+      GIT_ITERATION: ${{needs.linux-debug.outputs.git_iteration}}
+      GIT_LAST_TAG: ${{needs.linux-debug.outputs.git_last_tag}}
 
     steps:
     - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
 
     - uses: actions/setup-python@v4
       with:
