@@ -84,9 +84,7 @@ void Vector::Reference(const Value &value) {
 			child_vectors.push_back(std::move(vector));
 		}
 		auxiliary = shared_ptr<VectorBuffer>(struct_buffer.release());
-		if (value.IsNull()) {
-			SetValue(0, value);
-		}
+		SetValue(0, value);
 	} else if (internal_type == PhysicalType::LIST) {
 		auto list_buffer = make_uniq<VectorListBuffer>(value.type());
 		auxiliary = shared_ptr<VectorBuffer>(list_buffer.release());
