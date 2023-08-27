@@ -29,7 +29,7 @@ create table ints (a integer, b integer)
 statement ok
 insert into ints values (1,1),(5,2),(6,3),(2,2),(7,3),(3,3),(4,4)
 
-query II
+query II rowsort
 select a, cardinality(m) from (select a,MAP(lsta,lstb) as m from (SELECT list(a) as lsta, list(b) as lstb, a FROM ints group by a) as lst_tbl) as T
 ----
 1	1
@@ -42,7 +42,7 @@ select a, cardinality(m) from (select a,MAP(lsta,lstb) as m from (SELECT list(a)
 
 
 #What about selection vectors?
-query II
+query II rowsort
 select a, cardinality(m) from (select a,MAP(lsta,lstb) as m from (SELECT list(a) as lsta, list(b) as lstb, a FROM ints where b < 3 group by a) as lst_tbl) as T
 ----
 1	1
