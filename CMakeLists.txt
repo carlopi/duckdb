@@ -236,8 +236,8 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
 endif()
 
 find_package(Git)
-if(Git_FOUND OR (DEFINED GIT_COMMIT_HASH AND DEFINED GIT_ITERATION AND DEFINED GIT_LAST_TAG))
-  if (GIT_COMMIT_HASH MATCHES "[a-f0-9]+")
+if(Git_FOUND)
+  if (DEFINED GIT_COMMIT_HASH)
     message(STATUS "provided git commit hash ${GIT_COMMIT_HASH}")
   else()
     execute_process(
@@ -275,12 +275,16 @@ if(Git_FOUND OR (DEFINED GIT_COMMIT_HASH AND DEFINED GIT_ITERATION AND DEFINED G
   endif()
 else()
   message("Git NOT FOUND")
-  # fallback for when building from tarball
-  set(DUCKDB_MAJOR_VERSION 0)
-  set(DUCKDB_MINOR_VERSION 0)
-  set(DUCKDB_PATCH_VERSION 1)
-  set(DUCKDB_DEV_ITERATION 0)
-  set(DUCKDB_VERSION "v${DUCKDB_MAJOR_VERSION}.${DUCKDB_MINOR_VERSION}.${DUCKDB_PATCH_VERSION}-dev${DUCKDB_DEV_ITERATION}")
+  if (DEFINED DUCKDB_VERSION)
+    message(STATUS "DUKCDB_VERSION = ${DUKCDB_VERSION} provided as input")
+  else()
+    # fallback for when building from tarball
+    set(DUCKDB_MAJOR_VERSION 0)
+    set(DUCKDB_MINOR_VERSION 0)
+    set(DUCKDB_PATCH_VERSION 1)
+    set(DUCKDB_DEV_ITERATION 0)
+    set(DUCKDB_VERSION "v${DUCKDB_MAJOR_VERSION}.${DUCKDB_MINOR_VERSION}.${DUCKDB_PATCH_VERSION}-dev${DUCKDB_DEV_ITERATION}")
+  endif()
 endif()
 
 message(STATUS "git hash ${GIT_COMMIT_HASH}, version ${DUCKDB_VERSION}")
