@@ -238,6 +238,8 @@ endif()
 find_package(Git)
 if(Git_FOUND OR (DEFINED GIT_COMMIT_HASH AND DEFINED GIT_ITERATION AND DEFINED GIT_LAST_TAG))
   if (GIT_COMMIT_HASH MATCHES "..........")
+    message(STATUS "provided git commit hash ${GIT_COMMIT_HASH}")
+  else()
     execute_process(
             COMMAND ${GIT_EXECUTABLE} log -1 --format=%h
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
