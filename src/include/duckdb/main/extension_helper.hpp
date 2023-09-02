@@ -54,7 +54,7 @@ public:
 
 	static string ExtensionDirectory(ClientContext &context);
 	static string ExtensionDirectory(DBConfig &config, FileSystem &fs);
-	static string ExtensionUrlTemplate(ClientConfig *config);
+	static string ExtensionUrlTemplate(ClientConfig *config, string repository);
 
 	static idx_t DefaultExtensionCount();
 	static DefaultExtension GetDefaultExtension(idx_t index);
