@@ -178,6 +178,13 @@ string ExtensionHelper::ExtensionUrlTemplate(ClientConfig *client_config, string
 	return url_template;
 }
 
+string ExtensionHelper::ExtensionFinalizeUrlTemplate(string url_template, string extension_name) {
+	auto url = StringUtil::Replace(url_template, "${REVISION}", GetVersionDirectoryName());
+	url = StringUtil::Replace(url, "${PLATFORM}", DuckDB::Platform());
+	url = StringUtil::Replace(url, "${NAME}", extension_name);
+	return url;
+}
+
 void ExtensionHelper::InstallExtensionInternal(DBConfig &config, ClientConfig *client_config, FileSystem &fs,
                                                const string &local_path, const string &extension, bool force_install,
                                                const string &repository) {
@@ -225,9 +232,7 @@ void ExtensionHelper::InstallExtensionInternal(DBConfig &config, ClientConfig *c
 		extension_name = "";
 	}
 
-	auto url = StringUtil::Replace(url_template, "${REVISION}", GetVersionDirectoryName());
-	url = StringUtil::Replace(url, "${PLATFORM}", DuckDB::Platform());
-	url = StringUtil::Replace(url, "${NAME}", extension_name);
+	string url = ExtensionFinalizeUrlTemplate(url_template, extension_name);
 
 	string no_http = StringUtil::Replace(url, "http://", "");
 
