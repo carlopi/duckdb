@@ -75,7 +75,6 @@ jobs:
     # Builds binaries for osx_arm64 and osx_amd64
     name: OSX Release
     runs-on: macos-latest
-    needs: xcode-debug
     env:
       EXTENSION_CONFIGS: '${GITHUB_WORKSPACE}/.github/config/bundled_extensions.cmake'
       ENABLE_EXTENSION_AUTOLOADING: 1
@@ -169,7 +168,6 @@ jobs:
     # Builds extensions for osx_arm64 and osx_amd64
     name: OSX Extensions Release
     runs-on: macos-latest
-    needs: xcode-debug
     strategy:
       matrix:
         label: [ 'x86_64', 'arm64' ]
@@ -261,8 +259,8 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{secrets.S3_KEY}}
           AWS_DEFAULT_REGION: us-east-1
         run: |
+          ./scripts/extension-upload-test.sh
           if [[ "$GITHUB_REF" =~ ^(refs/heads/main|refs/tags/v.+)$ && "$GITHUB_REPOSITORY" = "duckdb/duckdb" ]] ; then
-            ./scripts/extension-upload-test.sh
           fi
 
       - name: Rebuild DuckDB without any extensions linked, but with same extension config
