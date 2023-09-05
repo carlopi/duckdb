@@ -232,6 +232,6 @@ runs:
       run: |
         rm -rf ~/.duckdb
         cd  ${{ inputs.build_dir}}
+        ./scripts/extension-upload-test.sh
         if [[ "$GITHUB_REF" =~ ^(refs/heads/main|refs/tags/v.+)$ && "$GITHUB_REPOSITORY" = "duckdb/duckdb" ]] ; then
-          ./scripts/extension-upload-test.sh
         fi
