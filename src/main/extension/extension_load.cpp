@@ -207,6 +207,22 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileSystem &fs, const str
 		throw IOException("Extension \"%s\" could not be loaded: %s", filename, GetDLError());
 	}
 
+	ext_version_fun_t error_fun = nullptr;
+	try {
+		error_fun = LoadFunctionFromDLL<ext_version_fun_t>(lib_hdl, "error_message", filename);
+	} catch (...) {
+		// If error message is not present, move further
+	}
+
+	if (error_fun) {
+		auto error_message = (*error_fun)();
+		if (error_message) {
+			throw InvalidInputException(
+			    "Extension \"%s\" exposes an error_message function\nSelf-reported error message: \"%s\"", filename,
+			    error_message);
+		}
+	}
+
 	ext_version_fun_t version_fun;
 	auto version_fun_name = basename + "_version";
 
