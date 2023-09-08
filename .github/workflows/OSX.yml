@@ -84,6 +84,7 @@ jobs:
       OSX_BUILD_UNIVERSAL: 1
       GEN: ninja
       ODBC_CONFIG: ../../build/unixodbc/build/bin/odbc_config
+      LTO: 'thin'
 
     steps:
       - uses: actions/checkout@v3
