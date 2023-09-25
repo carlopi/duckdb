@@ -298,19 +298,24 @@ static constexpr ExtensionEntry EXTENSION_FILE_CONTAINS[] = {
 }; // EXTENSION_FILE_CONTAINS
 
 static constexpr const char *AUTOLOADABLE_EXTENSIONS[] = {
-//    "azure",
+    //    "azure",
+    "arrow",
+    "aws",
     "autocomplete",
     "excel",
     "fts",
     "httpfs",
-    // "inet", 
-    // "icu",
+    "inet",
+    "icu",
     "json",
     "parquet",
+    "postgres_scanner",
+    "spatial",
     "sqlsmith",
+    "sqlite_scanner",
     "tpcds",
     "tpch",
-    "visualizer"
+    "visualizer",
 }; // END_OF_AUTOLOADABLE_EXTENSIONS
 
 } // namespace duckdb"""
