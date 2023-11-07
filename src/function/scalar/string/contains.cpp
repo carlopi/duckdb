@@ -5,7 +5,7 @@
 #include "duckdb/planner/expression/bound_function_expression.hpp"
 namespace duckdb {
 
-template <class UNSIGNED, int NEEDLE_SIZE>
+template <int NEEDLE_SIZE>
 static idx_t ContainsUnaligned(const unsigned char *haystack, idx_t haystack_size, const unsigned char *needle,
                                idx_t base_offset) {
 	if (NEEDLE_SIZE > haystack_size) {
@@ -28,29 +28,9 @@ unsigned char C = 0;
 	// now we perform the actual search
 	for (idx_t offset = 0; offset < haystack_size; offset++) {
 		// for this position we first compare the haystack with the needle
-		C = N[C][needle[offset]];
+		C = N[C][haystack[offset]];
 		if (C == NEEDLE_SIZE) {
-			return base_offset + offset - NEEDLE_SIZE + 1;
-		}
-	}
-	return DConstants::INVALID_INDEX;
-}
-
-template <class UNSIGNED>
-static idx_t ContainsAligned(const unsigned char *haystack, idx_t haystack_size, const unsigned char *needle,
-                             idx_t base_offset) {
-	if (sizeof(UNSIGNED) > haystack_size) {
-		// needle is bigger than haystack: haystack cannot contain needle
-		return DConstants::INVALID_INDEX;
-	}
-	// contains for a small needle aligned with unsigned integer (2/4/8)
-	// similar to ContainsUnaligned, but simpler because we only need to do a reinterpret cast
-	auto needle_entry = Load<UNSIGNED>(needle);
-	for (idx_t offset = 0; offset <= haystack_size - sizeof(UNSIGNED); offset++) {
-		// for this position we first compare the haystack with the needle
-		auto haystack_entry = Load<UNSIGNED>(haystack + offset);
-		if (needle_entry == haystack_entry) {
-			return base_offset + offset;
+			return base_offset + offset + 1 - NEEDLE_SIZE;
 		}
 	}
 	return DConstants::INVALID_INDEX;
@@ -105,19 +85,19 @@ idx_t ContainsFun::Find(const unsigned char *haystack, idx_t haystack_size, cons
 	case 1:
 		return base_offset;
 	case 2:
-		return ContainsAligned<uint16_t>(haystack, haystack_size, needle, base_offset);
+		return ContainsUnaligned<2>(haystack, haystack_size, needle, base_offset);
 	case 3:
-		return ContainsUnaligned<uint32_t, 3>(haystack, haystack_size, needle, base_offset);
+		return ContainsUnaligned<3>(haystack, haystack_size, needle, base_offset);
 	case 4:
-		return ContainsAligned<uint32_t>(haystack, haystack_size, needle, base_offset);
+		return ContainsUnaligned<4>(haystack, haystack_size, needle, base_offset);
 	case 5:
-		return ContainsUnaligned<uint64_t, 5>(haystack, haystack_size, needle, base_offset);
+		return ContainsUnaligned<5>(haystack, haystack_size, needle, base_offset);
 	case 6:
-		return ContainsUnaligned<uint64_t, 6>(haystack, haystack_size, needle, base_offset);
+		return ContainsUnaligned<6>(haystack, haystack_size, needle, base_offset);
 	case 7:
-		return ContainsUnaligned<uint64_t, 7>(haystack, haystack_size, needle, base_offset);
+		return ContainsUnaligned<7>(haystack, haystack_size, needle, base_offset);
 	case 8:
-		return ContainsAligned<uint64_t>(haystack, haystack_size, needle, base_offset);
+		return ContainsUnaligned<8>(haystack, haystack_size, needle, base_offset);
 	default:
 		return ContainsGeneric(haystack, haystack_size, needle, needle_size, base_offset);
 	}
