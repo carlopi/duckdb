@@ -3,7 +3,6 @@
 #include "duckdb/common/exception.hpp"
 #include "duckdb/common/vector_operations/vector_operations.hpp"
 #include "duckdb/planner/expression/bound_function_expression.hpp"
-
 namespace duckdb {
 
 template <class UNSIGNED, int NEEDLE_SIZE>
@@ -18,29 +17,21 @@ static idx_t ContainsUnaligned(const unsigned char *haystack, idx_t haystack_siz
 	// this implementation is inspired by the memmem implementation of freebsd
 
 	// first we set up the needle and the first NEEDLE_SIZE characters of the haystack as UNSIGNED integers
-	UNSIGNED needle_entry = 0;
-	UNSIGNED haystack_entry = 0;
-	const UNSIGNED start = (sizeof(UNSIGNED) * 8) - 8;
-	const UNSIGNED shift = (sizeof(UNSIGNED) - NEEDLE_SIZE) * 8;
-	for (int i = 0; i < NEEDLE_SIZE; i++) {
-		needle_entry |= UNSIGNED(needle[i]) << UNSIGNED(start - i * 8);
-		haystack_entry |= UNSIGNED(haystack[i]) << UNSIGNED(start - i * 8);
-	}
+
+	unsigned char N[NEEDLE_SIZE][256];
+for (int i=0; i<NEEDLE_SIZE; i++) for (int j=0; j<256; j++) N[i][j] = 0;
+for (int i=0; i<NEEDLE_SIZE; i++) N[i][needle[i]] = i+1;
+
+
+unsigned char C = 0;
+
 	// now we perform the actual search
-	for (idx_t offset = NEEDLE_SIZE; offset < haystack_size; offset++) {
+	for (idx_t offset = 0; offset < haystack_size; offset++) {
 		// for this position we first compare the haystack with the needle
-		if (haystack_entry == needle_entry) {
-			return base_offset + offset - NEEDLE_SIZE;
+		C = N[C][needle[offset]];
+		if (C == NEEDLE_SIZE) {
+			return base_offset + offset - NEEDLE_SIZE + 1;
 		}
-		// now we adjust the haystack entry by
-		// (1) removing the left-most character (shift by 8)
-		// (2) adding the next character (bitwise or, with potential shift)
-		// this shift is only necessary if the needle size is not aligned with the unsigned integer size
-		// (e.g. needle size 3, unsigned integer size 4, we need to shift by 1)
-		haystack_entry = (haystack_entry << 8) | ((UNSIGNED(haystack[offset])) << shift);
-	}
-	if (haystack_entry == needle_entry) {
-		return base_offset + haystack_size - NEEDLE_SIZE;
 	}
 	return DConstants::INVALID_INDEX;
 }
