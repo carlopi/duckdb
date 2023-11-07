@@ -41,7 +41,7 @@ unsigned char C = 0;
 			C = N[C][X & 255];
 			X = X >> 8;
 			if (C == NEEDLE_SIZE) {
-				return base_offset + offset + 1 - NEEDLE_SIZE;
+				return base_offset + offset + i + 1 - NEEDLE_SIZE;
 			}
 		}
 	}
