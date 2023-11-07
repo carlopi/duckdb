@@ -26,13 +26,34 @@ for (int i=0; i<NEEDLE_SIZE; i++) N[i][needle[i]] = i+1;
 unsigned char C = 0;
 
 	// now we perform the actual search
-	for (idx_t offset = 0; offset < haystack_size; offset++) {
+	idx_t offset = 0;
+	for (; offset%8 && (offset < haystack_size); offset++) {
 		// for this position we first compare the haystack with the needle
 		C = N[C][haystack[offset]];
 		if (C == NEEDLE_SIZE) {
 			return base_offset + offset + 1 - NEEDLE_SIZE;
 		}
 	}
+	for (; offset +7 < haystack_size; offset += 8) {
+		uint64_t X = Load<uint64_t>(haystack + offset);		
+		for (int i=0; i<8; i++)
+		{
+			C = N[C][X & 255];
+			X = X >> 8;
+			if (C == NEEDLE_SIZE) {
+				return base_offset + offset + 1 - NEEDLE_SIZE;
+			}
+		}
+	}
+
+	for (; (offset < haystack_size); offset++) {
+		// for this position we first compare the haystack with the needle
+		C = N[C][haystack[offset]];
+		if (C == NEEDLE_SIZE) {
+			return base_offset + offset + 1 - NEEDLE_SIZE;
+		}
+	}
+	
 	return DConstants::INVALID_INDEX;
 }
 
