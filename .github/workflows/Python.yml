@@ -164,7 +164,6 @@ jobs:
       run: |
         pip install cibuildwheel twine setuptools
         python -m pip install numpy
-	# --config-settings=setup-args="-Dallow-noblas=true"
 
     - name: Setup Ccache
       uses: hendrikmuhs/ccache-action@main
@@ -238,7 +237,6 @@ jobs:
       run: |
         pip install cibuildwheel twine setuptools
         python -m pip install numpy
-	# --config-settings=setup-args="-Dallow-noblas=true"
 
     - uses: actions/download-artifact@v3
       if: ${{ matrix.arch == 'x86_64' }}
