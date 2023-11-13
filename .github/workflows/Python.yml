@@ -62,7 +62,7 @@ jobs:
 
     - name: Install
       shell: bash
-      run: pip install cibuildwheel twine
+      run: pip install cibuildwheel twine setuptools
 
     - name: Setup Ccache
       uses: hendrikmuhs/ccache-action@main
@@ -162,7 +162,7 @@ jobs:
     - name: Install
       shell: bash
       run: |
-        pip install cibuildwheel twine
+        pip install cibuildwheel twine setuptools
         python -m pip install numpy --config-settings=setup-args="-Dallow-noblas=true"
 
     - name: Setup Ccache
@@ -235,7 +235,7 @@ jobs:
     - name: Install
       shell: bash
       run: |
-        pip install cibuildwheel twine
+        pip install cibuildwheel twine setuptools
         python -m pip install numpy --config-settings=setup-args="-Dallow-noblas=true"
 
     - uses: actions/download-artifact@v3
@@ -302,7 +302,7 @@ jobs:
 
       - name: Install
         shell: bash
-        run: pip install cibuildwheel twine
+        run: pip install cibuildwheel twine setuptools
 
       - name: Setup Ccache
         uses: hendrikmuhs/ccache-action@main
@@ -361,7 +361,7 @@ jobs:
 
       - name: Install
         shell: bash
-        run: pip install cibuildwheel twine
+        run: pip install cibuildwheel twine setuptools
 
       - name: Setup Ccache
         uses: hendrikmuhs/ccache-action@main
@@ -409,7 +409,7 @@ jobs:
 
      - name: Install Packages
        shell: bash
-       run: python3 -m pip install pyotp requests
+       run: python3 -m pip install pyotp requests setuptools
 
      - name: Cleanup Releases
        shell: bash
