@@ -163,7 +163,7 @@ jobs:
       shell: bash
       run: |
         pip install cibuildwheel twine setuptools
-        python -m pip install numpy --config-settings="setup-args=\"-Dallow-noblas=true\""
+        python -m pip install numpy --config-settings="--setup-args=\"-Dallow-noblas=true\""
 
     - name: Setup Ccache
       uses: hendrikmuhs/ccache-action@main
