@@ -156,29 +156,23 @@ string StringUtil::Join(const vector<string> &input, const string &separator) {
 
 string StringUtil::BytesToHumanReadableString(idx_t bytes) {
 	string db_size;
-	auto kilobytes = bytes / 1000;
-	auto megabytes = kilobytes / 1000;
-	kilobytes -= megabytes * 1000;
-	auto gigabytes = megabytes / 1000;
-	megabytes -= gigabytes * 1000;
-	auto terabytes = gigabytes / 1000;
-	gigabytes -= terabytes * 1000;
-	auto petabytes = terabytes / 1000;
-	terabytes -= petabytes * 1000;
-	if (petabytes > 0) {
-		return to_string(petabytes) + "." + to_string(terabytes / 100) + "PB";
+	idx_t array[6] = {};
+	const char *unit[6] = {"bytes", "kB", "MB", "GB", "TB", "PB"};
+	array[0] = bytes;
+	for (idx_t i = 1; i < 6; i++) {
+		array[i] = array[i - 1] / 1024;
+		array[i - 1] %= 1024;
 	}
-	if (terabytes > 0) {
-		return to_string(terabytes) + "." + to_string(gigabytes / 100) + "TB";
-	} else if (gigabytes > 0) {
-		return to_string(gigabytes) + "." + to_string(megabytes / 100) + "GB";
-	} else if (megabytes > 0) {
-		return to_string(megabytes) + "." + to_string(kilobytes / 100) + "MB";
-	} else if (kilobytes > 0) {
-		return to_string(kilobytes) + "KB";
-	} else {
-		return to_string(bytes) + (bytes == 1 ? " byte" : " bytes");
+
+	for (idx_t i = 5; i >= 1; i--) {
+		if (array[i]) {
+			// Map 0 -> 0 and 1023 -> 9
+			idx_t fractional_part = (array[i - 1] * 10) / 1024;
+			return to_string(array[i]) + "." + to_string(fractional_part) + " " + unit[i];
+		}
 	}
+
+	return to_string(array[0]) + (bytes == 1 ? " byte" : " bytes");
 }
 
 string StringUtil::Upper(const string &str) {

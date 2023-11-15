@@ -11,74 +11,74 @@ SELECT format_bytes(0);
 0 bytes
 
 query I
-SELECT format_bytes(999);
+SELECT format_bytes(1);
 ----
-999 bytes
+1 byte
 
 query I
-SELECT format_bytes(1000);
+SELECT format_bytes(1023);
 ----
-1KB
+1023 bytes
 
 query I
-SELECT pg_size_pretty(1000);
+SELECT format_bytes(1024);
 ----
-1KB
+1.0 kB
 
 query I
-SELECT formatReadableDecimalSize(1000);
+SELECT pg_size_pretty(1024);
 ----
-1KB
+1.0 kB
 
 query I
-SELECT format_bytes(1000*1000-1);
+SELECT format_bytes(1024*1024-1);
 ----
-999KB
+1023.9 kB
 
 query I
-SELECT format_bytes(1000*1000);
+SELECT format_bytes(1024*1024);
 ----
-1.0MB
+1.0 MB
 
 query I
-SELECT format_bytes(1000*1000 + 555555);
+SELECT format_bytes(1024*1024 + 555555);
 ----
-1.5MB
+1.5 MB
 
 query I
-SELECT format_bytes(1000*1000*1000-1);
+SELECT format_bytes(1024*1024*1024-1);
 ----
-999.9MB
+1023.9 MB
 
 query I
-SELECT format_bytes(1000*1000*1000);
+SELECT format_bytes(1e9::BIGINT);
 ----
-1.0GB
+953.6 MB
 
 query I
-SELECT format_bytes(1000::BIGINT*1000*1000*1000-1);
+SELECT format_bytes(pow(1024,3)::BIGINT);
 ----
-999.9GB
+1.0 GB
 
 query I
-SELECT format_bytes(1000::BIGINT*1000*1000*1000);
+SELECT format_bytes(pow(1024.0,4)::BIGINT);
 ----
-1.0TB
+1.0 TB
 
 query I
-SELECT format_bytes(1000::BIGINT*1000*1000*1000*1000-1);
+SELECT format_bytes((pow(1024.0,4) - 1)::BIGINT);
 ----
-999.9TB
+1023.9 GB
 
 query I
-SELECT format_bytes(1000::BIGINT*1000*1000*1000*1000);
+SELECT format_bytes(1e15::BIGINT);
 ----
-1.0PB
+909.4 TB
 
 query I
 SELECT format_bytes(9223372036854775807);
 ----
-9223.3PB
+8191.9 PB
 
 query I
 SELECT format_bytes(NULL);
@@ -98,4 +98,4 @@ SELECT format_bytes(-1);
 query I
 SELECT format_bytes(-9223372036854775808);
 ----
--9223.3PB
+-8192.0 PB
