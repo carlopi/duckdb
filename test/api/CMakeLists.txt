@@ -37,6 +37,12 @@ if(DUCKDB_EXTENSION_TPCH_SHOULD_LINK)
       serialized_plans/test_plan_serialization_bwc.cpp)
 endif()
 
+list(FIND DUCKDB_EXTENSION_NAMES tpch _index)
+if(${_index} GREATER -1)
+else()
+  duckdb_extension_load(tpch DONT_LINK)
+endif()
+
 add_library_unity(test_api OBJECT ${TEST_API_OBJECTS})
 set(ALL_OBJECT_FILES
     ${ALL_OBJECT_FILES} $<TARGET_OBJECTS:test_api>
