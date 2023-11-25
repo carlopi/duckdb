@@ -51,3 +51,17 @@ jobs:
       with:
         name: artifacts-${{ matrix.sanitizer }}
         path: ./out/artifacts
+    - name: Run Fuzzers/2 ${{ matrix.sanitizer }}
+      uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
+      with:
+        oss-fuzz-project-name: 'duckdb'
+        fuzz-seconds: 3600
+        dry-run: false
+        sanitizer: ${{ matrix.sanitizer }}
+    - name: Run Fuzzers/3 ${{ matrix.sanitizer }}
+      uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
+      with:
+        oss-fuzz-project-name: 'duckdb'
+        fuzz-seconds: 3600
+        dry-run: false
+        sanitizer: ${{ matrix.sanitizer }}
