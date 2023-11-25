@@ -2,10 +2,12 @@
 #include "duckdb/common/string_util.hpp"
 #include <string>
 #include <unordered_set>
+#include <cstdio>
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size) {
 	std::string input(reinterpret_cast<const char *>(data), size);
-	duckdb::DuckDB db("aaaaargh.db");
+	std::remove("aaargh.db");
+	duckdb::DuckDB db("aaargh.db");
 	duckdb::Connection con(db);
 
 	std::unordered_set<std::string> internal_error_messages = {"Unoptimized Result differs from original result!",
