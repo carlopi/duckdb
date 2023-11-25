@@ -17,7 +17,7 @@ static void test_runner() {
 	auto file_name = Catch::getResultCapture().getCurrentTestName();
 
 	duckdb::unique_ptr<QueryResult> result;
-	DuckDB db(nullptr);
+	DuckDB db("aaargh.db");
 	Connection con(db);
 	std::ifstream t(file_name);
 	std::stringstream buffer;
