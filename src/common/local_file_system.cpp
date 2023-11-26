@@ -613,7 +613,7 @@ public:
 	    : FileHandle(file_system, path), position(0), fd(fd) {
 	}
 	~WindowsFileHandle() override {
-		Close();
+		WindowsFileHandle::Close();
 	}
 
 	idx_t position;

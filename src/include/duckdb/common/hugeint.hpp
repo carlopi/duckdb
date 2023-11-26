@@ -9,8 +9,8 @@ namespace duckdb {
 
 struct hugeint_t {
 public:
-	uint64_t lower;
-	int64_t upper;
+	uint64_t lower = 0;
+	int64_t upper = 0;
 
 public:
 	hugeint_t() = default;

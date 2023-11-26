@@ -277,7 +277,7 @@ static void SubSortTiedTuples(BufferManager &buffer_manager, const data_ptr_t da
 }
 
 void LocalSortState::SortInMemory() {
-	auto &sb = *sorted_blocks.back();
+	auto sb = *sorted_blocks.back();
 	auto &block = *sb.radix_sorting_data.back();
 	const auto &count = block.count;
 	auto handle = buffer_manager->Pin(block.block);

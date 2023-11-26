@@ -45,7 +45,7 @@ private:
 
 	uint32_t buf[4];
 	uint32_t bits[2];
-	unsigned char in[64];
+	unsigned char in[64] = {};
 };
 
 } // namespace duckdb

@@ -24,7 +24,7 @@ public:
 
 	//! We need the initial size of the index after the CREATE INDEX statement,
 	//! as it is necessary to determine the auto checkpoint threshold
-	idx_t initial_index_size;
+	idx_t initial_index_size = 0;
 
 public:
 	string GetSchemaName() const override;

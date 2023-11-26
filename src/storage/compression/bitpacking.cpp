@@ -106,7 +106,7 @@ public:
 	T compression_buffer_internal[BITPACKING_METADATA_GROUP_SIZE + 1];
 	T *compression_buffer;
 	T_S delta_buffer[BITPACKING_METADATA_GROUP_SIZE];
-	bool compression_buffer_validity[BITPACKING_METADATA_GROUP_SIZE];
+	bool compression_buffer_validity[BITPACKING_METADATA_GROUP_SIZE] = {};
 	idx_t compression_buffer_idx;
 	idx_t total_size;
 

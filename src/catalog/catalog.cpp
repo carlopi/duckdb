@@ -766,7 +766,7 @@ LogicalType Catalog::GetType(ClientContext &context, const string &schema, const
 
 LogicalType Catalog::GetType(ClientContext &context, const string &catalog_name, const string &schema,
                              const string &name) {
-	auto &type_entry = Catalog::GetEntry<TypeCatalogEntry>(context, catalog_name, schema, name);
+	auto type_entry = Catalog::GetEntry<TypeCatalogEntry>(context, catalog_name, schema, name);
 	return type_entry.user_type;
 }
 

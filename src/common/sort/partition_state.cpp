@@ -356,7 +356,7 @@ void PartitionLocalSinkState::Sink(DataChunk &input_chunk) {
 
 	// OVER(...)
 	payload_chunk.Reset();
-	auto &hash_vector = payload_chunk.data.back();
+	auto hash_vector = payload_chunk.data.back();
 	Hash(input_chunk, hash_vector);
 	for (idx_t col_idx = 0; col_idx < input_chunk.ColumnCount(); ++col_idx) {
 		payload_chunk.data[col_idx].Reference(input_chunk.data[col_idx]);
