@@ -1,0 +1,13 @@
+name: Main Extension Distribution Pipeline
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  python:
+    name: Python build
+    uses: carlopi/duckdb/.github/workflows/Python.yml@main
+  main:
+    name: Main
+    uses: carlopi/duckdb/.github/workflows/Main.yml@main
