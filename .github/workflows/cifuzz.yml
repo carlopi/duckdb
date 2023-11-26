@@ -45,6 +45,8 @@ jobs:
         fuzz-seconds: 3600
         dry-run: false
         sanitizer: ${{ matrix.sanitizer }}
+        mode: 'batch'
+        output-sarif: true
     - name: Upload Crash
       uses: actions/upload-artifact@v1
       if: failure() && steps.build.outcome == 'success'
