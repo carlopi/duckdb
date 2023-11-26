@@ -1,40 +1,10 @@
 name: Main
 on:
   workflow_call:
-  workflow_dispatch:
-  repository_dispatch:
-  push:
-    branches:
-      - '**'
-      - '!main'
-      - '!feature'
-    tags:
-      - '**'
-    paths-ignore:
-      - '**.md'
-      - 'tools/**'
-      - '!tools/odbc/**'
-      - '.github/patches/duckdb-wasm/**'
-      - '.github/workflows/**'
-      - '!.github/workflows/Main.yml'
-
-  pull_request:
-    types: [opened, reopened, ready_for_review]
-    paths-ignore:
-      - '**.md'
-      - 'tools/**'
-      - '!tools/odbc/**'
-      - '.github/patches/duckdb-wasm/**'
-      - '.github/workflows/**'
-      - '!.github/workflows/Main.yml'
-
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ github.head_ref || '' }}-${{ github.base_ref || '' }}-${{ github.ref != 'refs/heads/main' || github.sha }}
   cancel-in-progress: true
-
-env:
-  GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
 jobs:
  linux-debug:
