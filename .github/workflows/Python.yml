@@ -1,6 +1,7 @@
 name: Python
 on:
   workflow_dispatch:
+  workflow_dispatch:
   repository_dispatch:
   push:
     branches:
