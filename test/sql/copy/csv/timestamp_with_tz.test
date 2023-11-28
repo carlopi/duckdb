@@ -2,6 +2,8 @@
 # description: Test reading timestamp with timezones
 # group: [csv]
 
+require no_extension_autoloading
+
 statement ok
 CREATE TABLE tbl(id int, ts timestamp);
 
