@@ -299,7 +299,7 @@ void SQLLogicTestRunner::ExecuteFile(string script) {
 				parser.Fail("Unexpected empty statement text");
 			}
 			command->expected_error =
-			    parser.ExtractExpectedError(command->expected_result == ExpectedResult::RESULT_SUCCESS);
+			    parser.ExtractExpectedError(command->expected_result == ExpectedResult::RESULT_SUCCESS, original_sqlite_test);
 
 			// perform any renames in the text
 			command->base_sql_query = ReplaceKeywords(std::move(statement_text));
