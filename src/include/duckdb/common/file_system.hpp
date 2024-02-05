@@ -28,6 +28,7 @@ class ClientContext;
 class DatabaseInstance;
 class FileOpener;
 class FileSystem;
+class LocalFileSystemPath;
 
 enum class FileType {
 	//! Regular file
@@ -195,6 +196,7 @@ public:
 	DUCKDB_API string NormalizeAbsolutePath(const string &path);
 	//! Join two paths together
 	DUCKDB_API string JoinPath(const string &a, const string &path);
+	LocalFileSystemPath JoinPath(const LocalFileSystemPath &a, const string &path);
 	//! Convert separators in a path to the local separators (e.g. convert "/" into \\ on windows)
 	DUCKDB_API string ConvertSeparators(const string &path);
 	//! Extract the base name of a file (e.g. if the input is lib/example.dll the base name is 'example')

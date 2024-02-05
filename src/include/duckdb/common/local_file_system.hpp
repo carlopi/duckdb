@@ -98,4 +98,17 @@ private:
 	vector<string> FetchFileWithoutGlob(const string &path, FileOpener *opener, bool absolute_path);
 };
 
+struct LocalFileSystemPath {
+	string path;
+	explicit LocalFileSystemPath(const string &p, const bool absolute = false) : path(p) {
+		if (!absolute) {
+			LocalFileSystem fs;
+			path = fs.ExpandPath(path);
+		}
+	}
+	operator string() const {
+		return path;
+	}
+};
+
 } // namespace duckdb

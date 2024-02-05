@@ -3,6 +3,7 @@
 #include "duckdb/common/checksum.hpp"
 #include "duckdb/common/exception.hpp"
 #include "duckdb/common/file_opener.hpp"
+#include "duckdb/common/local_file_system.hpp"
 #include "duckdb/common/helper.hpp"
 #include "duckdb/common/string_util.hpp"
 #include "duckdb/common/windows.hpp"
@@ -215,7 +216,12 @@ string FileSystem::GetWorkingDirectory() {
 
 string FileSystem::JoinPath(const string &a, const string &b) {
 	// FIXME: sanitize paths
-	return a + PathSeparator(a) + b;
+	return (string)a + PathSeparator(a) + b;
+}
+
+LocalFileSystemPath FileSystem::JoinPath(const LocalFileSystemPath &a, const string &b) {
+	// FIXME: sanitize paths
+	return LocalFileSystemPath(a.operator string() + PathSeparator(a) + b, true);
 }
 
 string FileSystem::ConvertSeparators(const string &path) {
