@@ -28,7 +28,7 @@ class ClientContext;
 class DatabaseInstance;
 class FileOpener;
 class FileSystem;
-class LocalFileSystemPath;
+struct LocalFileSystemPath;
 
 enum class FileType {
 	//! Regular file
