@@ -819,7 +819,7 @@ void HomeDirectorySetting::SetLocal(ClientContext &context, const Value &input) 
 		throw InvalidInputException("Cannot set the home directory to a remote path");
 	}
 
-	config.home_directory = input.IsNull() ? LocalFileSystemPath("") : LocalFileSystemPath(input.ToString());
+	config.home_directory = input.IsNull() ? LocalFileSystemPath("", false) : LocalFileSystemPath(input.ToString());
 }
 
 Value HomeDirectorySetting::GetSetting(ClientContext &context) {
