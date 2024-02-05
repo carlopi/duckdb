@@ -2,6 +2,7 @@
 
 #include "duckdb/catalog/catalog_search_path.hpp"
 #include "duckdb/common/string_util.hpp"
+#include "duckdb/common/local_file_system.hpp"
 #include "duckdb/main/attached_database.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/main/client_data.hpp"
@@ -818,7 +819,7 @@ void HomeDirectorySetting::SetLocal(ClientContext &context, const Value &input) 
 		throw InvalidInputException("Cannot set the home directory to a remote path");
 	}
 
-	config.home_directory = input.IsNull() ? string() : input.ToString();
+	config.home_directory = input.IsNull() ? LocalFileSystemPath("") : LocalFileSystemPath(input.ToString());
 }
 
 Value HomeDirectorySetting::GetSetting(ClientContext &context) {
@@ -1204,7 +1205,7 @@ Value SearchPathSetting::GetSetting(ClientContext &context) {
 // Secret Directory
 //===--------------------------------------------------------------------===//
 void SecretDirectorySetting::SetGlobal(DatabaseInstance *db, DBConfig &config, const Value &input) {
-	config.secret_manager->SetPersistentSecretPath(input.ToString());
+	config.secret_manager->SetPersistentSecretPath(LocalFileSystemPath(input.ToString()));
 }
 
 void SecretDirectorySetting::ResetGlobal(DatabaseInstance *db, DBConfig &config) {
