@@ -10,7 +10,7 @@
 
 #include "duckdb/common/common.hpp"
 #include "duckdb/common/enums/on_entry_not_found.hpp"
-
+#include "duckdb/common/local_file_system.hpp"
 namespace duckdb {
 
 class BaseSecret;
@@ -143,7 +143,7 @@ protected:
 class LocalFileSecretStorage : public CatalogSetSecretStorage {
 public:
 	LocalFileSecretStorage(SecretManager &manager, DatabaseInstance &db, const string &name_p,
-	                       const string &secret_path);
+	                       const LocalFileSystemPath &secret_path);
 
 	int64_t GetTieBreakOffset() override {
 		return 20;
@@ -158,7 +158,7 @@ protected:
 	//! Set of persistent secrets that are lazily loaded
 	case_insensitive_set_t persistent_secrets;
 	//! Path that is searched for secrets;
-	string secret_path;
+	LocalFileSystemPath secret_path;
 };
 
 } // namespace duckdb

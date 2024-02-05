@@ -130,7 +130,7 @@ optional_ptr<SecretEntry> CatalogSetSecretStorage::GetSecretByName(const string 
 }
 
 LocalFileSecretStorage::LocalFileSecretStorage(SecretManager &manager, DatabaseInstance &db_p, const string &name_p,
-                                               const string &secret_path)
+                                               const LocalFileSystemPath &secret_path)
     : CatalogSetSecretStorage(db_p, name_p), secret_path(secret_path) {
 	persistent = true;
 

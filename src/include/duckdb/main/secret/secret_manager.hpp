@@ -14,6 +14,7 @@
 #include "duckdb/main/secret/secret_manager.hpp"
 #include "duckdb/main/secret/secret_storage.hpp"
 #include "duckdb/parser/parsed_data/create_secret_info.hpp"
+#include "duckdb/common/local_file_system.hpp"
 
 namespace duckdb {
 class SecretManager;
@@ -57,9 +58,9 @@ struct SecretManagerConfig {
 	//! The default persistence type for secrets
 	SecretPersistType default_persist_type = SecretPersistType::TEMPORARY;
 	//! Secret Path can be changed by until the secret manager is initialized, after that it will be set automatically
-	string secret_path = "";
+	LocalFileSystemPath secret_path = LocalFileSystemPath("");
 	//! The default secret path is determined on startup and can be used to reset the secret path
-	string default_secret_path = "";
+	LocalFileSystemPath default_secret_path = LocalFileSystemPath("");
 	//! The storage type for persistent secrets when none is specified;
 	string default_persistent_storage = "";
 	//! Persistent secrets are enabled by default
@@ -126,7 +127,7 @@ public:
 	DUCKDB_API virtual void ResetDefaultStorage();
 	DUCKDB_API virtual string DefaultStorage();
 
-	DUCKDB_API virtual void SetPersistentSecretPath(const string &path);
+	DUCKDB_API virtual void SetPersistentSecretPath(const LocalFileSystemPath &path);
 	DUCKDB_API virtual void ResetPersistentSecretPath();
 	DUCKDB_API virtual string PersistentSecretPath();
 

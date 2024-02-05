@@ -43,7 +43,7 @@ void SecretManager::Initialize(DatabaseInstance &db) {
 
 	// Construct default path
 	LocalFileSystem fs;
-	config.default_secret_path = fs.GetHomeDirectory();
+	config.default_secret_path = LocalFileSystemPath(fs.GetHomeDirectory());
 	vector<string> path_components = {".duckdb", "stored_secrets", ExtensionHelper::GetVersionDirectoryName()};
 	for (auto &path_ele : path_components) {
 		config.default_secret_path = fs.JoinPath(config.default_secret_path, path_ele);
@@ -479,7 +479,7 @@ string SecretManager::DefaultStorage() {
 	return config.default_persistent_storage;
 }
 
-void SecretManager::SetPersistentSecretPath(const string &path) {
+void SecretManager::SetPersistentSecretPath(const LocalFileSystemPath &path) {
 	ThrowOnSettingChangeIfInitialized();
 	config.secret_path = path;
 }
