@@ -64,7 +64,7 @@ const hugeint_t Hugeint::POWERS_OF_TEN[] {
 template <>
 void Hugeint::NegateInPlace<false>(hugeint_t &input) {
 	input.lower = NumericLimits<uint64_t>::Maximum() - input.lower + 1;
-	input.upper = -1 - input.upper + (input.lower == 0);
+	input.upper = -idx_t(1) - input.upper + (input.lower == 0);
 }
 
 bool Hugeint::TryNegate(hugeint_t input, hugeint_t &result) {
