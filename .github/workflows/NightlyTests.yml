@@ -189,7 +189,7 @@ jobs:
 
     - name: Install
       shell: bash
-      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build
+      run: brew install ninja llvm && pip install requests
 
     - name: Setup Ccache
       uses: hendrikmuhs/ccache-action@main
