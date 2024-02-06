@@ -166,10 +166,8 @@ jobs:
     name: Release Assertions
     runs-on: macos-latest
     env:
-      CC: /home/runner/work/llvm/bin/clang
-      CPP: /home/runner/work/llvm/bin/clang-cpp
-      CXX: /home/runner/work/llvm/bin/clang++
-      LD: /home/runner/work/llvm/bin/ld.lld
+      CC: clang
+      CXX: clang++
       GEN: ninja
       BUILD_ICU: 1
       BUILD_INET: 1
@@ -188,12 +186,6 @@ jobs:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0
-
-    - name: Install LLVM and Clang
-      uses: KyleMayes/install-llvm-action@v1
-      with:
-        version: "16.0"
-        directory: '/home/runner/work/llvm'
 
     - name: Install
       shell: bash
