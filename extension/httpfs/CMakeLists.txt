@@ -24,6 +24,7 @@ endif()
 
 find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIR})
+target_link_directories(httpfs_loadable_extension "${OPENSSL_INCLUDE_DIR}/../lib/")
 target_link_libraries(httpfs_loadable_extension duckdb_mbedtls
                       ${OPENSSL_LIBRARIES})
 target_link_libraries(httpfs_extension duckdb_mbedtls ${OPENSSL_LIBRARIES})
