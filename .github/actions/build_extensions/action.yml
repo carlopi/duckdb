@@ -154,7 +154,7 @@ runs:
         echo "$USER"
         git config --global --add safe.directory '*'
         make
-	ls D:/a/duckdb/duckdb/build/release/vcpkg_installed/x64-mingw-static/lib/
+        ls D:/a/duckdb/duckdb/build/release/vcpkg_installed/x64-mingw-static/lib/
         ls
 
     # Tests extension using regular require mechanism:
