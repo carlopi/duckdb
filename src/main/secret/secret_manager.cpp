@@ -17,6 +17,7 @@
 #include "duckdb/parser/parsed_data/create_secret_info.hpp"
 #include "duckdb/parser/statement/create_statement.hpp"
 #include "duckdb/planner/operator/logical_create_secret.hpp"
+#include <iostream>
 
 namespace duckdb {
 
@@ -39,6 +40,7 @@ constexpr const char *SecretManager::TEMPORARY_STORAGE_NAME;
 constexpr const char *SecretManager::LOCAL_FILE_STORAGE_NAME;
 
 void SecretManager::Initialize(DatabaseInstance &db) {
+	std::cout << (unsigned long long)(void*)this << "\n";
 	lock_guard<mutex> lck(manager_lock);
 
 	// Construct default path

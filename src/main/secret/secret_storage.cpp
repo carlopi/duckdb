@@ -11,6 +11,7 @@
 #include "duckdb/main/secret/secret_manager.hpp"
 #include "duckdb/parser/parsed_data/create_secret_info.hpp"
 #include "duckdb/parser/statement/create_statement.hpp"
+#include <iostream>
 
 namespace duckdb {
 
@@ -132,6 +133,8 @@ unique_ptr<SecretEntry> CatalogSetSecretStorage::GetSecretByName(const string &n
 LocalFileSecretStorage::LocalFileSecretStorage(SecretManager &manager, DatabaseInstance &db_p, const string &name_p,
                                                const string &secret_path)
     : CatalogSetSecretStorage(db_p, name_p), secret_path(secret_path) {
+
+	std::cout << "LocalFileSecretStorage::LocalFileSecretStorage\t" << persistent_secrets.size() << "\t" << this << "\n";
 	persistent = true;
 
 	LocalFileSystem fs;
@@ -139,6 +142,18 @@ LocalFileSecretStorage::LocalFileSecretStorage(SecretManager &manager, DatabaseI
 	if (!fs.DirectoryExists(secret_path)) {
 		fs.CreateDirectory(secret_path);
 	}
+
+	case_insensitive_set_t persistent_secrets2;
+{
+		fs.ListFiles(secret_path, [&](const string &fname, bool is_dir) {
+			string full_path = fs.JoinPath(secret_path, fname);
+
+			if (StringUtil::EndsWith(full_path, ".duckdb_secret")) {
+				string secret_name = fname.substr(0, fname.size() - 14); // size of file ext
+				persistent_secrets2.insert(secret_name);
+			}
+		});
+}
 
 	if (persistent_secrets.empty()) {
 		fs.ListFiles(secret_path, [&](const string &fname, bool is_dir) {
@@ -150,6 +165,10 @@ LocalFileSecretStorage::LocalFileSecretStorage(SecretManager &manager, DatabaseI
 			}
 		});
 	}
+
+if (persistent_secrets.size() != persistent_secrets2.size()) {
+	std::cout << "AAAAAAA\n";
+}
 
 	auto &catalog = Catalog::GetSystemCatalog(db);
 	secrets = make_uniq<CatalogSet>(Catalog::GetSystemCatalog(db),
@@ -201,6 +220,8 @@ void LocalFileSecretStorage::RemoveSecret(const string &secret, OnEntryNotFound 
 			                  "instance. (original error: '%s')",
 			                  file, error.RawMessage());
 		}
+		throw FatalException("File '%' could not been removed! (original error: '%s')",
+				  file, error.RawMessage());
 	}
 }
 
