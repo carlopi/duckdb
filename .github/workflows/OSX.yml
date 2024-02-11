@@ -184,7 +184,6 @@ jobs:
     # Builds extensions for osx_arm64 and osx_amd64
     name: OSX Extensions Release
     runs-on: macos-latest
-    needs: xcode-debug
     strategy:
       matrix:
         label: [ 'x86_64', 'arm64' ]
@@ -237,40 +236,6 @@ jobs:
           run_autoload_tests: ${{ matrix.run_autoload_tests }}
           ninja: 1
 
-      - name: Test statically linked extensions
-        if: ${{ matrix.osx_arch == 'x86_64' }}
-        shell: bash
-        run: |
-          python3 scripts/run_tests_one_by_one.py ./build/release/test/unittest
-
-      - name: Sign Extension Binaries
-        env:
-          BUILD_CERTIFICATE_BASE64: ${{ secrets.OSX_CODESIGN_BUILD_CERTIFICATE_BASE64 }}
-          P12_PASSWORD: ${{ secrets.OSX_CODESIGN_P12_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.OSX_CODESIGN_KEYCHAIN_PASSWORD }}
-        run: |
-          if [[ "$GITHUB_REPOSITORY" = "duckdb/duckdb" ]] ; then
-          . scripts/osx_import_codesign_certificate.sh
-          codesign --all-architectures --force --sign "Developer ID Application: Stichting DuckDB Foundation" build/release/extension/*/*.duckdb_extension
-          fi
-
-      - name: Deploy
-        shell: bash
-        env:
-          AWS_ACCESS_KEY_ID: ${{secrets.S3_ID}}
-          AWS_SECRET_ACCESS_KEY: ${{secrets.S3_KEY}}
-          DUCKDB_DEPLOY_SCRIPT_MODE: for_real
-        run: |
-          if [[ "$GITHUB_REF" =~ ^(refs/tags/v.+)$ && "$GITHUB_REPOSITORY" = "duckdb/duckdb" ]] ; then
-            pip install awscli
-            ./scripts/extension-upload-all.sh ${{ matrix.duckdb_arch }} ${{ github.ref_name }}
-          elif [[ "$GITHUB_REF" =~ ^(refs/heads/main)$ && "$GITHUB_REPOSITORY" = "duckdb/duckdb" ]] ; then
-            pip install awscli
-            ./scripts/extension-upload-all.sh ${{ matrix.duckdb_arch }} `git log -1 --format=%h`
-          else
-            echo "would do: ./scripts/extension-upload-all.sh ${{ matrix.duckdb_arch }} ${{ github.ref_name }}"
-          fi
-
       - name: Test loadable extensions
         if: ${{ matrix.osx_arch == 'x86_64' }}
         shell: bash
@@ -279,28 +244,4 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{secrets.S3_KEY}}
           AWS_DEFAULT_REGION: us-east-1
         run: |
-          if [[ "$GITHUB_REF" =~ ^(refs/heads/main|refs/tags/v.+)$ && "$GITHUB_REPOSITORY" = "duckdb/duckdb" ]] ; then
-            ./scripts/extension-upload-test.sh
-          fi
-
-      - name: Rebuild DuckDB without any extensions linked, but with same extension config
-        if: ${{ matrix.osx_arch == 'x86_64' }}
-        shell: bash
-        env:
-          EXTENSION_TESTS_ONLY: 1
-          ENABLE_EXTENSION_AUTOLOADING: 1
-          ENABLE_EXTENSION_AUTOINSTALL: 1
-        run: |
-          rm -rf build/release
-          make
-
-      # Run autoload unittests (including the out-of-tree tests) without any extensions linked, relying on the autoloader
-      - name: Run tests with auto loading
-        if: ${{ matrix.osx_arch == 'x86_64' && !startsWith(github.ref, 'refs/tags/v') }}
-        shell: bash
-        env:
-          LOCAL_EXTENSION_REPO: ${{ github.workspace }}
-        run: |
-          python3 scripts/get_test_list.py --file-contains 'require ' --list '"*.test"' > test.list
-          python3 scripts/get_test_list.py --file-contains 'require-env LOCAL_EXTENSION_REPO' --list '"*.test"' >> test.list
-          python3 scripts/run_tests_one_by_one.py ./build/release/test/unittest '-f test.list'
+          ./scripts/extension-upload-test.sh

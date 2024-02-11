@@ -57,8 +57,4 @@ do
 	${duckdb_path} ${unsigned_flag} -c "LOAD '${ext}'"
 done
 
-# Only run tests for non-local, we have tested in enough other ways
-if [ "$1" != "local" ]
-then
-  ${unittest_path}
-fi
+${unittest_path}
