@@ -83,7 +83,7 @@ jobs:
       if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
       run: |
         make
-        python3 scripts/run_tests_one_by_one.py build/release/test/unittest "*" --time_execution --order lex --list
+        python3 scripts/run_tests_one_by_one.py build/release/test/unittest "*" --time_execution --order lex --list --no-exit
 
     - name: Tools Tests
       shell: bash
@@ -389,8 +389,8 @@ jobs:
       shell: bash
       run: |
         python3 scripts/get_test_list.py --file-contains 'require httpfs' --list '"*"' > test.list
-        python3 scripts/run_tests_one_by_one.py ./build/release/test/unittest '-f test.list'
-        python3 scripts/run_tests_one_by_one.py ./build/release/test/unittest '[secret]'
+        python3 scripts/run_tests_one_by_one.py ./build/release/test/unittest '-f test.list' --no-exit
+        python3 scripts/run_tests_one_by_one.py ./build/release/test/unittest '[secret]' --no-exit
 
  amalgamation-tests:
     name: Amalgamation Tests
