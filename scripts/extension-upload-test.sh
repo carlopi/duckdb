@@ -58,3 +58,4 @@ do
 done
 
 ${unittest_path}
+rm -r testext

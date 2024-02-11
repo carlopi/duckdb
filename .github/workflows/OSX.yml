@@ -245,3 +245,43 @@ jobs:
           AWS_DEFAULT_REGION: us-east-1
         run: |
           ./scripts/extension-upload-test.sh
+
+      - name: Test loadable extensions2
+        if: ${{ matrix.osx_arch == 'x86_64' }}
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{secrets.S3_ID}}
+          AWS_SECRET_ACCESS_KEY: ${{secrets.S3_KEY}}
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          ./scripts/extension-upload-test.sh
+
+      - name: Test loadable extensions3
+        if: ${{ matrix.osx_arch == 'x86_64' }}
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{secrets.S3_ID}}
+          AWS_SECRET_ACCESS_KEY: ${{secrets.S3_KEY}}
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          ./scripts/extension-upload-test.sh
+
+      - name: Test loadable extensions4
+        if: ${{ matrix.osx_arch == 'x86_64' }}
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{secrets.S3_ID}}
+          AWS_SECRET_ACCESS_KEY: ${{secrets.S3_KEY}}
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          ./scripts/extension-upload-test.sh
+
+      - name: Test loadable extensions5
+        if: ${{ matrix.osx_arch == 'x86_64' }}
+        shell: bash
+        env:
+          AWS_ACCESS_KEY_ID: ${{secrets.S3_ID}}
+          AWS_SECRET_ACCESS_KEY: ${{secrets.S3_KEY}}
+          AWS_DEFAULT_REGION: us-east-1
+        run: |
+          ./scripts/extension-upload-test.sh
