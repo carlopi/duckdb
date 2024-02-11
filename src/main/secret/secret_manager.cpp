@@ -498,6 +498,7 @@ void SecretManager::InitializeSecrets(CatalogTransaction transaction) {
 	if (!initialized) {
 		lock_guard<mutex> lck(manager_lock);
 		if (initialized) {
+			throw FatalException("NO sneaky");
 			// some sneaky other thread beat us to it
 			return;
 		}
