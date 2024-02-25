@@ -108,7 +108,7 @@ def run_benchmark_both(A, B, benchmark):
         n = n+1
         if verbose:
             print(benchmark, meanR / stdevR)
-    return {'res': meanR / stdevR, 'stddev': stdevR, 'meanA': meanA, 'meanB': meanB}
+    return {'res': meanR / stdevR, 'stddev': stdevR, 'meanA': meanA, 'meanB': meanB, 'iters': (n-1)*5}
 
 def run_benchmarks(A, B, benchmark_list):
     results = {}
@@ -119,7 +119,7 @@ def run_benchmarks(A, B, benchmark_list):
         b = res['meanB']
         diff = a-b
         percDiff = diff / max(a,b)
-        print(benchmark, "\t%.3fs" % a, "\t%.3fs" % b, "\t( %.3f%%" % (percDiff * 100.0), "\t, %.3f sigma)" % abs(res['res']))
+        print(benchmark, "\t%.3fs" % a, "\t%.3fs" % b, "\t( %.3f%%" % (percDiff * 100.0), "\t, %.1f sigma" % abs(res['res']), "\t, %.0f iterations)" % res['iters'])
     return results
 
 # read the initial benchmark list
