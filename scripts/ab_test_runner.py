@@ -106,13 +106,20 @@ def run_benchmark_both(A, B, benchmark):
         over = distA.overlap(distB)
         estimate = meanR / stdevR
         n = n+1
-        print(benchmark, meanR / stdevR)
+        if verbose:
+            print(benchmark, meanR / stdevR)
     return {'res': meanR / stdevR, 'stddev': stdevR, 'meanA': meanA, 'meanB': meanB}
 
 def run_benchmarks(A, B, benchmark_list):
     results = {}
     for benchmark in benchmark_list:
         results[benchmark] = run_benchmark_both(A, B, benchmark)
+        res = results[benchmark]
+        a = res['meanA']
+        b = res['meanB']
+        diff = a-b
+        percDiff = diff / max(a,b)
+        print(benchmark, "\t%.3fs" % a, "\t%.3fs" % b, "\t( %.3f%%" % (percDiff * 100.0), "\t, %.3f sigma)" % abs(res['res']))
     return results
 
 # read the initial benchmark list
@@ -127,75 +134,11 @@ for i in range(number_repetitions):
     b_list = []
     if len(benchmark_list) == 0:
         break
-    print(f'''====================================================
-==============      ITERATION {i}        =============
-==============      REMAINING {len(benchmark_list)}        =============
-====================================================
-''')
 
     result = run_benchmarks(old_runner, new_runner, benchmark_list)
 
-    for benchmark in benchmark_list:
-        res = result[benchmark]
-        outliers.append([benchmark, res])
-
 exit_code = 0
 
-sigma10a = []
-sigma3a = []
-sigma1a = []
-sigma1b = []
-sigma3b = []
-sigma10b = []
-
-for bench in outliers:
-    s = bench[1]['res']
-    if s > 10.0:
-        sigma10b.append(bench)
-    elif s > 3.0:
-        sigma3b.append(bench)
-    elif s > 1.0:
-        sigma1b.append(bench)
-    elif s < -10.0:
-        sigma10a.append(bench)
-    elif s < -3.0:
-        sigma3a.append(bench)
-    elif s < -1.0:
-        sigma1a.append(bench)
-
-
-def print_res(res):
-    for r in res:
-        a = r[1]['meanA']
-        b = r[1]['meanB']
-        diff = a-b
-        percDiff = diff / max(a,b)
-        print(r[0], "\ta = %.3fs" % r[1]['meanA'], "\tb = %.3fs" % r[1]['meanB'], "\t( %.6fs" % abs(diff), "\t, %.2f%%" % (abs(percDiff) * 100.0), "\t, %.3f sigma)" % abs(r[1]['res']))
-
-print()
-if len(sigma10a) != 0:
-    print('''==========   A fastest by more than 10 sigma  =========''');
-    print_res(sigma10a)
-
-if len(sigma10b) != 0:
-    print('''==========   B fastest by more than 10 sigma  =========''');
-    print_res(sigma10b)
-
-if len(sigma3a) != 0:
-    print('''==========   A fastest by 3-10 sigma  =========''');
-    print_res(sigma3a)
-
-if len(sigma3b) != 0:
-    print('''==========   B fastest by 3-10 sigma  =========''');
-    print_res(sigma3b)
-
-if len(sigma1a) != 0:
-    print('''==========   A fastest by 1-3 sigma  =========''');
-    print_res(sigma1a)
-
-if len(sigma1b) != 0:
-    print('''==========   B fastest by 1-3 sigma  =========''');
-    print_res(sigma1b)
 print()
 
 exit(exit_code)
