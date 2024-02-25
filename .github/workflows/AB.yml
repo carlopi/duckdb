@@ -78,29 +78,29 @@ jobs:
       if: always()
       shell: bash
       run: |
-        python scripts/ab_test_runner.py --old=duckdb-b/build/release/benchmark/benchmark_runner --new=duckdb-a/build/release/benchmark/benchmark_runner --benchmarks=.github/regression/tpch.csv --verbose --threads=2
+        python scripts/ab_test_runner.py --old=duckdb-b/build/release/benchmark/benchmark_runner --new=duckdb-a/build/release/benchmark/benchmark_runner --benchmarks=.github/regression/tpch.csv --threads=2
 
     - name: Regression Test TPCDS
       if: always()
       shell: bash
       run: |
-        python scripts/ab_test_runner.py --old=duckdb-b/build/release/benchmark/benchmark_runner --new=duckdb-a/build/release/benchmark/benchmark_runner --benchmarks=.github/regression/tpcds.csv --verbose --threads=2
+        python scripts/ab_test_runner.py --old=duckdb-b/build/release/benchmark/benchmark_runner --new=duckdb-a/build/release/benchmark/benchmark_runner --benchmarks=.github/regression/tpcds.csv --threads=2
 
     - name: Regression Test H2OAI
       if: always()
       shell: bash
       run: |
-        python scripts/ab_test_runner.py --old=duckdb-b/build/release/benchmark/benchmark_runner --new=duckdb-a/build/release/benchmark/benchmark_runner --benchmarks=.github/regression/h2oai.csv --verbose --threads=2
+        python scripts/ab_test_runner.py --old=duckdb-b/build/release/benchmark/benchmark_runner --new=duckdb-a/build/release/benchmark/benchmark_runner --benchmarks=.github/regression/h2oai.csv --threads=2
 
     - name: Regression Test IMDB
       if: always()
       shell: bash
       run: |
-        python scripts/ab_test_runner.py --old=duckdb-b/build/release/benchmark/benchmark_runner --new=duckdb-a/build/release/benchmark/benchmark_runner --benchmarks=.github/regression/imdb.csv --verbose --threads=2
+        python scripts/ab_test_runner.py --old=duckdb-b/build/release/benchmark/benchmark_runner --new=duckdb-a/build/release/benchmark/benchmark_runner --benchmarks=.github/regression/imdb.csv --threads=2
 
     - name: Regression Test Micro
       if: always()
       shell: bash
       run: |
-        python scripts/ab_test_runner.py --old=duckdb-b/build/release/benchmark/benchmark_runner --new=duckdb-a/build/release/benchmark/benchmark_runner --benchmarks=.github/regression/micro.csv --verbose --threads=2
+        python scripts/ab_test_runner.py --old=duckdb-b/build/release/benchmark/benchmark_runner --new=duckdb-a/build/release/benchmark/benchmark_runner --benchmarks=.github/regression/micro.csv --threads=2
 
