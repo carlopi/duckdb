@@ -266,7 +266,7 @@ jobs:
     - name: Build Current
       shell: bash
       run: |
-        git clone --branch ${{ env.BASE_BRANCH }} https://github.com/duckdb/duckdb.git --depth=1
+        git clone --branch v0.10.0 https://github.com/duckdb/duckdb.git --depth=1
         cd duckdb/tools/pythonpkg
         pip install --use-pep517 . --user
         cd ../../..
