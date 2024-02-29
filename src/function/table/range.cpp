@@ -45,6 +45,9 @@ static void GenerateRangeParameters(const vector<Value> &inputs, RangeFunctionBi
 	if (inputs.size() < 3) {
 		result.increment = 1;
 	} else {
+		if (inputs[2].IsNull()) {
+			throw BinderException("interval cannot be NULL!");
+		}
 		result.increment = inputs[2].GetValue<int64_t>();
 	}
 	if (result.increment == 0) {

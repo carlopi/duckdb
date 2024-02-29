@@ -21,6 +21,16 @@ query I
 SELECT c0 FROM generate_series(NULL, NULL, NULL) t3(c0);
 ----
 
+statement error
+FROM generate_series(CAST('290309-12-22 (BC) 00:00:00+00' AS TIMESTAMP ), CAST('290309-12-22 (BC) 00:00:00+00' AS TIMESTAMP), NULL);
+----
+Binder Error: RANGE with NULL argument is not supported
+
+statement error
+FROM generate_series(CAST('290309-12-22 (BC) 00:00:00+00' AS TIMESTAMP ), NULL, NULL);
+----
+Binder Error: RANGE with NULL argument is not supported
+
 query I
 SELECT c0 FROM range(NULL) t3(c0);
 ----
