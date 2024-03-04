@@ -282,6 +282,17 @@ jobs:
       run: |
         make extension_configuration
         python scripts/generate_extensions_function.py --validate
+        make format-fix
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: extension_entries.hpp
+        path: |
+          src/include/duckdb/main/extension_entries.hpp
+
+    - name: Check for any difference
+      run: |
+        git diff src/include/duckdb/main/extension_entries.hpp || exit(1)
 
  symbol-leakage:
     name: Symbol Leakage
