@@ -259,6 +259,7 @@ jobs:
  check-load-install-extensions:
     name: Checks extension entries
     runs-on: ubuntu-20.04
+    needs: linux-extensions-64
     env:
       CC: gcc-10
       CXX: g++-10
