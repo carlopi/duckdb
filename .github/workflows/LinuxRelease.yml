@@ -283,6 +283,7 @@ jobs:
         make extension_configuration
         python scripts/generate_extensions_function.py --validate
         pip install "black>=24"
+        pip install cmake-format
         make format-fix
 
     - uses: actions/upload-artifact@v3
