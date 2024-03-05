@@ -281,7 +281,7 @@ jobs:
         EXTENSION_CONFIGS: '.github/config/in_tree_extensions.cmake;.github/config/out_of_tree_extensions.cmake'
       run: |
         make extension_configuration
-        python scripts/generate_extensions_function.py --validate
+        python scripts/generate_extensions_function.py
         pip install "black>=24"
         pip install cmake-format
         make format-fix
@@ -294,7 +294,7 @@ jobs:
 
     - name: Check for any difference
       run: |
-        git diff src/include/duckdb/main/extension_entries.hpp || exit(1)
+        git diff src/include/duckdb/main/extension_entries.hpp --exit-code
 
  symbol-leakage:
     name: Symbol Leakage
