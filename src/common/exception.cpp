@@ -5,6 +5,7 @@
 #include "duckdb/common/exception/list.hpp"
 #include "duckdb/parser/tableref.hpp"
 #include "duckdb/planner/expression.hpp"
+#include <iostream>
 
 #ifdef DUCKDB_CRASH_ON_ASSERT
 #include "duckdb/common/printer.hpp"
@@ -19,13 +20,13 @@ namespace duckdb {
 
 Exception::Exception(ExceptionType exception_type, const string &message)
     : std::runtime_error(ToJSON(exception_type, message)) {
-	std::cout << "Hi from Exception constructor \t" << exception_type.ToString() << "\t" << message << "\n";
+	std::cout << "Hi from Exception constructor \t" << Exception::ExceptionTypeToString(exception_type) << "\t" << message << "\n";
 }
 
 Exception::Exception(ExceptionType exception_type, const string &message,
                      const unordered_map<string, string> &extra_info)
     : std::runtime_error(ToJSON(exception_type, message, extra_info)) {
-	std::cout << "Hi from Exception constructor \t" << exception_type.ToString() << "\t" << message << "\t EXTRA INFO! (" << extra_info.size() << ")\n";
+	std::cout << "Hi from Exception constructor \t" << Exception::ExceptionTypeToString(exception_type) << "\t" << message << "\t EXTRA INFO! (" << extra_info.size() << ")\n";
 }
 
 string Exception::ToJSON(ExceptionType type, const string &message) {
