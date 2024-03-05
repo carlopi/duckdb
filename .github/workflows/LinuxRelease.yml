@@ -294,7 +294,7 @@ jobs:
 
     - name: Check for any difference
       run: |
-        git diff src/include/duckdb/main/extension_entries.hpp --exit-code
+        git diff --exit-code src/include/duckdb/main/extension_entries.hpp && echo "No differences found"
 
  symbol-leakage:
     name: Symbol Leakage
