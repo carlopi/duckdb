@@ -156,6 +156,7 @@ struct ParallelExecuteContext {
 	atomic<bool> success;
 	string error_message;
 	string error_file;
+	bool database_is_invalidated {false};
 	int error_line;
 };
 
@@ -183,6 +184,11 @@ static void ParallelExecuteLoop(ParallelExecuteContext *execute_context) {
 		execute_context->error_message = StringUtil::Format("Failure at %s:%d: %s", execute_context->error_file,
 		                                                    execute_context->error_line, ex.what());
 		execute_context->success = false;
+
+		ErrorData error(ex);
+		if (Exception::InvalidatesDatabase(error.type))
+			execute_context->database_is_invalidated = true;
+		    execute_context->error_message = StringUtil::Format("Non recoverable failure at %s:%d: %s %s', execute_context->error_file, execute_context->error_line, Exception::ExceptionTypeToString(error.type), error.Message());
 	} catch (...) {
 		execute_context->error_message = StringUtil::Format("Failure at %s:%d: Unknown error message",
 		                                                    execute_context->error_file, execute_context->error_line);
@@ -223,6 +229,9 @@ void LoopCommand::ExecuteInternal(ExecuteContext &context) const {
 				} else {
 					FAIL_LINE(context.error_file, context.error_line, 0);
 				}
+			}
+			if (context.database_is_invalidated) {
+				FAIL(context.error_message);
 			}
 		}
 	} else {
