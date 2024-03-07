@@ -33,6 +33,7 @@ if [[ $4 != 'true' ]]; then
   DRY_RUN_PARAM="--dryrun"
 fi
 
+python -m ensurepip
 python -m pip install awscli
 
 for var in "$@"
