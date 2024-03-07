@@ -117,6 +117,10 @@ jobs:
         shell: bash
         run: CC=aarch64-linux-gnu-gcc CXX=aarch64-linux-gnu-g++ make
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
       - name: Deploy
         shell: bash
         run: >
