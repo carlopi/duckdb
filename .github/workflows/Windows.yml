@@ -97,7 +97,7 @@ jobs:
         zip -j duckdb_cli-windows-amd64.zip Release/duckdb.exe
         zip -j libduckdb-windows-amd64.zip src/Release/duckdb.dll src/Release/duckdb.lib src/amalgamation/duckdb.hpp src/include/duckdb.h
         zip -j duckdb_odbc-windows-amd64.zip tools/odbc/bin/Release/*
-        python scripts/asset-upload-gha.py libduckdb-windows-amd64.zip duckdb_cli-windows-amd64.zip duckdb_odbc-windows-amd64.zip
+        ./scripts/upload-staging-assets.sh libduckdb-windows-amd64.zip duckdb_cli-windows-amd64.zip duckdb_odbc-windows-amd64.zip
 
     - uses: actions/upload-artifact@v3
       with:
