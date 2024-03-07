@@ -33,6 +33,8 @@ if [[ $4 != 'true' ]]; then
   DRY_RUN_PARAM="--dryrun"
 fi
 
+pip install awscli
+
 for var in "$@"
 do
     aws s3 cp $var s3://duckdb-staging/stage/$TARGET/. $DRY_RUN_PARAM
