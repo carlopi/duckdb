@@ -33,7 +33,7 @@ if [[ $4 != 'true' ]]; then
   DRY_RUN_PARAM="--dryrun"
 fi
 
-pip install awscli
+pip3 install awscli
 
 for var in "$@"
 do
