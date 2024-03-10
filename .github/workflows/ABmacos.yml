@@ -1,4 +1,4 @@
-name: A/B Testing
+name: A/B Testing (macos)
 on:
   workflow_dispatch:
     inputs:
@@ -46,9 +46,9 @@ jobs:
       with:
         python-version: '3.11'
 
-    - name: Install
+    - name: Install ninja
       shell: bash
-      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build && pip install requests
+      run: brew install ninja
 
     - name: Setup Ccache
       uses: hendrikmuhs/ccache-action@main
