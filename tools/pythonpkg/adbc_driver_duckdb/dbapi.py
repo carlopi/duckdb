@@ -19,6 +19,7 @@
 DBAPI 2.0-compatible facade for the ADBC DuckDB driver.
 """
 
+
 import typing
 
 import adbc_driver_manager
