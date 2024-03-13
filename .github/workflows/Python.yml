@@ -1,0 +1,75 @@
+name: Python
+on:
+  workflow_dispatch:
+    inputs:
+      git_hash:
+        description: git hash or tag of commit to build
+      git_override_version:
+        description: target version to be building
+  repository_dispatch:
+  push:
+    branches:
+      - '**'
+      - '!main'
+      - '!feature'
+    tags:
+      - '**'
+    paths-ignore:
+      - '**.md'
+      - 'examples/**'
+      - 'test/**'
+      - 'tools/**'
+      - '!tools/pythonpkg/**'
+      - '.github/patches/duckdb-wasm/**'
+      - '.github/workflows/**'
+      - '!.github/workflows/Python.yml'
+
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+    paths-ignore:
+      - '**.md'
+      - 'examples/**'
+      - 'test/**'
+      - 'tools/**'
+      - '!tools/pythonpkg/**'
+      - '.github/patches/duckdb-wasm/**'
+      - '.github/workflows/**'
+      - '!.github/workflows/Python.yml'
+
+jobs:
+  describe:
+    name: Compute describe
+    runs-on: ubuntu-latest
+    outputs:
+      git_ref: ${{ steps.generate_git_ref.outputs.git_ref }}
+      git_describe: ${{ steps.generate_override.outputs.git_describe }}
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - id: change_hash
+      if: ${{ inputs.git_hash != ''}}
+      run: git checkout ${{ inputs.git_hash }}
+
+    - id: generate_git_ref
+      run: echo "git_ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+    - id: describe_step
+      if: ${{ inputs.git_override_version == ''}}
+      run: echo "git_describe=$(git describe --tags --long)" > temp_file
+
+    - id: describe_step_override
+      if: ${{ inputs.git_override_version != ''}}
+      run: echo "git_describe=${{ inputs.git_override_version }}" > temp_file
+
+    - id: generate_override
+      run: cat temp_file >> "$GITHUB_OUTPUT"
+
+  invoke:
+    name: Invoke PythonInner
+    needs: describe
+    uses: ./.github/workflows/PythonInner.yml
+    with:
+      override_git_describe: ${{needs.describe.outputs.git_describe}}
+      git_ref: ${{needs.describe.outputs.git_ref}}
