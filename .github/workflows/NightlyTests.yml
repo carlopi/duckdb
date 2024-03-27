@@ -411,6 +411,45 @@ jobs:
         shell: bash
         run: build/relassert/test/unittest
 
+  destroy-unpinned-blocks:
+    name: Tainted memory
+    runs-on: ubuntu-22.04
+    env:
+      GEN: ninja
+      BUILD_ICU: 1
+      BUILD_INET: 1
+      BUILD_PARQUET: 1
+      BUILD_TPCH: 1
+      BUILD_TPCDS: 1
+      BUILD_FTS: 1
+      BUILD_VISUALIZER: 1
+      BUILD_JSON: 1
+      BUILD_EXCEL: 1
+      DESTROY_UNPINNED_BLOCKS: 1
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install
+        shell: bash
+        run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build
+
+      - name: Setup Ccache
+        uses: hendrikmuhs/ccache-action@main
+        with:
+          key: ${{ github.job }}
+          save: ${{ env.CCACHE_SAVE }}
+
+      - name: Build
+        shell: bash
+        run: make relassert
+
+      - name: Test
+        shell: bash
+        run: build/relassert/test/unittest "*"
+
   vector-verification:
     name: Vector Verification Tests (${{ matrix.vector_type }})
     runs-on: ubuntu-20.04
