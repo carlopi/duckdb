@@ -75,15 +75,15 @@ static string PrettyPrintString(const string &s) {
 			res += "\\x";
 			uint8_t first = value / 16;
 			if (first < 10) {
-				res += string((char)'0' + first);
+				res.append((char)'0' + first);
 			} else {
-				res += string((char)'a' + first - 10);
+				res.append((char)'a' + first - 10);
 			}
 			uint8_t second = value % 16;
 			if (second < 10) {
-				res += string((char)'0' + second);
+				res.append((char)'0' + second);
 			} else {
-				res += string((char)'a' + second - 10);
+				res.append((char)'a' + second - 10);
 			}
 		}
 	}
