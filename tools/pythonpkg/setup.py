@@ -210,6 +210,9 @@ if not is_pyodide:
     # currently pyodide environment is not compatible with dynamic extension loading
     define_macros.extend([('DUCKDB_EXTENSION_AUTOLOAD_DEFAULT', '1'), ('DUCKDB_EXTENSION_AUTOINSTALL_DEFAULT', '1')])
 
+if is_pyodide:
+    define_macros.extend([('DUCKDB_WASM', '1')])
+
 linker_args = toolchain_args[:]
 if platform.system() == 'Windows':
     linker_args.extend(['rstrtmgr.lib', 'bcrypt.lib'])
