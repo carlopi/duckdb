@@ -100,8 +100,8 @@ public:
 		return flags & FILE_FLAGS_PARALLEL_ACCESS;
 	}
 
-private:
 	idx_t flags = 0;
+private:
 	FileLockType lock = FileLockType::NO_LOCK;
 	FileCompressionType compression = FileCompressionType::UNCOMPRESSED;
 };

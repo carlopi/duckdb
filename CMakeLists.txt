@@ -25,6 +25,7 @@ project(DuckDB)
 find_package(Threads REQUIRED)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(DUCKDB_EXPLICIT_PLATFORM "nop")
 
 set (CMAKE_CXX_STANDARD 11)
 
@@ -83,6 +84,14 @@ if (EXTENSION_STATIC_BUILD AND "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 endif()
 
 option(DISABLE_UNITY "Disable unity builds." FALSE)
+
+option(USE_WASM_THREADS "Should threads be used" FALSE)
+if (${USE_WASM_THREADS})
+   set(WASM_THREAD_FLAGS
+       -pthread
+       -sSHARED_MEMORY=1
+   )
+endif()
 
 option(FORCE_COLORED_OUTPUT
        "Always produce ANSI-colored output (GNU/Clang only)." FALSE)
@@ -711,6 +720,7 @@ if (NOT EXTENSION_CONFIG_BUILD AND NOT ${EXTENSION_TESTS_ONLY} AND NOT CLANG_TID
   if (NOT Python3_FOUND)
     MESSAGE(STATUS "Could not find python3, create extension directory step will be skipped")
   else()
+    message(STATUS "hi from ${CMAKE_CURRENT_BINARY_DIR}")
     add_custom_target(
           duckdb_local_extension_repo ALL
           COMMAND
@@ -813,7 +823,7 @@ function(build_loadable_extension_directory NAME OUTPUT_DIRECTORY EXTENSION_VERS
     add_custom_command(
       TARGET ${TARGET_NAME}
       POST_BUILD
-      COMMAND emcc $<TARGET_FILE:${TARGET_NAME}>.lib -o $<TARGET_FILE:${TARGET_NAME}> -sSIDE_MODULE=1 -O3
+      COMMAND emcc $<TARGET_FILE:${TARGET_NAME}>.lib -o $<TARGET_FILE:${TARGET_NAME}> -O3 -sSIDE_MODULE=2 -sEXPORTED_FUNCTIONS="_${NAME}_init" ${WASM_THREAD_FLAGS}
       )
   endif()
   add_custom_command(
@@ -1220,6 +1230,7 @@ if(BUILD_PYTHON)
   add_extension_dependencies(duckdb_python)
 endif()
 
+message(STATUS "${DUCKDB_EXPLICIT_PLATFORM} is the platform")
 if(NOT DUCKDB_EXPLICIT_PLATFORM)
   set(VERSION_SOURCES tools/utils/test_platform.cpp)
 
