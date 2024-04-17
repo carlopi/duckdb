@@ -212,6 +212,7 @@ if not is_pyodide:
 
 if is_pyodide:
     define_macros.extend([('DUCKDB_WASM', '1')])
+    define_macros.extend([('WASM_LOADABLE_EXTENSIONS', '1')])
 
 linker_args = toolchain_args[:]
 if platform.system() == 'Windows':
