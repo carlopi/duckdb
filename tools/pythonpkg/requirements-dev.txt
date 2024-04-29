@@ -11,6 +11,6 @@ requests>=2.26
 fsspec
 pyarrow>=8.0
 torch
-polars<0.20.22
+polars<0.20.21
 adbc_driver_manager
 tensorflow
