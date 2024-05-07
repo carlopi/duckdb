@@ -197,8 +197,8 @@ public:
 			// 	if the prefix is smaller(after bswap), it will stay smaller regardless of the extra bytes
 			//	if the prefix is equal, the extra bytes are guaranteed to be /0 for the shorter one
 
-			if (a_prefix != b_prefix) {
-				return byte_swap(a_prefix) > byte_swap(b_prefix);
+			if (A != B) {
+				return byte_swap(A) > byte_swap(B);
 			}
 #endif
 			auto memcmp_res = memcmp(left.GetData(), right.GetData(), min_length);
