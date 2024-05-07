@@ -71,6 +71,9 @@ public:
 	bool IsInlined() const {
 		return GetSize() <= INLINE_LENGTH;
 	}
+	void const *getInlined() {
+		return (void const *)value.inlined.inlined;
+	}
 
 	const char *GetData() const {
 		return IsInlined() ? const_char_ptr_cast(value.inlined.inlined) : value.pointer.ptr;
