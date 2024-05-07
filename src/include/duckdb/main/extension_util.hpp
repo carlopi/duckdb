@@ -10,6 +10,7 @@
 
 #include "duckdb/common/constants.hpp"
 #include "duckdb/function/cast/cast_function_set.hpp"
+#include "duckdb/catalog/catalog_entry/function_entry.hpp"
 #include "duckdb/function/function_set.hpp"
 #include "duckdb/main/secret/secret.hpp"
 
@@ -18,33 +19,36 @@ struct CreateMacroInfo;
 struct CreateCollationInfo;
 class DatabaseInstance;
 
+namespace extension_util_impl { 
 //! The ExtensionUtil class contains methods that are useful for extensions
 class ExtensionUtil {
 public:
+	template<class Derived>
+	friend class NamedExtension;
 	//! Register a new scalar function - throw an exception if the function already exists
-	DUCKDB_API static void RegisterFunction(DatabaseInstance &db, ScalarFunction function);
+	DUCKDB_API static optional_ptr<FunctionEntry> RegisterFunction(DatabaseInstance &db, ScalarFunction function);
 	//! Register a new scalar function set - throw an exception if the function already exists
-	DUCKDB_API static void RegisterFunction(DatabaseInstance &db, ScalarFunctionSet function);
+	DUCKDB_API static optional_ptr<FunctionEntry> RegisterFunction(DatabaseInstance &db, ScalarFunctionSet function);
 	//! Register a new aggregate function - throw an exception if the function already exists
-	DUCKDB_API static void RegisterFunction(DatabaseInstance &db, AggregateFunction function);
+	DUCKDB_API static optional_ptr<FunctionEntry> RegisterFunction(DatabaseInstance &db, AggregateFunction function);
 	//! Register a new aggregate function set - throw an exception if the function already exists
-	DUCKDB_API static void RegisterFunction(DatabaseInstance &db, AggregateFunctionSet function);
+	DUCKDB_API static optional_ptr<FunctionEntry> RegisterFunction(DatabaseInstance &db, AggregateFunctionSet function);
 	//! Register a new table function - throw an exception if the function already exists
-	DUCKDB_API static void RegisterFunction(DatabaseInstance &db, TableFunction function);
+	DUCKDB_API static optional_ptr<FunctionEntry> RegisterFunction(DatabaseInstance &db, TableFunction function);
 	//! Register a new table function set - throw an exception if the function already exists
-	DUCKDB_API static void RegisterFunction(DatabaseInstance &db, TableFunctionSet function);
+	DUCKDB_API static optional_ptr<FunctionEntry> RegisterFunction(DatabaseInstance &db, TableFunctionSet function);
 	//! Register a new pragma function - throw an exception if the function already exists
-	DUCKDB_API static void RegisterFunction(DatabaseInstance &db, PragmaFunction function);
+	DUCKDB_API static optional_ptr<FunctionEntry> RegisterFunction(DatabaseInstance &db, PragmaFunction function);
 	//! Register a new pragma function set - throw an exception if the function already exists
-	DUCKDB_API static void RegisterFunction(DatabaseInstance &db, PragmaFunctionSet function);
+	DUCKDB_API static optional_ptr<FunctionEntry> RegisterFunction(DatabaseInstance &db, PragmaFunctionSet function);
 
 	//! Register a CreateSecretFunction
 	DUCKDB_API static void RegisterFunction(DatabaseInstance &db, CreateSecretFunction function);
 
 	//! Register a new copy function - throw an exception if the function already exists
-	DUCKDB_API static void RegisterFunction(DatabaseInstance &db, CopyFunction function);
+	DUCKDB_API static optional_ptr<FunctionEntry> RegisterFunction(DatabaseInstance &db, CopyFunction function);
 	//! Register a new macro function - throw an exception if the function already exists
-	DUCKDB_API static void RegisterFunction(DatabaseInstance &db, CreateMacroInfo &info);
+	DUCKDB_API static optional_ptr<FunctionEntry> RegisterFunction(DatabaseInstance &db, CreateMacroInfo &info);
 
 	//! Register a new collation
 	DUCKDB_API static void RegisterCollation(DatabaseInstance &db, CreateCollationInfo &info);
@@ -68,6 +72,15 @@ public:
 	DUCKDB_API static void RegisterCastFunction(DatabaseInstance &db, const LogicalType &source,
 	                                            const LogicalType &target, BoundCastInfo function,
 	                                            int64_t implicit_cast_cost = -1);
+};
+} // namespace extension_util_impl
+
+class __attribute__((deprecated)) ExtensionUtil : public extension_util_impl::ExtensionUtil {
+public:
+};
+
+class ExtensionUtilExplicit : public extension_util_impl::ExtensionUtil {
+public:
 };
 
 } // namespace duckdb

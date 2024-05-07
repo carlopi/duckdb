@@ -27,6 +27,10 @@ public:
 	vector<T> functions;
 
 public:
+	void SetExtension(const char* ext) {
+		for (auto& f : functions)
+			f.SetExtension(ext);
+	}
 	void AddFunction(T function) {
 		functions.push_back(std::move(function));
 	}

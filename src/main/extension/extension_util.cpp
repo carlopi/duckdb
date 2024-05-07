@@ -16,34 +16,36 @@
 
 namespace duckdb {
 
-void ExtensionUtil::RegisterFunction(DatabaseInstance &db, ScalarFunctionSet set) {
+namespace extension_util_impl {
+
+optional_ptr<FunctionEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db, ScalarFunctionSet set) {
 	D_ASSERT(!set.name.empty());
 	CreateScalarFunctionInfo info(std::move(set));
 	auto &system_catalog = Catalog::GetSystemCatalog(db);
 	auto data = CatalogTransaction::GetSystemTransaction(db);
-	system_catalog.CreateFunction(data, info);
+	return system_catalog.CreateFunction(data, info).OptionalPtrCast<FunctionEntry>();
 }
 
-void ExtensionUtil::RegisterFunction(DatabaseInstance &db, ScalarFunction function) {
+optional_ptr<FunctionEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db, ScalarFunction function) {
 	D_ASSERT(!function.name.empty());
 	ScalarFunctionSet set(function.name);
 	set.AddFunction(std::move(function));
-	RegisterFunction(db, std::move(set));
+	return RegisterFunction(db, std::move(set));
 }
 
-void ExtensionUtil::RegisterFunction(DatabaseInstance &db, AggregateFunction function) {
+optional_ptr<FunctionEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db, AggregateFunction function) {
 	D_ASSERT(!function.name.empty());
 	AggregateFunctionSet set(function.name);
 	set.AddFunction(std::move(function));
-	RegisterFunction(db, std::move(set));
+	return RegisterFunction(db, std::move(set));
 }
 
-void ExtensionUtil::RegisterFunction(DatabaseInstance &db, AggregateFunctionSet set) {
+optional_ptr<FunctionEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db, AggregateFunctionSet set) {
 	D_ASSERT(!set.name.empty());
 	CreateAggregateFunctionInfo info(std::move(set));
 	auto &system_catalog = Catalog::GetSystemCatalog(db);
 	auto data = CatalogTransaction::GetSystemTransaction(db);
-	system_catalog.CreateFunction(data, info);
+	return system_catalog.CreateFunction(data, info).OptionalPtrCast<FunctionEntry>();
 }
 
 void ExtensionUtil::RegisterFunction(DatabaseInstance &db, CreateSecretFunction function) {
@@ -52,48 +54,48 @@ void ExtensionUtil::RegisterFunction(DatabaseInstance &db, CreateSecretFunction 
 	config.secret_manager->RegisterSecretFunction(std::move(function), OnCreateConflict::ERROR_ON_CONFLICT);
 }
 
-void ExtensionUtil::RegisterFunction(DatabaseInstance &db, TableFunction function) {
+optional_ptr<FunctionEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db, TableFunction function) {
 	D_ASSERT(!function.name.empty());
 	TableFunctionSet set(function.name);
 	set.AddFunction(std::move(function));
-	RegisterFunction(db, std::move(set));
+	return RegisterFunction(db, std::move(set));
 }
 
-void ExtensionUtil::RegisterFunction(DatabaseInstance &db, TableFunctionSet function) {
+optional_ptr<FunctionEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db, TableFunctionSet function) {
 	D_ASSERT(!function.name.empty());
 	CreateTableFunctionInfo info(std::move(function));
 	auto &system_catalog = Catalog::GetSystemCatalog(db);
 	auto data = CatalogTransaction::GetSystemTransaction(db);
-	system_catalog.CreateFunction(data, info);
+	return system_catalog.CreateFunction(data, info).OptionalPtrCast<FunctionEntry>();
 }
 
-void ExtensionUtil::RegisterFunction(DatabaseInstance &db, PragmaFunction function) {
+optional_ptr<FunctionEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db, PragmaFunction function) {
 	D_ASSERT(!function.name.empty());
 	PragmaFunctionSet set(function.name);
 	set.AddFunction(std::move(function));
-	RegisterFunction(db, std::move(set));
+	return RegisterFunction(db, std::move(set));
 }
 
-void ExtensionUtil::RegisterFunction(DatabaseInstance &db, PragmaFunctionSet function) {
+optional_ptr<FunctionEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db, PragmaFunctionSet function) {
 	D_ASSERT(!function.name.empty());
 	auto function_name = function.name;
 	CreatePragmaFunctionInfo info(std::move(function_name), std::move(function));
 	auto &system_catalog = Catalog::GetSystemCatalog(db);
 	auto data = CatalogTransaction::GetSystemTransaction(db);
-	system_catalog.CreatePragmaFunction(data, info);
+	return system_catalog.CreatePragmaFunction(data, info).OptionalPtrCast<FunctionEntry>();
 }
 
-void ExtensionUtil::RegisterFunction(DatabaseInstance &db, CopyFunction function) {
+optional_ptr<FunctionEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db, CopyFunction function) {
 	CreateCopyFunctionInfo info(std::move(function));
 	auto &system_catalog = Catalog::GetSystemCatalog(db);
 	auto data = CatalogTransaction::GetSystemTransaction(db);
-	system_catalog.CreateCopyFunction(data, info);
+	return system_catalog.CreateCopyFunction(data, info).OptionalPtrCast<FunctionEntry>();
 }
 
-void ExtensionUtil::RegisterFunction(DatabaseInstance &db, CreateMacroInfo &info) {
+optional_ptr<FunctionEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db, CreateMacroInfo &info) {
 	auto &system_catalog = Catalog::GetSystemCatalog(db);
 	auto data = CatalogTransaction::GetSystemTransaction(db);
-	system_catalog.CreateFunction(data, info);
+	return system_catalog.CreateFunction(data, info).OptionalPtrCast<FunctionEntry>();
 }
 
 void ExtensionUtil::RegisterCollation(DatabaseInstance &db, CreateCollationInfo &info) {
@@ -170,5 +172,7 @@ void ExtensionUtil::RegisterCastFunction(DatabaseInstance &db, const LogicalType
 	auto &casts = config.GetCastFunctions();
 	casts.RegisterCastFunction(source, target, std::move(function), implicit_cast_cost);
 }
+
+} // namespace extension_util_impl
 
 } // namespace duckdb

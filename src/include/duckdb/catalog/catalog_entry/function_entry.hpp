@@ -29,5 +29,21 @@ public:
 	vector<string> parameter_names;
 	//! The example (if any)
 	string example;
+	FunctionEntry & AddDescription(string desc) & {
+		description = desc;
+		return *this;
+	}
+	FunctionEntry & AddExample(string ex) & {
+		example = ex;
+		return *this;
+	}
+	FunctionEntry & AddParameterNames(const vector<string> & names) & {
+		parameter_names = names;
+		return *this;
+	}
+	FunctionEntry & AddComment(Value com) & {
+		comment = com;
+		return *this;
+	}
 };
 } // namespace duckdb

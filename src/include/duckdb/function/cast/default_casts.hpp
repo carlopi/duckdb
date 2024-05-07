@@ -110,7 +110,6 @@ struct BoundCastInfo {
 	cast_function_t function;
 	init_cast_local_state_t init_local_state;
 	unique_ptr<BoundCastData> cast_data;
-
 public:
 	BoundCastInfo Copy() const;
 };
