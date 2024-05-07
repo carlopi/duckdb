@@ -172,19 +172,19 @@ static void LoadInternal(DuckDB &db) {
 	dbgen_func.named_parameters["suffix"] = LogicalType::VARCHAR;
 	dbgen_func.named_parameters["children"] = LogicalType::UINTEGER;
 	dbgen_func.named_parameters["step"] = LogicalType::UINTEGER;
-	ExtensionUtil::RegisterFunction(db_instance, dbgen_func);
+	TpchExtension::RegisterFunction(db_instance, dbgen_func);
 
 	// create the TPCH pragma that allows us to run the query
 	auto tpch_func = PragmaFunction::PragmaCall("tpch", PragmaTpchQuery, {LogicalType::BIGINT});
-	ExtensionUtil::RegisterFunction(db_instance, tpch_func);
+	TpchExtension::RegisterFunction(db_instance, tpch_func);
 
 	// create the TPCH_QUERIES function that returns the query
 	TableFunction tpch_query_func("tpch_queries", {}, TPCHQueryFunction, TPCHQueryBind, TPCHInit);
-	ExtensionUtil::RegisterFunction(db_instance, tpch_query_func);
+	TpchExtension::RegisterFunction(db_instance, tpch_query_func);
 
 	// create the TPCH_ANSWERS that returns the query result
 	TableFunction tpch_query_answer_func("tpch_answers", {}, TPCHQueryAnswerFunction, TPCHQueryAnswerBind, TPCHInit);
-	ExtensionUtil::RegisterFunction(db_instance, tpch_query_answer_func);
+	TpchExtension::RegisterFunction(db_instance, tpch_query_answer_func);
 }
 
 void TpchExtension::Load(DuckDB &db) {
@@ -197,10 +197,6 @@ std::string TpchExtension::GetQuery(int query) {
 
 std::string TpchExtension::GetAnswer(double sf, int query) {
 	return tpch::DBGenWrapper::GetAnswer(sf, query);
-}
-
-std::string TpchExtension::Name() {
-	return "tpch";
 }
 
 } // namespace duckdb
