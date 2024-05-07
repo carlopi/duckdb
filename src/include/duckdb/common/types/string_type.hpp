@@ -149,16 +149,16 @@ public:
 			}
 			return (memcmp(a.GetData(), b.GetData(), a.GetSize()) == 0);
 #endif
-			uint64_t a_bulk_comp = Load<uint64_t>(const_data_ptr_cast(&a));
-			uint64_t b_bulk_comp = Load<uint64_t>(const_data_ptr_cast(&b));
-			if (a_bulk_comp != b_bulk_comp) {
+			uint64_t A = LoadAligned4Bytes<uint64_t>((const_data_ptr_t)&a);
+			uint64_t B = LoadAligned4Bytes<uint64_t>((const_data_ptr_t)&b);
+			if (A != B) {
 				// Either length or prefix are different -> not equal
 				return false;
 			}
 			// they have the same length and same prefix!
-			a_bulk_comp = Load<uint64_t>(const_data_ptr_cast(&a) + 8u);
-			b_bulk_comp = Load<uint64_t>(const_data_ptr_cast(&b) + 8u);
-			if (a_bulk_comp == b_bulk_comp) {
+			A = LoadAligned4Bytes<uint64_t>((const_data_ptr_t)&a + 8u);
+			B = LoadAligned4Bytes<uint64_t>((const_data_ptr_t)&b + 8u);
+			if (A == B) {
 				// either they are both inlined (so compare equal) or point to the same string (so compare equal)
 				return true;
 			}
@@ -180,8 +180,8 @@ public:
 			const uint32_t min_length = std::min<uint32_t>(left_length, right_length);
 
 #ifndef DUCKDB_DEBUG_NO_INLINE
-			uint32_t a_prefix = Load<uint32_t>(const_data_ptr_cast(left.GetPrefix()));
-			uint32_t b_prefix = Load<uint32_t>(const_data_ptr_cast(right.GetPrefix()));
+			uint32_t A = LoadAligned4Bytes<uint32_t>((const_data_ptr_t)left.GetPrefix());
+			uint32_t B = LoadAligned4Bytes<uint32_t>((const_data_ptr_t)right.GetPrefix());
 
 			// Utility to move 0xa1b2c3d4 into 0xd4c3b2a1, basically inverting the order byte-a-byte
 			auto byte_swap = [](uint32_t v) -> uint32_t {
