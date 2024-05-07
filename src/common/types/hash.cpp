@@ -71,11 +71,6 @@ hash_t Hash(const char *str) {
 }
 
 template <>
-hash_t Hash(string_t val) {
-	return Hash(val.GetData(), val.GetSize());
-}
-
-template <>
 hash_t Hash(char *val) {
 	return Hash<const char *>(val);
 }
