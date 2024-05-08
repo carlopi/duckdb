@@ -1366,25 +1366,25 @@ void ParquetExtension::Load(DuckDB &db) {
 
 	auto scan_fun = ParquetScanFunction::GetFunctionSet();
 	scan_fun.name = "read_parquet";
-	ExtensionUtil::RegisterFunction(db_instance, scan_fun);
+	RegisterFunction(db_instance, scan_fun);
 	scan_fun.name = "parquet_scan";
-	ExtensionUtil::RegisterFunction(db_instance, scan_fun);
+	ParquetExtension::RegisterFunction(db_instance, scan_fun);
 
 	// parquet_metadata
 	ParquetMetaDataFunction meta_fun;
-	ExtensionUtil::RegisterFunction(db_instance, MultiFileReader::CreateFunctionSet(meta_fun));
+	RegisterFunction(db_instance, MultiFileReader::CreateFunctionSet(meta_fun));
 
 	// parquet_schema
 	ParquetSchemaFunction schema_fun;
-	ExtensionUtil::RegisterFunction(db_instance, MultiFileReader::CreateFunctionSet(schema_fun));
+	RegisterFunction(db_instance, MultiFileReader::CreateFunctionSet(schema_fun));
 
 	// parquet_key_value_metadata
 	ParquetKeyValueMetadataFunction kv_meta_fun;
-	ExtensionUtil::RegisterFunction(db_instance, MultiFileReader::CreateFunctionSet(kv_meta_fun));
+	RegisterFunction(db_instance, MultiFileReader::CreateFunctionSet(kv_meta_fun));
 
 	// parquet_file_metadata
 	ParquetFileMetadataFunction file_meta_fun;
-	ExtensionUtil::RegisterFunction(db_instance, MultiFileReader::CreateFunctionSet(file_meta_fun));
+	RegisterFunction(db_instance, MultiFileReader::CreateFunctionSet(file_meta_fun));
 
 	CopyFunction function("parquet");
 	function.copy_to_bind = ParquetWriteBind;
@@ -1405,21 +1405,17 @@ void ParquetExtension::Load(DuckDB &db) {
 	function.supports_type = ParquetWriter::TypeIsSupported;
 
 	function.extension = "parquet";
-	ExtensionUtil::RegisterFunction(db_instance, function);
+	RegisterFunction(db_instance, function);
 
 	// parquet_key
 	auto parquet_key_fun = PragmaFunction::PragmaCall("add_parquet_key", ParquetCrypto::AddKey,
 	                                                  {LogicalType::VARCHAR, LogicalType::VARCHAR});
-	ExtensionUtil::RegisterFunction(db_instance, parquet_key_fun);
+	RegisterFunction(db_instance, parquet_key_fun);
 
 	auto &config = DBConfig::GetConfig(*db.instance);
 	config.replacement_scans.emplace_back(ParquetScanReplacement);
 	config.AddExtensionOption("binary_as_string", "In Parquet files, interpret binary data as a string.",
 	                          LogicalType::BOOLEAN);
-}
-
-std::string ParquetExtension::Name() {
-	return "parquet";
 }
 
 } // namespace duckdb

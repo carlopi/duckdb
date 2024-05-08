@@ -4,10 +4,11 @@
 
 namespace duckdb {
 
-class ParquetExtension : public Extension {
+class ParquetExtension : public NamedExtension<ParquetExtension> {
 public:
+	static constexpr const char *name {"parquet"};
+
 	void Load(DuckDB &db) override;
-	std::string Name() override;
 };
 
 } // namespace duckdb
