@@ -64,9 +64,6 @@ static void LoadInternal(DatabaseInstance &instance) {
 void HttpfsExtension::Load(DuckDB &db) {
 	LoadInternal(*db.instance);
 }
-std::string HttpfsExtension::Name() {
-	return "httpfs";
-}
 
 } // namespace duckdb
 

@@ -4,10 +4,11 @@
 
 namespace duckdb {
 
-class HttpfsExtension : public Extension {
+class HttpfsExtension : public NamedExtension<HttpfsExtension> {
 public:
+	static constexpr const char *name {"httpfs"};
+
 	void Load(DuckDB &db) override;
-	std::string Name() override;
 };
 
 } // namespace duckdb

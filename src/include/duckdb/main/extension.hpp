@@ -39,6 +39,10 @@ public:
 		fun.SetExtension(Derived::name);
 		return *ExtensionUtilExplicit::RegisterFunction(db, fun);
 	}
+	static void RegisterFunction(DatabaseInstance& db, CreateSecretFunction fun) {
+		// TODO: enable registration of secrets functions
+		ExtensionUtilExplicit::RegisterFunction(db, fun);
+	}
 	template <typename T>
 	static void AddFunctionOverload(DatabaseInstance &db, T fun) {
 		fun.SetExtension(Derived::name);
@@ -46,6 +50,10 @@ public:
 	}
 	static void RegisterType(DatabaseInstance &db, string type_name, LogicalType type) {
 		ExtensionUtilExplicit::RegisterType(db, type_name, type);
+	}
+	static void RegisterSecretType(DatabaseInstance &db, SecretType secret_type) {
+		// TODO: enable registration of secrets types
+		ExtensionUtilExplicit::RegisterSecretType(db, secret_type);
 	}
 	static void RegisterCastFunction(DatabaseInstance &db, const LogicalType &source,
 	                                            const LogicalType &target, BoundCastInfo function,

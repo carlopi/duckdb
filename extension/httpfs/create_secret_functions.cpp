@@ -1,4 +1,5 @@
 #include "create_secret_functions.hpp"
+#include "httpfs_extension.hpp"
 #include "s3fs.hpp"
 #include "duckdb/main/extension_util.hpp"
 
@@ -122,13 +123,13 @@ void CreateS3SecretFunctions::RegisterCreateSecretFunction(DatabaseInstance &ins
 	secret_type.deserializer = KeyValueSecret::Deserialize<KeyValueSecret>;
 	secret_type.default_provider = "config";
 
-	ExtensionUtil::RegisterSecretType(instance, secret_type);
+	HttpfsExtension::RegisterSecretType(instance, secret_type);
 
 	CreateSecretFunction from_empty_config_fun2 = {type, "config", CreateS3SecretFromConfig};
 	CreateSecretFunction from_settings_fun2 = {type, "duckdb_settings", CreateS3SecretFromSettings};
 	SetBaseNamedParams(from_empty_config_fun2, type);
 	SetBaseNamedParams(from_settings_fun2, type);
-	ExtensionUtil::RegisterFunction(instance, from_empty_config_fun2);
-	ExtensionUtil::RegisterFunction(instance, from_settings_fun2);
+	HttpfsExtension::RegisterFunction(instance, from_empty_config_fun2);
+	HttpfsExtension::RegisterFunction(instance, from_settings_fun2);
 }
 } // namespace duckdb
