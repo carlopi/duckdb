@@ -28,12 +28,8 @@ unique_ptr<FunctionData> GetEnvBind(ClientContext &context, ScalarFunction &boun
 }
 
 void ShellExtension::Load(DuckDB &db) {
-	ExtensionUtil::RegisterFunction(*db.instance, ScalarFunction("getenv", {LogicalType::VARCHAR}, LogicalType::VARCHAR,
+	RegisterFunction(*db.instance, ScalarFunction("getenv", {LogicalType::VARCHAR}, LogicalType::VARCHAR,
 	                                                             GetEnvFunction, GetEnvBind));
-}
-
-std::string ShellExtension::Name() {
-	return "shell";
 }
 
 } // namespace duckdb

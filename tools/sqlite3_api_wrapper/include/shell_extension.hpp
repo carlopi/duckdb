@@ -12,10 +12,11 @@
 
 namespace duckdb {
 
-class ShellExtension : public Extension {
+class ShellExtension : public NamedExtension<ShellExtension> {
 public:
+	static constexpr const char *name {"shell"};
+
 	void Load(DuckDB &db) override;
-	std::string Name() override;
 };
 
 } // namespace duckdb
