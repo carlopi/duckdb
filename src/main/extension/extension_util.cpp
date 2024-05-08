@@ -26,14 +26,14 @@ optional_ptr<CatalogEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db,
 	return system_catalog.CreateFunction(data, info);
 }
 
-optional_ptr<FunctionEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db, ScalarFunction function) {
+optional_ptr<CatalogEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db, ScalarFunction function) {
 	D_ASSERT(!function.name.empty());
 	ScalarFunctionSet set(function.name);
 	set.AddFunction(std::move(function));
 	return RegisterFunction(db, std::move(set));
 }
 
-optional_ptr<FunctionEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db, AggregateFunction function) {
+optional_ptr<CatalogEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db, AggregateFunction function) {
 	D_ASSERT(!function.name.empty());
 	AggregateFunctionSet set(function.name);
 	set.AddFunction(std::move(function));
@@ -54,7 +54,7 @@ void ExtensionUtil::RegisterFunction(DatabaseInstance &db, CreateSecretFunction 
 	config.secret_manager->RegisterSecretFunction(std::move(function), OnCreateConflict::ERROR_ON_CONFLICT);
 }
 
-optional_ptr<FunctionEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db, TableFunction function) {
+optional_ptr<CatalogEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db, TableFunction function) {
 	D_ASSERT(!function.name.empty());
 	TableFunctionSet set(function.name);
 	set.AddFunction(std::move(function));
@@ -69,7 +69,7 @@ optional_ptr<CatalogEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db,
 	return system_catalog.CreateFunction(data, info);
 }
 
-optional_ptr<FunctionEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db, PragmaFunction function) {
+optional_ptr<CatalogEntry> ExtensionUtil::RegisterFunction(DatabaseInstance &db, PragmaFunction function) {
 	D_ASSERT(!function.name.empty());
 	PragmaFunctionSet set(function.name);
 	set.AddFunction(std::move(function));
