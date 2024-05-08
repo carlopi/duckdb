@@ -79,6 +79,9 @@ static unique_ptr<FunctionData> DuckDBFunctionsBind(ClientContext &context, Tabl
 	names.emplace_back("stability");
 	return_types.emplace_back(LogicalType::VARCHAR);
 
+	names.emplace_back("extension");
+	return_types.emplace_back(LogicalType::VARCHAR);
+
 	return nullptr;
 }
 
@@ -167,6 +170,10 @@ struct ScalarFunctionExtractor {
 	static Value ResultType(ScalarFunctionCatalogEntry &entry, idx_t offset) {
 		return FunctionStabilityToValue(entry.functions.GetFunctionByOffset(offset).stability);
 	}
+	static Value ExtensionName(ScalarFunctionCatalogEntry &entry, idx_t offset) {
+		auto name = entry.functions.GetFunctionByOffset(offset).extension;
+		return name ? Value(name) : Value();
+	}
 };
 
 struct AggregateFunctionExtractor {
@@ -214,6 +221,10 @@ struct AggregateFunctionExtractor {
 
 	static Value ResultType(AggregateFunctionCatalogEntry &entry, idx_t offset) {
 		return FunctionStabilityToValue(entry.functions.GetFunctionByOffset(offset).stability);
+	}
+	static Value ExtensionName(AggregateFunctionCatalogEntry &entry, idx_t offset) {
+		auto name = entry.functions.GetFunctionByOffset(offset).extension;
+		return name ? Value(name) : Value();
 	}
 };
 
@@ -270,6 +281,10 @@ struct MacroExtractor {
 
 	static Value ResultType(ScalarMacroCatalogEntry &entry, idx_t offset) {
 		return Value();
+	}
+	static Value ExtensionName(ScalarMacroCatalogEntry &entry, idx_t offset) {
+		auto name = entry.function->extension;
+		return name ? Value(name) : Value();
 	}
 };
 
@@ -329,6 +344,10 @@ struct TableMacroExtractor {
 	static Value ResultType(TableMacroCatalogEntry &entry, idx_t offset) {
 		return Value();
 	}
+	static Value ExtensionName(TableMacroCatalogEntry &entry, idx_t offset) {
+		auto name = entry.function->extension;
+		return name ? Value(name) : Value();
+	}
 };
 
 struct TableFunctionExtractor {
@@ -384,6 +403,10 @@ struct TableFunctionExtractor {
 
 	static Value ResultType(TableFunctionCatalogEntry &entry, idx_t offset) {
 		return Value();
+	}
+	static Value ExtensionName(TableFunctionCatalogEntry &entry, idx_t offset) {
+		auto name = entry.functions.GetFunctionByOffset(offset).extension;
+		return name ? Value(name) : Value();
 	}
 };
 
@@ -441,6 +464,10 @@ struct PragmaFunctionExtractor {
 
 	static Value ResultType(PragmaFunctionCatalogEntry &entry, idx_t offset) {
 		return Value();
+	}
+	static Value ExtensionName(PragmaFunctionCatalogEntry &entry, idx_t offset) {
+		auto name = entry.functions.GetFunctionByOffset(offset).extension;
+		return name ? Value(name) : Value();
 	}
 };
 
@@ -504,6 +531,9 @@ bool ExtractFunctionData(FunctionEntry &entry, idx_t function_idx, DataChunk &ou
 
 	// stability, LogicalType::VARCHAR
 	output.SetValue(col++, output_offset, OP::ResultType(function, function_idx));
+
+	// stability, LogicalType::VARCHAR
+	output.SetValue(col++, output_offset, OP::ExtensionName(function, function_idx));
 
 	return function_idx + 1 == OP::FunctionCount(function);
 }
