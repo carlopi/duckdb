@@ -79,7 +79,7 @@ public:
 		if (!ptr) {
 			return optional_ptr<TARGET>();
 		}
-		return ptr->template Cast<TARGET>();
+		return ptr->dynamic_cast<TARGET>();
 	}
 
 private:
