@@ -35,9 +35,9 @@ public:
 	}
 
 	template <typename T>
-	static FunctionEntry& RegisterFunction(DatabaseInstance& db, T&& fun) {
+	static void RegisterFunction(DatabaseInstance& db, T&& fun) {
 		fun.SetExtension(Derived::name);
-		return ExtensionUtilExplicit::RegisterFunction(db, fun).operator*();
+		ExtensionUtilExplicit::RegisterFunction(db, fun);
 	}
 	static void RegisterFunction(DatabaseInstance& db, CreateSecretFunction fun) {
 		// TODO: enable registration of secrets functions
