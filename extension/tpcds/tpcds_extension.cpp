@@ -161,20 +161,20 @@ static void LoadInternal(DuckDB &db) {
 	dsdgen_func.named_parameters["catalog"] = LogicalType::VARCHAR;
 	dsdgen_func.named_parameters["schema"] = LogicalType::VARCHAR;
 	dsdgen_func.named_parameters["suffix"] = LogicalType::VARCHAR;
-	ExtensionUtil::RegisterFunction(db_instance, dsdgen_func);
+	TpcdsExtension::RegisterFunction(db_instance, dsdgen_func);
 
 	// create the TPCDS pragma that allows us to run the query
 	auto tpcds_func = PragmaFunction::PragmaCall("tpcds", PragmaTpcdsQuery, {LogicalType::BIGINT});
-	ExtensionUtil::RegisterFunction(db_instance, tpcds_func);
+	TpcdsExtension::RegisterFunction(db_instance, tpcds_func);
 
 	// create the TPCDS_QUERIES function that returns the query
 	TableFunction tpcds_query_func("tpcds_queries", {}, TPCDSQueryFunction, TPCDSQueryBind, TPCDSInit);
-	ExtensionUtil::RegisterFunction(db_instance, tpcds_query_func);
+	TpcdsExtension::RegisterFunction(db_instance, tpcds_query_func);
 
 	// create the TPCDS_ANSWERS that returns the query result
 	TableFunction tpcds_query_answer_func("tpcds_answers", {}, TPCDSQueryAnswerFunction, TPCDSQueryAnswerBind,
 	                                      TPCDSInit);
-	ExtensionUtil::RegisterFunction(db_instance, tpcds_query_answer_func);
+	TpcdsExtension::RegisterFunction(db_instance, tpcds_query_answer_func);
 }
 
 void TpcdsExtension::Load(DuckDB &db) {
@@ -187,10 +187,6 @@ std::string TpcdsExtension::GetQuery(int query) {
 
 std::string TpcdsExtension::GetAnswer(double sf, int query) {
 	return tpcds::DSDGenWrapper::GetAnswer(sf, query);
-}
-
-std::string TpcdsExtension::Name() {
-	return "tpcds";
 }
 
 } // namespace duckdb
