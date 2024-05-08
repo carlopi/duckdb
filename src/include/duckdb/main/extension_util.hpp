@@ -75,7 +75,7 @@ public:
 };
 } // namespace extension_util_impl
 
-class ExtensionUtil : public extension_util_impl::ExtensionUtil {
+class __attribute__((deprecated)) ExtensionUtil : public extension_util_impl::ExtensionUtil {
 public:
 };
 
