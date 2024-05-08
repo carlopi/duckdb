@@ -12,10 +12,11 @@
 
 namespace duckdb {
 
-class JsonExtension : public Extension {
+class JsonExtension : public NamedExtension<JsonExtension> {
 public:
+	static constexpr const char *name {"json"};
+
 	void Load(DuckDB &db) override;
-	std::string Name() override;
 };
 
 } // namespace duckdb
