@@ -32,10 +32,10 @@ struct DemoSecretType {
 		secret_type.name = type_name;
 		secret_type.deserializer = KeyValueSecret::Deserialize<KeyValueSecret>;
 		secret_type.default_provider = "config";
-		ExtensionUtil::RegisterSecretType(instance, secret_type);
+		ExtensionUtilExplicit::RegisterSecretType(instance, secret_type);
 
 		CreateSecretFunction secret_fun = {type_name, "config", CreateDemoSecret};
-		ExtensionUtil::RegisterFunction(instance, secret_fun);
+		ExtensionUtilExplicit::RegisterFunction(instance, secret_fun);
 	}
 };
 
