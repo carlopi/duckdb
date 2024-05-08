@@ -74,6 +74,13 @@ public:
 	bool operator!=(const optional_ptr<T> &rhs) const {
 		return ptr != rhs.ptr;
 	}
+	template <class TARGET>
+	optional_ptr<TARGET> OptionalPtrCast() {
+		if (!ptr) {
+			return optional_ptr<TARGET>();
+		}
+		return ptr->template Cast<TARGET>();
+	}
 
 private:
 	T *ptr;
