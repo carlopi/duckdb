@@ -13,10 +13,11 @@
 
 namespace duckdb {
 
-class InetExtension : public Extension {
+class InetExtension : public NamedExtension<InetExtension> {
 public:
+	static constexpr const char *name {"inet"};
+
 	void Load(DuckDB &db) override;
-	std::string Name() override;
 };
 
 } // namespace duckdb

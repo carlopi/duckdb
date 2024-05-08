@@ -27,31 +27,28 @@ void InetExtension::Load(DuckDB &db) {
 	children.push_back(make_pair("mask", LogicalType::USMALLINT));
 	auto inet_type = LogicalType::STRUCT(std::move(children));
 	inet_type.SetAlias(INET_TYPE_NAME);
-	ExtensionUtil::RegisterType(*db.instance, INET_TYPE_NAME, inet_type);
+	RegisterType(*db.instance, INET_TYPE_NAME, inet_type);
 
 	// add the casts to and from INET type
-	ExtensionUtil::RegisterCastFunction(*db.instance, LogicalType::VARCHAR, inet_type,
+	RegisterCastFunction(*db.instance, LogicalType::VARCHAR, inet_type,
 	                                    INetFunctions::CastVarcharToINET);
-	ExtensionUtil::RegisterCastFunction(*db.instance, inet_type, LogicalType::VARCHAR,
+	RegisterCastFunction(*db.instance, inet_type, LogicalType::VARCHAR,
 	                                    INetFunctions::CastINETToVarchar);
 
 	// add inet functions
-	ExtensionUtil::RegisterFunction(*db.instance,
+	RegisterFunction(*db.instance,
 	                                ScalarFunction("host", {inet_type}, LogicalType::VARCHAR, INetFunctions::Host));
-	ExtensionUtil::RegisterFunction(
+	RegisterFunction(
 	    *db.instance, ScalarFunction("family", {inet_type}, LogicalType::UTINYINT, INetFunctions::Family));
 
 	// Add - function with ALTER_ON_CONFLICT
 	ScalarFunction substract_fun("-", {inet_type, LogicalType::HUGEINT}, inet_type, INetFunctions::Subtract);
-	ExtensionUtil::AddFunctionOverload(*db.instance, substract_fun);
+	AddFunctionOverload(*db.instance, substract_fun);
 
 	ScalarFunction add_fun("+", {inet_type, LogicalType::HUGEINT}, inet_type, INetFunctions::Add);
-	ExtensionUtil::AddFunctionOverload(*db.instance, add_fun);
+	AddFunctionOverload(*db.instance, add_fun);
 }
 
-std::string InetExtension::Name() {
-	return "inet";
-}
 
 } // namespace duckdb
 
