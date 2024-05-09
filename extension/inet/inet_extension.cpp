@@ -30,16 +30,12 @@ void InetExtension::Load(DuckDB &db) {
 	RegisterType(*db.instance, INET_TYPE_NAME, inet_type);
 
 	// add the casts to and from INET type
-	RegisterCastFunction(*db.instance, LogicalType::VARCHAR, inet_type,
-	                                    INetFunctions::CastVarcharToINET);
-	RegisterCastFunction(*db.instance, inet_type, LogicalType::VARCHAR,
-	                                    INetFunctions::CastINETToVarchar);
+	RegisterCastFunction(*db.instance, LogicalType::VARCHAR, inet_type, INetFunctions::CastVarcharToINET);
+	RegisterCastFunction(*db.instance, inet_type, LogicalType::VARCHAR, INetFunctions::CastINETToVarchar);
 
 	// add inet functions
-	RegisterFunction(*db.instance,
-	                                ScalarFunction("host", {inet_type}, LogicalType::VARCHAR, INetFunctions::Host));
-	RegisterFunction(
-	    *db.instance, ScalarFunction("family", {inet_type}, LogicalType::UTINYINT, INetFunctions::Family));
+	RegisterFunction(*db.instance, ScalarFunction("host", {inet_type}, LogicalType::VARCHAR, INetFunctions::Host));
+	RegisterFunction(*db.instance, ScalarFunction("family", {inet_type}, LogicalType::UTINYINT, INetFunctions::Family));
 
 	// Add - function with ALTER_ON_CONFLICT
 	ScalarFunction substract_fun("-", {inet_type, LogicalType::HUGEINT}, inet_type, INetFunctions::Subtract);
@@ -48,7 +44,6 @@ void InetExtension::Load(DuckDB &db) {
 	ScalarFunction add_fun("+", {inet_type, LogicalType::HUGEINT}, inet_type, INetFunctions::Add);
 	AddFunctionOverload(*db.instance, add_fun);
 }
-
 
 } // namespace duckdb
 
