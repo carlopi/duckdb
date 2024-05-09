@@ -17,10 +17,9 @@ struct CreateMacroInfo : public CreateFunctionInfo {
 	explicit CreateMacroInfo(CatalogType type);
 
 	unique_ptr<MacroFunction> function;
-	void SetExtension(const char* ext) {
+	void SetExtension(const char *ext) {
 		function->extension = ext;
 	}
-
 
 public:
 	unique_ptr<CreateInfo> Copy() const override;
