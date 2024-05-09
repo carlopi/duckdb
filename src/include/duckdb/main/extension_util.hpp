@@ -19,11 +19,11 @@ struct CreateMacroInfo;
 struct CreateCollationInfo;
 class DatabaseInstance;
 
-namespace extension_util_impl { 
+namespace extension_util_impl {
 //! The ExtensionUtil class contains methods that are useful for extensions
 class ExtensionUtil {
 public:
-	template<class Derived>
+	template <class Derived>
 	friend class NamedExtension;
 	//! Register a new scalar function - throw an exception if the function already exists
 	DUCKDB_API static optional_ptr<CatalogEntry> RegisterFunction(DatabaseInstance &db, ScalarFunction function);
