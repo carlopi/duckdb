@@ -79,7 +79,7 @@ public:
 		if (!ptr) {
 			return optional_ptr<TARGET>();
 		}
-		return static_cast<TARGET*>(ptr);
+		return static_cast<TARGET *>(ptr);
 	}
 
 private:
