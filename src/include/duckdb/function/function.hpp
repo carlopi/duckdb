@@ -93,8 +93,8 @@ public:
 	string name;
 	//! Additional Information to specify function from it's name
 	string extra_info;
-	const char* extension{NULL};
-	void SetExtension(const char * ext) {
+	const char *extension {NULL};
+	void SetExtension(const char *ext) {
 		extension = ext;
 	}
 
