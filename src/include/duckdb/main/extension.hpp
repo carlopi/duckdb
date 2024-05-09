@@ -35,11 +35,11 @@ public:
 	}
 
 	template <typename T>
-	static void RegisterFunction(DatabaseInstance& db, T&& fun) {
+	static void RegisterFunction(DatabaseInstance &db, T &&fun) {
 		fun.SetExtension(Derived::name);
 		ExtensionUtilExplicit::RegisterFunction(db, fun);
 	}
-	static void RegisterFunction(DatabaseInstance& db, CreateSecretFunction fun) {
+	static void RegisterFunction(DatabaseInstance &db, CreateSecretFunction fun) {
 		// TODO: enable registration of secrets functions
 		ExtensionUtilExplicit::RegisterFunction(db, fun);
 	}
@@ -55,9 +55,8 @@ public:
 		// TODO: enable registration of secrets types
 		ExtensionUtilExplicit::RegisterSecretType(db, secret_type);
 	}
-	static void RegisterCastFunction(DatabaseInstance &db, const LogicalType &source,
-	                                            const LogicalType &target, BoundCastInfo function,
-	                                            int64_t implicit_cast_cost = -1) {
+	static void RegisterCastFunction(DatabaseInstance &db, const LogicalType &source, const LogicalType &target,
+	                                 BoundCastInfo function, int64_t implicit_cast_cost = -1) {
 		ExtensionUtilExplicit::RegisterCastFunction(db, source, target, std::move(function), implicit_cast_cost);
 	}
 };
