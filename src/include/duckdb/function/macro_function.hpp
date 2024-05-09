@@ -30,7 +30,8 @@ public:
 	//! The default parameters and their associated values
 	case_insensitive_map_t<unique_ptr<ParsedExpression>> default_parameters;
 
-	const char* extension{NULL};
+	const char *extension {NULL};
+
 public:
 	virtual ~MacroFunction() {
 	}
