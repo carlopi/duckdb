@@ -5,6 +5,7 @@
 #include "duckdb/common/exception/list.hpp"
 #include "duckdb/parser/tableref.hpp"
 #include "duckdb/planner/expression.hpp"
+#include <iostream>
 
 #ifdef DUCKDB_CRASH_ON_ASSERT
 #include "duckdb/common/printer.hpp"
@@ -315,6 +316,7 @@ AutoloadException::AutoloadException(const string &extension_name, const string 
 }
 
 SerializationException::SerializationException(const string &msg) : Exception(ExceptionType::SERIALIZATION, msg) {
+	std::cout << "BOOM: " << msg << "\n";
 }
 
 SequenceException::SequenceException(const string &msg) : Exception(ExceptionType::SEQUENCE, msg) {
