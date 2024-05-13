@@ -14,3 +14,10 @@ index 8030de3..6cd356b 100644
  
  # TODO: Enable this once the WAL playback is fixed for extension indexes
  #statement ok
+@@ -75,4 +76,4 @@ restart
+ query I
+ SELECT count FROM pragma_hnsw_index_info();
+ ----
+-3
+\ No newline at end of file
++3
