@@ -41,5 +41,5 @@ subprocess.run(["git", "reset", "--hard", "HEAD"], check=True)
 for patch in patches:
     print(f"Applying patch: {patch}\n")
     subprocess.run(
-        ["git", "apply", "--ignore-space-change", "--ignore-whitespace", os.path.join(directory, patch)], check=True
+        ["patch", "-p1", os.path.join(directory, patch)], check=True
     )
