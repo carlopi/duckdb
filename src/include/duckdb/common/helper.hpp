@@ -237,10 +237,8 @@ bool RefersToSameObject(const T &a, const T &b) {
 
 template<class T, class SRC>
 void DynamicCastCheck(const SRC *source) {
-#ifndef __APPLE__
 	// Actual check is on the fact that dynamic_cast and reinterpret_cast are equivalent
-	D_ASSERT(reinterpret_cast<const T *>(source) == dynamic_cast<const T *>(source));
-#endif
+	D_ASSERT(reinterpret_cast<const T *>(source) == static_cast<const T *>(source));
 }
 
 } // namespace duckdb
