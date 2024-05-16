@@ -35,6 +35,8 @@ struct MetadataPointer {
 	uint8_t index : 8;
 };
 
+static_assert(sizeof(MetadataPointer) == 8 , "MetadataPointer is not 8 bytes!");
+
 struct MetadataHandle {
 	MetadataPointer pointer;
 	BufferHandle handle;
