@@ -18,7 +18,7 @@ parser.add_argument(
     help='If set will validate that extension_entries.hpp is up to date, otherwise it generates the extension_functions.hpp file.',
 )
 parser.add_argument(
-    '--extension_dir',
+    '--extension_repo',
     action='store',
     help="The root directory to look for the '<extension_name>/<extension>.duckdb_extension' files, relative to the location of this script",
     default='../build/release/repository',
@@ -185,8 +185,8 @@ def check_prerequisites():
             "please run 'DISABLE_BUILTIN_EXTENSIONS=1 BUILD_ALL_EXT=1 make release', you might have to manually add DONT_LINK to all extension_configs"
         )
         exit(1)
-    if not os.path.isdir(args.extension_dir):
-        print(f"provided --extension_dir '{args.extension_dir}' is not a valid directory")
+    if not os.path.isdir(args.extension_repo):
+        print(f"provided --extension_repo '{args.extension_repo}' is not a valid directory")
         exit(1)
 
 
@@ -291,7 +291,7 @@ class ExtensionData:
             self.add_functions(extension_name, extension_functions)
         else:
             error = f"""Missing extension {extension_name} and not found in stored_functions/stored_settings
-Please double check if '{args.extension_dir}' is the right location to look for ./**/*.duckdb_extension files"""
+Please double check if '{args.extension_repo}' is the right location to look for ./**/*.duckdb_extension files"""
             print(error)
             exit(1)
 
@@ -387,9 +387,8 @@ def print_map_diff(d1, d2):
 
 def get_extension_path_map() -> Dict[str, str]:
     extension_paths: Dict[str, str] = {}
-    # extension_dir = pathlib.Path('../build/release/extension')
-    extension_dir = args.extension_dir
-    for location in glob.iglob(extension_dir + '/**/*.duckdb_extension', recursive=True):
+    extension_repo = args.extension_repo
+    for location in glob.iglob(extension_repo + '/**/*.duckdb_extension', recursive=True):
         name, _ = os.path.splitext(os.path.basename(location))
         print(f"Located extension: {name} in path: '{location}'")
         extension_paths[name] = location
