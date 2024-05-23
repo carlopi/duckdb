@@ -173,6 +173,7 @@ jobs:
       - name: Install duckdb
         run: |
           unzip duckdb_cli-osx-universal.zip
+          file duckdb
           ./duckdb -c "SELECT 32;"
 
   test_matrix_brew:
