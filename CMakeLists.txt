@@ -198,6 +198,8 @@ elseif(${ENABLE_SANITIZER})
   endif()
 endif()
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacos-version-min=11.0 -mmacosx-version-min=11.0")
+
 if (${DISABLE_VPTR_SANITIZER})
 else()
   if(APPLE AND CMAKE_SYSTEM_PROCESSOR MATCHES "arm64")
