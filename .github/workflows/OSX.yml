@@ -99,7 +99,6 @@ jobs:
     # Builds binaries for osx_arm64 and osx_amd64
     name: OSX Release
     runs-on: macos-14
-    needs: xcode-debug
     env:
       EXTENSION_CONFIGS: '${GITHUB_WORKSPACE}/.github/config/bundled_extensions.cmake'
       ENABLE_EXTENSION_AUTOLOADING: 1
@@ -199,6 +198,24 @@ jobs:
             libduckdb-osx-universal.zip
             duckdb_cli-osx-universal.zip
             duckdb_odbc-osx-universal.zip
+
+  test_matrix_cli:
+    needs: xcode-release
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ['macos-11', 'macos-12', macos-13, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: duckdb-binaries-osx
+          path: .
+
+      - name: Install duckdb
+        run: |
+          unzip duckdb_cli-osx-universal.zip
+          ./duckdb -c "SELECT 32;"
 
   xcode-extensions:
     # Builds extensions for osx_arm64 and osx_amd64
