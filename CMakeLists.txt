@@ -199,6 +199,8 @@ elseif(${ENABLE_SANITIZER})
 endif()
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mmacos-version-min=11.0 -mmacosx-version-min=11.0")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -mmacos-version-min=11.0 -mmacosx-version-min=11.0")
+set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -mmacosx-version-min=11.0 -mmacos-version-min=11.0")
 
 if (${DISABLE_VPTR_SANITIZER})
 else()
