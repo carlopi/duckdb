@@ -1,9 +1,4 @@
 cmake_minimum_required(VERSION 3.5...3.29)
-
-if(NOT CLANG_TIDY)
-  find_package(Python3)
-endif()
-
 if(POLICY CMP0026)
   cmake_policy(SET CMP0026 NEW)
 endif()
@@ -20,13 +15,14 @@ if(POLICY CMP0063)
   cmake_policy(SET CMP0063 NEW)
 endif()
 
+
 option(OSX_BUILD_UNIVERSAL "Build both architectures on OSX and create a single binary containing both." FALSE)
 if (OSX_BUILD_UNIVERSAL)
   if (NOT APPLE)
     error("This only makes sense on OSX")
   endif()
   SET(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE STRING "Build architectures for Mac OS X" FORCE)
-  set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0 CACHE STRING "Minimum OS X deployment version" FORCE)
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum OS X deployment version" FORCE)
 endif()
 
 if (OSX_BUILD_ARCH)
@@ -35,9 +31,13 @@ if (OSX_BUILD_ARCH)
     error("This only makes sense on OSX")
   endif()
   SET(CMAKE_OSX_ARCHITECTURES "${OSX_BUILD_ARCH}" CACHE STRING "Build architectures for Mac OS X" FORCE)
-  set(CMAKE_OSX_DEPLOYMENT_TARGET 11.0 CACHE STRING "Minimum OS X deployment version" FORCE)
+  set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0" CACHE STRING "Minimum OS X deployment version" FORCE)
 endif()
 
+
+if(NOT CLANG_TIDY)
+  find_package(Python3)
+endif()
 
 project(DuckDB)
 
