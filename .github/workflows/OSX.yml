@@ -136,7 +136,7 @@ jobs:
 
       - name: LIPO platform
         shell: bash
-        run: lipo -archs ./build/release/duckdb -detailed_info
+        run: lipo -archs ./build/release/duckdb
 
         #     from https://docs.github.com/en/actions/deployment/deploying-xcode-applications/installing-an-apple-certificate-on-macos-runners-for-xcode-development
       - name: Deploy
