@@ -13,7 +13,7 @@ env:
   GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
 jobs:
-  test_matrix:
+  test_matrix_python:
     strategy:
       fail-fast: false
       matrix:
@@ -37,3 +37,22 @@ jobs:
         shell: bash
         run: |
           python3 examples/example.py
+  test_matrix_cli:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, ubuntu-22.04, ubuntu-20.04, windows-2019, 'macos-11', 'macos-12', macos-13, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          sparse-checkout: examples
+
+      - name: Install duckdb
+        run: |
+          curl https://carlopi.github.io/duckdb-latest/install.sh | bash
+
+      - name: Run minor test
+        shell: bash
+        run: |
+          duckdb_latest -c "SELECT 32;"
