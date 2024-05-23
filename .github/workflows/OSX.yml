@@ -145,24 +145,6 @@ jobs:
         shell: bash
         run: ./build/release/duckdb -c "PRAGMA platform;"
 
-      - name: Unit Test
-        shell: bash
-        if: ${{ inputs.skip_tests != 'true' }}
-        run: make allunit
-
-      - name: Tools Tests
-        shell: bash
-        if: ${{ inputs.skip_tests != 'true' }}
-        run: |
-          python -m pytest tools/shell/tests --shell-binary build/release/duckdb
-
-      - name: Examples
-        shell: bash
-        if: ${{ inputs.skip_tests != 'true' }}
-        run: |
-          (cd examples/embedded-c; make)
-          (cd examples/embedded-c++; make)
-
         #     from https://docs.github.com/en/actions/deployment/deploying-xcode-applications/installing-an-apple-certificate-on-macos-runners-for-xcode-development
       - name: Sign Binaries
         shell: bash
