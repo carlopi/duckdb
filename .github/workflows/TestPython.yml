@@ -51,8 +51,3 @@ jobs:
       - name: Install duckdb
         run: |
           curl https://carlopi.github.io/duckdb-latest/install.sh | bash
-
-      - name: Run minor test
-        shell: bash
-        run: |
-          duckdb_latest -c "SELECT 32;"
