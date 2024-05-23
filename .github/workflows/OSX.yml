@@ -125,7 +125,7 @@ jobs:
       - name: Setup Ccache
         uses: hendrikmuhs/ccache-action@main
         with:
-          key: ${{ github.job }}
+          key: ${{ github.job }}-125123
           save: ${{ github.ref == 'refs/heads/main' || github.repository != 'duckdb/duckdb' }}
 
       - name: Install UnixODBC
