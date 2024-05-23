@@ -1,0 +1,38 @@
+name: PythonTestMatrix
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  repository_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.head_ref || '' }}-${{ github.base_ref || '' }}-${{ github.ref != 'refs/heads/main' || github.sha }}
+  cancel-in-progress: false
+
+env:
+  GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+jobs:
+  test_matrix:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, ubuntu-22.04, ubuntu-20.04, windows-2019, macos-12, macos-13, macos-14]
+        version: [3.8, 3.9, 3.10, 3.11, 3.12]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.version }}
+
+      - uses: actions/checkout@v3
+        with:
+          sparse-checkout: examples
+
+      - name: Install duckdb
+        run: |
+          pip install duckdb
+
+      - name: Run minor test
+        shell: bash
+        run: |
+          python3 examples/example.py
