@@ -75,3 +75,9 @@ jobs:
       - name: Install duckdb
         run: |
           curl https://carlopi.github.io/duckdb-latest/install.sh | bash
+          source /home/runner/.bashrc
+
+      - name: Install duckdb2
+        run: |
+          which duckdb-latest
+          duckdb-latest -c "INSTALL spatial; LOAD spatial;"
