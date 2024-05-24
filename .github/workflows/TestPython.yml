@@ -57,8 +57,7 @@ jobs:
         run: |
           pip install duckdb
           pip install polars
-          pip install panda
-          pip install requests
+          pip install pandas
 
       - name: Run minor test
         shell: bash
@@ -90,6 +89,7 @@ jobs:
         shell: bash
         run: |
           python3 examples/example.py
+
   test_matrix_cli:
     strategy:
       fail-fast: false
