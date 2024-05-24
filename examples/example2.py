@@ -1,5 +1,5 @@
 import polars
-import panda
+import pandas
 import duckdb
 con = duckdb.connect("file.db")
 con.sql("CREATE TABLE integers (i INTEGER)")
