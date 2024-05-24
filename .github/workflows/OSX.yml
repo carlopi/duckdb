@@ -181,7 +181,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ['macos-11', 'macos-12', macos-13, macos-14]
+        os: ['macos-12', macos-13, macos-14]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Install duckdb
