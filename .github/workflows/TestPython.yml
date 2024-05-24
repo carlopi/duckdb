@@ -58,7 +58,7 @@ jobs:
           pip install duckdb
           pip install polars
           pip install panda
-          pip install request
+          pip install requests
 
       - name: Run minor test
         shell: bash
