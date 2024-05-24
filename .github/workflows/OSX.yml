@@ -131,10 +131,6 @@ jobs:
         shell: bash
         run: make
 
-      - name: Print platform
-        shell: bash
-        run: ./build/release/duckdb -c "PRAGMA platform;"
-
       - name: LIPO platform
         shell: bash
         run: lipo -archs ./build/release/duckdb
