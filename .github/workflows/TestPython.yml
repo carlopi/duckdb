@@ -55,6 +55,7 @@ jobs:
 
       - name: Install duckdb
         run: |
+          pip install pyarrow
           pip install duckdb
           pip install polars
           pip install pandas
