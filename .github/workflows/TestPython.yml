@@ -18,7 +18,7 @@ jobs:
       matrix:
         os: [windows-latest, ubuntu-24.04, ubuntu-22.04, ubuntu-20.04, windows-2019, 'macos-11', 'macos-12', macos-13, macos-14]
         version: ['3.8', '3.9', '3.10', '3.11', '3.12']
-        test: ['example.py', 'example2.py', 'example3.py', 'example4.py']
+        test: ['example_mem.py', 'example.py', 'example2.py', 'example3.py', 'example4.py']
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/setup-python@v5
