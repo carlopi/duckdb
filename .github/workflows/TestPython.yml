@@ -32,7 +32,7 @@ jobs:
       - name: Install duckdb
         run: |
           pip install pyarrow
-          pip install --upgrade duckdb
+          pip install --upgrade --pre duckdb
           pip install polars
           pip install pandas
 
@@ -61,7 +61,7 @@ jobs:
       - name: Install duckdb
         run: |
           pip install build
-          pip install --no-binary duckdb duckdb
+          pip install --no-binary duckdb --upgrade --pre duckdb
 
       - name: Run minor test
         shell: bash
