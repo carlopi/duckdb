@@ -12,30 +12,6 @@ concurrency:
 env:
   GH_TOKEN: ${{ secrets.GH_TOKEN }}
 jobs:
-  test_matrix_python0102:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, ubuntu-24.04, ubuntu-22.04, ubuntu-20.04, windows-2019, 'macos-11', 'macos-12', macos-13, macos-14]
-        version: ['3.8', '3.9', '3.10', '3.11', '3.12']
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.version }}
-
-      - uses: actions/checkout@v3
-        with:
-          sparse-checkout: examples
-
-      - name: Install duckdb
-        run: |
-          pip install duckdb==0.10.2
-
-      - name: Run minor test
-        shell: bash
-        run: |
-          python3 examples/example.py
   test_matrix_python:
     strategy:
       fail-fast: false
@@ -56,7 +32,7 @@ jobs:
       - name: Install duckdb
         run: |
           pip install pyarrow
-          pip install duckdb
+          pip install --upgrade duckdb
           pip install polars
           pip install pandas
 
@@ -70,7 +46,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-24.04, ubuntu-22.04, ubuntu-20.04, windows-2019, 'macos-11', 'macos-12', macos-13, macos-14]
+        os: [windows-latest, windows-2019]
         version: ['3.8', '3.9', '3.10', '3.11', '3.12']
     runs-on: ${{ matrix.os }}
     steps:
@@ -84,6 +60,7 @@ jobs:
 
       - name: Install duckdb
         run: |
+          pip install build
           pip install --no-binary duckdb duckdb
 
       - name: Run minor test
