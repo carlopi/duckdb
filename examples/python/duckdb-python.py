@@ -1,5 +1,6 @@
 import duckdb
 
+
 # basic SQL API
 
 # connect to an in-memory temporary database
