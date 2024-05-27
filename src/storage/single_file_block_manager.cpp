@@ -37,6 +37,7 @@ void MainHeader::Write(WriteStream &ser) {
 	}
 	SerializeVersionNumber(ser, DuckDB::LibraryVersion());
 	SerializeVersionNumber(ser, DuckDB::SourceID());
+	SerializeVersionNumber(ser, OptionalExtensionName());
 }
 
 void MainHeader::CheckMagicBytes(FileHandle &handle) {
@@ -87,6 +88,7 @@ MainHeader MainHeader::Read(ReadStream &source) {
 	}
 	DeserializeVersionNumber(source, header.library_git_desc);
 	DeserializeVersionNumber(source, header.library_git_hash);
+	DeserializeVersionNumber(source, header.optional_extension_name);
 	return header;
 }
 
@@ -169,7 +171,7 @@ FileOpenFlags SingleFileBlockManager::GetFileFlags(bool create_new) const {
 	return result;
 }
 
-void SingleFileBlockManager::CreateNewDatabase() {
+void SingleFileBlockManager::CreateNewDatabase(const string &extension_name) {
 	auto flags = GetFileFlags(true);
 
 	// open the RDBMS handle
@@ -184,6 +186,10 @@ void SingleFileBlockManager::CreateNewDatabase() {
 	main_header.version_number = VERSION_NUMBER;
 	memset(main_header.flags, 0, sizeof(uint64_t) * 4);
 
+	memset(main_header.optional_extension_name, 0, 32);
+	for (idx_t i = 0; i < extension_name.size(); i++) {
+		main_header.optional_extension_name[i] = static_cast<data_t>(extension_name[i]);
+	}
 	SerializeHeaderStructure<MainHeader>(main_header, header_buffer.buffer);
 	// now write the header to the file
 	ChecksumAndWrite(header_buffer, 0);
@@ -218,6 +224,13 @@ void SingleFileBlockManager::CreateNewDatabase() {
 	iteration_count = 0;
 	active_header = 1;
 	max_block = 0;
+}
+
+string SingleFileBlockManager::GetDBExtensionType(FileHandle &handle) {
+	data_t main_header_bytes[128];
+	handle.Read(main_header_bytes, 128, 8);
+	auto t = DeserializeHeaderStructure<MainHeader>(main_header_bytes);
+	return t.OptionalExtensionName();
 }
 
 void SingleFileBlockManager::LoadExistingDatabase() {
