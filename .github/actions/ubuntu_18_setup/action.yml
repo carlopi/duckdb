@@ -74,7 +74,6 @@ runs:
         ldd --version ldd
         python3 --version
         git --version
-        git log -1 --format=%h
 
     - name: Setup vcpkg
       if: ${{ inputs.vcpkg == 1 }}
