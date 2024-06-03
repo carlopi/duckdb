@@ -41,9 +41,9 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.STAGING_ACCESS_USER }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.STAGING_ACCESS_KEY }}
         run: |
-          aws s3 cp --recursive s3://duckdb-staging/1f98600c2c/v1.0.0/duckdb/duckdb/twine_upload/duckdb-1.0.0-cp310-cp310-macosx_12_0_arm64.whl twine_upload/. --region us-east-2
-          aws s3 cp --recursive s3://duckdb-staging/1f98600c2c/v1.0.0/duckdb/duckdb/twine_upload/duckdb-1.0.0-cp310-cp310-macosx_12_0_universal2.whl twine_upload/. --region us-east-2
-          aws s3 cp --recursive s3://duckdb-staging/1f98600c2c/v1.0.0/duckdb/duckdb/twine_upload/duckdb-1.0.0-cp310-cp310-macosx_12_0_x86_64.whl twine_upload/. --region us-east-2
+          aws s3 cp s3://duckdb-staging/1f98600c2c/v1.0.0/duckdb/duckdb/twine_upload/duckdb-1.0.0-cp310-cp310-macosx_12_0_arm64.whl twine_upload/. --region us-east-2
+          aws s3 cp s3://duckdb-staging/1f98600c2c/v1.0.0/duckdb/duckdb/twine_upload/duckdb-1.0.0-cp310-cp310-macosx_12_0_universal2.whl twine_upload/. --region us-east-2
+          aws s3 cp s3://duckdb-staging/1f98600c2c/v1.0.0/duckdb/duckdb/twine_upload/duckdb-1.0.0-cp310-cp310-macosx_12_0_x86_64.whl twine_upload/. --region us-east-2
           aws s3 cp --recursive s3://duckdb-staging/1f98600c2c/v1.0.0/duckdb/duckdb/twine_upload/duckdb-1.0.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl twine_upload/. --region us-east-2
           aws s3 cp --recursive s3://duckdb-staging/1f98600c2c/v1.0.0/duckdb/duckdb/twine_upload/duckdb-1.0.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl twine_upload/. --region us-east-2
           aws s3 cp --recursive s3://duckdb-staging/1f98600c2c/v1.0.0/duckdb/duckdb/twine_upload/duckdb-1.0.0-cp310-cp310-manylinux_2_24_aarch64.manylinux_2_28_aarch64.whl twine_upload/. --region us-east-2
