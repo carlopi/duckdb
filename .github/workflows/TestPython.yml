@@ -41,7 +41,8 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.STAGING_ACCESS_USER }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.STAGING_ACCESS_KEY }}
         run: |
-          aws s3 cp --recursive s3://duckdb-staging/1f98600c2c/v1.0.0/duckdb/duckdb/twine_upload/ twine_upload --region us-east-2
+          aws s3 cp --recursive s3://duckdb-staging/1f98600c2c/v1.0.0/duckdb/duckdb/twine_upload/duckdb-1.0.0-cp37-cp37m-manylinux_2_17_aarch64.manylinux2014_aarch64.whl twine_upload/. --region us-east-2
+          aws s3 cp --recursive s3://duckdb-staging/1f98600c2c/v1.0.0/duckdb/duckdb/twine_upload/duckdb-1.0.0.tar.gz twine_upload/. --region us-east-2
 
       - name: Install aws
         run: |
