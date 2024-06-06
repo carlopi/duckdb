@@ -118,6 +118,8 @@ runs:
 
     - uses: ilammy/msvc-dev-cmd@v1.4.1
       if: inputs.deploy_as == 'windows_amd64'
+      with:
+        toolset: '14.XX'
 
     - name: Fix for MSVC issue, via detection of current installed toolchain
       shell: bash
@@ -131,6 +133,7 @@ runs:
         echo "int main() { return 0; }" > program.cpp
         cl program.cpp > output
         VERSION=$(grep Linker output | awk '{ print $6 }' | awk -F'.' '{ printf("%s.%s", $1, $2) }')
+        echo "Toolset version = $VERSION"
         rm output program.cpp
         cd ..
         cp $OVERLAY_TRIPLET_SRC $OVERLAY_TRIPLET_DST
