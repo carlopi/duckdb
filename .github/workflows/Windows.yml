@@ -16,6 +16,7 @@ on:
         type: string
       skip_tests:
         type: string
+
   repository_dispatch:
   push:
     branches:
