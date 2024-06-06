@@ -116,10 +116,8 @@ runs:
         ls -al
         pwd
 
-    - uses: ilammy/msvc-dev-cmd@v1.4.1
+    - uses: ilammy/msvc-dev-cmd@v1
       if: inputs.deploy_as == 'windows_amd64'
-      with:
-        toolset: '14.XX'
 
     - name: Fix for MSVC issue, via detection of current installed toolchain
       shell: bash
