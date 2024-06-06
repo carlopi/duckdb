@@ -129,7 +129,6 @@ jobs:
     - name: Duckdb.dll export symbols with C++ on Windows
       shell: bash
       run: cl -I src/include examples/embedded-c++-windows/cppintegration.cpp -link src/Release/duckdb.lib
-
     - name: Install ODBC Driver
       shell: bash
       run: |
