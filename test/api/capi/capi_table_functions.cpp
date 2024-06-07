@@ -3,6 +3,8 @@
 using namespace duckdb;
 using namespace std;
 
+#include <iostream>
+
 struct my_bind_data_struct {
 	int64_t size;
 };
@@ -90,38 +92,64 @@ static duckdb_state capi_register_table_function(duckdb_connection connection, c
 }
 
 TEST_CASE("Test Table Functions C API", "[capi]") {
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	CAPITester tester;
 	duckdb::unique_ptr<CAPIResult> result;
 
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	REQUIRE(tester.OpenDatabase(nullptr));
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	capi_register_table_function(tester.connection, "my_function", my_bind, my_init, my_function);
 
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	// now call it
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	result = tester.Query("SELECT * FROM my_function(1)");
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	REQUIRE_NO_FAIL(*result);
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	REQUIRE(result->Fetch<int64_t>(0, 0) == 42);
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 
 	result = tester.Query("SELECT * FROM my_function(1, my_parameter=3)");
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	REQUIRE_NO_FAIL(*result);
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	REQUIRE(result->Fetch<int64_t>(0, 0) == 42);
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 
 	result = tester.Query("SELECT * FROM my_function(1, my_parameter=\"val\")");
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	REQUIRE(result->HasError());
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	result = tester.Query("SELECT * FROM my_function(1, nota_parameter=\"val\")");
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	REQUIRE(result->HasError());
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 
 	result = tester.Query("SELECT * FROM my_function(3)");
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	REQUIRE_NO_FAIL(*result);
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	REQUIRE(result->Fetch<int64_t>(0, 0) == 42);
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	REQUIRE(result->Fetch<int64_t>(0, 1) == 84);
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	REQUIRE(result->Fetch<int64_t>(0, 2) == 42);
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 
 	result = tester.Query("SELECT forty_two, COUNT(*) FROM my_function(10000) GROUP BY 1 ORDER BY 1");
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	REQUIRE_NO_FAIL(*result);
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	REQUIRE(result->Fetch<int64_t>(0, 0) == 42);
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	REQUIRE(result->Fetch<int64_t>(0, 1) == 84);
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	REQUIRE(result->Fetch<int64_t>(1, 0) == 5000);
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 	REQUIRE(result->Fetch<int64_t>(1, 1) == 5000);
+	std::cout << __FILE__ << "\t" << __LINE__ << "\n";
 }
 
 void my_error_bind(duckdb_bind_info info) {
