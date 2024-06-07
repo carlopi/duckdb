@@ -1,4 +1,5 @@
 #include "duckdb/main/capi/capi_internal.hpp"
+#include <iostream>
 
 using duckdb::Connection;
 using duckdb::DatabaseData;
@@ -6,34 +7,53 @@ using duckdb::DBConfig;
 using duckdb::DuckDB;
 using duckdb::ErrorData;
 
+
 duckdb_state duckdb_open_ext(const char *path, duckdb_database *out, duckdb_config config, char **error) {
+	std::cout << "duckdb_open_ext 1\n";
 	auto wrapper = new DatabaseData();
+	std::cout << "duckdb_open_ext 2\n";
 	try {
+	std::cout << "duckdb_open_ext 3\n";
 		DBConfig default_config;
+	std::cout << "duckdb_open_ext 4\n";
 		default_config.SetOptionByName("duckdb_api", "capi");
+	std::cout << "duckdb_open_ext 5\n";
 
 		DBConfig *db_config = &default_config;
+	std::cout << "duckdb_open_ext 6\n";
 		DBConfig *user_config = (DBConfig *)config;
+	std::cout << "duckdb_open_ext 7\n";
 		if (user_config) {
+	std::cout << "duckdb_open_ext 8\n";
 			db_config = user_config;
 		}
+	std::cout << "duckdb_open_ext 9\n";
 
 		wrapper->database = duckdb::make_uniq<DuckDB>(path, db_config);
+	std::cout << "duckdb_open_ext 10\n";
 	} catch (std::exception &ex) {
+	std::cout << "duckdb_open_ext 11\n";
 		if (error) {
 			ErrorData parsed_error(ex);
 			*error = strdup(parsed_error.Message().c_str());
 		}
+	std::cout << "duckdb_open_ext 12\n";
 		delete wrapper;
+	std::cout << "duckdb_open_ext 13\n";
 		return DuckDBError;
 	} catch (...) { // LCOV_EXCL_START
+	std::cout << "duckdb_open_ext 14\n";
 		if (error) {
 			*error = strdup("Unknown error");
 		}
+	std::cout << "duckdb_open_ext 15\n";
 		delete wrapper;
+	std::cout << "duckdb_open_ext 16\n";
 		return DuckDBError;
 	} // LCOV_EXCL_STOP
+	std::cout << "duckdb_open_ext 17\n";
 	*out = (duckdb_database)wrapper;
+	std::cout << "duckdb_open_ext 18\n";
 	return DuckDBSuccess;
 }
 
