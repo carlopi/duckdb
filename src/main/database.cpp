@@ -31,20 +31,28 @@
 namespace duckdb {
 
 DBConfig::DBConfig() {
+	std::cout << "I am from DBConfig 1\n";
 	compression_functions = make_uniq<CompressionFunctionSet>();
+	std::cout << "I am from DBConfig 2\n";
 	cast_functions = make_uniq<CastFunctionSet>(*this);
+	std::cout << "I am from DBConfig 3\n";
 	index_types = make_uniq<IndexTypeSet>();
+	std::cout << "I am from DBConfig 4\n";
 	error_manager = make_uniq<ErrorManager>();
+	std::cout << "I am from DBConfig 5\n";
 	secret_manager = make_uniq<SecretManager>();
+	std::cout << "I am from DBConfig 6\n";
 }
 
 DBConfig::DBConfig(bool read_only) : DBConfig::DBConfig() {
+	std::cout << "I am from DBConfig, takign a bool as parameter\n";
 	if (read_only) {
 		options.access_mode = AccessMode::READ_ONLY;
 	}
 }
 
 DBConfig::DBConfig(const case_insensitive_map_t<Value> &config_dict, bool read_only) : DBConfig::DBConfig(read_only) {
+	std::cout << "I am from DBConfig, takign a case insensitive map as parameter\n";
 	SetOptionsByName(config_dict);
 }
 
