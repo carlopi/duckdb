@@ -224,7 +224,7 @@ public:
 		}
 		} catch (...) {
 			std::cout << "someone, somewhere in Cleanup, threw\n";
-			rethrow;
+			throw;
 		}
 	}
 
@@ -245,7 +245,7 @@ public:
 		std::cout << "OpenDatabase duckdb_connect succeeded\n";
 		} catch (...) {
 			std::cout << "someone, somewhere in OpenDatabase, threw\n";
-			rethrow;
+			throw;
 		}
 		return true;
 	}
