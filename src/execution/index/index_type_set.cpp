@@ -1,15 +1,21 @@
 #include "duckdb/execution/index/index_type.hpp"
 #include "duckdb/execution/index/index_type_set.hpp"
 #include "duckdb/execution/index/art/art.hpp"
-
+#include <iostream>
 namespace duckdb {
 
 IndexTypeSet::IndexTypeSet() {
+	std::cout << "IndexTypeSet 1\n";
 	// Register the ART index type
+	std::cout << "IndexTypeSet 2\n";
 	IndexType art_index_type;
+	std::cout << "IndexTypeSet 3\n";
 	art_index_type.name = ART::TYPE_NAME;
+	std::cout << "IndexTypeSet 4\n";
 	art_index_type.create_instance = ART::Create;
+	std::cout << "IndexTypeSet 5\n";
 	RegisterIndexType(art_index_type);
+	std::cout << "IndexTypeSet 6\n";
 }
 
 optional_ptr<IndexType> IndexTypeSet::FindByName(const string &name) {
