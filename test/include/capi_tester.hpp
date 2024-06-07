@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include <iostream>
 #include "catch.hpp"
 #include "duckdb.h"
 #include "test_helpers.hpp"
@@ -207,23 +208,44 @@ public:
 	}
 
 	void Cleanup() {
+		try {
+		std::cout << "Cleanup intro\n";
 		if (connection) {
+		std::cout << "Cleanup connection is there\n";
 			duckdb_disconnect(&connection);
+		std::cout << "Cleanup disconnected\n";
 			connection = nullptr;
 		}
 		if (database) {
+		std::cout << "Cleanup database is there\n";
 			duckdb_close(&database);
+		std::cout << "Cleanup closed\n";
 			database = nullptr;
+		}
+		} catch (...) {
+			std::cout << "someone, somewhere in Cleanup, threw\n";
+			rethrow;
 		}
 	}
 
 	bool OpenDatabase(const char *path) {
+		try {
+		std::cout << "OpenDatabase intro\n";
 		Cleanup();
+		std::cout << "OpenDatabase cleanup done\n";
 		if (duckdb_open(path, &database) != DuckDBSuccess) {
+			std::cout << "OpenDatabase duckdb_open failed\n";
 			return false;
 		}
+		std::cout << "OpenDatabase duckdb_open succeeded\n";
 		if (duckdb_connect(database, &connection) != DuckDBSuccess) {
+			std::cout << "OpenDatabase duckdb_connect failed\n";
 			return false;
+		}
+		std::cout << "OpenDatabase duckdb_connect succeeded\n";
+		} catch (...) {
+			std::cout << "someone, somewhere in OpenDatabase, threw\n";
+			rethrow;
 		}
 		return true;
 	}
