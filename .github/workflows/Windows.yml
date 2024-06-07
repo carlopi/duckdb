@@ -1,5 +1,4 @@
 name: Windows
-
 on:
   workflow_call:
     inputs:
