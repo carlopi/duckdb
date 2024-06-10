@@ -296,7 +296,11 @@ bool ExtensionHelper::TryInitialLoad(DBConfig &config, FileSystem &fs, const str
 	if (!direct_load) {
 		auto info_file_name = filename + ".info";
 
-		result.install_info = ExtensionInstallInfo::TryReadInfoFile(fs, info_file_name, lowercase_extension_name);
+		try {
+			result.install_info = ExtensionInstallInfo::TryReadInfoFile(fs, info_file_name, lowercase_extension_name);
+		} catch (...) {
+			result.install_info = make_uniq<ExtensionInstallInfo>();
+		}
 
 		if (result.install_info->mode == ExtensionInstallMode::UNKNOWN) {
 			// The info file was missing, we just set the version, since we have it from the parsed footer
