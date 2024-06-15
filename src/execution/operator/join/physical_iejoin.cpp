@@ -1,5 +1,5 @@
 #include "duckdb/execution/operator/join/physical_iejoin.hpp"
-
+#include <iostream>
 #include "duckdb/common/operator/comparison_operators.hpp"
 #include "duckdb/common/row_operations/row_operations.hpp"
 #include "duckdb/common/sort/sort.hpp"
@@ -546,6 +546,51 @@ bool IEJoinUnion::NextRow() {
 	return false;
 }
 
+static idx_t NextValidBatched(const ValidityMask &bits, idx_t j, const idx_t n, vector<idx_t> &res, const idx_t num) {
+	if (j >= n) {
+		return n;
+	}
+
+	// We can do a first approximation by checking entries one at a time
+	// which gives 64:1.
+	idx_t entry_idx, idx_in_entry;
+	bits.GetEntryIndex(j, entry_idx, idx_in_entry);
+	auto entry = bits.GetValidityEntry(entry_idx++);
+
+	// Trim the bits before the start position
+	entry &= (ValidityMask::ValidityBuffer::MAX_ENTRY << idx_in_entry);
+
+	// Check the non-ragged entries
+	for (const auto entry_count = bits.EntryCount(n); entry_idx < entry_count; ++entry_idx) {
+		if (entry) {
+			for (; idx_in_entry < bits.BITS_PER_VALUE; ++idx_in_entry, ++j) {
+				if (bits.RowIsValid(entry, idx_in_entry)) {
+					res.push_back(j);
+					if (res.size() >= num) {
+						return j + 1;
+					}
+				}
+			}
+		} else {
+			j += bits.BITS_PER_VALUE - idx_in_entry;
+		}
+
+		entry = bits.GetValidityEntry(entry_idx);
+		idx_in_entry = 0;
+	}
+
+	// Check the final entry
+	for (; j < n; ++idx_in_entry, ++j) {
+		if (bits.RowIsValid(entry, idx_in_entry)) {
+			res.push_back(j);
+			if (res.size() >= num) {
+				return j + 1;
+			}
+		}
+	}
+
+	return j;
+}
 static idx_t NextValid(const ValidityMask &bits, idx_t j, const idx_t n) {
 	if (j >= n) {
 		return n;
@@ -597,9 +642,11 @@ idx_t IEJoinUnion::JoinComplexBlocks(SelectionVector &lsel, SelectionVector &rse
 			// 14. if B[j] = 1 then
 
 			//	Use the Bloom filter to find candidate blocks
+			idx_t end_j = 0;
 			while (j < n) {
 				auto bloom_begin = NextValid(bloom_filter, j / BLOOM_CHUNK_BITS, bloom_count) * BLOOM_CHUNK_BITS;
 				auto bloom_end = MinValue<idx_t>(n, bloom_begin + BLOOM_CHUNK_BITS);
+				end_j = bloom_end;
 
 				j = MaxValue<idx_t>(j, bloom_begin);
 				j = NextValid(bit_mask, j, bloom_end);
@@ -612,15 +659,21 @@ idx_t IEJoinUnion::JoinComplexBlocks(SelectionVector &lsel, SelectionVector &rse
 				break;
 			}
 
-			// Filter out tuples with the same sign (they come from the same table)
-			const auto rrid = li[j];
-			++j;
+			vector<idx_t> valid_j;
+			valid_j.reserve(BLOOM_CHUNK_BITS);
+			j = NextValidBatched(bit_mask, j, end_j, valid_j, STANDARD_VECTOR_SIZE - result_count);
 
-			D_ASSERT(lrid > 0 && rrid < 0);
-			// 15. add tuples w.r.t. (L1[j], L1[i]) to join result
-			lsel.set_index(result_count, sel_t(+lrid - 1));
-			rsel.set_index(result_count, sel_t(-rrid - 1));
-			++result_count;
+			for (auto &jj : valid_j) {
+				// Filter out tuples with the same sign (they come from the same table)
+				const auto rrid = li[jj];
+
+				D_ASSERT(lrid > 0 && rrid < 0);
+				// 15. add tuples w.r.t. (L1[jj], L1[i]) to join result
+				lsel.set_index(result_count, sel_t(+lrid - 1));
+				rsel.set_index(result_count, sel_t(-rrid - 1));
+				++result_count;
+				D_ASSERT(result_count <= STANDARD_VECTOR_SIZE);
+			}
 			if (result_count == STANDARD_VECTOR_SIZE) {
 				// out of space!
 				return result_count;
