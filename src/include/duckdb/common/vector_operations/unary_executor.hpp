@@ -7,7 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #pragma once
-
+#include <iostream>
 #include "duckdb/common/exception.hpp"
 #include "duckdb/common/types/vector.hpp"
 #include "duckdb/common/vector_operations/vector_operations.hpp"
@@ -91,7 +91,7 @@ private:
 	}
 
 	template <class INPUT_TYPE, class RESULT_TYPE, class OPWRAPPER, class OP>
-	static inline void ExecuteFlat(const INPUT_TYPE *__restrict ldata, RESULT_TYPE *__restrict result_data, idx_t count,
+	static inline bool ExecuteFlat(const INPUT_TYPE *__restrict ldata, RESULT_TYPE *__restrict result_data, idx_t count,
 	                               ValidityMask &mask, ValidityMask &result_mask, void *dataptr, bool adds_nulls) {
 		ASSERT_RESTRICT(ldata, ldata + count, result_data, result_data + count);
 
@@ -128,11 +128,19 @@ private:
 					}
 				}
 			}
+			return false;
 		} else {
 			for (idx_t i = 0; i < count; i++) {
 				result_data[i] =
 				    OPWRAPPER::template Operation<OP, INPUT_TYPE, RESULT_TYPE>(ldata[i], result_mask, i, dataptr);
 			}
+			//RESULT_TYPE X=result_data[0];
+			//for (idx_t i = 0; i < count; i++) {
+			//	if (X != result_data[i])
+			//		return false;
+			//}
+			return (count == 1);
+			//return true;
 		}
 	}
 
@@ -158,8 +166,14 @@ private:
 			auto result_data = FlatVector::GetData<RESULT_TYPE>(result);
 			auto ldata = FlatVector::GetData<INPUT_TYPE>(input);
 
-			ExecuteFlat<INPUT_TYPE, RESULT_TYPE, OPWRAPPER, OP>(ldata, result_data, count, FlatVector::Validity(input),
+			auto res = ExecuteFlat<INPUT_TYPE, RESULT_TYPE, OPWRAPPER, OP>(ldata, result_data, count, FlatVector::Validity(input),
 			                                                    FlatVector::Validity(result), dataptr, adds_nulls);
+			if (res) {
+				result.SetVectorType(VectorType::CONSTANT_VECTOR);
+				//std::cout << "done\n";
+			} else {
+				//std::cout << "\n";
+			}
 			break;
 		}
 		default: {

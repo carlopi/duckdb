@@ -70,7 +70,7 @@ struct BinaryLambdaWrapperWithNulls {
 struct BinaryExecutor {
 	template <class LEFT_TYPE, class RIGHT_TYPE, class RESULT_TYPE, class OPWRAPPER, class OP, class FUNC,
 	          bool LEFT_CONSTANT, bool RIGHT_CONSTANT>
-	static void ExecuteFlatLoop(const LEFT_TYPE *__restrict ldata, const RIGHT_TYPE *__restrict rdata,
+	static bool ExecuteFlatLoop(const LEFT_TYPE *__restrict ldata, const RIGHT_TYPE *__restrict rdata,
 	                            RESULT_TYPE *__restrict result_data, idx_t count, ValidityMask &mask, FUNC fun) {
 		if (!LEFT_CONSTANT) {
 			ASSERT_RESTRICT(ldata, ldata + count, result_data, result_data + count);
@@ -112,6 +112,7 @@ struct BinaryExecutor {
 					}
 				}
 			}
+			return false;
 		} else {
 			for (idx_t i = 0; i < count; i++) {
 				auto lentry = ldata[LEFT_CONSTANT ? 0 : i];
@@ -119,6 +120,7 @@ struct BinaryExecutor {
 				result_data[i] = OPWRAPPER::template Operation<FUNC, OP, LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE>(
 				    fun, lentry, rentry, mask, i);
 			}
+			return (LEFT_CONSTANT && RIGHT_CONSTANT) || (count == 1);
 		}
 	}
 
@@ -179,8 +181,12 @@ struct BinaryExecutor {
 				result_validity.Combine(FlatVector::Validity(right), count);
 			}
 		}
-		ExecuteFlatLoop<LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE, OPWRAPPER, OP, FUNC, LEFT_CONSTANT, RIGHT_CONSTANT>(
+		bool x = ExecuteFlatLoop<LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE, OPWRAPPER, OP, FUNC, LEFT_CONSTANT, RIGHT_CONSTANT>(
 		    ldata, rdata, result_data, count, result_validity, fun);
+
+		if (x) {
+			result.SetVectorType(VectorType::CONSTANT_VECTOR);
+		}
 	}
 
 	template <class LEFT_TYPE, class RIGHT_TYPE, class RESULT_TYPE, class OPWRAPPER, class OP, class FUNC>
