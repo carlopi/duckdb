@@ -22,7 +22,7 @@ using namespace duckdb_yyjson; // NOLINT
 namespace duckdb {
 
 string StringUtil::GenerateRandomName(idx_t length) {
-	std::random_device rd;
+	duckdb::random_device rd;
 	std::mt19937 gen(rd());
 	std::uniform_int_distribution<> dis(0, 15);
 

@@ -14,7 +14,7 @@ struct RandomState {
 
 RandomEngine::RandomEngine(int64_t seed) : random_state(make_uniq<RandomState>()) {
 	if (seed < 0) {
-		random_state->pcg.seed(pcg_extras::seed_seq_from<std::random_device>());
+		random_state->pcg.seed(pcg_extras::seed_seq_from<duckdb::random_device>());
 	} else {
 		random_state->pcg.seed(NumericCast<uint64_t>(seed));
 	}
