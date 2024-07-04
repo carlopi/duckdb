@@ -48,9 +48,6 @@ concurrency:
 env:
   GH_TOKEN: ${{ secrets.GH_TOKEN }}
   OVERRIDE_GIT_DESCRIBE: ${{ inputs.override_git_describe }}
-  ZREPO_OWNER: ${{ github.repository_owner }}
-  ZREPO_NAME: ${{ github.repository_name }}
-  ZREPO_REF: ${{ inputs.git_ref }}
 
 jobs:
  linux-release-64:
@@ -67,14 +64,16 @@ jobs:
       DEBUG_STACKTRACE: 1
       FORCE_WARN_UNUSED: 1
       DUCKDB_RUN_PARALLEL_CSV_TESTS: 1
+      REPO_NAME: ${{ github.repository }}
+      REPO_REF: ${{ inputs.git_ref }}
 
     steps:
     - name: Build
       shell: bash
       run: |
-        git clone https://github.com/$ZREPO_OWNER/$ZREPO_NAME
+        git clone https://github.com/$REPO_NAME
         git fetch
-        git checkout $ZREPO_REF
+        git checkout $REPO_REF
 
     - uses: ./.github/actions/manylinux_2014_setup
       with:
