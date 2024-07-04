@@ -64,17 +64,17 @@ jobs:
       DEBUG_STACKTRACE: 1
       FORCE_WARN_UNUSED: 1
       DUCKDB_RUN_PARALLEL_CSV_TESTS: 1
-      REPO_OWNER: ${{ github.event.repository.owner }}
-      REPO_NAME: ${{ github.event.repository.name }}
-      REPO_REF: ${{ inputs.git_ref }}
+      ZREPO_OWNER: ${{ github.event.repository.owner }}
+      ZREPO_NAME: ${{ github.event.repository.name }}
+      ZREPO_REF: ${{ inputs.git_ref }}
 
     steps:
     - name: Build
       shell: bash
       run: |
-        git clone https://github.com/$REPO_OWNER/$REPO_NAME
+        git clone https://github.com/$ZREPO_OWNER/$ZREPO_NAME
         git fetch
-        git checkout $REPO_REF
+        git checkout $ZREPO_REF
 
     - uses: ./.github/actions/manylinux_2014_setup
       with:
