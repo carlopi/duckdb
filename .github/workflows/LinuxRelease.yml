@@ -48,8 +48,8 @@ concurrency:
 env:
   GH_TOKEN: ${{ secrets.GH_TOKEN }}
   OVERRIDE_GIT_DESCRIBE: ${{ inputs.override_git_describe }}
-  ZREPO_OWNER: ${{ github.event.repository.owner }}
-  ZREPO_NAME: ${{ github.event.repository.name }}
+  ZREPO_OWNER: ${{ github.repository_owner }}
+  ZREPO_NAME: ${{ github.repository_name }}
   ZREPO_REF: ${{ inputs.git_ref }}
 
 jobs:
