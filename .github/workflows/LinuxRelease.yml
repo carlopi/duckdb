@@ -71,6 +71,7 @@ jobs:
     - name: Build
       shell: bash
       run: |
+        git config --global --add safe.directory $(pwd)
         git clone https://github.com/$REPO_NAME .
         git fetch
         git checkout $REPO_REF
