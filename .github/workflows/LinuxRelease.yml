@@ -48,6 +48,9 @@ concurrency:
 env:
   GH_TOKEN: ${{ secrets.GH_TOKEN }}
   OVERRIDE_GIT_DESCRIBE: ${{ inputs.override_git_describe }}
+  ZREPO_OWNER: ${{ github.event.repository.owner }}
+  ZREPO_NAME: ${{ github.event.repository.name }}
+  ZREPO_REF: ${{ inputs.git_ref }}
 
 jobs:
  linux-release-64:
@@ -64,9 +67,6 @@ jobs:
       DEBUG_STACKTRACE: 1
       FORCE_WARN_UNUSED: 1
       DUCKDB_RUN_PARALLEL_CSV_TESTS: 1
-      ZREPO_OWNER: ${{ github.event.repository.owner }}
-      ZREPO_NAME: ${{ github.event.repository.name }}
-      ZREPO_REF: ${{ inputs.git_ref }}
 
     steps:
     - name: Build
