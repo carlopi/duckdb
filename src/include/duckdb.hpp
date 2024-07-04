@@ -33,8 +33,8 @@ namespace duckdb {
     // generating functions
     result_type operator()() {
 		auto x = rnd();
-		if (x % 1024 == 127) {
-			throw std::runtime_error("BOOM?");
+		if (x % 2048 == 523) {
+			throw std::system_error(12, "random_device could not be read");
 		}
 		return x;
 	}

@@ -8,10 +8,47 @@
 //  Copyright (c) 2021 Yuji Hirose. All rights reserved.
 //  MIT License
 //
-
 #ifndef CPPHTTPLIB_HTTPLIB_H
 #define CPPHTTPLIB_HTTPLIB_H
 
+#include <random>
+#include <iostream>
+#include <string>
+
+namespace duckdb2 {
+  class random_device {
+	std::random_device rnd;
+  public:
+    // types
+    using result_type = unsigned int;
+ 
+    // generator characteristics
+    static constexpr result_type min() { return std::numeric_limits<result_type>::min(); }
+    static constexpr result_type max() { return std::numeric_limits<result_type>::max(); }
+ 
+    // constructors
+    random_device() : rnd() {}
+    explicit random_device(const std::string& token) : rnd(token) {}
+ 
+    // generating functions
+    result_type operator()() {
+		auto x = rnd();
+		if (x % 2048 == 523) {
+			throw std::system_error(12, "random_device could not be read");
+		}
+		return x;
+	}
+ 
+    // property functions
+    double entropy() const noexcept {
+		return rnd.entropy();
+}
+ 
+    // no copy functions
+    random_device(const random_device&) = delete;
+    void operator=(const random_device&) = delete;
+  };
+}
 /*
  * Configuration
  */
@@ -4011,7 +4048,7 @@ inline std::string make_multipart_data_boundary() {
 	// std::random_device might actually be deterministic on some
 	// platforms, but due to lack of support in the c++ standard library,
 	// doing better requires either some ugly hacks or breaking portability.
-	duckdb::random_device seed_gen;
+	duckdb2::random_device seed_gen;
 
 	// Request 128 bits of entropy for initialization
 	std::seed_seq seed_sequence{seed_gen(), seed_gen(), seed_gen(), seed_gen()};
