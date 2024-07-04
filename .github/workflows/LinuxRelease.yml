@@ -71,7 +71,7 @@ jobs:
     - name: Build
       shell: bash
       run: |
-        git clone https://github.com/$REPO_NAME
+        git clone https://github.com/$REPO_NAME .
         git fetch
         git checkout $REPO_REF
 
