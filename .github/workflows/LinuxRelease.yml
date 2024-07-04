@@ -64,12 +64,13 @@ jobs:
       DEBUG_STACKTRACE: 1
       FORCE_WARN_UNUSED: 1
       DUCKDB_RUN_PARALLEL_CSV_TESTS: 1
-      REPO_NAME: ${{ github.repository }}
-      REPO_REF: ${{ inputs.git_ref }}
 
     steps:
     - name: Build
       shell: bash
+      env:
+        REPO_NAME: ${{ github.repository }}
+        REPO_REF: ${{ inputs.git_ref }}
       run: |
         git config --global --add safe.directory $(pwd)
         git clone https://github.com/$REPO_NAME .
