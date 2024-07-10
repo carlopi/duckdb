@@ -1,6 +1,5 @@
 include_directories(include)
 
-set_property(TARGET jemalloc PROPERTY C_STANDARD 99)
 
 set(JEMALLOC_C_FILES
   src/jemalloc.c
@@ -73,6 +72,8 @@ set(JEMALLOC_C_FILES
 # src/jemalloc_cpp.cpp
 
 add_library(jemalloc OBJECT ${JEMALLOC_C_FILES})
+
+set_property(TARGET jemalloc PROPERTY C_STANDARD 99)
 
 set(JEMALLOC_OBJECT_FILES
     ${JEMALLOC_OBJECT_FILES} $<TARGET_OBJECTS:jemalloc>
