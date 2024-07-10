@@ -83,7 +83,7 @@ public:
 		return ht_entry_t(desired);
 	}
 
-	static inline ht_entry_t GetEmptyEntry() noexcept{
+	static inline ht_entry_t GetEmptyEntry() noexcept {
 		return ht_entry_t(0);
 	}
 
