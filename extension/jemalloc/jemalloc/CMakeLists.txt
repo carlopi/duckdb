@@ -1,5 +1,7 @@
 include_directories(include)
 
+set_property(TARGET jemalloc PROPERTY C_STANDARD 99)
+
 set(JEMALLOC_C_FILES
   src/jemalloc.c
   src/arena.c
