@@ -30,23 +30,23 @@ public:
 	ht_entry_t() noexcept : value(0) {
 	}
 
-	inline bool IsOccupied() const {
+	inline bool IsOccupied() const noexcept {
 		return value != 0;
 	}
 
 	// Returns a pointer based on the stored value without checking cell occupancy.
 	// This can return a nullptr if the cell is not occupied.
-	inline duckdb::data_ptr_t GetPointerOrNull() const {
+	inline duckdb::data_ptr_t GetPointerOrNull() const noexcept {
 		return reinterpret_cast<duckdb::data_ptr_t>(value & POINTER_MASK);
 	}
 
 	// Returns a pointer based on the stored value if the cell is occupied
-	inline duckdb::data_ptr_t GetPointer() const {
+	inline duckdb::data_ptr_t GetPointer() const noexcept {
 		D_ASSERT(IsOccupied());
 		return reinterpret_cast<duckdb::data_ptr_t>(value & POINTER_MASK);
 	}
 
-	inline void SetPointer(const duckdb::data_ptr_t &pointer) {
+	inline void SetPointer(const duckdb::data_ptr_t &pointer) noexcept {
 		// Pointer shouldn't use upper bits
 		D_ASSERT((reinterpret_cast<uint64_t>(pointer) & SALT_MASK) == 0);
 		// Value should have all 1's in the pointer area
@@ -56,20 +56,20 @@ public:
 	}
 
 	// Returns the salt, leaves upper salt bits intact, sets lower bits to all 1's
-	static inline duckdb::hash_t ExtractSalt(const duckdb::hash_t &hash) {
+	static inline duckdb::hash_t ExtractSalt(const duckdb::hash_t &hash) noexcept {
 		return hash | POINTER_MASK;
 	}
 
 	// Returns the salt, leaves upper salt bits intact, sets lower bits to all 0's
-	static inline duckdb::hash_t ExtractSaltWithNulls(const duckdb::hash_t &hash) {
+	static inline duckdb::hash_t ExtractSaltWithNulls(const duckdb::hash_t &hash) noexcept {
 		return hash & SALT_MASK;
 	}
 
-	inline duckdb::hash_t GetSalt() const {
+	inline duckdb::hash_t GetSalt() const noexcept {
 		return ExtractSalt(value);
 	}
 
-	inline void SetSalt(const duckdb::hash_t &salt) {
+	inline void SetSalt(const duckdb::hash_t &salt) noexcept {
 		// Shouldn't be occupied when we set this
 		D_ASSERT(!IsOccupied());
 		// Salt should have all 1's in the pointer field
@@ -78,12 +78,12 @@ public:
 		value = salt;
 	}
 
-	static inline ht_entry_t GetDesiredEntry(const duckdb::data_ptr_t &pointer, const duckdb::hash_t &salt) {
+	static inline ht_entry_t GetDesiredEntry(const duckdb::data_ptr_t &pointer, const duckdb::hash_t &salt) noexcept {
 		auto desired = reinterpret_cast<uint64_t>(pointer) | (salt & SALT_MASK);
 		return ht_entry_t(desired);
 	}
 
-	static inline ht_entry_t GetEmptyEntry() {
+	static inline ht_entry_t GetEmptyEntry() noexcept{
 		return ht_entry_t(0);
 	}
 
