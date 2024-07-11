@@ -175,10 +175,9 @@ static unique_ptr<FunctionData> WriteCSVBind(ClientContext &context, CopyFunctio
 	auto expressions = CreateCastExpressions(*bind_data, context, names, sql_types);
 	bind_data->cast_expressions = std::move(expressions);
 
-	bind_data->requires_quotes = make_unsafe_uniq_array<bool>(256);
-	memset(bind_data->requires_quotes.get(), 0, sizeof(bool) * 256);
-	bind_data->requires_quotes['\n'] = true;
-	bind_data->requires_quotes['\r'] = true;
+	memset(bind_data->requires_quotes, 0, sizeof(bool) * 256);
+	bind_data->requires_quotes[size_t('\n')] = true;
+	bind_data->requires_quotes[size_t('\r')] = true;
 	bind_data->requires_quotes[NumericCast<idx_t>(
 	    bind_data->options.dialect_options.state_machine_options.delimiter.GetValue())] = true;
 	bind_data->requires_quotes[NumericCast<idx_t>(
