@@ -271,21 +271,23 @@ uhugeint_t Uhugeint::DivMod(uhugeint_t lhs, uhugeint_t rhs, uhugeint_t &remainde
 		return uhugeint_t(0);
 	}
 
-	uhugeint_t result = 0;
-	for (uint8_t idx = Bits(lhs); idx > 0; --idx) {
-		result <<= 1;
-		remainder <<= 1;
+	uhugeint_t denominator = rhs;
+	uhugeint_t quotient = 0;
 
-		if (((lhs >> (idx - 1U)) & 1) != 0) {
-			remainder += 1;
+	const int shift = Bits(lhs) - Fls128(rhs);
+	denominator <<= shift;
+	// Uses shift-subtract algorithm to divide dividend by denominator. The
+	// remainder will be left in dividend.
+	for (int i = 0; i <= shift; ++i) {
+		quotient <<= 1;
+		if (dividend >= denominator) {
+			dividend -= denominator;
+			quotient |= 1;
 		}
-
-		if (remainder >= rhs) {
-			remainder -= rhs;
-			result += 1;
-		}
+		denominator >>= 1;
 	}
-	return result;
+	remainder = dividend;
+	return quotient;
 }
 
 template <>
