@@ -240,17 +240,39 @@ uhugeint_t Abs(uhugeint_t n) {
 	return (n);
 }
 
+// Returns the 0-based position of the last set bit (i.e., most significant bit)
+// in the given uint64_t. The argument may not be 0.
+//
+// For example:
+//   Given: 5 (decimal) == 101 (binary)
+//   Returns: 2
+#define STEP(T, n, pos, sh)                   \
+  do {                                        \
+    if ((n) >= (static_cast<T>(1) << (sh))) { \
+      (n) = (n) >> (sh);                      \
+      (pos) |= (sh);                          \
+    }                                         \
+  } while (0)
+static inline int Fls64(uint64_t n) {
+  assert(n != 0);
+  int pos = 0;
+  STEP(uint64_t, n, pos, 0x20);
+  uint32_t n32 = static_cast<uint32_t>(n);
+  STEP(uint32_t, n32, pos, 0x10);
+  STEP(uint32_t, n32, pos, 0x08);
+  STEP(uint32_t, n32, pos, 0x04);
+  return pos + ((uint64_t{0x3333333322221100} >> (n32 << 2)) & 0x3);
+}
+#undef STEP
+
+
+
 static uint8_t Bits(uhugeint_t x) {
 	uint8_t out = 0;
 	if (x.upper) {
-		out = 64;
-		for (uint64_t upper = x.upper; upper; upper >>= 1) {
-			++out;
-		}
-	} else {
-		for (uint64_t lower = x.lower; lower; lower >>= 1) {
-			++out;
-		}
+		out = 64 + Fls64(x.upper);
+	} else if (x.lower) {
+		out = Fls64(x.lower);
 	}
 	return out;
 }
@@ -276,7 +298,7 @@ uhugeint_t Uhugeint::DivMod(uhugeint_t lhs, uhugeint_t rhs, uhugeint_t &remainde
 	uhugeint_t quotient = 0;
 
 	const int shift = Bits(lhs) - Bits(rhs);
-	denominator <<= shift;
+	denominator <<= (size_t)shift;
 	// Uses shift-subtract algorithm to divide dividend by denominator. The
 	// remainder will be left in dividend.
 	for (int i = 0; i <= shift; ++i) {
