@@ -254,7 +254,6 @@ uhugeint_t Abs(uhugeint_t n) {
     }                                         \
   } while (0)
 static inline int Fls64(uint64_t n) {
-  assert(n != 0);
   int pos = 0;
   STEP(uint64_t, n, pos, 0x20);
   uint32_t n32 = static_cast<uint32_t>(n);
