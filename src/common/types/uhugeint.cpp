@@ -250,17 +250,17 @@ uhugeint_t Abs(uhugeint_t n) {
   do {                                        \
     if ((n) >= (static_cast<T>(1) << (sh))) { \
       (n) = (n) >> (sh);                      \
-      (pos) |= (sh);                          \
+      (pos) |= uint8_t(sh);                          \
     }                                         \
   } while (0)
-static inline int Fls64(uint64_t n) {
-  int pos = 0;
+static inline uint8_t Fls64(uint64_t n) {
+  uint8_t pos = 0;
   STEP(uint64_t, n, pos, 0x20);
   uint32_t n32 = static_cast<uint32_t>(n);
   STEP(uint32_t, n32, pos, 0x10);
   STEP(uint32_t, n32, pos, 0x08);
   STEP(uint32_t, n32, pos, 0x04);
-  return pos + ((uint64_t{0x3333333322221100} >> (n32 << 2)) & 0x3);
+  return pos + uint8_t((uint64_t{0x3333333322221100} >> (n32 << 2)) & 0x3);
 }
 #undef STEP
 
