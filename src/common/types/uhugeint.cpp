@@ -246,25 +246,23 @@ uhugeint_t Abs(uhugeint_t n) {
 // For example:
 //   Given: 5 (decimal) == 101 (binary)
 //   Returns: 2
-#define STEP(T, n, pos, sh)                   \
-  do {                                        \
-    if ((n) >= (static_cast<T>(1) << (sh))) { \
-      (n) = (n) >> (sh);                      \
-      (pos) |= uint8_t(sh);                          \
-    }                                         \
-  } while (0)
+#define STEP(T, n, pos, sh)                                                                                            \
+	do {                                                                                                               \
+		if ((n) >= (static_cast<T>(1) << (sh))) {                                                                      \
+			(n) = (n) >> (sh);                                                                                         \
+			(pos) |= uint8_t(sh);                                                                                      \
+		}                                                                                                              \
+	} while (0)
 static inline uint8_t Fls64(uint64_t n) {
-  uint8_t pos = 0;
-  STEP(uint64_t, n, pos, 0x20);
-  uint32_t n32 = static_cast<uint32_t>(n);
-  STEP(uint32_t, n32, pos, 0x10);
-  STEP(uint32_t, n32, pos, 0x08);
-  STEP(uint32_t, n32, pos, 0x04);
-  return pos + uint8_t((uint64_t{0x3333333322221100} >> (n32 << 2)) & 0x3);
+	uint8_t pos = 0;
+	STEP(uint64_t, n, pos, 0x20);
+	uint32_t n32 = static_cast<uint32_t>(n);
+	STEP(uint32_t, n32, pos, 0x10);
+	STEP(uint32_t, n32, pos, 0x08);
+	STEP(uint32_t, n32, pos, 0x04);
+	return pos + uint8_t((uint64_t {0x3333333322221100} >> (n32 << 2)) & 0x3);
 }
 #undef STEP
-
-
 
 static uint8_t Bits(uhugeint_t x) {
 	uint8_t out = 0;
@@ -293,7 +291,7 @@ uhugeint_t Uhugeint::DivMod(uhugeint_t lhs, uhugeint_t rhs, uhugeint_t &remainde
 	}
 
 	uhugeint_t denominator = rhs;
-	uhugeint_t& dividend = lhs;
+	uhugeint_t &dividend = lhs;
 	uhugeint_t quotient = 0;
 
 	const int shift = Bits(lhs) - Bits(rhs);
