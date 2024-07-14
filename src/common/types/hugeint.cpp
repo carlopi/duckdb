@@ -445,6 +445,28 @@ hugeint_t Hugeint::DivMod(hugeint_t lhs, hugeint_t rhs, hugeint_t &remainder) {
 	remainder.lower = 0;
 	remainder.upper = 0;
 
+
+
+
+	uhugeint_t l;
+	uhugeint_t r;
+	l.lower = lhs.lower;
+	l.upper = lhs.upper;
+	r.lower = rhs.lower;
+	r.upper = rhs.upper;
+
+
+
+	uhugeint_t mod;
+	uhugeint_t div = Uhugeint::DivMod(l, r, mod);
+
+	div_result.lower = div.lower;
+	div_result.upper = div.upper;
+	remainder.lower = mod.lower;
+	remainder.upper = mod.upper;
+
+
+/*
 	uint8_t highest_bit_set = PositiveHugeintHighestBit(lhs);
 	// now iterate over the amount of bits that are set in the LHS
 	for (uint8_t x = highest_bit_set; x > 0; x--) {
@@ -462,6 +484,7 @@ hugeint_t Hugeint::DivMod(hugeint_t lhs, hugeint_t rhs, hugeint_t &remainder) {
 			div_result += 1;
 		}
 	}
+*/
 	if (lhs_negative ^ rhs_negative) {
 		Hugeint::NegateInPlace<false>(div_result);
 	}
