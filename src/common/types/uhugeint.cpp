@@ -290,6 +290,7 @@ uhugeint_t Uhugeint::DivMod(uhugeint_t lhs, uhugeint_t rhs, uhugeint_t &remainde
 		return uhugeint_t(0);
 	}
 
+	// Logic from Abseil numeric, see https://chromium.googlesource.com/external/github.com/abseil/abseil-cpp/+/refs/heads/lts_2018_06_20/absl/numeric/int128.cc#39
 	uhugeint_t denominator = rhs;
 	uhugeint_t &dividend = lhs;
 	uhugeint_t quotient = 0;
