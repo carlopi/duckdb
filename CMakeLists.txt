@@ -769,23 +769,6 @@ else()
 endif()
 
 set(LOCAL_EXTENSION_REPO FALSE)
-if (NOT EXTENSION_CONFIG_BUILD AND NOT ${EXTENSION_TESTS_ONLY} AND NOT CLANG_TIDY)
-  if (NOT Python3_FOUND)
-    add_custom_target(
-          duckdb_local_extension_repo ALL)
-    MESSAGE(STATUS "Could not find python3, create extension directory step will be skipped")
-  else()
-    add_custom_target(
-          duckdb_local_extension_repo ALL
-          COMMAND
-          ${Python3_EXECUTABLE} scripts/create_local_extension_repo.py "${DUCKDB_NORMALIZED_VERSION}" "${CMAKE_CURRENT_BINARY_DIR}/duckdb_platform_out" "${CMAKE_CURRENT_BINARY_DIR}" "${LOCAL_EXTENSION_REPO_DIR}" "duckdb_extension${EXTENSION_POSTFIX}"
-          WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-          COMMENT Create local extension repository)
-    add_dependencies(duckdb_local_extension_repo duckdb_platform)
-    set(LOCAL_EXTENSION_REPO TRUE)
-    message(STATUS "Extensions will be deployed to: ${LOCAL_EXTENSION_REPO_DIR}")
-  endif()
-endif()
 
 function(build_loadable_extension_directory NAME OUTPUT_DIRECTORY EXTENSION_VERSION PARAMETERS)
   set(TARGET_NAME ${NAME}_loadable_extension)
@@ -883,9 +866,6 @@ function(build_loadable_extension_directory NAME OUTPUT_DIRECTORY EXTENSION_VERS
     ${CMAKE_COMMAND} -DEXTENSION=$<TARGET_FILE:${TARGET_NAME}>${EXTENSION_POSTFIX} -DPLATFORM_FILE=${DuckDB_BINARY_DIR}/duckdb_platform_out -DDUCKDB_VERSION="${DUCKDB_NORMALIZED_VERSION}" -DEXTENSION_VERSION="${EXTENSION_VERSION}" -DNULL_FILE=${DUCKDB_MODULE_BASE_DIR}/scripts/null.txt -P ${DUCKDB_MODULE_BASE_DIR}/scripts/append_metadata.cmake
     )
   add_dependencies(${TARGET_NAME} duckdb_platform)
-  if (NOT EXTENSION_CONFIG_BUILD AND NOT ${EXTENSION_TESTS_ONLY} AND NOT CLANG_TIDY)
-    add_dependencies(duckdb_local_extension_repo ${TARGET_NAME})
-  endif()
 endfunction()
 
 function(build_loadable_extension NAME PARAMETERS)
