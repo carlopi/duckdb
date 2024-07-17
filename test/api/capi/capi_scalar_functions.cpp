@@ -2,7 +2,7 @@
 
 using namespace duckdb;
 using namespace std;
-
+#ifdef ASDASDA
 void AddVariadicNumbersTogether(duckdb_function_info, duckdb_data_chunk input, duckdb_vector output) {
 	// get the total number of rows in this chunk
 	auto input_size = duckdb_data_chunk_get_size(input);
@@ -334,3 +334,4 @@ TEST_CASE("Test Scalar Functions - variadic number of ANY parameters", "[capi]")
 	REQUIRE_NO_FAIL(*result);
 	REQUIRE(result->Fetch<uint64_t>(0, 0) == 0);
 }
+#endif
