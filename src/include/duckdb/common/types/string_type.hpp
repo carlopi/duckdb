@@ -71,7 +71,12 @@ public:
 	}
 
 	bool IsInlined() const {
-		return GetSize() <= INLINE_LENGTH;
+		if (value.pointer.lengthz == 0)
+			return true;
+		uint8_t k16 = value.x.inlined[0];
+		if (k16 > 240u)
+			return true;
+		return false;	
 	}
 
 	const char *GetData() const {
@@ -96,7 +101,7 @@ public:
 		if (value.pointer.lengthz == 0)
 			return 0;
 		uint8_t k16 = value.x.inlined[0];
-		if (k16 > 240u)
+		if (k16 >= 240u)
 			return k16 - 240u;		
 	//	uint64_t y = value.pointer.lengthz;
 		//uint32_t x = ((y << 40u) >> 40u) | ((y >> 56u) << 24u);
@@ -119,15 +124,6 @@ public:
 		if (len < 16u)
 {
 			value.x.inlined[0] = (len + 240u);
-		value.inlined.inlined[4] = 0;
-		value.inlined.inlined[5] = 0;
-		value.inlined.inlined[6] = 0;
-//D_ASSERT(IsInlined());
-//	D_ASSERT(GetSize() == len);
-		value.inlined.inlined[7] = 0;
-		value.inlined.inlined[1] = 0;
-		value.inlined.inlined[2] = 0;
-		value.inlined.inlined[3] = 0;
 	D_ASSERT(GetSize() == len);
 	return;
 }
