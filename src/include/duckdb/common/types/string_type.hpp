@@ -13,7 +13,7 @@
 #include "duckdb/common/helper.hpp"
 #include "duckdb/common/numeric_utils.hpp"
 #include "duckdb/common/limits.hpp"
-
+#define GO_INVERTED
 #include <cstring>
 #include <algorithm>
 
@@ -104,8 +104,14 @@ public:
 		k16--;
 		if (k16 >= 240u)
 			return (k16 - (uint8_t)240 + (uint8_t)1);		
-	//	uint64_t y = value.pointer.lengthz;
-		//uint32_t x = ((y << 40u) >> 40u) | ((y >> 56u) << 24u);
+
+
+//#ifndef GO_INVERTED
+		uint64_t y = value.pointer.lengthz;
+		uint32_t x = ((y << 40u) >> 40u) | (((uint32_t)k16)<< 24u);
+		return x;
+//#endif
+
 		return (((uint32_t)k16) << 24u) | (((uint32_t)value.x.inlined[7]) << 16u) | (((uint32_t)value.x.inlined[6]) << 8u) | ((uint32_t)value.x.inlined[5]);
 		//uint32_t x = (k16 << 24) | ((value.pointer.lengthz >> 32) & ( 0xffffff00)) >> 8);
 		//return uint32_t(x );// + 16);
@@ -133,6 +139,12 @@ public:
 			//value.pointer.lengthz = (len & 0x00ffffff) << 8;
 			value.x.inlined[0] = len >> 24;
 			value.x.inlined[0]++;
+#ifndef GO_INVERTED
+			value.x.inlined[5] = (len & 0x00ff0000) >> 16;
+			value.x.inlined[6] = (len & 0x0000ff00) >> 8;
+			value.x.inlined[7] = len & 0x000000ff;
+	return;
+#endif
 			value.x.inlined[7] = (len & 0x00ff0000) >> 16;
 			value.x.inlined[6] = (len & 0x0000ff00) >> 8;
 			value.x.inlined[5] = len & 0x000000ff;
