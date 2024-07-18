@@ -106,7 +106,7 @@ public:
 			return (k16 - (uint8_t)240 + (uint8_t)1);		
 	//	uint64_t y = value.pointer.lengthz;
 		//uint32_t x = ((y << 40u) >> 40u) | ((y >> 56u) << 24u);
-		return (k16 << 24u) | (value.x.inlined[7] << 16u) | (value.x.inlined[6] << 8u) | value.x.inlined[5];
+		return (((uint32_t)k16) << 24u) | (((uint32_t)value.x.inlined[7]) << 16u) | (((uint32_t)value.x.inlined[6]) << 8u) | ((uint32_t)value.x.inlined[5]);
 		//uint32_t x = (k16 << 24) | ((value.pointer.lengthz >> 32) & ( 0xffffff00)) >> 8);
 		//return uint32_t(x );// + 16);
 	}
