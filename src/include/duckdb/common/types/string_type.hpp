@@ -112,7 +112,7 @@ public:
 	}
 
 	void SetSize(uint32_t len) {
-		value.pointer.lengthz = 0;
+	//	value.pointer.lengthz = 0;
 	D_ASSERT(GetSize() == 0);
 	D_ASSERT(GetSize() == 0);
 		if (len < 16u)
@@ -123,6 +123,12 @@ public:
 }
 	D_ASSERT(GetSize() == 0);
 		{
+		value.pointer.lengthz = (((uint64_t)len) << 40u) | (uint8_t)((uint8_t)(len >> 24u) + 1u);
+		return;
+		
+			
+
+
 			//value.pointer.lengthz = (len & 0x00ffffff) << 8;
 			value.x.inlined[0] = len >> 24;
 			value.x.inlined[0]++;
