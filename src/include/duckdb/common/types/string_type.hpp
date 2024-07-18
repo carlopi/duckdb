@@ -73,8 +73,8 @@ public:
 	bool IsInlined() const {
 		if (value.pointer.lengthz == 0)
 			return true;
-		uint8_t k16 = value.x.inlined[0];
-		if (k16 > 240u)
+		uint8_t k16 = value.x.inlined[0] - (uint8_t)1;
+		if (k16 >= 240u)
 			return true;
 		return false;	
 	}
@@ -101,8 +101,9 @@ public:
 		if (value.pointer.lengthz == 0)
 			return 0;
 		uint8_t k16 = value.x.inlined[0];
+		k16--;
 		if (k16 >= 240u)
-			return k16 - 240u;		
+			return (k16 - (uint8_t)240 + (uint8_t)1);		
 	//	uint64_t y = value.pointer.lengthz;
 		//uint32_t x = ((y << 40u) >> 40u) | ((y >> 56u) << 24u);
 		return (k16 << 24u) | (value.x.inlined[7] << 16u) | (value.x.inlined[6] << 8u) | value.x.inlined[5];
@@ -131,6 +132,7 @@ public:
 		{
 			//value.pointer.lengthz = (len & 0x00ffffff) << 8;
 			value.x.inlined[0] = len >> 24;
+			value.x.inlined[0]++;
 			value.x.inlined[7] = (len & 0x00ff0000) >> 16;
 			value.x.inlined[6] = (len & 0x0000ff00) >> 8;
 			value.x.inlined[5] = len & 0x000000ff;
