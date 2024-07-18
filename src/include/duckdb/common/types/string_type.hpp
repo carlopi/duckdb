@@ -93,11 +93,15 @@ public:
 	}
 
 	idx_t GetSize() const {
-		uint64_t y = value.pointer.lengthz;
-		uint8_t k16 = y;
+
+
+		uint8_t k16 = value.x.inlined[0];
 		uint8_t k16min1  = k16 - 1;
 		if (k16min1 >= 240u)
 			return (uint8_t)(-k16);
+		
+
+		uint64_t y = value.pointer.lengthz;
 
 		uint32_t x = (y >> 40u) | (((uint32_t)k16min1)<< 24u);
 		return x;
