@@ -108,7 +108,7 @@ public:
 
 //#ifndef GO_INVERTED
 		uint64_t y = value.pointer.lengthz;
-		uint32_t x = ((y << 40u) >> 40u) | (((uint32_t)k16)<< 24u);
+		uint32_t x = (y >> 40u) | (((uint32_t)k16)<< 24u);
 		return x;
 //#endif
 
