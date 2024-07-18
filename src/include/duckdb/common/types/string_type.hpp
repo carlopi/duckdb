@@ -13,7 +13,6 @@
 #include "duckdb/common/helper.hpp"
 #include "duckdb/common/numeric_utils.hpp"
 #include "duckdb/common/limits.hpp"
-#define GO_INVERTED
 #include <cstring>
 #include <algorithm>
 
@@ -98,23 +97,14 @@ public:
 	}
 
 	idx_t GetSize() const {
-		if (value.pointer.lengthz == 0)
-			return 0;
-		uint8_t k16 = value.x.inlined[0];
-		k16--;
-		if (k16 >= 240u)
-			return (k16 - (uint8_t)240 + (uint8_t)1);		
-
-
-//#ifndef GO_INVERTED
 		uint64_t y = value.pointer.lengthz;
-		uint32_t x = (y >> 40u) | (((uint32_t)k16)<< 24u);
-		return x;
-//#endif
+		uint8_t k16 = y;
+		uint8_t k16min1  = k16 - 1;
+		if (k16min1 >= 240u)
+			return (uint8_t)(-k16);
 
-		return (((uint32_t)k16) << 24u) | (((uint32_t)value.x.inlined[7]) << 16u) | (((uint32_t)value.x.inlined[6]) << 8u) | ((uint32_t)value.x.inlined[5]);
-		//uint32_t x = (k16 << 24) | ((value.pointer.lengthz >> 32) & ( 0xffffff00)) >> 8);
-		//return uint32_t(x );// + 16);
+		uint32_t x = (y >> 40u) | (((uint32_t)k16min1)<< 24u);
+		return x;
 	}
 
 	bool Empty() const {
@@ -124,13 +114,10 @@ public:
 	void SetSize(uint32_t len) {
 		value.pointer.lengthz = 0;
 	D_ASSERT(GetSize() == 0);
-		if (len == 0)	{
-	return;
-}	
 	D_ASSERT(GetSize() == 0);
 		if (len < 16u)
 {
-			value.x.inlined[0] = (len + 240u);
+			value.x.inlined[0] = (- (uint8_t)len);
 	D_ASSERT(GetSize() == len);
 	return;
 }
@@ -139,12 +126,6 @@ public:
 			//value.pointer.lengthz = (len & 0x00ffffff) << 8;
 			value.x.inlined[0] = len >> 24;
 			value.x.inlined[0]++;
-#ifndef GO_INVERTED
-			value.x.inlined[5] = (len & 0x00ff0000) >> 16;
-			value.x.inlined[6] = (len & 0x0000ff00) >> 8;
-			value.x.inlined[7] = len & 0x000000ff;
-	return;
-#endif
 			value.x.inlined[7] = (len & 0x00ff0000) >> 16;
 			value.x.inlined[6] = (len & 0x0000ff00) >> 8;
 			value.x.inlined[5] = len & 0x000000ff;
