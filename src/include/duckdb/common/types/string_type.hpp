@@ -70,12 +70,8 @@ public:
 	}
 
 	bool IsInlined() const {
-		if (value.pointer.lengthz == 0)
-			return true;
 		uint8_t k16 = value.x.inlined[0] - (uint8_t)1;
-		if (k16 >= 240u)
-			return true;
-		return false;	
+		return (k16 >= 240u);
 	}
 
 	const char *GetData() const {
