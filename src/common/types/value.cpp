@@ -406,9 +406,9 @@ Value Value::NegativeInfinity(const LogicalType &type) {
 	}
 }
 
-Value Value::BOOLEAN(int8_t value) {
+Value Value::BOOLEAN(bool value) {
 	Value result(LogicalType::BOOLEAN);
-	result.value_.boolean = bool(value);
+	result.value_.boolean = value;
 	result.is_null = false;
 	return result;
 }
