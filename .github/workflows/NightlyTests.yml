@@ -233,7 +233,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p build/release
-          (cd build/release && cmake -G "Ninja" -DBUILD_EXTENSIONS='icu;parquet;fts;json' -DFORCE_32_BIT=1 -DCMAKE_BUILD_TYPE=Release ../.. && cmake --build .)
+          (cd build/release && cmake -G "Ninja" -DFORCE_32_BIT=1 -DCMAKE_BUILD_TYPE=Release ../.. && cmake --build .)
 
       - name: Test
         shell: bash
@@ -258,7 +258,6 @@ jobs:
         with:
           ninja-build: 1
           ccache: 1
-          glibc32: 1
           gcc_4_8: 1 # Note: we run this job on the older gcc 4.8 toolchain
 
       - name: Build
