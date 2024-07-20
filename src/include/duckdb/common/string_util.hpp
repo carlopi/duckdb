@@ -73,7 +73,7 @@ public:
 	}
 	static char CharacterToLower(char c) {
 		if (c >= 'A' && c <= 'Z') {
-			return c - ('A' - 'a');
+			return char(uint8_t(c) - uint8_t('A' - 'a'));
 		}
 		return c;
 	}
