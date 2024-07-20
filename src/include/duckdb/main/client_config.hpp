@@ -148,6 +148,42 @@ public:
 	void SetDefaultStreamingBufferSize();
 };
 
+
+#include <functional>
+
+template <class FUNC_T>
+struct NoExceptDelegate;
+
+template <class R, class ... ARGS >
+struct NoExceptDelegate<R(ARGS...)>
+{
+    explicit NoExceptDelegate(std::function<R(ARGS...)>&& callback_in)
+      : callback(std::move(callback_in))
+    {
+        if (!callback) {
+            throw std::invalid_argument( "NoExceptDelegate requires a valid callback");
+        }
+    }
+
+    template <class...ARGS_U>
+    R operator()(ARGS_U&&... args) noexcept
+    {
+	try {
+        return callback(std::forward<ARGS_U>(args)...);
+	} catch (...) {
+		std::terminate();
+	}
+    }
+    explicit operator bool() {
+	if (callback) {
+		return true;
+	}
+	return false;
+	}
+  private:
+      std::function<R(ARGS...)> callback;
+};
+
 struct ScopedConfigSetting {
 public:
 	using config_modify_func_t = std::function<void(ClientConfig &config)>;
@@ -160,7 +196,7 @@ public:
 			set(config);
 		}
 	}
-	~ScopedConfigSetting() {
+	~ScopedConfigSetting() noexcept {
 		if (unset) {
 			unset(config);
 		}
@@ -169,7 +205,7 @@ public:
 public:
 	ClientConfig &config;
 	config_modify_func_t set;
-	config_modify_func_t unset;
+	NoExceptDelegate<void(ClientConfig &config)> unset;
 };
 
 } // namespace duckdb
