@@ -48,13 +48,13 @@ public:
 	//! After matching is done, this returns how many matching entries there are, which 'sel' is modified to point to
 	idx_t Match(DataChunk &lhs, const vector<TupleDataVectorFormat> &lhs_formats, SelectionVector &sel, idx_t count,
 	            const TupleDataLayout &rhs_layout, Vector &rhs_row_locations, SelectionVector *no_match_sel,
-	            idx_t &no_match_count);
+	            idx_t &no_match_count) const;
 
 	//! Same as Match above, but only compares the column indexes in columns. Needs to be initialized with the same
 	//! columns.
 	idx_t Match(DataChunk &lhs, const vector<TupleDataVectorFormat> &lhs_formats, SelectionVector &sel, idx_t count,
 	            const TupleDataLayout &rhs_layout, Vector &rhs_row_locations, SelectionVector *no_match_sel,
-	            idx_t &no_match_count, const vector<column_t> &columns);
+	            idx_t &no_match_count, const vector<column_t> &columns) const;
 
 private:
 	//! Gets the templated match function for a given column

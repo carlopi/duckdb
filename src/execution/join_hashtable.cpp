@@ -157,7 +157,7 @@ static void ApplyBitmaskAndGetSaltBuild(Vector &hashes_v, const idx_t &count, co
 template <bool USE_SALTS>
 static inline void GetRowPointersInternal(DataChunk &keys, TupleDataChunkState &key_state,
                                           JoinHashTable::ProbeState &state, Vector &hashes_v,
-                                          const SelectionVector &sel, idx_t &count, JoinHashTable *ht,
+                                          const SelectionVector &sel, idx_t &count, const JoinHashTable * const ht,
                                           ht_entry_t *entries, Vector &pointers_result_v, SelectionVector &match_sel) {
 	UnifiedVectorFormat hashes_v_unified;
 	hashes_v.ToUnifiedFormat(count, hashes_v_unified);
@@ -168,13 +168,15 @@ static inline void GetRowPointersInternal(DataChunk &keys, TupleDataChunkState &
 	auto ht_offsets = FlatVector::GetData<idx_t>(state.ht_offsets_v);
 	auto ht_offsets_dense = FlatVector::GetData<idx_t>(state.ht_offsets_dense_v);
 
+	const idx_t ht_bitmask = ht->bitmask;
+
 	idx_t non_empty_count = 0;
 
 	// first, filter out the empty rows and calculate the offset
 	for (idx_t i = 0; i < count; i++) {
 		const auto row_index = sel.get_index(i);
 		auto uvf_index = hashes_v_unified.sel->get_index(row_index);
-		auto ht_offset = hashes[uvf_index] & ht->bitmask;
+		auto ht_offset = hashes[uvf_index] & ht_bitmask;
 		ht_offsets_dense[i] = ht_offset;
 		ht_offsets[row_index] = ht_offset;
 	}
@@ -240,7 +242,7 @@ static inline void GetRowPointersInternal(DataChunk &keys, TupleDataChunkState &
 						break;
 					}
 
-					IncrementAndWrap(ht_offset, ht->bitmask);
+					IncrementAndWrap(ht_offset, ht_bitmask);
 				}
 			} else {
 				entry = entries[ht_offset];
@@ -279,7 +281,7 @@ static inline void GetRowPointersInternal(DataChunk &keys, TupleDataChunkState &
 				const auto row_index = state.key_no_match_sel.get_index(i);
 				auto &ht_offset = ht_offsets[row_index];
 
-				IncrementAndWrap(ht_offset, ht->bitmask);
+				IncrementAndWrap(ht_offset, ht_bitmask);
 			}
 		}
 
@@ -564,7 +566,7 @@ static void InsertHashesLoop(atomic<ht_entry_t> entries[], Vector row_locations,
 	idx_t remaining_count = count;
 
 	// use the ht bitmask to make the modulo operation faster but keep the salt bits intact
-	idx_t capacity_mask = ht->bitmask | ht_entry_t::SALT_MASK;
+	const idx_t capacity_mask = ht->bitmask | ht_entry_t::SALT_MASK;
 	while (remaining_count > 0) {
 		idx_t salt_match_count = 0;
 

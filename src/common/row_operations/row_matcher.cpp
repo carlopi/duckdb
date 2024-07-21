@@ -229,7 +229,7 @@ void RowMatcher::Initialize(const bool no_match_sel, const TupleDataLayout &layo
 
 idx_t RowMatcher::Match(DataChunk &lhs, const vector<TupleDataVectorFormat> &lhs_formats, SelectionVector &sel,
                         idx_t count, const TupleDataLayout &rhs_layout, Vector &rhs_row_locations,
-                        SelectionVector *no_match_sel, idx_t &no_match_count) {
+                        SelectionVector *no_match_sel, idx_t &no_match_count) const {
 	D_ASSERT(!match_functions.empty());
 	for (idx_t col_idx = 0; col_idx < match_functions.size(); col_idx++) {
 		const auto &match_function = match_functions[col_idx];
@@ -242,7 +242,7 @@ idx_t RowMatcher::Match(DataChunk &lhs, const vector<TupleDataVectorFormat> &lhs
 
 idx_t RowMatcher::Match(DataChunk &lhs, const vector<TupleDataVectorFormat> &lhs_formats, SelectionVector &sel,
                         idx_t count, const TupleDataLayout &rhs_layout, Vector &rhs_row_locations,
-                        SelectionVector *no_match_sel, idx_t &no_match_count, const vector<column_t> &columns) {
+                        SelectionVector *no_match_sel, idx_t &no_match_count, const vector<column_t> &columns) const {
 	D_ASSERT(!match_functions.empty());
 
 	// The column_ids must have the same size as the match_functions vector
