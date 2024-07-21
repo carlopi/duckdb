@@ -10,7 +10,6 @@
 
 #include "duckdb/common/mutex.hpp"
 #include "duckdb/common/types/vector.hpp"
-#include "hyperloglog.hpp"
 
 namespace duckdb_hll {
 struct robj; // NOLINT
