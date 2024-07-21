@@ -1,0 +1,15 @@
+# name: ${FILE_PATH}
+# description: ${DESCRIPTION}
+# group: [sf10]
+
+name Q${QUERY_NUMBER_PADDED}
+group tpch
+subgroup sf10
+
+require tpch
+
+cache tpch_sf10.duckdb
+
+load benchmark/tpch/sf10/load.sql
+
+run extension/tpch/dbgen/queries/q${QUERY_NUMBER_PADDED}.sql
