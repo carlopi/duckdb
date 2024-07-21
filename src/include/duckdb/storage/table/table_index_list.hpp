@@ -22,7 +22,7 @@ class TableIndexList {
 public:
 	//! Scan the indexes, invoking the callback method for every entry
 	template <class T>
-	void Scan(T &&callback) {
+	void Scan(const T &callback) {
 		lock_guard<mutex> lock(indexes_lock);
 		for (auto &index : indexes) {
 			if (callback(*index)) {
@@ -33,7 +33,7 @@ public:
 
 	//! Scan the indexes, invoking the callback method for every bound entry of a specific type
 	template <class T, class FUNC>
-	void ScanBound(FUNC &&callback) {
+	void ScanBound(const FUNC &callback) {
 		lock_guard<mutex> lock(indexes_lock);
 		for (auto &index : indexes) {
 			if (index->IsBound() && T::TYPE_NAME == index->GetIndexType()) {
@@ -50,7 +50,7 @@ public:
 	void BindAndScan(ClientContext &context, DataTableInfo &table_info, FUNC &&callback) {
 		// FIXME: optimize this by only looping through the indexes once without re-acquiring the lock
 		InitializeIndexes(context, table_info, T::TYPE_NAME);
-		ScanBound<T>(callback);
+		ScanBound<T>(std::forward(callback));
 	}
 
 	//! Returns a reference to the indexes of this table
