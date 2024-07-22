@@ -12,12 +12,44 @@ struct BothInclusiveBetweenOperator {
 	static inline bool Operation(T input, T lower, T upper) {
 		return GreaterThanEquals::Operation<T>(input, lower) && LessThanEquals::Operation<T>(input, upper);
 	}
+	template <>
+	static inline bool Operation(uint8_t input, uint8_t lower, uint8_t upper) {
+		return (input - lower) <= (upper - lower);
+	}
+	template <>
+	static inline bool Operation(uint16_t input, uint16_t lower, uint16_t upper) {
+		return (input - lower) <= (upper - lower);
+	}
+	template <>
+	static inline bool Operation(uint32_t input, uint32_t lower, uint32_t upper) {
+		return (input - lower) <= (upper - lower);
+	}
+	template <>
+	static inline bool Operation(uint64_t input, uint64_t lower, uint64_t upper) {
+		return (input - lower) <= (upper - lower);
+	}
 };
 
 struct LowerInclusiveBetweenOperator {
 	template <class T>
 	static inline bool Operation(T input, T lower, T upper) {
 		return GreaterThanEquals::Operation<T>(input, lower) && LessThan::Operation<T>(input, upper);
+	}
+	template <>
+	static inline bool Operation(uint8_t input, uint8_t lower, uint8_t upper) {
+		return (input - lower) < (upper - lower);
+	}
+	template <>
+	static inline bool Operation(uint16_t input, uint16_t lower, uint16_t upper) {
+		return (input - lower) < (upper - lower);
+	}
+	template <>
+	static inline bool Operation(uint32_t input, uint32_t lower, uint32_t upper) {
+		return (input - lower) < (upper - lower);
+	}
+	template <>
+	static inline bool Operation(uint64_t input, uint64_t lower, uint64_t upper) {
+		return (input - lower) < (upper - lower);
 	}
 };
 
@@ -26,12 +58,52 @@ struct UpperInclusiveBetweenOperator {
 	static inline bool Operation(T input, T lower, T upper) {
 		return GreaterThan::Operation<T>(input, lower) && LessThanEquals::Operation<T>(input, upper);
 	}
+	template <>
+	static inline bool Operation(uint8_t input, uint8_t lower, uint8_t upper) {
+		lower++;
+		return (input - lower) <= (upper - lower);
+	}
+	template <>
+	static inline bool Operation(uint16_t input, uint16_t lower, uint16_t upper) {
+		lower++;
+		return (input - lower) <= (upper - lower);
+	}
+	template <>
+	static inline bool Operation(uint32_t input, uint32_t lower, uint32_t upper) {
+		lower++;
+		return (input - lower) <= (upper - lower);
+	}
+	template <>
+	static inline bool Operation(uint64_t input, uint64_t lower, uint64_t upper) {
+		lower++;
+		return (input - lower) <= (upper - lower);
+	}
 };
 
 struct ExclusiveBetweenOperator {
 	template <class T>
 	static inline bool Operation(T input, T lower, T upper) {
 		return GreaterThan::Operation<T>(input, lower) && LessThan::Operation<T>(input, upper);
+	}
+	template <>
+	static inline bool Operation(uint8_t input, uint8_t lower, uint8_t upper) {
+		lower++;
+		return (input - lower) < (upper - lower);
+	}
+	template <>
+	static inline bool Operation(uint16_t input, uint16_t lower, uint16_t upper) {
+		lower++;
+		return (input - lower) < (upper - lower);
+	}
+	template <>
+	static inline bool Operation(uint32_t input, uint32_t lower, uint32_t upper) {
+		lower++;
+		return (input - lower) < (upper - lower);
+	}
+	template <>
+	static inline bool Operation(uint64_t input, uint64_t lower, uint64_t upper) {
+		lower++;
+		return (input - lower) < (upper - lower);
 	}
 };
 
