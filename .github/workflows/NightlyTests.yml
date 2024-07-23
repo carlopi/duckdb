@@ -688,6 +688,7 @@ jobs:
       BUILD_JEMALLOC: 1
       BUILD_EXTENSIONS: "inet"
       TSAN_OPTIONS: suppressions=${{ github.workspace }}/.sanitizer-thread-suppressions.txt
+      FORCE_ASYNC_SINK_SOURCE: 1
 
     steps:
     - uses: actions/checkout@v3
