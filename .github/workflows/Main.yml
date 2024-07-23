@@ -93,7 +93,7 @@ jobs:
       CC: gcc-10
       CXX: g++-10
       GEN: ninja
-      CORE_EXTENSIONS: "icu;parquet;tpch;tpcds;fts;json;jemalloc;sqlite_scanner"
+      CORE_EXTENSIONS: "icu;parquet;tpch;tpcds;fts;json;jemalloc;vss;spatial"
       BUILD_INET: 1
       BUILD_EXTENSIONS: ""
       RUN_SLOW_VERIFIERS: 1
@@ -133,7 +133,7 @@ jobs:
       CC: gcc-10
       CXX: g++-10
       GEN: ninja
-      CORE_EXTENSIONS: "icu;parquet;tpch;tpcds;fts;json;jemalloc"
+      CORE_EXTENSIONS: "icu;parquet;tpch;tpcds;fts;json;jemalloc;sqlite_scanner;vss"
       BUILD_INET: 1
       BUILD_EXTENSIONS: "inet"
 
