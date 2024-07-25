@@ -13,7 +13,7 @@
 
 namespace duckdb {
 
-enum class OptimizerType : uint32_t {
+enum class OptimizerType : uint32_t { // NOLINT(performance-enum-size)
 	INVALID = 0,
 	EXPRESSION_REWRITER,
 	FILTER_PULLUP,

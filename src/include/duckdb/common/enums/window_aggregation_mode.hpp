@@ -12,7 +12,7 @@
 
 namespace duckdb {
 
-enum class WindowAggregationMode : uint32_t {
+enum class WindowAggregationMode : uint32_t { // NOLINT(performance-enum-size)
 	//! Use the window aggregate API if available
 	WINDOW = 0,
 	//! Don't use window, but use combine if available

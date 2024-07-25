@@ -348,7 +348,7 @@ enum class VerifyExistenceType : uint8_t;
 
 enum class WALType : uint8_t;
 
-enum class WindowAggregationMode : uint32_t;
+enum class WindowAggregationMode : uint32_t; // NOLINT(performance-enum-size)
 
 enum class WindowBoundary : uint8_t;
 

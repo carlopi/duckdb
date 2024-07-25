@@ -12,7 +12,8 @@
 
 namespace duckdb {
 
-enum class UndoFlags : uint32_t { // far too big but aligned (TM)
+//far too big but aligned (TM)
+enum class UndoFlags : uint32_t { // NOLINT(performance-enum-size)
 	EMPTY_ENTRY = 0,
 	CATALOG_ENTRY = 1,
 	INSERT_TUPLE = 2,
