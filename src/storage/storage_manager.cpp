@@ -225,7 +225,7 @@ void SingleFileStorageManager::LoadDatabase(const optional_idx block_alloc_size)
 
 ///////////////////////////////////////////////////////////////////////////////
 
-enum class WALCommitState { IN_PROGRESS, FLUSHED, TRUNCATED };
+enum class WALCommitState : uint8_t { IN_PROGRESS, FLUSHED, TRUNCATED };
 
 class SingleFileStorageCommitState : public StorageCommitState {
 public:

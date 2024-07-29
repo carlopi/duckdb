@@ -23,7 +23,7 @@ class ThreadContext;
 
 struct AllocatorDebugInfo;
 
-enum class AllocatorFreeType { REQUIRES_FREE, DOES_NOT_REQUIRE_FREE };
+enum class AllocatorFreeType : uint8_t { REQUIRES_FREE, DOES_NOT_REQUIRE_FREE };
 
 struct PrivateAllocatorData {
 	PrivateAllocatorData();

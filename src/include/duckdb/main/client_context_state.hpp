@@ -28,7 +28,7 @@ class SQLStatement;
 struct PendingQueryParameters;
 class RegisteredStateManager;
 
-enum class RebindQueryInfo { DO_NOT_REBIND, ATTEMPT_TO_REBIND };
+enum class RebindQueryInfo : uint8_t { DO_NOT_REBIND, ATTEMPT_TO_REBIND };
 
 struct PreparedStatementCallbackInfo {
 	PreparedStatementCallbackInfo(PreparedStatementData &prepared_statement, const PendingQueryParameters &parameters)

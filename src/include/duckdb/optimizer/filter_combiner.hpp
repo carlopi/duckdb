@@ -22,8 +22,8 @@
 namespace duckdb {
 class Optimizer;
 
-enum class ValueComparisonResult { PRUNE_LEFT, PRUNE_RIGHT, UNSATISFIABLE_CONDITION, PRUNE_NOTHING };
-enum class FilterResult { UNSATISFIABLE, SUCCESS, UNSUPPORTED };
+enum class ValueComparisonResult : uint8_t { PRUNE_LEFT, PRUNE_RIGHT, UNSATISFIABLE_CONDITION, PRUNE_NOTHING };
+enum class FilterResult : uint8_t { UNSATISFIABLE, SUCCESS, UNSUPPORTED };
 
 //! The FilterCombiner combines several filters and generates a logically equivalent set that is more efficient
 //! Amongst others:

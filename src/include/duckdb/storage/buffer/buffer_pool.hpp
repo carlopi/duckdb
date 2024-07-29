@@ -88,7 +88,7 @@ protected:
 	void IncrementDeadNodes(FileBufferType type);
 
 protected:
-	enum class MemoryUsageCaches {
+	enum class MemoryUsageCaches : uint8_t {
 		FLUSH,
 		NO_FLUSH,
 	};

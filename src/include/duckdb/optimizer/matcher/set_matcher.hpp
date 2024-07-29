@@ -17,7 +17,7 @@ namespace duckdb {
 class SetMatcher {
 public:
 	//! The policy used by the SetMatcher
-	enum class Policy {
+	enum class Policy : uint8_t {
 		//! All entries have to be matched, and the matches have to be ordered
 		ORDERED,
 		//! All entries have to be matched, but the order of the matches does not matter

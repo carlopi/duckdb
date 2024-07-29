@@ -24,7 +24,7 @@ class DatabaseManager;
 
 struct AttachInfo;
 
-enum class AttachedDatabaseType {
+enum class AttachedDatabaseType : uint8_t {
 	READ_WRITE_DATABASE,
 	READ_ONLY_DATABASE,
 	SYSTEM_DATABASE,

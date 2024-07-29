@@ -22,7 +22,7 @@ namespace duckdb {
 class Executor;
 
 //! The result of executing a PipelineExecutor
-enum class PipelineExecuteResult {
+enum class PipelineExecuteResult : uint8_t {
 	//! PipelineExecutor is fully executed: the source is completely exhausted
 	FINISHED,
 	//! PipelineExecutor is not yet fully executed and can be called again immediately

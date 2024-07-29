@@ -13,7 +13,7 @@
 
 namespace duckdb {
 
-enum class BlockReaderType { EXISTING_BLOCKS, REGISTER_BLOCKS };
+enum class BlockReaderType : uint8_t { EXISTING_BLOCKS, REGISTER_BLOCKS };
 
 class MetadataReader : public ReadStream {
 public:

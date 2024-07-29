@@ -17,7 +17,7 @@ static hugeint_t GetPreviousPowerOfTen(hugeint_t input) {
 	return power_of_ten / 10;
 }
 
-enum class NiceRounding { CEILING, ROUND };
+enum class NiceRounding : uint8_t { CEILING, ROUND };
 
 hugeint_t RoundToNumber(hugeint_t input, hugeint_t num, NiceRounding rounding) {
 	if (rounding == NiceRounding::ROUND) {

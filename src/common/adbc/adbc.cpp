@@ -59,7 +59,7 @@ AdbcStatusCode duckdb_adbc_init(int version, void *driver, struct AdbcError *err
 
 namespace duckdb_adbc {
 
-enum class IngestionMode { CREATE = 0, APPEND = 1 };
+enum class IngestionMode : uint8_t { CREATE = 0, APPEND = 1 };
 struct DuckDBAdbcStatementWrapper {
 	::duckdb_connection connection;
 	::duckdb_arrow result;

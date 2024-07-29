@@ -25,7 +25,7 @@ class ClientContextLock;
 
 class BufferedData {
 protected:
-	enum class Type { SIMPLE, BATCHED };
+	enum class Type : uint8_t { SIMPLE, BATCHED };
 
 public:
 	BufferedData(Type type, weak_ptr<ClientContext> context_p);

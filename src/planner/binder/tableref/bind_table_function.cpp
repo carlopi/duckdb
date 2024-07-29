@@ -23,7 +23,7 @@
 
 namespace duckdb {
 
-enum class TableFunctionBindType { STANDARD_TABLE_FUNCTION, TABLE_IN_OUT_FUNCTION, TABLE_PARAMETER_FUNCTION };
+enum class TableFunctionBindType : uint8_t { STANDARD_TABLE_FUNCTION, TABLE_IN_OUT_FUNCTION, TABLE_PARAMETER_FUNCTION };
 
 static TableFunctionBindType GetTableFunctionBindType(TableFunctionCatalogEntry &table_function,
                                                       vector<unique_ptr<ParsedExpression>> &expressions) {

@@ -16,7 +16,7 @@
 namespace duckdb {
 struct StorageLockInternals;
 
-enum class StorageLockType { SHARED = 0, EXCLUSIVE = 1 };
+enum class StorageLockType : uint8_t { SHARED = 0, EXCLUSIVE = 1 };
 
 class StorageLockKey {
 public:

@@ -32,7 +32,7 @@ class DatabaseInstance;
 class FileOpener;
 class FileSystem;
 
-enum class FileType {
+enum class FileType : uint8_t {
 	//! Regular file
 	FILE_TYPE_REGULAR,
 	//! Directory

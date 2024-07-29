@@ -28,7 +28,7 @@ public:
 	DUCKDB_API virtual void GenerateRandomData(data_ptr_t data, idx_t len);
 
 public:
-	enum Mode { ENCRYPT, DECRYPT };
+	enum Mode : uint8_t { ENCRYPT, DECRYPT };
 };
 
 class EncryptionUtil {

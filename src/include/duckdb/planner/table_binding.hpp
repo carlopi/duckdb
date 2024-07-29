@@ -27,7 +27,7 @@ class BoundTableFunction;
 class StandardEntry;
 struct ColumnBinding;
 
-enum class BindingType { BASE, TABLE, DUMMY, CATALOG_ENTRY };
+enum class BindingType : uint8_t { BASE, TABLE, DUMMY, CATALOG_ENTRY };
 
 //! A Binding represents a binding to a table, table-producing function or subquery with a specified table index.
 struct Binding {

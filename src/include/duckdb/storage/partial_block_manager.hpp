@@ -85,7 +85,7 @@ struct PartialBlockAllocation {
 	unique_ptr<PartialBlock> partial_block;
 };
 
-enum class PartialBlockType { FULL_CHECKPOINT, APPEND_TO_TABLE };
+enum class PartialBlockType : uint8_t { FULL_CHECKPOINT, APPEND_TO_TABLE };
 
 //! Enables sharing blocks across some scope. Scope is whatever we want to share
 //! blocks across. It may be an entire checkpoint or just a single row group.

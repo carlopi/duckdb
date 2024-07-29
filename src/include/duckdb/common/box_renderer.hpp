@@ -17,7 +17,7 @@ namespace duckdb {
 class ColumnDataCollection;
 class ColumnDataRowCollection;
 
-enum class ValueRenderAlignment { LEFT, MIDDLE, RIGHT };
+enum class ValueRenderAlignment : uint8_t { LEFT, MIDDLE, RIGHT };
 enum class RenderMode : uint8_t { ROWS, COLUMNS };
 
 struct BoxRendererConfig {

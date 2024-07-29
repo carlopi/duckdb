@@ -53,7 +53,7 @@ private:
 class CatalogSet {
 public:
 	struct EntryLookup {
-		enum class FailureReason { SUCCESS, DELETED, NOT_PRESENT };
+		enum class FailureReason : uint8_t { SUCCESS, DELETED, NOT_PRESENT };
 		optional_ptr<CatalogEntry> result;
 		FailureReason reason;
 	};

@@ -12,21 +12,21 @@
 
 namespace duckdb {
 
-enum class CheckpointWALAction {
+enum class CheckpointWALAction : uint8_t {
 	//! Delete the WAL file after the checkpoint completes - generally done on shutdown
 	DELETE_WAL,
 	//! Leave the WAL file alone
 	DONT_DELETE_WAL
 };
 
-enum class CheckpointAction {
+enum class CheckpointAction : uint8_t {
 	//! Checkpoint only if a checkpoint is required (i.e. the WAL has data in it that can be flushed)
 	CHECKPOINT_IF_REQUIRED,
 	//! Force a checkpoint regardless of whether or not there is data in the WAL to flush
 	FORCE_CHECKPOINT
 };
 
-enum class CheckpointType {
+enum class CheckpointType : uint8_t {
 	//! Full checkpoints involve vacuuming deleted rows and updates
 	//! They can only be run if no transaction need to read old data (that would be cleaned up/vacuumed)
 	FULL_CHECKPOINT,

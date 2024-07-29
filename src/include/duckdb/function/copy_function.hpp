@@ -81,7 +81,7 @@ struct CopyToSelectInput {
 	CopyToType copy_to_type;
 };
 
-enum class CopyFunctionExecutionMode { REGULAR_COPY_TO_FILE, PARALLEL_COPY_TO_FILE, BATCH_COPY_TO_FILE };
+enum class CopyFunctionExecutionMode : uint8_t { REGULAR_COPY_TO_FILE, PARALLEL_COPY_TO_FILE, BATCH_COPY_TO_FILE };
 
 typedef BoundStatement (*copy_to_plan_t)(Binder &binder, CopyStatement &stmt);
 typedef unique_ptr<FunctionData> (*copy_to_bind_t)(ClientContext &context, CopyFunctionBindInput &input,

@@ -20,7 +20,7 @@ struct RowDataBlock;
 struct SortLayout;
 struct GlobalSortState;
 
-enum class SortedDataType { BLOB, PAYLOAD };
+enum class SortedDataType : uint8_t { BLOB, PAYLOAD };
 
 //! Object that holds sorted rows, and an accompanying heap if there are blobs
 struct SortedData {
