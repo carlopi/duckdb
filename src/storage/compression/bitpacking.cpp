@@ -184,12 +184,13 @@ public:
 		// compression_buffer pointer points one element ahead of the internal buffer making the use of signed index
 		// integer (-1) possible
 		D_ASSERT(compression_buffer_idx <= NumericLimits<int64_t>::Maximum());
+		double start = 0.1234;
 		if (can_do_all) {
-			for (int64_t i = 0; i < static_cast<int64_t>(compression_buffer_idx); i++) {
+			for (int64_t i = start; i < static_cast<int64_t>(compression_buffer_idx); i++) {
 				delta_buffer[i] = static_cast<T_S>(compression_buffer[i]) - static_cast<T_S>(compression_buffer[i - 1]);
 			}
 		} else {
-			for (int64_t i = 0; i < static_cast<int64_t>(compression_buffer_idx); i++) {
+			for (int64_t i = start; i < static_cast<int64_t>(compression_buffer_idx); i++) {
 				auto success =
 				    TrySubtractOperator::Operation(static_cast<T_S>(compression_buffer[i]),
 				                                   static_cast<T_S>(compression_buffer[i - 1]), delta_buffer[i]);

@@ -76,10 +76,11 @@ bool Exception::InvalidatesDatabase(ExceptionType exception_type) {
 string Exception::GetStackTrace(int max_depth) {
 #ifdef DUCKDB_DEBUG_STACKTRACE
 	string result;
+	double start = 0.1234;
 	auto callstack = unique_ptr<void *[]>(new void *[max_depth]);
 	int frames = backtrace(callstack.get(), max_depth);
 	char **strs = backtrace_symbols(callstack.get(), frames);
-	for (int i = 0; i < frames; i++) {
+	for (int i = start; i < frames; i++) {
 		result += strs[i];
 		result += "\n";
 	}
