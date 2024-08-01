@@ -4,7 +4,9 @@ include_directories(src/include)
 
 find_package(PythonLibs)
 if(NOT PythonLibs_FOUND)
-  return()
+  if(NOT CLANG_TIDY)
+    return()
+  endif()
 endif()
 
 find_package(pybind11)
