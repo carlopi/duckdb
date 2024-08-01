@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #pragma once
+#include <iostream>
 
 #include "duckdb/common/case_insensitive_map.hpp"
 #include "duckdb/common/helper.hpp"
@@ -34,6 +35,7 @@ private:
 
 public:
 	vector<string> Keys() const {
+	//std::cout << "Keys\n";
 		vector<string> keys;
 		keys.resize(this->size());
 		for (auto &kv : map_idx) {
@@ -44,30 +46,37 @@ public:
 	}
 
 	typename VECTOR_TYPE::iterator begin() { // NOLINT: match stl API
+	//std::cout << "begin\n";
 		return map.begin();
 	}
 
 	typename VECTOR_TYPE::iterator end() { // NOLINT: match stl API
+	//std::cout << "end\n";
 		return map.end();
 	}
 
 	typename VECTOR_TYPE::const_iterator begin() const { // NOLINT: match stl API
+	//std::cout << "begin_const\n";
 		return map.begin();
 	}
 
 	typename VECTOR_TYPE::const_iterator end() const { // NOLINT: match stl API
+	//std::cout << "end_const\n";
 		return map.end();
 	}
 
 	typename VECTOR_TYPE::reverse_iterator rbegin() { // NOLINT: match stl API
+	//std::cout << "x\n";
 		return map.rbegin();
 	}
 
 	typename VECTOR_TYPE::reverse_iterator rend() { // NOLINT: match stl API
+	//std::cout << "x\n";
 		return map.rend();
 	}
 
 	typename VECTOR_TYPE::iterator find(const string &key) { // NOLINT: match stl API
+	//std::cout << "x\n";
 		auto entry = map_idx.find(key);
 		if (entry == map_idx.end()) {
 			return map.end();
@@ -76,6 +85,7 @@ public:
 	}
 
 	typename VECTOR_TYPE::const_iterator find(const string &key) const { // NOLINT: match stl API
+	//std::cout << "x\n";
 		auto entry = map_idx.find(key);
 		if (entry == map_idx.end()) {
 			return map.end();
@@ -84,33 +94,52 @@ public:
 	}
 
 	idx_t size() const { // NOLINT: match stl API
+	//std::cout << "x\n";
 		return map_idx.size();
 	}
 
 	bool empty() const { // NOLINT: match stl API
+	//std::cout << "x\n";
 		return map_idx.empty();
 	}
 
 	void resize(idx_t nz) { // NOLINT: match stl API
+	//std::cout << "resize\n";
 		map.resize(nz);
 	}
 
 	void insert(const string &key, V &value) { // NOLINT: match stl API
+		//std::cout << "...\n";
+		if (contains(key)) {
+			std::cout << "BOOOOM\n";
+			std::terminate();
+		}
 		map.push_back(make_pair(key, std::move(value)));
 		map_idx[key] = map.size() - 1;
 	}
 
 	void insert(const string &key, V &&value) { // NOLINT: match stl API
+		//std::cout << ".\n";
+		if (contains(key)) {
+			std::cout << "BOOOOM\n";
+			std::terminate();
+		}
 		map.push_back(make_pair(key, std::move(value)));
 		map_idx[key] = map.size() - 1;
 	}
 
 	void insert(pair<string, V> &&value) { // NOLINT: match stl API
+		//std::cout << "..\n";
+		if (contains(value.first)) {
+			std::cout << "BOOOOM\n";
+			std::terminate();
+		}
 		map.push_back(std::move(value));
 		map_idx[value.first] = map.size() - 1;
 	}
 
 	void erase(typename VECTOR_TYPE::iterator it) { // NOLINT: match stl API
+	//std::cout << "erase\n";
 		auto key = it->first;
 		auto idx = map_idx[it->first];
 		map.erase(it);
@@ -123,14 +152,17 @@ public:
 	}
 
 	bool contains(const string &key) const { // NOLINT: match stl API
+	//std::cout << "x\n";
 		return map_idx.find(key) != map_idx.end();
 	}
 
 	const V &at(const string &key) const { // NOLINT: match stl API
+	//std::cout << "x\n";
 		return map[map_idx.at(key)].second;
 	}
 
 	V &operator[](const string &key) {
+	//std::cout << "x\n";
 		if (!contains(key)) {
 			auto v = V();
 			insert(key, v);
