@@ -74,9 +74,7 @@ int Varint::CharToDigit(char c) {
 }
 
 char Varint::DigitToChar(int digit) {
-	// FIXME: this would be the proper solution:
-	// return UnsafeNumericCast<char>(digit + '0');
-	return static_cast<char>(digit + '0');
+	return UnsafeNumericCast<char>(digit + '0');
 }
 
 bool Varint::VarcharFormatting(string_t &value, idx_t &start_pos, idx_t &end_pos, bool &is_negative, bool &is_zero) {
@@ -164,19 +162,19 @@ string Varint::VarIntToVarchar(const string_t &blob) {
 	bool is_negative;
 	GetByteArray(byte_array, is_negative, blob);
 	while (!byte_array.empty()) {
-		string quotient;
+		vector<uint8_t> quotient;
 		uint8_t remainder = 0;
 		for (uint8_t byte : byte_array) {
 			int new_value = remainder * 256 + byte;
-			quotient += DigitToChar(new_value / 10);
+			quotient.push_back(static_cast<uint8_t>(new_value / 10));
 			remainder = static_cast<uint8_t>(new_value % 10);
 		}
 		decimal_string += DigitToChar(remainder);
 		// Remove leading zeros from the quotient
 		byte_array.clear();
-		for (char digit : quotient) {
-			if (digit != '0' || !byte_array.empty()) {
-				byte_array.push_back(static_cast<uint8_t>(CharToDigit(digit)));
+		for (uint8_t digit : quotient) {
+			if (digit != 0 || !byte_array.empty()) {
+				byte_array.push_back(digit);
 			}
 		}
 	}
