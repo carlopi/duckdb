@@ -68,6 +68,7 @@ static void ThrowNumericCastError(FROM in, TO minval, TO maxval) {
 
 template <class TO, class FROM>
 TO NumericCast(FROM val) {
+#ifndef DUCKDB_DEBUG_NO_SAFETY
 	if (std::is_same<TO, FROM>::value) {
 		return static_cast<TO>(val);
 	}
@@ -93,7 +94,7 @@ TO NumericCast(FROM val) {
 	if (std::is_signed<FROM>() != std::is_signed<TO>() && (signed_in < signed_min || unsigned_in > unsigned_max)) {
 		ThrowNumericCastError(val, minval, maxval);
 	}
-
+#endif
 	return static_cast<TO>(val);
 }
 
@@ -110,20 +111,24 @@ TO LossyNumericCast(float val) {
 template <class TO>
 TO NumericCast(double val) {
 	auto res = LossyNumericCast<TO>(val);
+#ifndef DUCKDB_DEBUG_NO_SAFETY
 	if (val != double(res)) {
 		throw InternalException("Information loss on double cast: value %lf outside of target range [%lf, %lf]", val,
 		                        double(res), double(res));
 	}
+#endif
 	return res;
 }
 
 template <class TO>
 TO NumericCast(float val) {
 	auto res = LossyNumericCast<TO>(val);
+#ifndef DUCKDB_DEBUG_NO_SAFETY
 	if (val != float(res)) {
 		throw InternalException("Information loss on float cast: value %f outside of target range [%f, %f]", val,
 		                        float(res), float(res));
 	}
+#endif
 	return res;
 }
 
