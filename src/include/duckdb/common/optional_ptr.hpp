@@ -29,9 +29,11 @@ public:
 	}
 
 	void CheckValid() const {
+#ifndef DUCKDB_DEBUG_NO_SAFETY
 		if (!ptr) {
 			throw InternalException("Attempting to dereference an optional pointer that is not set");
 		}
+#endif
 	}
 
 	operator bool() const { // NOLINT: allow implicit conversion to bool
