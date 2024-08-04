@@ -62,6 +62,7 @@ void DuckTransaction::PushCatalogEntry(CatalogEntry &entry, data_ptr_t extra_dat
 	auto baseptr = undo_buffer.CreateEntry(UndoFlags::CATALOG_ENTRY, alloc_size);
 	// store the pointer to the catalog entry
 	Store<CatalogEntry *>(&entry, baseptr);
+	static_assert(sizeof(CatalogEntry *) == 8, "Pointer have size 8");
 	if (extra_data_size > 0) {
 		// copy the extra data behind the catalog entry pointer (if any)
 		baseptr += sizeof(CatalogEntry *);

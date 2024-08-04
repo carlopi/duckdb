@@ -9,6 +9,7 @@ namespace duckdb {
 void BinarySerializer::OnPropertyBegin(const field_id_t field_id, const char *tag) {
 	// Just write the field id straight up
 	Write<field_id_t>(field_id);
+	static_assert(sizeof(field_id_t) == 2, "field_id_t should be 2 bytes");
 #ifdef DEBUG
 	// First of check that we are inside an object
 	if (debug_stack.empty()) {
@@ -93,6 +94,7 @@ void BinarySerializer::WriteNull() {
 
 void BinarySerializer::WriteValue(bool value) {
 	Write<uint8_t>(value);
+	static_assert(sizeof(uint8_t) == 1, "uint8_t should be 1 bytes");
 }
 
 void BinarySerializer::WriteValue(uint8_t value) {

@@ -23,6 +23,7 @@ void RowOperations::SwizzleColumns(const RowLayout &layout, const data_ptr_t bas
 		data_ptr_t heap_ptr_ptr = row_ptr + layout.GetHeapOffset();
 		for (idx_t i = 0; i < next; i++) {
 			heap_row_ptrs[i] = Load<data_ptr_t>(heap_ptr_ptr);
+			static_assert(sizeof(data_ptr_t) == 8, "data_ptr_t are 8 bytes");
 			heap_ptr_ptr += row_width;
 		}
 		// Loop through the blob columns
