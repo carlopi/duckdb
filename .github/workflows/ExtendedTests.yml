@@ -223,11 +223,11 @@ jobs:
          shell: bash
          run: |
            #### This should also be alternative way to instal llvm to a specific version
-           # wget https://apt.llvm.org/llvm.sh
-           # chmod +x llvm.sh
-           # sudo ./llvm.sh 17
+           wget https://apt.llvm.org/llvm.sh
+           chmod +x llvm.sh
+           sudo ./llvm.sh
            #####
-           CMAKE_LLVM_PATH='/usr/lib/llvm-14' make
+           CMAKE_LLVM_PATH='/usr/lib/llvm-18' make
            git clone --branch ${{ env.BASE_BRANCH }} https://github.com/duckdb/duckdb.git --depth=1
            cd duckdb
            make
