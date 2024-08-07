@@ -466,6 +466,7 @@ void Executor::SignalTaskRescheduled(lock_guard<mutex> &) {
 }
 
 void Executor::WaitForTask() {
+#ifndef DUCKDB_NO_THREADS
 	static constexpr std::chrono::milliseconds WAIT_TIME = std::chrono::milliseconds(20);
 	std::unique_lock<mutex> l(executor_lock);
 	if (to_be_rescheduled_tasks.empty()) {
@@ -477,6 +478,7 @@ void Executor::WaitForTask() {
 	}
 
 	task_reschedule.wait_for(l, WAIT_TIME);
+#endif
 }
 
 void Executor::RescheduleTask(shared_ptr<Task> &task_p) {

@@ -70,19 +70,16 @@ bool ConcurrentQueue::DequeueFromProducer(ProducerToken &token, shared_ptr<Task>
 #else
 struct ConcurrentQueue {
 	std::queue<shared_ptr<Task>> q;
-	mutex qlock;
 
 	void Enqueue(ProducerToken &token, shared_ptr<Task> task);
 	bool DequeueFromProducer(ProducerToken &token, shared_ptr<Task> &task);
 };
 
 void ConcurrentQueue::Enqueue(ProducerToken &token, shared_ptr<Task> task) {
-	lock_guard<mutex> lock(qlock);
 	q.push(std::move(task));
 }
 
 bool ConcurrentQueue::DequeueFromProducer(ProducerToken &token, shared_ptr<Task> &task) {
-	lock_guard<mutex> lock(qlock);
 	if (q.empty()) {
 		return false;
 	}
