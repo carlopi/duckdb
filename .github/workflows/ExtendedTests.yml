@@ -107,7 +107,7 @@ jobs:
          python scripts/regression_test_runner.py --nofail --old=duckdb/build/release/benchmark/benchmark_runner --new=build/release/benchmark/benchmark_runner --benchmarks=.github/regression/imdb.csv --threads=2
 
   regression-clang16-vs-clang14-benchmark-runner:
-     name: Benchmark runner clang-16 vs clang-14 (OSX)
+     name: Benchmark runner clang-18 (brew) vs clang-15 (default) (OSX)
      runs-on: macos-latest
      env:
        CC: clang
@@ -223,11 +223,11 @@ jobs:
          shell: bash
          run: |
            #### This should also be alternative way to instal llvm to a specific version
-           # wget https://apt.llvm.org/llvm.sh
-           # chmod +x llvm.sh
-           # sudo ./llvm.sh 17
+           wget https://apt.llvm.org/llvm.sh
+           chmod +x llvm.sh
+           sudo ./llvm.sh
            #####
-           CMAKE_LLVM_PATH='/usr/lib/llvm-14' make
+           CMAKE_LLVM_PATH='/usr/lib/llvm-18' make
            git clone --branch ${{ env.BASE_BRANCH }} https://github.com/duckdb/duckdb.git --depth=1
            cd duckdb
            make
