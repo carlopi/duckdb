@@ -2,6 +2,7 @@
 
 #include "duckdb/catalog/catalog.hpp"
 #include "duckdb/common/virtual_file_system.hpp"
+#include "duckdb/common/types/uuid.hpp"
 #include "duckdb/execution/operator/helper/physical_set.hpp"
 #include "duckdb/function/cast/cast_function_set.hpp"
 #include "duckdb/function/compression_function.hpp"
@@ -39,6 +40,7 @@ DBConfig::DBConfig() {
 	index_types = make_uniq<IndexTypeSet>();
 	error_manager = make_uniq<ErrorManager>();
 	secret_manager = make_uniq<SecretManager>();
+	uuid = UUID::ToString(UUID::GenerateRandomUUID());
 }
 
 DBConfig::DBConfig(bool read_only) : DBConfig::DBConfig() {
