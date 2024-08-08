@@ -530,7 +530,7 @@ ExtensionHelper::InstallExtensionInternal(DBConfig &config, FileSystem &fs, cons
 
 	auto extension_name = ApplyExtensionAlias(fs.ExtractBaseName(extension));
 	string local_extension_path = fs.JoinPath(local_path, extension_name + ".duckdb_extension");
-	string temp_path = local_extension_path + ".tmp-" + config.uuid;
+	string temp_path = local_extension_path + ".tmp-" + UUID::ToString(UUID::GenerateRandomUUID());
 
 	if (fs.FileExists(local_extension_path) && !force_install) {
 		// File exists: throw error if origin mismatches

@@ -362,9 +362,6 @@ public:
 	OrderType ResolveOrder(OrderType order_type) const;
 	OrderByNullType ResolveNullOrder(OrderType order_type, OrderByNullType null_type) const;
 	const string UserAgent() const;
-	const string GetUuid() {
-		return uuid;
-	}
 
 private:
 	unique_ptr<CompressionFunctionSet> compression_functions;
@@ -372,7 +369,6 @@ private:
 	unique_ptr<CollationBinding> collation_bindings;
 	unique_ptr<IndexTypeSet> index_types;
 	bool is_user_config = true;
-	string uuid;
 };
 
 } // namespace duckdb
