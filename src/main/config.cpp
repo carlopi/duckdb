@@ -544,15 +544,9 @@ SerializationCompatibility SerializationCompatibility::FromString(const string &
 }
 
 SerializationCompatibility SerializationCompatibility::Default() {
-#ifdef DUCKDB_ALTERNATIVE_VERIFY
 	auto res = FromString("latest");
 	res.manually_set = false;
 	return res;
-#else
-	auto res = FromString("v0.10.2");
-	res.manually_set = false;
-	return res;
-#endif
 }
 
 SerializationCompatibility SerializationCompatibility::Latest() {
