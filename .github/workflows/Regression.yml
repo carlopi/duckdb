@@ -162,16 +162,16 @@ jobs:
     - name: Build
       shell: bash
       run: |
-        make
+        make debug
         git clone --branch ${{ env.BASE_BRANCH }} https://github.com/duckdb/duckdb.git --depth=1
         cd duckdb
-        make
+        make debug
         cd ..
 
     - name: Regression Test
       shell: bash
       run: |
-        python scripts/regression_test_storage_size.py --old=duckdb/build/release/duckdb --new=build/release/duckdb
+        python scripts/regression_test_storage_size.py --old=duckdb/build/debug/duckdb --new=build/debug/duckdb
 
     - name: Test for incompatibility
       shell: bash
@@ -188,11 +188,11 @@ jobs:
       run: |
         # Regenerate test/sql/storage_version.db with newer version -> read with older version
         python3 scripts/generate_storage_version.py
-        ./duckdb/build/release/duckdb test/sql/storage_version/storage_version.db
+        ./duckdb/build/debug/duckdb test/sql/storage_version/storage_version.db
         # Regenerate test/sql/storage_version.db with older version -> read with newer version (already performed as part of test.slow)
         cd duckdb
         python3 ../scripts/generate_storage_version.py
-        ../build/release/duckdb duckdb/test/sql/storage_version/storage_version.db
+        ../build/debug/duckdb duckdb/test/sql/storage_version/storage_version.db
         cd ..
 
     - name: Regression Compatibility Test (testing storage version has been bumped)
