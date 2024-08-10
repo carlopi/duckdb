@@ -14,11 +14,13 @@
 #ifdef DUCKDB_DEBUG_STACKTRACE
 #include <execinfo.h>
 #endif
+#include <iostream>
 
 namespace duckdb {
 
 Exception::Exception(ExceptionType exception_type, const string &message)
     : std::runtime_error(ToJSON(exception_type, message)) {
+	std::cout << ToJSON(exception_type, message) << "\n";
 }
 
 Exception::Exception(ExceptionType exception_type, const string &message,
