@@ -1,5 +1,6 @@
 #include "duckdb/common/serializer/binary_deserializer.hpp"
 
+#include <iostream>
 namespace duckdb {
 
 //-------------------------------------------------------------------------
@@ -35,6 +36,7 @@ void BinaryDeserializer::OnObjectBegin() {
 void BinaryDeserializer::OnObjectEnd() {
 	auto next_field = NextField();
 	if (next_field != MESSAGE_TERMINATOR_FIELD_ID) {
+		std::cout << Exception::GetStackTrace(40) << "\n";
 		throw SerializationException("Failed to deserialize: expected end of object, but found field id: %d",
 		                             next_field);
 	}
