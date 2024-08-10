@@ -195,6 +195,32 @@ jobs:
         ../build/release/duckdb duckdb/test/sql/storage_version/storage_version.db
         cd ..
 
+    - name: Regression Compatibility Test (testing bidirectional compatibility) 2
+      shell: bash
+      if: always()
+      run: |
+        # Regenerate test/sql/storage_version.db with older version -> read with newer version (already performed as part of test.slow)
+        cd duckdb
+        python3 ../scripts/generate_storage_version.py
+        ../build/release/duckdb duckdb/test/sql/storage_version/storage_version.db
+        cd ..
+        # Regenerate test/sql/storage_version.db with newer version -> read with older version
+        python3 scripts/generate_storage_version.py
+        ./duckdb/build/release/duckdb test/sql/storage_version/storage_version.db
+
+    - name: Regression Compatibility Test (testing bidirectional compatibility) 3
+      shell: bash
+      if: always()
+      run: |
+        # Regenerate test/sql/storage_version.db with newer version -> read with older version
+        python3 scripts/generate_storage_version.py
+        ./duckdb/build/release/duckdb test/sql/storage_version/storage_version.db
+        # Regenerate test/sql/storage_version.db with older version -> read with newer version (already performed as part of test.slow)
+        cd duckdb
+        python3 ../scripts/generate_storage_version.py
+        ../build/release/duckdb duckdb/test/sql/storage_version/storage_version.db
+        cd ..
+
     - name: Regression Compatibility Test (testing storage version has been bumped)
       shell: bash
       if: env.storage_changed == 'true'
