@@ -20,12 +20,14 @@ namespace duckdb {
 
 Exception::Exception(ExceptionType exception_type, const string &message)
     : std::runtime_error(ToJSON(exception_type, message)) {
+	std::cout << Exception::GetStackTrace(40) << "\n";
 	std::cout << ToJSON(exception_type, message) << "\n";
 }
 
 Exception::Exception(ExceptionType exception_type, const string &message,
                      const unordered_map<string, string> &extra_info)
     : std::runtime_error(ToJSON(exception_type, message, extra_info)) {
+	std::cout << Exception::GetStackTrace(40) << "\n";
 	std::cout << ToJSON(exception_type, message) << "\n";
 }
 
