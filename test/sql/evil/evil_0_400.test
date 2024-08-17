@@ -1,0 +1,6 @@
+# name: test/sql/evil/evil_0_400.test
+# description: Test evil db
+# group: [evil]
+
+load data/evil/evil_400.db readonly
+
