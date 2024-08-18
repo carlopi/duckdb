@@ -2,6 +2,8 @@
 # description: Test evil db
 # group: [evil]
 
+require skip_reload
+
 unzip data/evil/evil_0a.db.gz __TEST_DIR__/xxx.db
 
 statement ok
