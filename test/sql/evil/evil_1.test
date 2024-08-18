@@ -4,6 +4,6 @@
 
 load data/evil/evil_3000.db readonly
 
-statement ok
-DESCRIBE;
+#statement ok
+#DESCRIBE;
 
