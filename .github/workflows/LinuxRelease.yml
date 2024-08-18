@@ -93,7 +93,7 @@ jobs:
       if: ${{ inputs.skip_tests != 'true' }}
       shell: bash
       run: |
-        gzip data/evil/evil_0a.db.gz
+        gzip -d data/evil/evil_0a.db.gz
         ./build/release/duckdb data/evil/evil_0a.db -c ""
 
     - name: Test
