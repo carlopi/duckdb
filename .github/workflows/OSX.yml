@@ -81,7 +81,9 @@ jobs:
     - name: Test_0a
       if: ${{ inputs.skip_tests != 'true' }}
       shell: bash
-      run: ./build/debug/test/unittest test/sql/evil/evil_0a.test
+      run: |
+        unzip data/evil/evil_0a.db.gz
+        ./build/release/duckdb data/evil/evil_0a.db -c ""
 
     - name: Test
       if: ${{ inputs.skip_tests != 'true' }}
@@ -140,6 +142,13 @@ jobs:
       - name: Print platform
         shell: bash
         run: ./build/release/duckdb -c "PRAGMA platform;"
+
+      - name: Test_0a
+        if: ${{ inputs.skip_tests != 'true' }}
+        shell: bash
+        run: |
+          unzip data/evil/evil_0a.db.gz
+          ./build/release/duckdb data/evil/evil_0a.db -c ""
 
       - name: Unit Test
         shell: bash

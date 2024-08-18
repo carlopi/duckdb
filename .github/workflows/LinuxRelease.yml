@@ -89,6 +89,13 @@ jobs:
       shell: bash
       run: ./build/release/duckdb -c "PRAGMA platform;"
 
+    - name: Test_0a
+      if: ${{ inputs.skip_tests != 'true' }}
+      shell: bash
+      run: |
+        unzip data/evil/evil_0a.db.gz
+        ./build/release/duckdb data/evil/evil_0a.db -c ""
+
     - name: Test
       shell: bash
       if: ${{ inputs.skip_tests != 'true' }}
