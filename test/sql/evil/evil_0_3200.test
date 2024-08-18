@@ -3,4 +3,3 @@
 # group: [evil]
 
 load data/evil/evil_3200.db readonly
-
