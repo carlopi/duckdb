@@ -167,8 +167,6 @@ jobs:
    name: Windows (ARM64)
    if: github.ref == 'refs/heads/main' || github.repository != 'duckdb/duckdb'
    runs-on: windows-2019
-   needs: win-release-64
-
    steps:
      - uses: actions/checkout@v3
        with:
