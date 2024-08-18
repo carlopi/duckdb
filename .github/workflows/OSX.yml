@@ -78,6 +78,11 @@ jobs:
     - name: Test DUCKDB_INSTALL_LIB variable
       run: echo $DUCKDB_INSTALL_LIB
 
+    - name: Test_0a
+      if: ${{ inputs.skip_tests != 'true' }}
+      shell: bash
+      run: ./build/debug/test/unittest test/sql/evil/evil_0a.test
+
     - name: Test
       if: ${{ inputs.skip_tests != 'true' }}
       shell: bash
