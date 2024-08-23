@@ -425,7 +425,6 @@ jobs:
     name: Linux (32 Bit)
     runs-on: ubuntu-latest
     container: quay.io/pypa/manylinux2014_x86_64
-    needs: linux-release-64
     env:
       CC: /usr/bin/gcc
       CXX: /usr/bin/g++
