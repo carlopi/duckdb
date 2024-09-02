@@ -160,6 +160,8 @@ static void InitializeFunctionPointers(ArrowAppendData &append_data, const Logic
 		InitializeAppenderForType<ArrowScalarData<int64_t>>(append_data);
 		break;
 	case LogicalTypeId::UUID:
+		InitializeAppenderForType<ArrowScalarData<hugeint_t, hugeint_t, ArrowUUIDConverter>>(append_data);
+		break;
 	case LogicalTypeId::HUGEINT:
 		InitializeAppenderForType<ArrowScalarData<hugeint_t>>(append_data);
 		break;
