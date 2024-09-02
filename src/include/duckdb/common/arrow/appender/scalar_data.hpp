@@ -23,6 +23,24 @@ struct ArrowScalarConverter {
 	}
 };
 
+struct ArrowUUIDConverter {
+	template <class TGT, class SRC>
+	static TGT Operation(SRC input) {
+		// Flip back before convert to Arrow.UUID
+		int64_t upper = int64_t(uint64_t(input.upper) ^ (uint64_t(1) << 63));
+		input.upper = upper;
+		return input;
+	}
+
+	static bool SkipNulls() {
+		return false;
+	}
+
+	template <class TGT>
+		static void SetNull(TGT &value) {
+	}
+};
+
 struct ArrowIntervalConverter {
 	template <class TGT, class SRC>
 	static TGT Operation(SRC input) {
