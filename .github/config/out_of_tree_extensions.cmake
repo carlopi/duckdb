@@ -27,6 +27,7 @@ endif()
 ################## AWS
 if (NOT MINGW)
     duckdb_extension_load(aws
+    DONT_LINK
             LOAD_TESTS
             GIT_URL https://github.com/duckdb/duckdb_aws
             GIT_TAG e738b4cc07a86d323db8b38220323752cd183a04
@@ -36,6 +37,7 @@ endif()
 ################# AZURE
 if (NOT MINGW)
     duckdb_extension_load(azure
+    DONT_LINK
             LOAD_TESTS
             GIT_URL https://github.com/duckdb/duckdb_azure
             GIT_TAG eddc48422c76a2f02a57a45d31b650b2680168f5
@@ -47,6 +49,7 @@ endif()
 # for Delta
 if (NOT MINGW AND NOT "${OS_NAME}" STREQUAL "linux")
     duckdb_extension_load(delta
+    DONT_LINK
             LOAD_TESTS
             GIT_URL https://github.com/duckdb/duckdb_delta
             GIT_TAG 3933ebd800ad06a64656c9aef6ca7d62897fa4db
@@ -56,6 +59,7 @@ endif()
 ################# EXCEL
 duckdb_extension_load(excel
     LOAD_TESTS
+    DONT_LINK
     GIT_URL https://github.com/duckdb/duckdb_excel
     GIT_TAG 0e99dc789038c7af658e30d579b818473a6d6ea8
     INCLUDE_DIR extension/excel/include
@@ -72,6 +76,7 @@ endif()
 if (NOT MINGW)
     duckdb_extension_load(iceberg
             ${LOAD_ICEBERG_TESTS}
+            DONT_LINK
             GIT_URL https://github.com/duckdb/duckdb_iceberg
             GIT_TAG 3f6d753787252e3da1d12157910b62edf729fc6e
             )
@@ -79,6 +84,7 @@ endif()
 
 ################# INET
 duckdb_extension_load(inet
+    DONT_LINK
     LOAD_TESTS
     GIT_URL https://github.com/duckdb/duckdb_inet
     GIT_TAG eca867b2517af06eabc89ccd6234266e9a7d6d71
@@ -107,15 +113,9 @@ duckdb_extension_load(spatial
     )
 
 ################# SQLITE_SCANNER
-# Static linking on windows does not properly work due to symbol collision
-if (WIN32)
-    set(STATIC_LINK_SQLITE "DONT_LINK")
-else ()
-    set(STATIC_LINK_SQLITE "")
-endif()
-
 duckdb_extension_load(sqlite_scanner
-        ${STATIC_LINK_SQLITE} LOAD_TESTS
+    DONT_LINK
+        LOAD_TESTS
         GIT_URL https://github.com/duckdb/sqlite_scanner
         GIT_TAG 647f1403791890b65a1419841df02bf17d634639
         )
