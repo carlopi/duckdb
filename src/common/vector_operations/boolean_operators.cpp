@@ -39,7 +39,8 @@ static void TemplatedBooleanNullmask(Vector &left, Vector &right, Vector &result
 		auto right_data = UnifiedVectorFormat::GetData<uint8_t>(rdata);
 		auto result_data = FlatVector::GetData<bool>(result);
 		auto &result_mask = FlatVector::Validity(result);
-		if (!ldata.validity.AllValid() || !rdata.validity.AllValid()) {
+	//	if (!ldata.validity.AllValid() || !rdata.validity.AllValid()) {
+		{
 			for (idx_t i = 0; i < count; i++) {
 				auto lidx = ldata.sel->get_index(i);
 				auto ridx = rdata.sel->get_index(i);
@@ -48,12 +49,12 @@ static void TemplatedBooleanNullmask(Vector &left, Vector &right, Vector &result
 				                  !rdata.validity.RowIsValid(ridx), result_data[i]);
 				result_mask.Set(i, !is_null);
 			}
-		} else {
-			for (idx_t i = 0; i < count; i++) {
-				auto lidx = ldata.sel->get_index(i);
-				auto ridx = rdata.sel->get_index(i);
-				result_data[i] = OP::SimpleOperation(left_data[lidx], right_data[ridx]);
-			}
+//		} else {
+//			for (idx_t i = 0; i < count; i++) {
+//				auto lidx = ldata.sel->get_index(i);
+//				auto ridx = rdata.sel->get_index(i);
+//				result_data[i] = OP::SimpleOperation(left_data[lidx], right_data[ridx]);
+//			}
 		}
 	}
 }

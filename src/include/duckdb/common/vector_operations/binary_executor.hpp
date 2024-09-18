@@ -79,13 +79,13 @@ struct BinaryExecutor {
 			ASSERT_RESTRICT(rdata, rdata + count, result_data, result_data + count);
 		}
 
-		if (!mask.AllValid()) {
+		if (true) {
 			idx_t base_idx = 0;
 			auto entry_count = ValidityMask::EntryCount(count);
 			for (idx_t entry_idx = 0; entry_idx < entry_count; entry_idx++) {
 				auto validity_entry = mask.GetValidityEntry(entry_idx);
 				idx_t next = MinValue<idx_t>(base_idx + ValidityMask::BITS_PER_VALUE, count);
-				if (ValidityMask::AllValid(validity_entry)) {
+/*				if (ValidityMask::AllValid(validity_entry)) {
 					// all valid: perform operation
 					for (; base_idx < next; base_idx++) {
 						auto lentry = ldata[LEFT_CONSTANT ? 0 : base_idx];
@@ -99,6 +99,8 @@ struct BinaryExecutor {
 					base_idx = next;
 					continue;
 				} else {
+*/
+{
 					// partially valid: need to check individual elements for validity
 					idx_t start = base_idx;
 					for (; base_idx < next; base_idx++) {
@@ -111,13 +113,6 @@ struct BinaryExecutor {
 						}
 					}
 				}
-			}
-		} else {
-			for (idx_t i = 0; i < count; i++) {
-				auto lentry = ldata[LEFT_CONSTANT ? 0 : i];
-				auto rentry = rdata[RIGHT_CONSTANT ? 0 : i];
-				result_data[i] = OPWRAPPER::template Operation<FUNC, OP, LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE>(
-				    fun, lentry, rentry, mask, i);
 			}
 		}
 	}
@@ -188,7 +183,8 @@ struct BinaryExecutor {
 	                               RESULT_TYPE *__restrict result_data, const SelectionVector *__restrict lsel,
 	                               const SelectionVector *__restrict rsel, idx_t count, ValidityMask &lvalidity,
 	                               ValidityMask &rvalidity, ValidityMask &result_validity, FUNC fun) {
-		if (!lvalidity.AllValid() || !rvalidity.AllValid()) {
+//		if (!lvalidity.AllValid() || !rvalidity.AllValid()) {
+		{
 			for (idx_t i = 0; i < count; i++) {
 				auto lindex = lsel->get_index(i);
 				auto rindex = rsel->get_index(i);
@@ -201,13 +197,14 @@ struct BinaryExecutor {
 					result_validity.SetInvalid(i);
 				}
 			}
-		} else {
+/*		} else {
 			for (idx_t i = 0; i < count; i++) {
 				auto lentry = ldata[lsel->get_index(i)];
 				auto rentry = rdata[rsel->get_index(i)];
 				result_data[i] = OPWRAPPER::template Operation<FUNC, OP, LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE>(
 				    fun, lentry, rentry, result_validity, i);
 			}
+*/
 		}
 	}
 

@@ -129,13 +129,13 @@ DistinctSelectGenericLoopSwitch(const LEFT_TYPE *__restrict ldata, const RIGHT_T
                                 const SelectionVector *__restrict lsel, const SelectionVector *__restrict rsel,
                                 const SelectionVector *__restrict result_sel, idx_t count, ValidityMask &lmask,
                                 ValidityMask &rmask, SelectionVector *true_sel, SelectionVector *false_sel) {
-	if (!lmask.AllValid() || !rmask.AllValid()) {
+//	if (!lmask.AllValid() || !rmask.AllValid()) {
 		return DistinctSelectGenericLoopSelSwitch<LEFT_TYPE, RIGHT_TYPE, OP, false>(
 		    ldata, rdata, lsel, rsel, result_sel, count, lmask, rmask, true_sel, false_sel);
-	} else {
-		return DistinctSelectGenericLoopSelSwitch<LEFT_TYPE, RIGHT_TYPE, OP, true>(
-		    ldata, rdata, lsel, rsel, result_sel, count, lmask, rmask, true_sel, false_sel);
-	}
+//	} else {
+//		return DistinctSelectGenericLoopSelSwitch<LEFT_TYPE, RIGHT_TYPE, OP, true>(
+//		    ldata, rdata, lsel, rsel, result_sel, count, lmask, rmask, true_sel, false_sel);
+//	}
 }
 
 template <class LEFT_TYPE, class RIGHT_TYPE, class OP>

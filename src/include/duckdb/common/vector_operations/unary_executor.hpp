@@ -71,7 +71,7 @@ private:
 		ASSERT_RESTRICT(ldata, ldata + max_index, result_data, result_data + count);
 #endif
 
-		if (!mask.AllValid()) {
+		if (true) {
 			for (idx_t i = 0; i < count; i++) {
 				auto idx = sel_vector->get_index(i);
 				if (mask.RowIsValidUnsafe(idx)) {
@@ -81,12 +81,6 @@ private:
 					result_mask.SetInvalid(i);
 				}
 			}
-		} else {
-			for (idx_t i = 0; i < count; i++) {
-				auto idx = sel_vector->get_index(i);
-				result_data[i] =
-				    OPWRAPPER::template Operation<OP, INPUT_TYPE, RESULT_TYPE>(ldata[idx], result_mask, i, dataptr);
-			}
 		}
 	}
 
@@ -95,7 +89,7 @@ private:
 	                               ValidityMask &mask, ValidityMask &result_mask, void *dataptr, bool adds_nulls) {
 		ASSERT_RESTRICT(ldata, ldata + count, result_data, result_data + count);
 
-		if (!mask.AllValid()) {
+		if (true) {
 			if (!adds_nulls) {
 				result_mask.Initialize(mask);
 			} else {
@@ -106,6 +100,7 @@ private:
 			for (idx_t entry_idx = 0; entry_idx < entry_count; entry_idx++) {
 				auto validity_entry = mask.GetValidityEntry(entry_idx);
 				idx_t next = MinValue<idx_t>(base_idx + ValidityMask::BITS_PER_VALUE, count);
+				/*
 				if (ValidityMask::AllValid(validity_entry)) {
 					// all valid: perform operation
 					for (; base_idx < next; base_idx++) {
@@ -116,7 +111,7 @@ private:
 					// nothing valid: skip all
 					base_idx = next;
 					continue;
-				} else {
+				} else */ {
 					// partially valid: need to check individual elements for validity
 					idx_t start = base_idx;
 					for (; base_idx < next; base_idx++) {
@@ -127,11 +122,6 @@ private:
 						}
 					}
 				}
-			}
-		} else {
-			for (idx_t i = 0; i < count; i++) {
-				result_data[i] =
-				    OPWRAPPER::template Operation<OP, INPUT_TYPE, RESULT_TYPE>(ldata[i], result_mask, i, dataptr);
 			}
 		}
 	}
