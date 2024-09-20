@@ -51,19 +51,28 @@ struct TryCastErrorMessageCommaSeparated {
 	}
 };
 
-template <class SRC, class DST>
-static string CastExceptionText(SRC input) {
-	if (std::is_same<SRC, string_t>()) {
-		return "Could not convert string '" + ConvertToString::Operation<SRC>(input) + "' to " +
-		       TypeIdToString(GetTypeId<DST>());
+struct TypeIdInfo {
+	explicit TypeIdInfo(string name, bool isNum) : name(name), isNum(isNum) {
 	}
-	if (TypeIsNumber<SRC>() && TypeIsNumber<DST>()) {
+	template <typename TYPE>
+	__attribute__((noinline)) static TypeIdInfo CreateObject() {
+		return TypeIdInfo(TypeIdToString(GetTypeId<TYPE>()), TypeIsNumber<TYPE>());
+	}
+	string name;
+	bool isNum;
+};
+
+template <class SRC>
+static string CastExceptionText(SRC input, const TypeIdInfo &info) {
+	if (std::is_same<SRC, string_t>()) {
+		return "Could not convert string '" + ConvertToString::Operation<SRC>(input) + "' to " + info.name;
+	}
+	if (TypeIsNumber<SRC>() && info.isNum) {
 		return "Type " + TypeIdToString(GetTypeId<SRC>()) + " with value " + ConvertToString::Operation<SRC>(input) +
-		       " can't be cast because the value is out of range for the destination type " +
-		       TypeIdToString(GetTypeId<DST>());
+		       " can't be cast because the value is out of range for the destination type " + info.name;
 	}
 	return "Type " + TypeIdToString(GetTypeId<SRC>()) + " with value " + ConvertToString::Operation<SRC>(input) +
-	       " can't be cast to the destination type " + TypeIdToString(GetTypeId<DST>());
+	       " can't be cast to the destination type " + info.name;
 }
 
 struct Cast {
@@ -71,7 +80,7 @@ struct Cast {
 	static inline DST Operation(SRC input) {
 		DST result;
 		if (!TryCast::Operation(input, result)) {
-			throw InvalidInputException(CastExceptionText<SRC, DST>(input));
+			throw InvalidInputException(CastExceptionText<SRC>(input, TypeIdInfo::CreateObject<DST>()));
 		}
 		return result;
 	}

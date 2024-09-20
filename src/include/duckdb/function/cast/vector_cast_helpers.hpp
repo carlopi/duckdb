@@ -35,8 +35,8 @@ struct VectorTryCastOperator {
 			return output;
 		}
 		auto data = reinterpret_cast<VectorTryCastData *>(dataptr);
-		return HandleVectorCastError::Operation<RESULT_TYPE>(CastExceptionText<INPUT_TYPE, RESULT_TYPE>(input), mask,
-		                                                     idx, *data);
+		return HandleVectorCastError::Operation<RESULT_TYPE>(
+		    CastExceptionText<INPUT_TYPE>(input, TypeIdInfo::CreateObject<RESULT_TYPE>()), mask, idx, *data);
 	}
 };
 
@@ -49,8 +49,9 @@ struct VectorTryCastStrictOperator {
 		if (DUCKDB_LIKELY(OP::template Operation<INPUT_TYPE, RESULT_TYPE>(input, output, data->parameters.strict))) {
 			return output;
 		}
-		return HandleVectorCastError::Operation<RESULT_TYPE>(CastExceptionText<INPUT_TYPE, RESULT_TYPE>(input), mask,
-		                                                     idx, *data);
+
+		return HandleVectorCastError::Operation<RESULT_TYPE>(
+		    CastExceptionText<INPUT_TYPE>(input, TypeIdInfo::CreateObject<RESULT_TYPE>()), mask, idx, *data);
 	}
 };
 
@@ -65,8 +66,9 @@ struct VectorTryCastErrorOperator {
 		}
 		bool has_error = data->parameters.error_message && !data->parameters.error_message->empty();
 		return HandleVectorCastError::Operation<RESULT_TYPE>(
-		    has_error ? *data->parameters.error_message : CastExceptionText<INPUT_TYPE, RESULT_TYPE>(input), mask, idx,
-		    *data);
+		    has_error ? *data->parameters.error_message
+		              : CastExceptionText<INPUT_TYPE>(input, TypeIdInfo::CreateObject<RESULT_TYPE>()),
+		    mask, idx, *data);
 	}
 };
 
@@ -80,8 +82,8 @@ struct VectorTryCastStringOperator {
 		        OP::template Operation<INPUT_TYPE, RESULT_TYPE>(input, output, data->result, data->parameters))) {
 			return output;
 		}
-		return HandleVectorCastError::Operation<RESULT_TYPE>(CastExceptionText<INPUT_TYPE, RESULT_TYPE>(input), mask,
-		                                                     idx, *data);
+		return HandleVectorCastError::Operation<RESULT_TYPE>(
+		    CastExceptionText<INPUT_TYPE>(input, TypeIdInfo::CreateObject<RESULT_TYPE>()), mask, idx, *data);
 	}
 };
 
