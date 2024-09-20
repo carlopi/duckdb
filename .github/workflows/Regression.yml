@@ -77,6 +77,11 @@ jobs:
         make
         cd ..
 
+    - name: List sizes of both binaries
+      shell: bash
+      run: |
+        ls -la build/release/duckdb duckdb/build/release/duckdb
+
     - name: Set up benchmarks
       shell: bash
       run: |
