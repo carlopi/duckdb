@@ -165,7 +165,7 @@ jobs:
     strategy:
       matrix:
         arch: [x86_64, aarch64]
-        python_build: [cp37-*, cp38-*, cp39-*, cp310-*, cp311-*, cp312-*]
+        python_build: [cp37-*, cp38-*, cp39-*, cp310-*, cp311-*, cp312-*, cp313-*]
         manylinux: [manylinux2014, manylinux_2_28]
         isRelease:
           - ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
@@ -173,20 +173,6 @@ jobs:
           # For now we don't distribute the 2_28 wheels on x64
           - arch: x86_64
             manylinux: manylinux_2_28
-          # Speed things up a bit for non-releases
-          - isRelease: false
-            python_build: 'cp37-*'
-          - isRelease: false
-            python_build: 'cp38-*'
-          - isRelease: false
-            python_build: 'cp39-*'
-          - isRelease: false
-            python_build: 'cp310-*'
-          - isRelease: false
-            python_build: 'cp311-*'
-          - isRelease: false
-            arch: aarch64
-    needs: manylinux-extensions-x64
     env:
       CIBW_BUILD: ${{ matrix.python_build}}
       CIBW_SKIP: '*-musllinux_aarch64'
@@ -233,12 +219,6 @@ jobs:
         pip install 'cibuildwheel>=2.16.2' build
         python -m pip install numpy --config-settings=setup-args="-Dallow-noblas=true"
 
-    - uses: actions/download-artifact@v3
-      if: ${{ matrix.arch == 'x86_64' }}
-      with:
-        name: manylinux-extensions-x64
-        path: tools/pythonpkg
-
     - name: List extensions to be tested
       shell: bash
       run: |
@@ -276,13 +256,11 @@ jobs:
         ./scripts/upload-assets-to-staging.sh twine_upload tools/pythonpkg/dist/duckdb-*.tar.gz tools/pythonpkg/wheelhouse/*.whl
 
    osx-python3:
-      if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
       name: Python 3 OSX
       runs-on: macos-latest
       strategy:
        matrix:
-        python_build: [cp38-*, cp39-*, cp310-*, cp311-*, cp312-*]
-      needs: linux-python3-9
+        python_build: [cp38-*, cp39-*, cp310-*, cp311-*, cp312-*, cp313-*]
       env:
         CIBW_BUILD: ${{ matrix.python_build}}
         CIBW_ARCHS: 'x86_64 universal2 arm64'
@@ -350,19 +328,16 @@ jobs:
       runs-on: windows-2019
       strategy:
        matrix:
-        python_build: [cp37-*, cp38-*, cp39-*, cp310-*, cp311-*, cp312-*]
+        python_build: [cp37-*, cp38-*, cp39-*, cp310-*, cp311-*, cp312-*, cp313-*]
         isRelease:
           - ${{ startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' }}
         exclude:
-          - isRelease: false
-            python_build: 'cp37-*'
           - isRelease: false
             python_build: 'cp38-*'
           - isRelease: false
             python_build: 'cp39-*'
           - isRelease: false
             python_build: 'cp311-*'
-      needs: linux-python3-9
 
       env:
         CIBW_BUILD: ${{ matrix.python_build}}
