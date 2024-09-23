@@ -31,6 +31,12 @@ select = [
 ]
 test-command = "python -m pytest {project}/tests/fast --verbose"
 
+[[tool.cibuildwheel.overrides]]
+select = [
+    "*-musllinux*", # For musllinux we currently don't build extensions yet
+]
+skip = "cp37-* cp38-*"
+
 [tool.cibuildwheel.windows]
 archs = ["AMD64"]
 test-command = "python -m pytest {project}/tests/fast --verbose"
