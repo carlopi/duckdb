@@ -62,8 +62,11 @@ struct TypeIdInfo {
 	bool isNum;
 };
 
+typedef TypeIdInfo (*callback_typeidinfo)(void);
+
 template <class SRC>
-static string CastExceptionText(SRC input, const TypeIdInfo &info) {
+static string CastExceptionText(SRC input, callback_typeidinfo func) {
+	auto info = func();
 	if (std::is_same<SRC, string_t>()) {
 		return "Could not convert string '" + ConvertToString::Operation<SRC>(input) + "' to " + info.name;
 	}
@@ -80,7 +83,7 @@ struct Cast {
 	static inline DST Operation(SRC input) {
 		DST result;
 		if (!TryCast::Operation(input, result)) {
-			throw InvalidInputException(CastExceptionText<SRC>(input, TypeIdInfo::CreateObject<DST>()));
+			throw InvalidInputException(CastExceptionText<SRC>(input, TypeIdInfo::CreateObject<DST>));
 		}
 		return result;
 	}

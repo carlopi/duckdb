@@ -18,7 +18,7 @@ bool EnumEnumCast(Vector &source, Vector &result, idx_t count, CastParameters &p
 		    if (key == -1) {
 			    if (!parameters.error_message) {
 				    return HandleVectorCastError::Operation<RES_TYPE>(
-				        CastExceptionText<SRC_TYPE>(value, TypeIdInfo::CreateObject<RES_TYPE>()), mask, row_idx,
+				        CastExceptionText<SRC_TYPE>(value, TypeIdInfo::CreateObject<RES_TYPE>), mask, row_idx,
 				        vector_cast_data);
 			    } else {
 				    mask.SetInvalid(row_idx);

@@ -24,7 +24,7 @@ bool StringEnumCastLoop(const string_t *source_data, ValidityMask &source_mask, 
 			if (pos == -1) {
 
 				result_data[i] = HandleVectorCastError::Operation<T>(
-				    CastExceptionText<string_t>(source_data[source_idx], TypeIdInfo::CreateObject<T>()), result_mask, i,
+				    CastExceptionText<string_t>(source_data[source_idx], TypeIdInfo::CreateObject<T>), result_mask, i,
 				    vector_cast_data);
 			} else {
 				result_data[i] = UnsafeNumericCast<T>(pos);

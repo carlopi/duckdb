@@ -36,7 +36,7 @@ struct VectorTryCastOperator {
 		}
 		auto data = reinterpret_cast<VectorTryCastData *>(dataptr);
 		return HandleVectorCastError::Operation<RESULT_TYPE>(
-		    CastExceptionText<INPUT_TYPE>(input, TypeIdInfo::CreateObject<RESULT_TYPE>()), mask, idx, *data);
+		    CastExceptionText<INPUT_TYPE>(input, TypeIdInfo::CreateObject<RESULT_TYPE>), mask, idx, *data);
 	}
 };
 
@@ -51,7 +51,7 @@ struct VectorTryCastStrictOperator {
 		}
 
 		return HandleVectorCastError::Operation<RESULT_TYPE>(
-		    CastExceptionText<INPUT_TYPE>(input, TypeIdInfo::CreateObject<RESULT_TYPE>()), mask, idx, *data);
+		    CastExceptionText<INPUT_TYPE>(input, TypeIdInfo::CreateObject<RESULT_TYPE>), mask, idx, *data);
 	}
 };
 
@@ -67,7 +67,7 @@ struct VectorTryCastErrorOperator {
 		bool has_error = data->parameters.error_message && !data->parameters.error_message->empty();
 		return HandleVectorCastError::Operation<RESULT_TYPE>(
 		    has_error ? *data->parameters.error_message
-		              : CastExceptionText<INPUT_TYPE>(input, TypeIdInfo::CreateObject<RESULT_TYPE>()),
+		              : CastExceptionText<INPUT_TYPE>(input, TypeIdInfo::CreateObject<RESULT_TYPE>),
 		    mask, idx, *data);
 	}
 };
@@ -83,7 +83,7 @@ struct VectorTryCastStringOperator {
 			return output;
 		}
 		return HandleVectorCastError::Operation<RESULT_TYPE>(
-		    CastExceptionText<INPUT_TYPE>(input, TypeIdInfo::CreateObject<RESULT_TYPE>()), mask, idx, *data);
+		    CastExceptionText<INPUT_TYPE>(input, TypeIdInfo::CreateObject<RESULT_TYPE>), mask, idx, *data);
 	}
 };
 
