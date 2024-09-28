@@ -18,13 +18,14 @@
 #include <algorithm>
 
 namespace duckdb {
+//#define DUCKDB_DEBUG_NO_INLINE 1
 
 struct string_t {
 	friend struct StringComparisonOperators;
 
 public:
 	static constexpr idx_t PREFIX_BYTES = 4 * sizeof(char);
-	static constexpr idx_t INLINE_BYTES = 12 * sizeof(char);
+	static constexpr idx_t INLINE_BYTES = 15 * sizeof(char);
 	static constexpr idx_t HEADER_SIZE = sizeof(uint32_t) + PREFIX_BYTES;
 	static constexpr idx_t MAX_STRING_SIZE = NumericLimits<uint32_t>::Maximum();
 #ifndef DUCKDB_DEBUG_NO_INLINE
@@ -37,26 +38,26 @@ public:
 
 	string_t() = default;
 	explicit string_t(uint32_t len) {
-		value.inlined.length = len;
+		SetSize(len);
 	}
 	string_t(const char *data, uint32_t len) {
-		value.inlined.length = len;
+		SetSize(len);
 		D_ASSERT(data || GetSize() == 0);
 		if (IsInlined()) {
 			// zero initialize the prefix first
 			// this makes sure that strings with length smaller than 4 still have an equal prefix
-			memset(value.inlined.inlined, 0, INLINE_BYTES);
+			memset(value.inlined.inlined + 1, 0, INLINE_BYTES);
 			if (GetSize() == 0) {
 				return;
 			}
 			// small string: inlined
-			memcpy(value.inlined.inlined, data, GetSize());
+			memcpy(value.inlined.inlined + 1, data, GetSize());
 		} else {
 			// large string: store pointer
 #ifndef DUCKDB_DEBUG_NO_INLINE
-			memcpy(value.pointer.prefix, data, PREFIX_LENGTH);
+			memcpy(value.inlined.inlined + 1, data, PREFIX_LENGTH);
 #else
-			memset(value.pointer.prefix, 0, PREFIX_BYTES);
+			memset(value.inlined.inlined + 1, 0, PREFIX_BYTES);
 #endif
 			value.pointer.ptr = (char *)data; // NOLINT
 		}
@@ -74,32 +75,80 @@ public:
 	}
 
 	const char *GetData() const {
-		return IsInlined() ? const_char_ptr_cast(value.inlined.inlined) : value.pointer.ptr;
+		return IsInlined() ? (const char *)(value.inlined.inlined + 1) : value.pointer.ptr;
 	}
 	const char *GetDataUnsafe() const {
 		return GetData();
 	}
 
 	char *GetDataWriteable() const {
-		return IsInlined() ? (char *)value.inlined.inlined : value.pointer.ptr; // NOLINT
-	}
-
-	const char *GetPrefix() const {
-		return value.inlined.inlined;
+		return const_cast<char *>(IsInlined() ? (value.inlined.inlined + 1) : value.pointer.ptr);
 	}
 
 	char *GetPrefixWriteable() {
-		return value.inlined.inlined;
+		return value.inlined.inlined + 1;
+	}
+	const char *GetPrefix() const {
+		return (value.inlined.inlined + 1);
 	}
 
 	idx_t GetSize() const {
-		return value.inlined.length;
+		if (value.pointer.lengthz == 0)
+			return 0;
+		uint8_t k16 = value.x.inlined[0];
+		if (k16 > 240u)
+			return k16 - 240u;		
+	//	uint64_t y = value.pointer.lengthz;
+		//uint32_t x = ((y << 40u) >> 40u) | ((y >> 56u) << 24u);
+		return (k16 << 24u) | (value.x.inlined[7] << 16u) | (value.x.inlined[6] << 8u) | value.x.inlined[5];
+		//uint32_t x = (k16 << 24) | ((value.pointer.lengthz >> 32) & ( 0xffffff00)) >> 8);
+		//return uint32_t(x );// + 16);
 	}
 
 	bool Empty() const {
-		return value.inlined.length == 0;
+		return value.pointer.lengthz == 0;
 	}
 
+	void SetSize(uint32_t len) {
+		value.pointer.lengthz = 0;
+	D_ASSERT(GetSize() == 0);
+		if (len == 0)	{
+	return;
+}	
+	D_ASSERT(GetSize() == 0);
+		if (len < 16u)
+{
+			value.x.inlined[0] = (len + 240u);
+		value.inlined.inlined[4] = 0;
+		value.inlined.inlined[5] = 0;
+		value.inlined.inlined[6] = 0;
+//D_ASSERT(IsInlined());
+//	D_ASSERT(GetSize() == len);
+		value.inlined.inlined[7] = 0;
+		value.inlined.inlined[1] = 0;
+		value.inlined.inlined[2] = 0;
+		value.inlined.inlined[3] = 0;
+	D_ASSERT(GetSize() == len);
+	return;
+}
+	D_ASSERT(GetSize() == 0);
+		{
+			//value.pointer.lengthz = (len & 0x00ffffff) << 8;
+			value.x.inlined[0] = len >> 24;
+			value.x.inlined[7] = (len & 0x00ff0000) >> 16;
+			value.x.inlined[6] = (len & 0x0000ff00) >> 8;
+			value.x.inlined[5] = len & 0x000000ff;
+			//len -= 16;
+			//value.pointer.lengthz = (((uint64_t)len) << (uint64_t)32u) | len;
+//D_ASSERT(!IsInlined());
+		}
+	D_ASSERT(GetSize() == len);
+	//	value.inlined.inlined[0] = 0;
+	//	value.inlined.inlined[1] = 0;
+	//	value.inlined.inlined[2] = 0;
+	//	value.inlined.inlined[3] = 0;
+	D_ASSERT(GetSize() == len);
+	} 
 	string GetString() const {
 		return string(GetData(), GetSize());
 	}
@@ -122,14 +171,16 @@ public:
 		// set trailing NULL byte
 		if (GetSize() <= INLINE_LENGTH) {
 			// fill prefix with zeros if the length is smaller than the prefix length
-			memset(value.inlined.inlined + GetSize(), 0, INLINE_BYTES - GetSize());
+			for (idx_t i = GetSize(); i < INLINE_BYTES; i++) {
+				value.inlined.inlined[i+1] = '\0';
+			}
 		} else {
 			// copy the data into the prefix
 #ifndef DUCKDB_DEBUG_NO_INLINE
-			auto dataptr = GetData();
-			memcpy(value.pointer.prefix, dataptr, PREFIX_LENGTH);
+			auto dataptr = (char *)GetData();
+			memcpy(value.inlined.inlined + 1, dataptr, PREFIX_LENGTH);
 #else
-			memset(value.pointer.prefix, 0, PREFIX_BYTES);
+			memset(value.inlined.inlined + 1, 0, PREFIX_BYTES);
 #endif
 		}
 	}
@@ -222,14 +273,15 @@ public:
 private:
 	union {
 		struct {
-			uint32_t length;
-			char prefix[4];
+			uint64_t lengthz;
 			char *ptr;
 		} pointer;
 		struct {
-			uint32_t length;
-			char inlined[12];
+			char inlined[16];
 		} inlined;
+		struct {
+			uint8_t inlined[16];
+		} x;
 	} value;
 };
 

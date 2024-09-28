@@ -643,6 +643,7 @@ TEST_CASE("Decimal -> Double casting issue", "[capi]") {
 	auto string_from_decimal = result->Fetch<string>(0, 0);
 	REQUIRE(string_from_decimal == "-0.5");
 }
+<<<<<<< HEAD
 
 TEST_CASE("Test custom_user_agent config", "[capi]") {
 

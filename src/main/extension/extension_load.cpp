@@ -372,9 +372,29 @@ bool ExtensionHelper::TryInitialLoad(DatabaseInstance &db, FileSystem &fs, const
 			signature_valid = false;
 		}
 
-		if (!signature_valid) {
-			throw IOException(db.config.error_manager->FormatException(ErrorType::UNSIGNED_EXTENSION, filename) +
-			                  metadata_mismatch_error);
+		// signature is the last 256 bytes of the file
+
+		string signature;
+		signature.resize(256);
+
+		auto signature_offset = handle->GetFileSize() - signature.size();
+
+		// TODO maybe we should do a stream read / hash update here
+		handle->Read((void *)signature.data(), signature.size(), signature_offset);
+		
+		string file_content;
+		file_content.resize(signature_offset);
+		handle->Read((void *)file_content.data(), signature_offset/10, 0);
+		
+
+		auto hash = duckdb_mbedtls::MbedTlsWrapper::ComputeSha256Hash(file_content);
+
+		bool any_valid = false;
+		for (auto &key : ExtensionHelper::GetPublicKeys()) {
+			if (duckdb_mbedtls::MbedTlsWrapper::IsValidSha256Signature(key, signature, hash)) {
+				any_valid = true;
+				break;
+			}
 		}
 
 		if (!metadata_mismatch_error.empty()) {

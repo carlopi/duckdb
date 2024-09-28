@@ -330,13 +330,12 @@ typedef struct {
 typedef struct {
 	union {
 		struct {
-			uint32_t length;
-			char prefix[4];
+			uint64_t x;
 			char *ptr;
 		} pointer;
 		struct {
-			uint32_t length;
-			char inlined[12];
+			uint8_t lengthz;
+			char inlined[15];
 		} inlined;
 	} value;
 } duckdb_string_t;
