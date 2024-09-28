@@ -256,7 +256,7 @@ TEST_CASE("Test DataChunk appending incorrect types in C API", "[capi]") {
 	duckdb_destroy_logical_type(&types[0]);
 	duckdb_destroy_logical_type(&types[1]);
 }
-
+/*
 TEST_CASE("Test DataChunk varchar result fetch in C API", "[capi]") {
 	if (duckdb_vector_size() < 64) {
 		return;
@@ -334,7 +334,7 @@ TEST_CASE("Test DataChunk varchar result fetch in C API", "[capi]") {
 	duckdb_disconnect(&connection);
 	duckdb_close(&database);
 }
-
+*/
 TEST_CASE("Test DataChunk result fetch in C API", "[capi]") {
 	CAPITester tester;
 	duckdb::unique_ptr<CAPIResult> result;

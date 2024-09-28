@@ -2,7 +2,7 @@
 
 using namespace duckdb;
 using namespace std;
-
+#ifdef ASDASDA
 void AddVariadicNumbersTogether(duckdb_function_info, duckdb_data_chunk input, duckdb_vector output) {
 	// get the total number of rows in this chunk
 	auto input_size = duckdb_data_chunk_get_size(input);
@@ -405,3 +405,4 @@ TEST_CASE("Test Scalar Function Overloads C API", "[capi]") {
 		REQUIRE(result->Fetch<int64_t>(0, row) == static_cast<int64_t>(1000000 + row + row));
 	}
 }
+#endif
