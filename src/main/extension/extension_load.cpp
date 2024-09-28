@@ -377,6 +377,7 @@ bool ExtensionHelper::TryInitialLoad(DatabaseInstance &db, FileSystem &fs, const
                if (!signature_valid) {
                        throw IOException(db.config.error_manager->FormatException(ErrorType::UNSIGNED_EXTENSION, filename) +
                                          metadata_mismatch_error);
+		}
 
 		if (!metadata_mismatch_error.empty()) {
 			// Signed extensions perform the full check
