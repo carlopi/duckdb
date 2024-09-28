@@ -258,7 +258,7 @@ jobs:
       - name: List extensions
         shell: bash
         run: |
-          ls -la build/release/repository/**
+          ls -la build/release/repository/*/*/*.duckdb_extension
 
       - name: Deploy
         shell: bash
