@@ -116,7 +116,7 @@ public:
 	}
 
 	void SetSize(uint32_t len) {
-	//	value.pointer.lengthz = 0;
+	value.pointer.lengthz = 0;
 	D_ASSERT(GetSize() == 0);
 	D_ASSERT(GetSize() == 0);
 		if (len < 16u)
