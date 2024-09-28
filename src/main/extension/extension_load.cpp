@@ -516,7 +516,7 @@ void ExtensionHelper::LoadExternalExtension(DatabaseInstance &db, FileSystem &fs
 		db.SetExtensionLoaded(extension, *res.install_info);
 		return;
 	}
-
+/*
 	// TODO: make this the only way of calling extensions?
 	// "NEW WAY" of loading extensions enabling C API only
 	init_fun_name = res.filebase + "_init_c_api";
@@ -532,12 +532,11 @@ void ExtensionHelper::LoadExternalExtension(DatabaseInstance &db, FileSystem &fs
 
 	auto access = ExtensionAccess::CreateAccessStruct();
 	(*init_fun_capi)(load_state.ToCStruct(), &access);
-
 	// Throw any error that the extension might have encountered
 	if (load_state.has_error) {
 		load_state.error_data.Throw("An error was thrown during initialization of the extension '" + extension + "': ");
 	}
-
+*/
 	D_ASSERT(res.install_info);
 
 	db.SetExtensionLoaded(extension, *res.install_info);
