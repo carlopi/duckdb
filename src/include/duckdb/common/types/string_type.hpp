@@ -74,7 +74,7 @@ public:
 		return (k16 >= 240u);
 	}
 	static bool String_tIsInlined(const data_ptr_t p) {
-		uint8_t k16 = reinterpret_cast<const string_t*>(p)->value.x.inlined[0] - (uint8_t)1;
+		uint8_t k16 = *reinterpret_cast<const uint8_t*>(p) - (uint8_t)1;
 		return (k16 >= 240u);
 	}
 
