@@ -191,7 +191,6 @@ jobs:
     # Builds extensions for osx_arm64 and osx_amd64
     name: OSX Extensions Release
     runs-on: macos-14
-    needs: xcode-debug
     strategy:
       matrix:
         label: [ 'x86_64', 'arm64' ]
@@ -255,6 +254,11 @@ jobs:
         shell: bash
         run: |
           python3 scripts/run_tests_one_by_one.py ./build/release/test/unittest
+
+      - name: List extensions
+        shell: bash
+        run: |
+          ls -la build/release/repository/**
 
       - name: Deploy
         shell: bash
