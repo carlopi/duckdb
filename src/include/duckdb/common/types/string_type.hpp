@@ -73,6 +73,10 @@ public:
 		uint8_t k16 = value.x.inlined[0] - (uint8_t)1;
 		return (k16 >= 240u);
 	}
+	static bool String_tIsInlined(const data_ptr_t p) {
+		uint8_t k16 = reinterpret_cast<const string_t*>(p)->value.x.inlined[0] - (uint8_t)1;
+		return (k16 >= 240u);
+	}
 
 	const char *GetData() const {
 		return IsInlined() ? (const char *)(value.inlined.inlined + 1) : value.pointer.ptr;
