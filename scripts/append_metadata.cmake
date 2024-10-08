@@ -39,6 +39,15 @@ string(APPEND EMPTY_256 "${EMPTY_32}")
 string(APPEND EMPTY_256 "${EMPTY_32}")
 string(APPEND EMPTY_256 "${EMPTY_32}")
 
+string(LENGTH "${EMPTY_BYTE}" LEN)
+message(STATUS "LEN is ${LEN}")
+string(LENGTH "${EMPTY_4}" LEN)
+message(STATUS "LEN is ${LEN}")
+string(LENGTH "${EMPTY_32}" LEN)
+message(STATUS "LEN is ${LEN}")
+string(LENGTH "${EMPTY_256}" LEN)
+message(STATUS "LEN is ${LEN}")
+
 # 0 for custom section
 string(APPEND CUSTOM_SECTION "${EMPTY_BYTE}")
 # 213 in hex = 531 in decimal, total lenght of what follows (1 + 16 + 2 + 8x32 + 256)
