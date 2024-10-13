@@ -45,7 +45,7 @@ struct PersistentCollectionData;
 class WriteAheadLog {
 public:
 	//! Initialize the WAL in the specified directory
-	explicit WriteAheadLog(AttachedDatabase &database, const string &wal_path);
+	explicit WriteAheadLog(AttachedDatabase &database, const string &wal_path, lock_guard<mutex> &lock);
 	virtual ~WriteAheadLog();
 
 public:
