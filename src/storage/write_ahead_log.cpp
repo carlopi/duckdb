@@ -21,7 +21,7 @@ namespace duckdb {
 
 const uint64_t WAL_VERSION_NUMBER = 2;
 
-WriteAheadLog::WriteAheadLog(AttachedDatabase &database, const string &wal_path)
+WriteAheadLog::WriteAheadLog(AttachedDatabase &database, const string &wal_path, lock_guard<mutex> &lock)
     : database(database), wal_path(wal_path), wal_size(0), initialized(false) {
 }
 

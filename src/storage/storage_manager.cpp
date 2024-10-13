@@ -83,11 +83,11 @@ optional_ptr<WriteAheadLog> StorageManager::GetWAL() {
 	if (InMemory() || read_only || !load_complete) {
 		return nullptr;
 	}
-
+	lock_guard<mutex> lock(wal_object_lock);
 	if (!wal) {
 		// Create one
 		auto wal_path = GetWALPath();
-		wal = make_uniq<WriteAheadLog>(db, wal_path);
+		wal = make_uniq<WriteAheadLog>(db, wal_path, lock);
 	}
 	return wal.get();
 }

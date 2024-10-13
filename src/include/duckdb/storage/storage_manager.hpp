@@ -133,6 +133,8 @@ public:
 		DynamicCastCheck<TARGET>(this);
 		return reinterpret_cast<const TARGET &>(*this);
 	}
+private:
+	mutex wal_object_lock;
 };
 
 //! Stores database in a single file.
