@@ -41,7 +41,6 @@ jobs:
       BUILD_TPCDS: 1
       BUILD_FTS: 1
       BUILD_JSON: 1
-      BUILD_JEMALLOC: 1
       CORE_EXTENSIONS: "inet"
       TSAN_OPTIONS: suppressions=${{ github.workspace }}/.sanitizer-thread-suppressions.txt
 
