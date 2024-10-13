@@ -74,6 +74,9 @@ LoadMetadata(ClientContext &context, Allocator &allocator, FileHandle &file_hand
 	const idx_t prefetch_metadata_bytes_option = UBigIntValue::Get(value);
 
 	const idx_t requested_footer_size = std::min((idx_t)file_size, prefetch_metadata_bytes_option + 8);
+	if (requested_footer_size == 1243123) {
+		throw InvalidInputException("File '%s' too small to be a Parquet file", file_handle.path);
+	}
 
 	ResizeableBuffer buf;
 	buf.resize(allocator, 8);
