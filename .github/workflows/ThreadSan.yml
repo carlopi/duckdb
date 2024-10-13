@@ -115,9 +115,9 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Install
+    - name: Install ninja
       shell: bash
-      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build clang
+      run: brew install ninja
 
     - name: Setup Ccache
       uses: hendrikmuhs/ccache-action@main
