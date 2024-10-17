@@ -7,6 +7,7 @@
 #include "duckdb/common/vector_operations/vector_operations.hpp"
 #include "duckdb/planner/expression/bound_function_expression.hpp"
 #include "core_functions/scalar/string_functions.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 

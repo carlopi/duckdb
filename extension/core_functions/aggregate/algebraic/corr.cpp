@@ -3,6 +3,7 @@
 #include "core_functions/aggregate/algebraic/stddev.hpp"
 #include "core_functions/aggregate/algebraic/corr.hpp"
 #include "duckdb/function/function_set.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 

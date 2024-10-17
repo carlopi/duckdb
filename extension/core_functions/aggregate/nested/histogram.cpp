@@ -4,6 +4,7 @@
 #include "duckdb/common/string_map_set.hpp"
 #include "core_functions/aggregate/histogram_helpers.hpp"
 #include "duckdb/common/owning_string_map.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 

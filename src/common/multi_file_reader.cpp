@@ -4,7 +4,7 @@
 #include "duckdb/common/hive_partitioning.hpp"
 #include "duckdb/common/types.hpp"
 #include "duckdb/common/types/value.hpp"
-#include "duckdb/function/function_set.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 #include "duckdb/function/table_function.hpp"
 #include "duckdb/main/config.hpp"
 #include "duckdb/planner/expression/bound_columnref_expression.hpp"

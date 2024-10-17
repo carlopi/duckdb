@@ -6,6 +6,7 @@
 #include "duckdb/common/vector_operations/ternary_executor.hpp"
 #include "duckdb/common/vector_operations/senary_executor.hpp"
 #include "duckdb/common/exception/conversion_exception.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 #include <cmath>
 

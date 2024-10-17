@@ -7,6 +7,7 @@
 #include "duckdb/common/types/timestamp.hpp"
 #include "duckdb/common/vector_operations/generic_executor.hpp"
 #include "core_functions/scalar/generic_functions.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 

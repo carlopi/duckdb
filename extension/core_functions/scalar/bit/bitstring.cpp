@@ -1,6 +1,7 @@
 #include "core_functions/scalar/bit_functions.hpp"
 #include "duckdb/common/types/bit.hpp"
 #include "duckdb/common/types/cast_helpers.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 

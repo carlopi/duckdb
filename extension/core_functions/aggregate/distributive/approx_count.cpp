@@ -5,6 +5,7 @@
 #include "duckdb/function/function_set.hpp"
 #include "duckdb/planner/expression/bound_aggregate_expression.hpp"
 #include "hyperloglog.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 

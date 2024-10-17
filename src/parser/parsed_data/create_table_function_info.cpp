@@ -1,5 +1,6 @@
 #include "duckdb/parser/parsed_data/create_table_function_info.hpp"
 #include "duckdb/parser/parsed_data/alter_table_function_info.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 

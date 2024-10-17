@@ -2,6 +2,7 @@
 #include "duckdb/common/type_visitor.hpp"
 #include "duckdb/common/types.hpp"
 #include "duckdb/function/function.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 #include "duckdb/function/scalar_function.hpp"
 #include "duckdb/main/capi/capi_internal.hpp"
 #include "duckdb/main/client_context.hpp"

@@ -15,6 +15,7 @@
 #include "duckdb/function/function_set.hpp"
 #include "duckdb/common/exception/binder_exception.hpp"
 #include "duckdb/common/error_data.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 

@@ -7,6 +7,7 @@
 #include "duckdb/common/types/timestamp.hpp"
 #include "duckdb/common/types/value.hpp"
 #include "duckdb/execution/expression_executor.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 

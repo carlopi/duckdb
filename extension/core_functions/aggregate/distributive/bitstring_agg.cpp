@@ -3,6 +3,7 @@
 #include "duckdb/common/types/null_value.hpp"
 #include "duckdb/common/vector_operations/aggregate_executor.hpp"
 #include "duckdb/common/types/bit.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 #include "duckdb/common/types/uhugeint.hpp"
 #include "duckdb/storage/statistics/base_statistics.hpp"
 #include "duckdb/execution/expression_executor.hpp"
