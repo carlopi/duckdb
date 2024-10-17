@@ -9,6 +9,7 @@
 #pragma once
 
 #include "duckdb/storage/checkpoint/row_group_writer.hpp"
+#include "duckdb/parallel/task_scheduler.hpp"
 
 namespace duckdb {
 class DuckTableEntry;
