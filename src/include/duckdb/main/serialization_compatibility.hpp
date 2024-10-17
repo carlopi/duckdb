@@ -33,4 +33,4 @@ protected:
 	SerializationCompatibility() = default;
 };
 
-}
+} // namespace duckdb
