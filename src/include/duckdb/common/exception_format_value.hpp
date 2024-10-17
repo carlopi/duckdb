@@ -9,11 +9,11 @@
 #pragma once
 
 #include "duckdb/common/string.hpp"
-#include "duckdb/common/hugeint.hpp"
-
-#include <vector>
 
 namespace duckdb {
+
+class hugeint_t;
+class uhugeint_t;
 
 // Helper class to support custom overloading
 // Escaping " and quoting the value with "
