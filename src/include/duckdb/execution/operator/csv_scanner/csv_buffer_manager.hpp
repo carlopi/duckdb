@@ -8,13 +8,13 @@
 
 #pragma once
 
-#include "duckdb/main/client_context.hpp"
 #include "duckdb/execution/operator/csv_scanner/csv_file_handle.hpp"
 #include "duckdb/execution/operator/csv_scanner/csv_reader_options.hpp"
 
 namespace duckdb {
 class CSVBuffer;
 class CSVStateMachine;
+class ClientContext;
 
 //! This class is used to manage the CSV buffers.  Buffers are cached when used for auto detection.
 //! When parsing, buffer are not cached and just returned.

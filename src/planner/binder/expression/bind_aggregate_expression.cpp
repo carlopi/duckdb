@@ -5,6 +5,7 @@
 #include "duckdb/function/function_binder.hpp"
 #include "duckdb/function/scalar/generic_functions.hpp"
 #include "duckdb/main/config.hpp"
+#include "duckdb/main/client_context.hpp"
 #include "duckdb/parser/expression/constant_expression.hpp"
 #include "duckdb/parser/expression/function_expression.hpp"
 #include "duckdb/planner/binder.hpp"
