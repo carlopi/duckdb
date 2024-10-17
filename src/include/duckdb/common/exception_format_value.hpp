@@ -9,6 +9,7 @@
 #pragma once
 
 #include "duckdb/common/string.hpp"
+#include <vector>
 
 namespace duckdb {
 struct ExceptionFormatValue;
