@@ -5,6 +5,8 @@
 #include "duckdb/catalog/default/default_functions.hpp"
 #include "duckdb/common/string_util.hpp"
 #include "duckdb/function/copy_function.hpp"
+#include "duckdb/function/pragma_function.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 #include "duckdb/main/extension_util.hpp"
 #include "duckdb/parser/expression/constant_expression.hpp"
 #include "duckdb/parser/expression/function_expression.hpp"
