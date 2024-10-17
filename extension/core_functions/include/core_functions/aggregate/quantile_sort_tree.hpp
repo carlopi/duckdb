@@ -16,6 +16,7 @@
 #include "duckdb/common/operator/cast_operators.hpp"
 #include "duckdb/common/operator/multiply.hpp"
 #include "duckdb/planner/expression/bound_constant_expression.hpp"
+#include "duckdb/main/client_context.hpp"
 #include <algorithm>
 #include <numeric>
 #include <stdlib.h>
