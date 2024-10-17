@@ -3,6 +3,7 @@
 #include "duckdb/common/types/data_chunk.hpp"
 #include "duckdb/common/types/vector.hpp"
 #include "duckdb/common/types/timestamp.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 

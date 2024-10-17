@@ -1,6 +1,7 @@
 #include "duckdb/common/vector_operations/binary_executor.hpp"
 #include "core_functions/scalar/string_functions.hpp"
 #include "duckdb/common/operator/multiply.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 

@@ -11,6 +11,7 @@
 #include "duckdb/catalog/catalog_entry/function_entry.hpp"
 #include "duckdb/catalog/catalog_set.hpp"
 #include "duckdb/function/function.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 #include "duckdb/parser/parsed_data/create_aggregate_function_info.hpp"
 
 namespace duckdb {

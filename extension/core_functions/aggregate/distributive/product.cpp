@@ -3,6 +3,7 @@
 #include "duckdb/common/vector_operations/vector_operations.hpp"
 #include "duckdb/planner/expression/bound_aggregate_expression.hpp"
 #include "duckdb/function/function_set.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 

@@ -13,6 +13,7 @@
 #include "duckdb/function/scalar/nested_functions.hpp"
 #include "duckdb/planner/expression/bound_function_expression.hpp"
 #include "duckdb/common/types/date_lookup_cache.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 

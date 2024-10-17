@@ -14,6 +14,7 @@
 #include "core_functions/scalar/math_functions.hpp"
 #include "duckdb/execution/expression_executor.hpp"
 #include "duckdb/planner/expression/bound_function_expression.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 #include <cmath>
 #include <cstdint>

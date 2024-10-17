@@ -4,6 +4,7 @@
 #include "duckdb/common/operator/cast_operators.hpp"
 #include "duckdb/common/operator/abs.hpp"
 #include "core_functions/aggregate/quantile_state.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 

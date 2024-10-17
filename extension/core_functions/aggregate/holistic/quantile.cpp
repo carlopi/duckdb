@@ -10,6 +10,7 @@
 #include "duckdb/common/serializer/serializer.hpp"
 #include "duckdb/common/serializer/deserializer.hpp"
 #include "duckdb/function/aggregate/sort_key_helpers.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 

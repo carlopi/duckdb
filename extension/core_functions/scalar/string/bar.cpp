@@ -6,6 +6,7 @@
 #include "duckdb/common/types/vector.hpp"
 #include "duckdb/common/unicode_bar.hpp"
 #include "duckdb/common/vector_operations/generic_executor.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 
