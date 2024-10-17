@@ -4,6 +4,7 @@
 #include "duckdb/parser/expression/bound_expression.hpp"
 #include "duckdb/common/types/data_chunk.hpp"
 #include "duckdb/function/scalar/nested_functions.hpp"
+#include "duckdb/common/exception/binder_exception.hpp"
 
 namespace duckdb {
 
