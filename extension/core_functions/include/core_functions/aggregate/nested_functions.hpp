@@ -15,6 +15,8 @@
 
 namespace duckdb {
 
+class LogicalType;
+
 struct HistogramFun {
 	static constexpr const char *Name = "histogram";
 	static constexpr const char *Parameters = "arg";

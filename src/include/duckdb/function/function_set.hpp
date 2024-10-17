@@ -8,13 +8,12 @@
 
 #pragma once
 
-#include "duckdb/function/aggregate_function.hpp"
-#include "duckdb/function/scalar_function.hpp"
-#include "duckdb/function/table_function.hpp"
-#include "duckdb/function/pragma_function.hpp"
-
 namespace duckdb {
 
+class ScalarFunction;
+class AggregateFunction;
+class TableFunction;
+class PragmaFunction;
 class ScalarFunctionSet;
 class AggregateFunctionSet;
 class TableFunctionSet;

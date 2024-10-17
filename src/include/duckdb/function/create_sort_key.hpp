@@ -9,6 +9,8 @@
 #pragma once
 
 #include "duckdb/function/function_set.hpp"
+#include "duckdb/common/exception/binder_exception.hpp"
+#include "duckdb/function/aggregate_function.hpp"
 
 namespace duckdb {
 
