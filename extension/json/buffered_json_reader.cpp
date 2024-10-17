@@ -3,6 +3,7 @@
 #include "duckdb/common/file_opener.hpp"
 #include "duckdb/common/serializer/deserializer.hpp"
 #include "duckdb/common/serializer/serializer.hpp"
+#include "duckdb/parallel/task_scheduler.hpp"
 
 #include <utility>
 
