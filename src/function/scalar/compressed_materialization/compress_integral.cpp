@@ -1,7 +1,7 @@
 #include "duckdb/common/numeric_utils.hpp"
 #include "duckdb/common/serializer/deserializer.hpp"
 #include "duckdb/common/serializer/serializer.hpp"
-#include "duckdb/function/function_set.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 #include "duckdb/function/scalar/compressed_materialization_functions.hpp"
 
 namespace duckdb {

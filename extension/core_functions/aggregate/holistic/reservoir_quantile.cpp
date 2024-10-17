@@ -5,6 +5,7 @@
 #include "duckdb/common/queue.hpp"
 #include "duckdb/common/serializer/serializer.hpp"
 #include "duckdb/common/serializer/deserializer.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 #include <algorithm>
 #include <stdlib.h>
