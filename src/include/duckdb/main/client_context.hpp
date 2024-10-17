@@ -25,7 +25,7 @@ class BoundParameterData;
 class QueryProgress;
 class Executor;
 class ClientProperties;
-
+class ErrorData;
 class Appender;
 class Catalog;
 class CatalogSearchPath;
