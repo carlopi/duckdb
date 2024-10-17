@@ -13,7 +13,6 @@
 #include "duckdb/common/unordered_map.hpp"
 #include "duckdb/common/typedefs.hpp"
 
-#include <vector>
 #include <stdexcept>
 
 namespace duckdb {
