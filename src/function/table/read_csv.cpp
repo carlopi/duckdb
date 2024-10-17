@@ -1,5 +1,6 @@
 #include "duckdb/function/table/read_csv.hpp"
 
+#include "duckdb/function/replacement_scan.hpp"
 #include "duckdb/common/enum_util.hpp"
 #include "duckdb/common/multi_file_reader.hpp"
 #include "duckdb/common/serializer/deserializer.hpp"

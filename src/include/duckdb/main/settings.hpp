@@ -11,6 +11,7 @@
 #include "duckdb/common/common.hpp"
 #include "duckdb/common/types/value.hpp"
 #include "duckdb/main/config.hpp"
+#include "duckdb/common/enums/output_type.hpp"
 
 namespace duckdb {
 class ClientContext;

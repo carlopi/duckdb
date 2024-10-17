@@ -13,6 +13,7 @@
 #include "duckdb/common/serializer/deserializer.hpp"
 #include "duckdb/common/serializer/serializer.hpp"
 #include "duckdb/main/settings.hpp"
+#include "duckdb/planner/bound_statement.hpp"
 
 namespace duckdb {
 class BaseSecret;
