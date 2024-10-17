@@ -20,7 +20,7 @@
 #include "duckdb/common/optionally_owned_ptr.hpp"
 #include "duckdb/common/value_operations/value_operations.hpp"
 #include "duckdb/execution/operator/csv_scanner/csv_option.hpp"
-#include "duckdb/main/config.hpp"
+#include "duckdb/main/serialization_compatibility.hpp"
 #include "duckdb/common/insertion_order_preserving_map.hpp"
 
 namespace duckdb {
