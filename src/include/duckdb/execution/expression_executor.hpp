@@ -12,7 +12,6 @@
 #include "duckdb/execution/expression_executor_state.hpp"
 #include "duckdb/planner/bound_tokens.hpp"
 #include "duckdb/planner/expression.hpp"
-#include "duckdb/main/client_context.hpp"
 
 namespace duckdb {
 class Allocator;
