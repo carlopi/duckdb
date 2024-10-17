@@ -5,6 +5,7 @@
 
 #ifndef DUCKDB_AMALGAMATION
 #include "duckdb/function/table_function.hpp"
+#include "duckdb/function/pragma_function.hpp"
 #include "duckdb/main/extension_util.hpp"
 #include "duckdb/parser/parser.hpp"
 #include "duckdb/parser/statement/select_statement.hpp"
