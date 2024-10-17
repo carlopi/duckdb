@@ -34,7 +34,7 @@ struct ReplacementScan;
 class OptimizerExtension;
 class FileSystem;
 class IndexTypeSet;
-class ReplacementScanInput;
+struct ReplacementScanInput;
 
 class BufferManager;
 class BufferPool;

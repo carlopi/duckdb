@@ -21,7 +21,7 @@ class QueryResult;
 class SettingLookupResult;
 class TableDescription;
 class TransactionContext;
-class BoundParameterData;
+struct BoundParameterData;
 struct QueryProgress;
 class Executor;
 struct ClientProperties;
