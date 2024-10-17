@@ -24,7 +24,7 @@ class TransactionContext;
 class BoundParameterData;
 class QueryProgress;
 class Executor;
-class ClientProperties;
+struct ClientProperties;
 class ErrorData;
 class Appender;
 class Catalog;
