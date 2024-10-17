@@ -12,7 +12,7 @@ namespace duckdb {
 
 // This is the odd one, but currently used in
 //   extension/core_functions/include/core_functions/aggregate/nested_functions.hpp
-class LogicalType;
+struct LogicalType;
 
 class ScalarFunction;
 class AggregateFunction;
