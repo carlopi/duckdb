@@ -11,6 +11,7 @@
 #include "duckdb/common/string.hpp"
 
 namespace duckdb {
+struct ExceptionFormatValue;
 
 class hugeint_t;
 class uhugeint_t;
