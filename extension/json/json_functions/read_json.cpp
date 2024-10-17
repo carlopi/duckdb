@@ -4,6 +4,7 @@
 #include "json_structure.hpp"
 #include "json_transform.hpp"
 #include "duckdb/common/helper.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 
