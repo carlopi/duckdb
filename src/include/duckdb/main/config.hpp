@@ -24,6 +24,7 @@
 #include "duckdb/function/replacement_scan.hpp"
 #include "duckdb/optimizer/optimizer_extension.hpp"
 #include "duckdb/planner/operator_extension.hpp"
+#include "duckdb/main/serialization_compatibility.hpp"
 
 namespace duckdb {
 enum class SetScope : uint8_t;
@@ -91,27 +92,6 @@ struct ExtensionOption {
 	LogicalType type;
 	set_option_callback_t set_function;
 	Value default_value;
-};
-
-class SerializationCompatibility {
-public:
-	static SerializationCompatibility FromString(const string &input);
-	static SerializationCompatibility Default();
-	static SerializationCompatibility Latest();
-
-public:
-	bool Compare(idx_t property_version) const;
-
-public:
-	//! The user provided version
-	string duckdb_version;
-	//! The max version that should be serialized
-	idx_t serialization_version;
-	//! Whether this was set by a manual SET/PRAGMA or default
-	bool manually_set;
-
-protected:
-	SerializationCompatibility() = default;
 };
 
 struct DBConfigOptions {
