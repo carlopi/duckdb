@@ -14,8 +14,8 @@
 namespace duckdb {
 struct ExceptionFormatValue;
 
-class hugeint_t;
-class uhugeint_t;
+struct hugeint_t;
+struct uhugeint_t;
 
 // Helper class to support custom overloading
 // Escaping " and quoting the value with "
