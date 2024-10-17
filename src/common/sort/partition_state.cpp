@@ -4,6 +4,7 @@
 #include "duckdb/common/row_operations/row_operations.hpp"
 #include "duckdb/main/config.hpp"
 #include "duckdb/parallel/executor_task.hpp"
+#include "duckdb/main/settings.hpp"
 
 #include <numeric>
 
