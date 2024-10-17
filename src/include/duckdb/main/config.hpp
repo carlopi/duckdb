@@ -8,33 +8,32 @@
 
 #pragma once
 
-#include "duckdb/common/allocator.hpp"
-#include "duckdb/common/case_insensitive_map.hpp"
-#include "duckdb/common/cgroups.hpp"
-#include "duckdb/common/common.hpp"
-#include "duckdb/common/encryption_state.hpp"
 #include "duckdb/common/enums/access_mode.hpp"
-#include "duckdb/common/enums/compression_type.hpp"
-#include "duckdb/common/enums/optimizer_type.hpp"
 #include "duckdb/common/enums/order_type.hpp"
-#include "duckdb/common/enums/set_scope.hpp"
+#include "duckdb/storage/compression/bitpacking.hpp"
 #include "duckdb/common/enums/window_aggregation_mode.hpp"
-#include "duckdb/common/file_system.hpp"
-#include "duckdb/common/set.hpp"
+#include "duckdb/main/client_properties.hpp"
+#include "duckdb/common/allocator.hpp"
+#include "duckdb/common/enums/compression_type.hpp"
+#include "duckdb/common/mutex.hpp"
 #include "duckdb/common/types/value.hpp"
-#include "duckdb/common/vector.hpp"
-#include "duckdb/common/winapi.hpp"
-#include "duckdb/function/cast/default_casts.hpp"
+#include "duckdb/common/case_insensitive_map.hpp"
+#include "duckdb/common/enums/debug_initialize.hpp"
+#include "duckdb/storage/storage_info.hpp"
+#include "duckdb/parser/parser_extension.hpp"
 #include "duckdb/function/replacement_scan.hpp"
 #include "duckdb/optimizer/optimizer_extension.hpp"
-#include "duckdb/parser/parsed_data/create_info.hpp"
-#include "duckdb/parser/parser_extension.hpp"
 #include "duckdb/planner/operator_extension.hpp"
-#include "duckdb/storage/compression/bitpacking.hpp"
-#include "duckdb/main/client_properties.hpp"
-#include "duckdb/execution/index/index_type_set.hpp"
 
 namespace duckdb {
+enum class SetScope : uint8_t;
+class ParserExtension;
+enum class OptimizerType : uint32_t;
+struct ReplacementScan;
+class OptimizerExtension;
+class FileSystem;
+class IndexTypeSet;
+class ReplacementScanInput;
 
 class BufferManager;
 class BufferPool;
