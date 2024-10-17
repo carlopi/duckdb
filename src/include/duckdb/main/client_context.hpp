@@ -8,29 +8,24 @@
 
 #pragma once
 
-#include "duckdb/catalog/catalog_entry/schema_catalog_entry.hpp"
-#include "duckdb/catalog/catalog_set.hpp"
-#include "duckdb/common/atomic.hpp"
-#include "duckdb/common/deque.hpp"
-#include "duckdb/common/enums/pending_execution_result.hpp"
-#include "duckdb/common/enums/prepared_statement_mode.hpp"
-#include "duckdb/common/error_data.hpp"
-#include "duckdb/common/pair.hpp"
-#include "duckdb/common/unordered_set.hpp"
-#include "duckdb/common/winapi.hpp"
 #include "duckdb/main/client_config.hpp"
-#include "duckdb/main/client_context_state.hpp"
-#include "duckdb/main/client_properties.hpp"
-#include "duckdb/main/external_dependencies.hpp"
-#include "duckdb/main/pending_query_result.hpp"
-#include "duckdb/main/prepared_statement.hpp"
-#include "duckdb/main/settings.hpp"
-#include "duckdb/main/stream_query_result.hpp"
-#include "duckdb/main/table_description.hpp"
-#include "duckdb/planner/expression/bound_parameter_data.hpp"
 #include "duckdb/transaction/transaction_context.hpp"
+#include "duckdb/main/prepared_statement.hpp"
+#include "duckdb/common/enums/prepared_statement_mode.hpp"
 
 namespace duckdb {
+class PreparedStatement;
+class PendingQueryResult;
+class BaseQueryResult;
+class QueryResult;
+class SettingLookupResult;
+class TableDescription;
+class TransactionContext;
+class BoundParameterData;
+class QueryProgress;
+class Executor;
+class ClientProperties;
+
 class Appender;
 class Catalog;
 class CatalogSearchPath;
