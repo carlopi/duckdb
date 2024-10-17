@@ -2,7 +2,7 @@
 #include "core_functions/aggregate/sum_helpers.hpp"
 #include "duckdb/common/types/hugeint.hpp"
 #include "duckdb/common/exception.hpp"
-#include "duckdb/function/function_set.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 #include "duckdb/planner/expression.hpp"
 
 namespace duckdb {

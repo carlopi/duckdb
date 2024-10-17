@@ -2,6 +2,7 @@
 #include "duckdb/common/vector_operations/vector_operations.hpp"
 #include "duckdb/common/types/cast_helpers.hpp"
 #include "duckdb/common/types/bit.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 

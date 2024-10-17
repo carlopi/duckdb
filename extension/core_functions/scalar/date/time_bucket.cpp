@@ -10,6 +10,7 @@
 #include "duckdb/common/vector_operations/ternary_executor.hpp"
 #include "duckdb/common/vector_operations/vector_operations.hpp"
 #include "core_functions/scalar/date_functions.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 

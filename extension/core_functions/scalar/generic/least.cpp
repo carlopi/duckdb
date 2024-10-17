@@ -2,6 +2,7 @@
 #include "core_functions/scalar/generic_functions.hpp"
 #include "duckdb/function/create_sort_key.hpp"
 #include "duckdb/planner/expression/bound_function_expression.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 
