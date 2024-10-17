@@ -14,6 +14,7 @@
 #include "duckdb/planner/expression.hpp"
 #include "duckdb/planner/filter/conjunction_filter.hpp"
 #include "duckdb/planner/filter/constant_filter.hpp"
+#include "duckdb/planner/expression/bound_comparison_expression.hpp"
 
 #include "duckdb/storage/data_table.hpp"
 #include <functional>

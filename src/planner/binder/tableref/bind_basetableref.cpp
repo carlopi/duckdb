@@ -16,6 +16,7 @@
 #include "duckdb/planner/tableref/bound_dummytableref.hpp"
 #include "duckdb/planner/tableref/bound_subqueryref.hpp"
 #include "duckdb/catalog/catalog_search_path.hpp"
+#include "duckdb/function/replacement_scan.hpp"
 
 namespace duckdb {
 

@@ -8,6 +8,7 @@
 #include "duckdb/execution/index/unbound_index.hpp"
 #include "duckdb/main/config.hpp"
 #include "duckdb/main/database.hpp"
+#include "duckdb/execution/index/index_type_set.hpp"
 
 namespace duckdb {
 
