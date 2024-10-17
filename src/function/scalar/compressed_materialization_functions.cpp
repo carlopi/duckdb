@@ -1,4 +1,5 @@
 #include "duckdb/function/scalar/compressed_materialization_functions.hpp"
+#include "duckdb/common/exception/binder_exception.hpp"
 
 namespace duckdb {
 

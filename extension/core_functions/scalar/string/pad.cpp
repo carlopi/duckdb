@@ -5,6 +5,7 @@
 #include "duckdb/common/vector_operations/vector_operations.hpp"
 #include "duckdb/common/vector_operations/ternary_executor.hpp"
 #include "duckdb/common/pair.hpp"
+#include "duckdb/function/scalar_function.hpp"
 
 #include "utf8proc.hpp"
 

@@ -1,5 +1,6 @@
 #include "core_functions/scalar/blob_functions.hpp"
 #include "duckdb/common/types/blob.hpp"
+#include "duckdb/function/scalar_function.hpp"
 
 namespace duckdb {
 

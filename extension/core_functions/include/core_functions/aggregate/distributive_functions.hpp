@@ -12,6 +12,7 @@
 #pragma once
 
 #include "duckdb/function/function_set.hpp"
+#include "duckdb/function/aggregate_function.hpp"
 
 namespace duckdb {
 

@@ -11,6 +11,7 @@
 #include "duckdb/common/common.hpp"
 #include "duckdb/common/types.hpp"
 #include "duckdb/common/types/vector.hpp"
+#include "duckdb/function/aggregate_function.hpp"
 
 namespace duckdb {
 

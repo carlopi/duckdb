@@ -9,6 +9,7 @@
 #pragma once
 
 #include "duckdb/function/function_set.hpp"
+#include "duckdb/function/scalar_function.hpp"
 #include "re2/re2.h"
 #include "duckdb/function/built_in_functions.hpp"
 #include "re2/stringpiece.h"

@@ -1,6 +1,7 @@
 #include "core_functions/scalar/string_functions.hpp"
 #include "duckdb/common/map.hpp"
 #include "duckdb/common/vector.hpp"
+#include "duckdb/function/scalar_function.hpp"
 
 namespace duckdb {
 
