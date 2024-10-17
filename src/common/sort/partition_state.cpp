@@ -5,6 +5,7 @@
 #include "duckdb/main/config.hpp"
 #include "duckdb/parallel/executor_task.hpp"
 #include "duckdb/main/settings.hpp"
+#include "duckdb/main/client_context.hpp"
 
 #include <numeric>
 
