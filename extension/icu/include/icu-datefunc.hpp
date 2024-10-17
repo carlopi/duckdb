@@ -12,6 +12,7 @@
 
 #include "duckdb/common/enums/date_part_specifier.hpp"
 #include "duckdb/planner/expression/bound_function_expression.hpp"
+#include "duckdb/function/cast/bound_cast_data.hpp"
 #include "unicode/calendar.h"
 
 namespace duckdb {
