@@ -1,4 +1,5 @@
 #include "json_structure.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 #include "duckdb/common/enum_util.hpp"
 #include "json_executors.hpp"

@@ -1,4 +1,5 @@
 #include "json_executors.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 
