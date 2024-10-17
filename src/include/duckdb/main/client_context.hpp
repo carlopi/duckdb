@@ -18,7 +18,7 @@ class PreparedStatement;
 class PendingQueryResult;
 class BaseQueryResult;
 class QueryResult;
-class SettingLookupResult;
+struct SettingLookupResult;
 class TableDescription;
 class TransactionContext;
 struct BoundParameterData;
