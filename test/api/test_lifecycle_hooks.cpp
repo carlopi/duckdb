@@ -2,6 +2,7 @@
 #include "duckdb/main/connection.hpp"
 #include "duckdb/main/database.hpp"
 #include "duckdb/main/extension_util.hpp"
+#include "duckdb/main/client_context_state.hpp"
 #include "test_helpers.hpp"
 
 using namespace duckdb;
