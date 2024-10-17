@@ -1,5 +1,6 @@
 #include "duckdb/function/function_binder.hpp"
 
+#include "duckdb/planner/binder.hpp"
 #include "duckdb/catalog/catalog.hpp"
 #include "duckdb/catalog/catalog_entry/scalar_function_catalog_entry.hpp"
 #include "duckdb/common/limits.hpp"

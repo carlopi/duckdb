@@ -11,7 +11,6 @@
 #include "duckdb/common/enum_util.hpp"
 #include "duckdb/common/serializer/serialization_data.hpp"
 #include "duckdb/common/serializer/serialization_traits.hpp"
-#include "duckdb/common/types/string_type.hpp"
 #include "duckdb/common/uhugeint.hpp"
 #include "duckdb/common/unordered_map.hpp"
 #include "duckdb/common/unordered_set.hpp"
