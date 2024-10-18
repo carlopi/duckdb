@@ -11,6 +11,7 @@
 #include "duckdb/common/common.hpp"
 #include "duckdb/common/mutex.hpp"
 #include "duckdb/main/client_context.hpp"
+#include "duckdb/common/reference_map.hpp"
 #include "duckdb/common/vector.hpp"
 
 namespace duckdb {
