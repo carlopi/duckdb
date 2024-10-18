@@ -8,8 +8,8 @@
 
 #pragma once
 
-#include "duckdb.h"
-#include "duckdb.hpp"
+#include "duckdb/main/database.hpp"
+#include "duckdb/main/connection.hpp"
 #include "duckdb/common/types.hpp"
 #include "duckdb/common/types/data_chunk.hpp"
 #include "duckdb/main/appender.hpp"
