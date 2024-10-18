@@ -3,6 +3,7 @@
 #include "duckdb/common/http_util.hpp"
 #include "duckdb/common/local_file_system.hpp"
 #include "duckdb/common/serializer/binary_serializer.hpp"
+#include "duckdb/common/serializer/buffered_file_writer.hpp"
 #include "duckdb/common/string_util.hpp"
 #include "duckdb/common/types/uuid.hpp"
 #include "duckdb/logging/http_logger.hpp"

@@ -1,3 +1,5 @@
+#include "duckdb/common/file_system.hpp"
+#include "duckdb/common/string.hpp"
 #include "duckdb/main/db_instance_cache.hpp"
 #include "duckdb/main/extension_helper.hpp"
 
