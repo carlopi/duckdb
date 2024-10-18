@@ -31,6 +31,7 @@
 #include "duckdb/main/config.hpp"
 #include <cmath>
 #include <ostream>
+#include <sstream>
 
 namespace duckdb {
 
