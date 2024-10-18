@@ -1,0 +1,12 @@
+diff --git a/src/postgres_extension.cpp b/src/postgres_extension.cpp
+index 90fc88b..a39dab4 100644
+--- a/src/postgres_extension.cpp
++++ b/src/postgres_extension.cpp
+@@ -12,6 +12,7 @@
+ #include "duckdb/common/helper.hpp"
+ #include "duckdb/main/database_manager.hpp"
+ #include "duckdb/main/attached_database.hpp"
++#include "duckdb/common/enums/set_scope.hpp"
+ #include "storage/postgres_catalog.hpp"
+ #include "storage/postgres_optimizer.hpp"
+ #include "duckdb/planner/extension_callback.hpp"
