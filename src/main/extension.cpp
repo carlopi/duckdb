@@ -1,5 +1,5 @@
 #include "duckdb/main/extension.hpp"
-#include "duckdb/duckdb.hpp"
+#include "duckdb/main/database.hpp"
 #include "duckdb/common/string_util.hpp"
 #include "duckdb/main/extension_helper.hpp"
 #include "duckdb/main/capi/extension_api.hpp"
