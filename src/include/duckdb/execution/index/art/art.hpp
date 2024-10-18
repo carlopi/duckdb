@@ -23,6 +23,8 @@ enum class VerifyExistenceType : uint8_t {
 	// Delete from a table that has a foreign key.
 	DELETE_FK = 2
 };
+class ErrorData;
+enum class VerifyExistenceType : uint8_t;
 class ConflictManager;
 class ARTKey;
 class ARTKeySection;
