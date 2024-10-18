@@ -79,6 +79,11 @@ if (EXTENSION_STATIC_BUILD AND "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   endif()
 endif()
 
+if (${TIME_TRACE})
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -ftime-trace")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftime-trace")
+endif()
+
 option(DISABLE_UNITY "Disable unity builds." FALSE)
 option(USE_WASM_THREADS "Should threads be used" FALSE)
 if (${USE_WASM_THREADS})
