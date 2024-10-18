@@ -17,7 +17,7 @@ namespace duckdb {
 
 class DuckDB;
 class HTTPLogger;
-class ParsedExtensionMetaData;
+struct ParsedExtensionMetaData;
 
 enum class ExtensionLoadResult : uint8_t { LOADED_EXTENSION = 0, EXTENSION_UNKNOWN = 1, NOT_LOADED = 2 };
 
