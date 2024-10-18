@@ -3,6 +3,7 @@
 #include "duckdb/function/function_set.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/function/table/range.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 #include "utf8proc_wrapper.hpp"
 
 namespace duckdb {
