@@ -1,6 +1,7 @@
 #include "duckdb/execution/window_executor.hpp"
 
 #include "duckdb/common/operator/add.hpp"
+#include "duckdb/main/client_context.hpp"
 #include "duckdb/common/operator/subtract.hpp"
 #include "duckdb/planner/expression/bound_reference_expression.hpp"
 
