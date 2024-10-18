@@ -22,4 +22,6 @@ public:
 	virtual void Finish() = 0;
 };
 
+typedef unique_ptr<ProgressBarDisplay> (*progress_bar_display_create_func_t)();
+
 } // namespace duckdb
