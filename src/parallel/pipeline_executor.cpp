@@ -1,6 +1,7 @@
 #include "duckdb/parallel/pipeline_executor.hpp"
 
 #include "duckdb/common/limits.hpp"
+#include "duckdb/execution/expression_executor.hpp"
 #include "duckdb/main/client_context.hpp"
 
 #ifdef DUCKDB_DEBUG_ASYNC_SINK_SOURCE
