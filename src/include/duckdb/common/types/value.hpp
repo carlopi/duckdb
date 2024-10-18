@@ -19,6 +19,8 @@
 #include "duckdb/common/types/interval.hpp"
 #include "duckdb/common/shared_ptr.hpp"
 
+#include <ostream>
+
 namespace duckdb {
 
 class CastFunctionSet;

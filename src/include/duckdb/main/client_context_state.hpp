@@ -18,6 +18,7 @@
 #include "duckdb/main/database_manager.hpp"
 #include "duckdb/main/client_context.hpp"
 #include <mutex>
+#include <ostream>
 
 namespace duckdb {
 class ClientContext;

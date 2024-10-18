@@ -13,6 +13,8 @@
 #include "duckdb/main/query_profiler.hpp"
 #include "duckdb/common/list.hpp"
 
+#include <ostream>
+
 namespace duckdb {
 class ColumnDataCollection;
 class ColumnDataRowCollection;

@@ -7,6 +7,8 @@
 #include "duckdb/common/optional_ptr.hpp"
 #include "duckdb/main/client_context_state.hpp"
 
+#include <ostream>
+
 namespace duckdb {
 
 class CachedFileHandle;

@@ -19,6 +19,7 @@
 
 #include <algorithm>
 #include <utility>
+#include <ostream>
 
 using namespace duckdb_yyjson; // NOLINT
 

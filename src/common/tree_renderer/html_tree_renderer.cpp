@@ -11,6 +11,7 @@
 #include "utf8proc_wrapper.hpp"
 
 #include <sstream>
+#include <ostream>
 
 namespace duckdb {
 
