@@ -17,7 +17,6 @@
 namespace duckdb {
 
 struct ClientConfig;
-typedef unique_ptr<ProgressBarDisplay> (*progress_bar_display_create_func_t)();
 
 struct QueryProgress {
 	friend class ProgressBar;
