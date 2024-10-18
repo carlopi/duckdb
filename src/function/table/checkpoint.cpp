@@ -3,7 +3,7 @@
 #include "duckdb/storage/storage_manager.hpp"
 #include "duckdb/transaction/transaction_manager.hpp"
 #include "duckdb/main/database_manager.hpp"
-#include "duckdb/function/function_set.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 
