@@ -2,6 +2,7 @@
 
 #include "duckdb.hpp"
 #include "duckdb/common/arrow/arrow_wrapper.hpp"
+#include "duckdb/common/stringstream.hpp"
 #include "duckdb/common/limits.hpp"
 #include "duckdb/common/to_string.hpp"
 #include "duckdb/common/types/date.hpp"

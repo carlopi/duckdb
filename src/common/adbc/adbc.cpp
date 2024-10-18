@@ -14,6 +14,7 @@
 #include "duckdb/main/connection.hpp"
 #endif
 
+#include "duckdb/common/stringstream.hpp"
 #include "duckdb/common/adbc/options.h"
 #include "duckdb/common/adbc/single_batch_array_stream.hpp"
 #include "duckdb/function/table/arrow.hpp"
