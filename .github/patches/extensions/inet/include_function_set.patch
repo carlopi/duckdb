@@ -1,0 +1,12 @@
+diff --git a/src/include/inet_extension.hpp b/src/include/inet_extension.hpp
+index bb9b18b..f07ca9c 100644
+--- a/src/include/inet_extension.hpp
++++ b/src/include/inet_extension.hpp
+@@ -10,6 +10,7 @@
+ 
+ #include "duckdb.hpp"
+ #include "duckdb/main/client_context.hpp"
++#include "duckdb/common/function_set_implementation.hpp"
+ 
+ namespace duckdb {
+ 
