@@ -1,0 +1,13 @@
+diff --git a/src/storage/postgres_table_set.cpp b/src/storage/postgres_table_set.cpp
+index 3e58055..3ce5d47 100644
+--- a/src/storage/postgres_table_set.cpp
++++ b/src/storage/postgres_table_set.cpp
+@@ -13,6 +13,8 @@
+ #include "duckdb/common/string_util.hpp"
+ #include "postgres_conversion.hpp"
+ 
++#include <sstream>
++
+ namespace duckdb {
+ 
+ PostgresTableSet::PostgresTableSet(PostgresSchemaEntry &schema, unique_ptr<PostgresResultSlice> table_result_p)
