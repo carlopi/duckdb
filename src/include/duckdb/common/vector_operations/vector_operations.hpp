@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include "duckdb/common/types/data_chunk.hpp"
 #include "duckdb/common/types/vector.hpp"
 
 #include <functional>
