@@ -11,7 +11,6 @@
 #include "duckdb/common/constants.hpp"
 #include "duckdb/function/cast/cast_function_set.hpp"
 #include "duckdb/function/function_set.hpp"
-#include "duckdb/main/secret/secret.hpp"
 #include "duckdb/parser/parsed_data/create_type_info.hpp"
 #include "duckdb/main/extension_install_info.hpp"
 
@@ -21,6 +20,8 @@ struct CreateCollationInfo;
 struct CreateAggregateFunctionInfo;
 struct CreateScalarFunctionInfo;
 struct CreateTableFunctionInfo;
+struct CreateSecretFunction;
+struct SecretType;
 class DatabaseInstance;
 
 //! The ExtensionUtil class contains methods that are useful for extensions
