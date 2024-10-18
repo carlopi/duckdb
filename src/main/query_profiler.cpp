@@ -1,5 +1,6 @@
 #include "duckdb/main/query_profiler.hpp"
 
+#include "duckdb/main/client_context_state.hpp"
 #include "duckdb/common/fstream.hpp"
 #include "duckdb/common/limits.hpp"
 #include "duckdb/common/numeric_utils.hpp"

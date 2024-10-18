@@ -1,4 +1,5 @@
 #include "duckdb/function/table/table_scan.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 #include "duckdb/catalog/catalog_entry/duck_table_entry.hpp"
 #include "duckdb/catalog/dependency_list.hpp"

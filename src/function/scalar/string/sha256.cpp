@@ -1,3 +1,4 @@
+#include "duckdb/execution/expression_executor.hpp"
 #include "duckdb/function/scalar/string_functions.hpp"
 #include "duckdb/common/exception.hpp"
 #include "duckdb/common/vector_operations/unary_executor.hpp"

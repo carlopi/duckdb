@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "duckdb/common/types/column/column_data_collection.hpp"
 #include "duckdb/execution/expression_executor.hpp"
 #include "duckdb/execution/window_segment_tree.hpp"
 #include "duckdb/planner/expression/bound_window_expression.hpp"
