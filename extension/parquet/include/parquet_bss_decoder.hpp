@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #pragma once
+#include "duckdb/common/stringstream.hpp"
 #include "parquet_types.h"
 #include "resizable_buffer.hpp"
 

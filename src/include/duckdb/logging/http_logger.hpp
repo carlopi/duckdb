@@ -9,6 +9,7 @@
 #pragma once
 
 #include "duckdb/common/fstream.hpp"
+#include "duckdb/common/stringstream.hpp"
 #include "duckdb/common/mutex.hpp"
 #include "duckdb/common/printer.hpp"
 #include "duckdb/main/client_context.hpp"

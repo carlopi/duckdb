@@ -1,15 +1,15 @@
 //===----------------------------------------------------------------------===//
 //                         DuckDB
 //
-// duckdb/common/string.hpp
+// duckdb/common/stringstream.hpp
 //
 //
 //===----------------------------------------------------------------------===//
 
 #pragma once
 
-#include <string>
+#include <sstream>
 
 namespace duckdb {
-using std::string;
+using std::stringstream;
 } // namespace duckdb

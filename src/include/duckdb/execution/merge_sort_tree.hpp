@@ -9,6 +9,7 @@
 #pragma once
 
 #include "duckdb/common/array.hpp"
+#include "duckdb/common/stringstream.hpp"
 #include "duckdb/common/atomic.hpp"
 #include "duckdb/common/helper.hpp"
 #include "duckdb/common/mutex.hpp"
