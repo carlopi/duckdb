@@ -8,6 +8,7 @@
 #include "duckdb/function/compression_function.hpp"
 #include "duckdb/main/attached_database.hpp"
 #include "duckdb/main/client_context.hpp"
+#include "duckdb/main/connection.hpp"
 #include "duckdb/main/connection_manager.hpp"
 #include "duckdb/main/database_file_opener.hpp"
 #include "duckdb/main/database_manager.hpp"
