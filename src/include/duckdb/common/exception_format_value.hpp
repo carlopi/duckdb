@@ -9,6 +9,7 @@
 #pragma once
 
 #include "duckdb/common/string.hpp"
+#include <cstdint>
 #include <vector>
 
 namespace duckdb {
