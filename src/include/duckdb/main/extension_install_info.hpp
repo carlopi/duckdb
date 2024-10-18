@@ -7,12 +7,12 @@
 //===----------------------------------------------------------------------===//
 
 #include "duckdb/common/types.hpp"
-#include "duckdb/main/config.hpp"
 
 #pragma once
 
 namespace duckdb {
 class FileSystem;
+class DBConfig;
 
 enum class ExtensionInstallMode : uint8_t {
 	// Fallback for when install info is missing

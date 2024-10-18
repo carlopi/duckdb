@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "duckdb/catalog/catalog_entry/table_function_catalog_entry.hpp"
 #include "duckdb/common/constants.hpp"
 #include "duckdb/function/cast/cast_function_set.hpp"
 #include "duckdb/function/function_set.hpp"
