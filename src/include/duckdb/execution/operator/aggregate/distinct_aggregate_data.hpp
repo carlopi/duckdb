@@ -9,6 +9,7 @@
 #pragma once
 
 #include "duckdb/execution/operator/aggregate/grouped_aggregate_data.hpp"
+#include "duckdb/execution/physical_operator_states.hpp"
 #include "duckdb/execution/radix_partitioned_hashtable.hpp"
 
 namespace duckdb {
