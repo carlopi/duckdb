@@ -4,6 +4,7 @@
 
 #include "cast_column_reader.hpp"
 #include "duckdb.hpp"
+#include "duckdb/parallel/task_scheduler.hpp"
 #include "duckdb/parser/expression/positional_reference_expression.hpp"
 #include "duckdb/parser/query_node/select_node.hpp"
 #include "duckdb/parser/tableref/subqueryref.hpp"

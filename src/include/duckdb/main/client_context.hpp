@@ -11,10 +11,12 @@
 #include "duckdb/main/client_config.hpp"
 #include "duckdb/transaction/transaction_context.hpp"
 #include "duckdb/main/prepared_statement.hpp"
+#include "duckdb/parser/parsed_data/create_function_info.hpp"
 #include "duckdb/common/enums/prepared_statement_mode.hpp"
 #include "duckdb/common/progress_bar/progress_bar_queryprogress.hpp"
 
 namespace duckdb {
+class SQLStatement;
 class PreparedStatement;
 class PendingQueryResult;
 class BaseQueryResult;

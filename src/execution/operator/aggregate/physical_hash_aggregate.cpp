@@ -4,6 +4,7 @@
 #include "duckdb/common/atomic.hpp"
 #include "duckdb/common/optional_idx.hpp"
 #include "duckdb/common/vector_operations/vector_operations.hpp"
+#include "duckdb/execution/executor.hpp"
 #include "duckdb/execution/aggregate_hashtable.hpp"
 #include "duckdb/execution/operator/aggregate/distinct_aggregate_data.hpp"
 #include "duckdb/main/client_context.hpp"

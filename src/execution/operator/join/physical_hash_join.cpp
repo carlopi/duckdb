@@ -1,6 +1,7 @@
 #include "duckdb/execution/operator/join/physical_hash_join.hpp"
 
 #include "duckdb/common/radix_partitioning.hpp"
+#include "duckdb/execution/executor.hpp"
 #include "duckdb/execution/expression_executor.hpp"
 #include "duckdb/execution/operator/aggregate/ungrouped_aggregate_state.hpp"
 #include "duckdb/function/aggregate/distributive_functions.hpp"

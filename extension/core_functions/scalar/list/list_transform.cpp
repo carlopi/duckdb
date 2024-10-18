@@ -1,7 +1,9 @@
 #include "core_functions/scalar/list_functions.hpp"
 
+#include "duckdb/common/exception/binder_exception.hpp"
 #include "duckdb/function/lambda_functions.hpp"
 #include "duckdb/planner/expression/bound_cast_expression.hpp"
+#include "duckdb/planner/expression/bound_lambda_expression.hpp"
 #include "duckdb/main/client_context.hpp"
 
 namespace duckdb {
