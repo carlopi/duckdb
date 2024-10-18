@@ -25,6 +25,7 @@
 #include "duckdb/main/profiling_node.hpp"
 
 #include <stack>
+#include <ostream>
 
 namespace duckdb {
 class ClientContext;

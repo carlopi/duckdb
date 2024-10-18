@@ -9,6 +9,7 @@
 #include "duckdb/common/typedefs.hpp"
 
 #include <sstream>
+#include <ostream>
 
 namespace duckdb {
 
