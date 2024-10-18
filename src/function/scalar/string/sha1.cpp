@@ -1,4 +1,5 @@
 #include "duckdb/function/scalar/string_functions.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 #include "duckdb/common/exception.hpp"
 #include "duckdb/common/vector_operations/unary_executor.hpp"
 #include "mbedtls_wrapper.hpp"

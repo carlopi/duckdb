@@ -11,7 +11,7 @@
 #include "duckdb/execution/operator/csv_scanner/csv_error.hpp"
 #include "duckdb/execution/operator/csv_scanner/sniffer/csv_sniffer.hpp"
 #include "duckdb/execution/operator/persistent/csv_rejects_table.hpp"
-#include "duckdb/function/function_set.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/main/client_data.hpp"
 #include "duckdb/main/config.hpp"
