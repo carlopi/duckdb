@@ -3,6 +3,7 @@
 #include "duckdb/common/types/column/column_data_consumer.hpp"
 #include "duckdb/common/row_operations/row_operations.hpp"
 #include "duckdb/main/config.hpp"
+#include "duckdb/execution/executor.hpp"
 #include "duckdb/parallel/executor_task.hpp"
 #include "duckdb/main/settings.hpp"
 #include "duckdb/main/client_context.hpp"
