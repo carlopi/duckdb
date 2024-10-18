@@ -12,3 +12,22 @@ index 8017383a3de..fc9ba412a9e 100644
 +#include <cmath>
 +
 +using namespace duckdb;
+diff --git a/spatial/include/spatial/core/index/rtree/rtree.hpp b/spatial/include/spatial/core/index/rtree/rtree.hpp
+index fa8b69e159f..966102ab508 100644
+--- a/spatial/include/spatial/core/index/rtree/rtree.hpp
++++ b/spatial/include/spatial/core/index/rtree/rtree.hpp
+@@ -2,6 +2,7 @@
+ 
+ #include "spatial/core/index/rtree/rtree_node.hpp"
+ #include "duckdb/execution/index/fixed_size_allocator.hpp"
++#include "duckdb/execution/index/index_type_set.hpp"
+ #include "duckdb/storage/block_manager.hpp"
+ 
+ namespace spatial {
+@@ -118,4 +119,4 @@ private:
+ 
+ } // namespace core
+ 
+-} // namespace spatial
+\ No newline at end of file
++} // namespace spatial
