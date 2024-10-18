@@ -1,4 +1,5 @@
 #include "duckdb/function/scalar/string_functions.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 #include "re2/re2.h"
 
 namespace duckdb {

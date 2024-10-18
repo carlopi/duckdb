@@ -1,6 +1,8 @@
 #include "duckdb/execution/operator/persistent/physical_batch_insert.hpp"
 
+#include "duckdb/execution/physical_operator_states.hpp"
 #include "duckdb/catalog/catalog_entry/duck_table_entry.hpp"
+#include "duckdb/execution/expression_executor.hpp"
 #include "duckdb/execution/operator/persistent/batch_memory_manager.hpp"
 #include "duckdb/execution/operator/persistent/batch_task_manager.hpp"
 #include "duckdb/parallel/thread_context.hpp"
