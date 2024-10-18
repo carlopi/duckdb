@@ -1,4 +1,5 @@
 #include "http_state.hpp"
+#include "duckdb/common/stringstream.hpp"
 #include "duckdb/main/query_profiler.hpp"
 
 namespace duckdb {
