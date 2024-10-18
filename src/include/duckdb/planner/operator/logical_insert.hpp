@@ -10,6 +10,7 @@
 
 #include "duckdb/planner/logical_operator.hpp"
 #include "duckdb/common/index_vector.hpp"
+#include "duckdb/planner/bound_constraint.hpp"
 #include "duckdb/parser/statement/insert_statement.hpp"
 
 namespace duckdb {
