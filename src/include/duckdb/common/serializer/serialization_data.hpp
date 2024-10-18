@@ -9,6 +9,7 @@
 #pragma once
 
 #include "duckdb/common/common.hpp"
+#include "duckdb/common/deque.hpp"
 #include "duckdb/common/stack.hpp"
 #include "duckdb/planner/bound_parameter_map.hpp"
 #include "duckdb/common/enums/catalog_type.hpp"
