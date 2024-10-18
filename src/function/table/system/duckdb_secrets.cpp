@@ -3,7 +3,7 @@
 #include "duckdb/common/file_system.hpp"
 #include "duckdb/common/map.hpp"
 #include "duckdb/common/string_util.hpp"
-#include "duckdb/function/function_set.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/main/database.hpp"
 #include "duckdb/main/extension_helper.hpp"
