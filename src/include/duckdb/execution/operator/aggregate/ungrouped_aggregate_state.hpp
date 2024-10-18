@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "duckdb/common/mutex.hpp"
 #include "duckdb/execution/expression_executor.hpp"
 #include "duckdb/function/aggregate_function.hpp"
 #include "duckdb/planner/expression/bound_aggregate_expression.hpp"
