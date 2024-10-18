@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "duckdb/common/unique_ptr.hpp"
+
 namespace duckdb {
 
 class ProgressBarDisplay {
