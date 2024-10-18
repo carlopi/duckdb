@@ -2,6 +2,7 @@
 #include "duckdb/parser/expression/window_expression.hpp"
 
 #include "duckdb/common/string_util.hpp"
+#include "duckdb/parser/expression_map.hpp"
 #include "duckdb/function/aggregate_function.hpp"
 #include "duckdb/function/function_serialization.hpp"
 #include "duckdb/catalog/catalog_entry/aggregate_function_catalog_entry.hpp"
