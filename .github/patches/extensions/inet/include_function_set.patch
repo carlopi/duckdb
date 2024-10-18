@@ -6,7 +6,7 @@ index bb9b18b..f07ca9c 100644
  
  #include "duckdb.hpp"
  #include "duckdb/main/client_context.hpp"
-+#include "duckdb/common/function_set_implementation.hpp"
++#include "duckdb/function/function_set_implementation.hpp"
  
  namespace duckdb {
  
