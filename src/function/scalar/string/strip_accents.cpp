@@ -1,4 +1,5 @@
 #include "duckdb/function/scalar/string_functions.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 #include "duckdb/execution/expression_executor_state.hpp"
 #include "duckdb/common/vector_operations/unary_executor.hpp"
 #include "duckdb/common/string.hpp"

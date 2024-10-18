@@ -2,6 +2,7 @@
 #include "duckdb/function/table/summary.hpp"
 #include "duckdb/function/table_function.hpp"
 #include "duckdb/function/function_set.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 #include "duckdb/common/algorithm.hpp"
 #include "duckdb/common/operator/add.hpp"
 #include "duckdb/common/types/timestamp.hpp"
