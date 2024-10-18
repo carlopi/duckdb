@@ -7,6 +7,7 @@
 #include "duckdb/common/types/uuid.hpp"
 #include "duckdb/common/value_operations/value_operations.hpp"
 #include "duckdb/common/vector_operations/vector_operations.hpp"
+#include "duckdb/main/client_config.hpp"
 #include "duckdb/planner/operator/logical_copy_to_file.hpp"
 
 #include <algorithm>
