@@ -32,7 +32,7 @@ concurrency:
 
 env:
   GH_TOKEN: ${{ secrets.GH_TOKEN }}
-  BASE_BRANCH: ${{ github.base_ref || (endsWith(github.ref, '_feature') && 'feature' || 'main') }}
+  BASE_BRANCH: 'feature'
 
 jobs:
   regression-test-benchmark-runner:
