@@ -1,5 +1,7 @@
 #include "duckdb/common/tree_renderer.hpp"
 
+#include <ostream>
+
 namespace duckdb {
 
 void TreeRenderer::ToStream(RenderTree &root, std::ostream &ss) {

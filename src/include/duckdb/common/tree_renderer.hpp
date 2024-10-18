@@ -13,6 +13,8 @@
 #include "duckdb/main/profiling_node.hpp"
 #include "duckdb/common/render_tree.hpp"
 
+#include <ostream>
+
 namespace duckdb {
 
 class TreeRenderer {
