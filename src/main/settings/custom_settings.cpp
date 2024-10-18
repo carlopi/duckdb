@@ -11,6 +11,7 @@
 
 #include "duckdb/main/settings.hpp"
 
+#include "duckdb/common/progress_bar/progress_bar.hpp"
 #include "duckdb/common/enums/access_mode.hpp"
 #include "duckdb/catalog/catalog_search_path.hpp"
 #include "duckdb/common/string_util.hpp"
