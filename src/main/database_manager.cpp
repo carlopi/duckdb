@@ -3,6 +3,7 @@
 #include "duckdb/catalog/catalog.hpp"
 #include "duckdb/catalog/catalog_search_path.hpp"
 #include "duckdb/main/attached_database.hpp"
+#include "duckdb/parallel/task_scheduler.hpp"
 #include "duckdb/main/client_data.hpp"
 #include "duckdb/main/database.hpp"
 #include "duckdb/main/database_path_and_type.hpp"
