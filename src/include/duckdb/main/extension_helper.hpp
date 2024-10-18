@@ -10,6 +10,7 @@
 
 #include "duckdb/main/extension_entries.hpp"
 #include "duckdb/main/extension_install_info.hpp"
+#include "duckdb/main/config.hpp"
 
 #include <string>
 

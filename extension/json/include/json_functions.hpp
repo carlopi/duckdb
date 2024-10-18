@@ -9,6 +9,7 @@
 #pragma once
 
 #include "duckdb/main/extension_util.hpp"
+#include "duckdb/function/replacement_scan.hpp"
 #include "json_common.hpp"
 
 namespace duckdb {
