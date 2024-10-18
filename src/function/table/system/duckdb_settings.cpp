@@ -1,5 +1,6 @@
 #include "duckdb/function/table/system_functions.hpp"
 #include "duckdb/main/config.hpp"
+#include "duckdb/common/string.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/common/enum_util.hpp"
 

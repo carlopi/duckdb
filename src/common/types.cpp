@@ -30,6 +30,7 @@
 #include "duckdb/parser/parser.hpp"
 #include "duckdb/main/config.hpp"
 #include <cmath>
+#include <ostream>
 
 namespace duckdb {
 
