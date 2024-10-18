@@ -21,6 +21,8 @@
 
 namespace duckdb {
 
+class ErrorData;
+enum class VerifyExistenceType : uint8_t;
 class ClientContext;
 class TableIOManager;
 class Transaction;
