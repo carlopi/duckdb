@@ -6,6 +6,7 @@
 #include "duckdb/common/numeric_utils.hpp"
 #include "duckdb/common/printer.hpp"
 #include "duckdb/common/string_util.hpp"
+#include "duckdb/common/stringstream.hpp"
 #include "duckdb/common/tree_renderer/text_tree_renderer.hpp"
 #include "duckdb/execution/expression_executor.hpp"
 #include "duckdb/execution/operator/helper/physical_execute.hpp"
