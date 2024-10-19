@@ -8,6 +8,9 @@
 
 #pragma once
 
+#include <functional>
+#include <deque>
+
 #include "duckdb/common/common.hpp"
 #include "duckdb/common/helper.hpp"
 #include "duckdb/common/stack.hpp"
@@ -18,14 +21,10 @@
 #include "duckdb/common/enums/expression_type.hpp"
 #include "duckdb/common/enums/logical_operator_type.hpp"
 
-#include <functional>
-#include <deque>
-
 namespace duckdb {
 class ClientContext;
 class Catalog;
 class DatabaseInstance;
-class CompressionInfo;
 enum class ExpressionType : uint8_t;
 
 struct SerializationData {
