@@ -1,0 +1,20 @@
+diff --git a/src/storage/sqlite_schema_entry.cpp b/src/storage/sqlite_schema_entry.cpp
+index a8202ec..709bea8 100644
+--- a/src/storage/sqlite_schema_entry.cpp
++++ b/src/storage/sqlite_schema_entry.cpp
+@@ -13,6 +13,8 @@
+ #include "duckdb/parser/parsed_data/alter_table_info.hpp"
+ #include "duckdb/parser/parsed_expression_iterator.hpp"
+ 
++#include <sstream>
++
+ namespace duckdb {
+ 
+ SQLiteSchemaEntry::SQLiteSchemaEntry(Catalog &catalog) : SchemaCatalogEntry(catalog, DEFAULT_SCHEMA, true) {
+@@ -301,4 +303,4 @@ optional_ptr<CatalogEntry> SQLiteSchemaEntry::GetEntry(CatalogTransaction transa
+ 	}
+ }
+ 
+-} // namespace duckdb
+\ No newline at end of file
++} // namespace duckdb
