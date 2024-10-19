@@ -1,0 +1,19 @@
+diff --git a/spatial/src/spatial/core/index/rtree/rtree_index_plan_scan.cpp b/spatial/src/spatial/core/index/rtree/rtree_index_plan_scan.cpp
+index 7a531b5b89f..54122782036 100644
+--- a/spatial/src/spatial/core/index/rtree/rtree_index_plan_scan.cpp
++++ b/spatial/src/spatial/core/index/rtree/rtree_index_plan_scan.cpp
+@@ -4,6 +4,7 @@
+ #include "duckdb/optimizer/matcher/function_matcher.hpp"
+ #include "duckdb/optimizer/optimizer_extension.hpp"
+ #include "duckdb/optimizer/remove_unused_columns.hpp"
++#include "duckdb/parser/parsed_expression_iterator.hpp"
+ #include "duckdb/planner/expression/bound_constant_expression.hpp"
+ #include "duckdb/planner/expression/bound_function_expression.hpp"
+ #include "duckdb/planner/expression/bound_reference_expression.hpp"
+@@ -255,4 +256,4 @@ void RTreeModule::RegisterIndexPlanScan(DatabaseInstance &db) {
+ 
+ } // namespace core
+ 
+-} // namespace spatial
+\ No newline at end of file
++} // namespace spatial
