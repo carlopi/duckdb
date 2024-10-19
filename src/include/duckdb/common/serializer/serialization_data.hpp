@@ -11,6 +11,7 @@
 #include "duckdb/common/common.hpp"
 #include "duckdb/common/stack.hpp"
 #include "duckdb/planner/bound_parameter_map.hpp"
+#include "duckdb/function/compression_function.hpp"
 #include "duckdb/common/enums/catalog_type.hpp"
 #include "duckdb/common/enums/compression_type.hpp"
 #include "duckdb/common/enums/expression_type.hpp"
