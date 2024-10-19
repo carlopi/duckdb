@@ -17,6 +17,7 @@
 #include "duckdb/common/types/hugeint.hpp"
 #include "duckdb/common/types/uuid.hpp"
 #include "duckdb/common/types/interval.hpp"
+#include "duckdb/common/types/isnan.hpp"
 #include "duckdb/common/types/null_value.hpp"
 #include "duckdb/common/types/time.hpp"
 #include "duckdb/common/types/timestamp.hpp"
@@ -513,6 +514,14 @@ bool Value::FloatIsFinite(float value) {
 
 bool Value::DoubleIsFinite(double value) {
 	return !(std::isnan(value) || std::isinf(value));
+}
+
+bool FloatIsNan(float input) {
+	return std::isnan(input);
+}
+
+bool FloatIsNan(double input) {
+	return std::isnan(input);
 }
 
 template <>
