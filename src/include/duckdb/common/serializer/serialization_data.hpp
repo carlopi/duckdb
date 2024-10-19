@@ -24,6 +24,7 @@
 namespace duckdb {
 class ClientContext;
 class Catalog;
+class CompressionInfo;
 class DatabaseInstance;
 enum class ExpressionType : uint8_t;
 
