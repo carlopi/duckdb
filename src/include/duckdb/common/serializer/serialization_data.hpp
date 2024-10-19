@@ -9,13 +9,14 @@
 #pragma once
 
 #include "duckdb/common/common.hpp"
-#include "duckdb/common/deque.hpp"
 #include "duckdb/common/stack.hpp"
 #include "duckdb/planner/bound_parameter_map.hpp"
 #include "duckdb/common/enums/catalog_type.hpp"
 #include "duckdb/common/enums/compression_type.hpp"
 #include "duckdb/common/enums/expression_type.hpp"
 #include "duckdb/common/enums/logical_operator_type.hpp"
+
+#include <deque>
 
 namespace duckdb {
 class ClientContext;
