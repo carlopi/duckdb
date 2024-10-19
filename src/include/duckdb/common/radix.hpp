@@ -11,9 +11,10 @@
 #include "duckdb/common/bswap.hpp"
 #include "duckdb/common/common.hpp"
 #include "duckdb/common/exception.hpp"
+#include "duckdb/common/types/interval.hpp"
 #include "duckdb/common/types.hpp"
 #include "duckdb/common/types/string_type.hpp"
-#include "duckdb/common/types/value.hpp"
+#include "duckdb/common/types/isnan.hpp"
 #include "duckdb/common/limits.hpp"
 
 #include <cfloat>
@@ -65,7 +66,7 @@ public:
 		}
 
 		// nan
-		if (Value::IsNan(x)) {
+		if (FloatIsNan(x)) {
 			return UINT_MAX;
 		}
 		//! infinity
@@ -118,7 +119,7 @@ public:
 			return buff;
 		}
 		// nan
-		if (Value::IsNan(x)) {
+		if (FloatIsNan(x)) {
 			return ULLONG_MAX;
 		}
 		//! infinity
