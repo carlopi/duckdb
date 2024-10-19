@@ -1,5 +1,8 @@
 #include "duckdb/function/scalar/string_common.hpp"
 #include "duckdb/function/scalar/string_functions.hpp"
+#include "duckdb/execution/expression_executor_state.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
+
 #include "utf8proc_wrapper.hpp"
 
 namespace duckdb {
