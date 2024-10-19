@@ -5,6 +5,7 @@
 #include "duckdb/planner/expression/bound_aggregate_expression.hpp"
 #include "duckdb/common/serializer/deserializer.hpp"
 #include "duckdb/function/function_set_implementation.hpp"
+#include "duckdb/function/aggregate_function.hpp"
 
 namespace duckdb {
 
