@@ -18,6 +18,7 @@
 #include "duckdb/common/enums/expression_type.hpp"
 #include "duckdb/common/enums/logical_operator_type.hpp"
 
+#include <functional>
 #include <deque>
 
 namespace duckdb {
