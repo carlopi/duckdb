@@ -1,4 +1,7 @@
 #include "core_functions/scalar/enum_functions.hpp"
+#include "duckdb/common/exception/binder_exception.hpp"
+#include "duckdb/function/aggregate_function.hpp"
+#include "duckdb/function/scalar_function.hpp"
 
 namespace duckdb {
 
