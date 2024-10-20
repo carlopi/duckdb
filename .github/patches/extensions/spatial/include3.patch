@@ -1,0 +1,12 @@
+diff --git a/spatial/src/spatial/core/functions/table/st_generatepoints.cpp b/spatial/src/spatial/core/functions/table/st_generatepoints.cpp
+index 007d386d803..81c3a98cf36 100644
+--- a/spatial/src/spatial/core/functions/table/st_generatepoints.cpp
++++ b/spatial/src/spatial/core/functions/table/st_generatepoints.cpp
+@@ -1,6 +1,7 @@
+ #include "spatial/common.hpp"
+ #include "spatial/core/functions/table.hpp"
+ #include "spatial/core/types.hpp"
++#include "duckdb/common/random_engine.hpp"
+ 
+ #include <spatial/core/geometry/bbox.hpp>
+ 
