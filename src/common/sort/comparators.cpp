@@ -3,6 +3,7 @@
 #include "duckdb/common/fast_mem.hpp"
 #include "duckdb/common/sort/sort.hpp"
 #include "duckdb/common/uhugeint.hpp"
+#include "duckdb/storage/statistics/base_statistics.hpp"
 
 namespace duckdb {
 

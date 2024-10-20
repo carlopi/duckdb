@@ -9,6 +9,7 @@
 #pragma once
 
 #include "duckdb/function/aggregate_function.hpp"
+#include "duckdb/common/types/value.hpp"
 #include <ctgmath>
 
 namespace duckdb {
