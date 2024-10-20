@@ -1,8 +1,9 @@
 #include "duckdb/common/arrow/arrow.hpp"
 
-#include "duckdb.hpp"
 #include "duckdb/common/arrow/arrow_wrapper.hpp"
 #include "duckdb/common/stringstream.hpp"
+#include "duckdb/main/client_context.hpp"
+#include "duckdb/main/database.hpp"
 #include "duckdb/common/limits.hpp"
 #include "duckdb/common/to_string.hpp"
 #include "duckdb/common/types/date.hpp"
