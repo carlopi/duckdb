@@ -10,7 +10,9 @@
 #pragma once
 
 #include "duckdb/common/string_util.hpp"
-#include "duckdb.hpp"
+#include "duckdb/main/query_result.hpp"
+#include "duckdb/common/types/column/column_data_collection.hpp"
+#include "duckdb/main/materialized_query_result.hpp"
 
 namespace duckdb {
 
