@@ -9,7 +9,7 @@
 #pragma once
 
 #include <functional>
-#include <deque>
+#include <list>
 
 #include "duckdb/common/common.hpp"
 #include "duckdb/common/helper.hpp"
@@ -37,7 +37,7 @@ struct SerializationData {
 	stack<idx_t> enums;
 	stack<reference<bound_parameter_map_t>> parameter_data;
 	stack<const_reference<LogicalType>> types;
-	stack<const_reference<CompressionInfo>> compression_infos;
+	stack<const_reference<CompressionInfo>, list<const_reference<CompressionInfo>>> compression_infos;
 	duckdb::unordered_map<std::string, duckdb::stack<duckdb::reference<CustomData>>> customs;
 
 	template <class T>
