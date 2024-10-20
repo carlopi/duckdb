@@ -8,7 +8,6 @@
 
 #pragma once
 
-#include "duckdb/common/winapi.hpp"
 #include "duckdb/common/common.hpp"
 #include "duckdb/common/enums/compression_type.hpp"
 #include "duckdb/common/map.hpp"
@@ -32,13 +31,7 @@ struct SegmentScanState;
 
 class CompressionInfo {
 public:
-	explicit CompressionInfo(const idx_t block_size) noexcept : block_size(block_size) {
-	}
-	DUCKDB_API CompressionInfo(const CompressionInfo &other) noexcept : CompressionInfo(other.block_size) {
-	}
-	DUCKDB_API CompressionInfo(CompressionInfo &&other) noexcept : CompressionInfo(other.block_size) {
-	}
-	DUCKDB_API ~CompressionInfo() {
+	CompressionInfo(const idx_t block_size) noexcept : block_size(block_size) {
 	}
 
 public:
