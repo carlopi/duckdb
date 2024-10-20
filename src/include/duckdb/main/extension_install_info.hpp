@@ -12,7 +12,7 @@
 
 namespace duckdb {
 class FileSystem;
-class DBConfig;
+struct DBConfig;
 
 enum class ExtensionInstallMode : uint8_t {
 	// Fallback for when install info is missing
