@@ -37,7 +37,7 @@ struct SerializationData {
 	stack<reference<DatabaseInstance>> databases;
 	stack<idx_t> enums;
 	stack<reference<bound_parameter_map_t>> parameter_data;
-	stack<const_reference<LogicalType>> types;
+	stack<const_reference<LogicalType>, std::list<const_reference<LogicalType>>> types;
 	stack<const_reference<CompressionInfo>, std::list<const_reference<CompressionInfo>>> compression_infos;
 	duckdb::unordered_map<std::string, duckdb::stack<duckdb::reference<CustomData>>> customs;
 
@@ -209,7 +209,6 @@ inline void SerializationData::Set(LogicalType &type) {
 
 template <>
 inline void SerializationData::Unset<LogicalType>() {
-	AssertNotEmpty(types);
 	types.pop();
 }
 
@@ -220,13 +219,11 @@ inline void SerializationData::Set(const LogicalType &type) {
 
 template <>
 inline const LogicalType &SerializationData::Get() {
-	AssertNotEmpty(types);
 	return types.top();
 }
 
 template <>
 inline void SerializationData::Unset<const LogicalType>() {
-	AssertNotEmpty(types);
 	types.pop();
 }
 
