@@ -14,6 +14,7 @@
 #include "duckdb/common/common.hpp"
 #include "duckdb/common/helper.hpp"
 #include "duckdb/common/stack.hpp"
+#include "duckdb/function/compression_function.hpp"
 #include "duckdb/planner/bound_parameter_map.hpp"
 #include "duckdb/common/enums/catalog_type.hpp"
 #include "duckdb/common/enums/compression_type.hpp"
@@ -37,7 +38,7 @@ struct SerializationData {
 	stack<idx_t> enums;
 	stack<reference<bound_parameter_map_t>> parameter_data;
 	stack<const_reference<LogicalType>> types;
-	stack<const_reference<CompressionInfo>, list<const_reference<CompressionInfo>>> compression_infos;
+	stack<const_reference<CompressionInfo>, std::list<const_reference<CompressionInfo>>> compression_infos;
 	duckdb::unordered_map<std::string, duckdb::stack<duckdb::reference<CustomData>>> customs;
 
 	template <class T>
