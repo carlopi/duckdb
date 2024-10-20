@@ -33,7 +33,9 @@ class CompressionInfo {
 public:
 	explicit CompressionInfo(const idx_t block_size) : block_size(block_size) {
 	}
-	~CompressionInfo();
+	~CompressionInfo() {
+	}
+
 public:
 	//! The size below which the segment is compacted on flushing.
 	idx_t GetCompactionFlushLimit() const {
