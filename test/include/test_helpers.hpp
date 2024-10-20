@@ -21,10 +21,13 @@
 #endif
 
 #include "compare_result.hpp"
-#include "duckdb.hpp"
 #include "duckdb/common/string_util.hpp"
 #include "duckdb/common/enum_util.hpp"
 #include "duckdb/common/types.hpp"
+#include "duckdb/main/stream_query_result.hpp"
+#include "duckdb/main/connection.hpp"
+#include "duckdb/main/database.hpp"
+
 namespace duckdb {
 
 bool TestForceStorage();
