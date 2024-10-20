@@ -1,6 +1,8 @@
 /*HEADER file with all UDF Functions to test*/
 #pragma once
 
+#include "duckdb/common/type_util.hpp"
+
 namespace duckdb {
 
 // UDF Functions to test
