@@ -10,6 +10,7 @@
 
 #include "duckdb/common/common.hpp"
 #include "duckdb/common/enums/quantile_enum.hpp"
+#include "duckdb/common/types/hugeint.hpp"
 #include "core_functions/aggregate/holistic_functions.hpp"
 
 namespace duckdb {

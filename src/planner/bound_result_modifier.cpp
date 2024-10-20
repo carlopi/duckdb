@@ -1,5 +1,6 @@
 #include "duckdb/planner/bound_result_modifier.hpp"
 #include "duckdb/parser/expression_map.hpp"
+#include "duckdb/storage/statistics/base_statistics.hpp"
 
 namespace duckdb {
 

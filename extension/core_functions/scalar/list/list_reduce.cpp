@@ -6,6 +6,7 @@
 #include "duckdb/common/exception/binder_exception.hpp"
 #include "duckdb/planner/expression/bound_lambda_expression.hpp"
 
+
 namespace duckdb {
 
 struct ReduceExecuteInfo {

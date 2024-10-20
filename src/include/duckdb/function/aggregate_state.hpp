@@ -9,10 +9,11 @@
 #pragma once
 
 #include "duckdb/function/function.hpp"
-#include "duckdb/storage/statistics/base_statistics.hpp"
-#include "duckdb/storage/statistics/node_statistics.hpp"
 
 namespace duckdb {
+
+class BaseStatistics;
+class NodeStatistics;
 
 enum class AggregateType : uint8_t { NON_DISTINCT = 1, DISTINCT = 2 };
 //! Whether or not the input order influences the result of the aggregate

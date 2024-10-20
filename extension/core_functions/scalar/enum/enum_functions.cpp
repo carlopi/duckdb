@@ -1,8 +1,9 @@
 #include "core_functions/scalar/enum_functions.hpp"
 #include "duckdb/common/exception/binder_exception.hpp"
+#include "duckdb/storage/statistics/base_statistics.hpp"
+#include "duckdb/common/types/hugeint.hpp"
 #include "duckdb/function/aggregate_function.hpp"
 #include "duckdb/function/scalar_function.hpp"
-
 namespace duckdb {
 
 static void EnumFirstFunction(DataChunk &input, ExpressionState &state, Vector &result) {

@@ -5,6 +5,7 @@
 #include "duckdb/planner/expression/bound_cast_expression.hpp"
 #include "duckdb/execution/expression_executor.hpp"
 #include "duckdb/planner/expression/bound_reference_expression.hpp"
+#include "duckdb/storage/statistics/base_statistics.hpp"
 #include "duckdb/main/config.hpp"
 #include "duckdb/common/sort/sort.hpp"
 #include "duckdb/function/function_set_implementation.hpp"
