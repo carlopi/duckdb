@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "duckdb/common/winapi.hpp"
+
 namespace duckdb {
 
 DUCKDB_API bool FloatIsNan(float input);
