@@ -37,8 +37,8 @@ struct SerializationData {
 	stack<reference<DatabaseInstance>> databases;
 	stack<idx_t> enums;
 	stack<reference<bound_parameter_map_t>> parameter_data;
-	stack<const_reference<LogicalType>, std::list<const_reference<LogicalType>>> types;
-	stack<const_reference<CompressionInfo>, std::list<const_reference<CompressionInfo>>> compression_infos;
+	stack<const_reference<LogicalType>, std::deque<const_reference<LogicalType>>> types;
+	stack<const_reference<CompressionInfo>, std::deque<const_reference<CompressionInfo>>> compression_infos;
 	duckdb::unordered_map<std::string, duckdb::stack<duckdb::reference<CustomData>>> customs;
 
 	template <class T>
