@@ -33,7 +33,7 @@ class CompressionInfo {
 public:
 	explicit CompressionInfo(const idx_t block_size) : block_size(block_size) {
 	}
-	~CompressionInfo() {
+	DUCKDB_API ~CompressionInfo() {
 	}
 
 public:
