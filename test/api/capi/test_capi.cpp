@@ -1,4 +1,5 @@
 #include "capi_tester.hpp"
+#include "duckdb/common/types/hugeint.hpp"
 #include <regex>
 
 using namespace duckdb;
