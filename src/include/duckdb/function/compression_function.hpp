@@ -31,7 +31,11 @@ struct SegmentScanState;
 
 class CompressionInfo {
 public:
-	explicit CompressionInfo(const idx_t block_size) : block_size(block_size) {
+	explicit CompressionInfo(const idx_t block_size) noexcept : block_size(block_size) {
+	}
+        DUCKDB_API LogicalType(const CompressionInfo &other) noexcept : CompressionInfo(other.block_size) {
+	}
+        DUCKDB_API LogicalType(CompressionInfo &&other) noexcept : CompressionInfo(other.block_size) {
 	}
 	DUCKDB_API ~CompressionInfo() {
 	}
