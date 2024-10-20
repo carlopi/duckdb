@@ -1,4 +1,5 @@
 #include "core_functions/scalar/list_functions.hpp"
+#include "duckdb/common/types/value.hpp"
 #include "duckdb/function/lambda_functions.hpp"
 #include "duckdb/planner/expression/bound_cast_expression.hpp"
 #include "duckdb/planner/expression/bound_function_expression.hpp"

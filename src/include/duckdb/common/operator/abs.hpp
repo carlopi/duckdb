@@ -9,6 +9,8 @@
 #pragma once
 
 #include "duckdb/common/types.hpp"
+#include "duckdb/common/types/interval.hpp"
+#include "duckdb/common/types/datetime.hpp"
 #include "duckdb/common/exception.hpp"
 #include "duckdb/common/limits.hpp"
 #include <cmath>
