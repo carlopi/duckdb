@@ -237,13 +237,11 @@ inline void SerializationData::Set(const CompressionInfo &compression_info) {
 
 template <>
 inline const CompressionInfo &SerializationData::Get() {
-	AssertNotEmpty(compression_infos);
 	return compression_infos.top();
 }
 
 template <>
 inline void SerializationData::Unset<const CompressionInfo>() {
-	AssertNotEmpty(compression_infos);
 	compression_infos.pop();
 }
 
