@@ -12,7 +12,6 @@
 #include "duckdb/common/types/data_chunk.hpp"
 #include "duckdb/common/unordered_set.hpp"
 #include "duckdb/main/external_dependencies.hpp"
-#include "duckdb/parser/column_definition.hpp"
 
 namespace duckdb {
 class CatalogEntry;

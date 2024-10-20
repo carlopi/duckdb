@@ -9,7 +9,6 @@
 #pragma once
 
 #include "duckdb/common/common.hpp"
-#include "duckdb/common/types/value.hpp"
 #include "duckdb/storage/arena_allocator.hpp"
 
 namespace duckdb {

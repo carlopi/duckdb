@@ -2,6 +2,7 @@
 
 #include "core_functions/scalar/string_functions.hpp"
 #include "duckdb/function/scalar_function.hpp"
+#include "duckdb/common/types/value.hpp"
 
 namespace duckdb {
 

@@ -1,5 +1,6 @@
 #include "duckdb/common/exception/binder_exception.hpp"
 #include "duckdb/common/string_util.hpp"
+#include "duckdb/parser/column_definition.hpp"
 #include "duckdb/function/function.hpp"
 
 namespace duckdb {

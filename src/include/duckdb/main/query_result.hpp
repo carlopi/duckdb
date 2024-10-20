@@ -10,6 +10,7 @@
 
 #include "duckdb/common/enums/statement_type.hpp"
 #include "duckdb/common/types/data_chunk.hpp"
+#include "duckdb/common/types/value.hpp"
 #include "duckdb/common/winapi.hpp"
 #include "duckdb/common/error_data.hpp"
 #include "duckdb/main/client_properties.hpp"

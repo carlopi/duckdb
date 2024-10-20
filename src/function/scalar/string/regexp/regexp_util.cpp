@@ -1,4 +1,5 @@
 #include "duckdb/function/scalar/regexp.hpp"
+#include "duckdb/common/types/value.hpp"
 #include "duckdb/execution/expression_executor.hpp"
 
 namespace duckdb {

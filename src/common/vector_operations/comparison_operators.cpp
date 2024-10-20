@@ -7,6 +7,7 @@
 #include "duckdb/common/operator/comparison_operators.hpp"
 
 #include "duckdb/common/uhugeint.hpp"
+#include "duckdb/common/types/value.hpp"
 #include "duckdb/common/vector_operations/binary_executor.hpp"
 #include "duckdb/common/vector_operations/vector_operations.hpp"
 
