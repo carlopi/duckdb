@@ -21,7 +21,7 @@ struct CreateCollationInfo;
 struct CreateAggregateFunctionInfo;
 struct CreateScalarFunctionInfo;
 struct CreateTableFunctionInfo;
-struct CreateSecretFunction;
+class CreateSecretFunction;
 struct SecretType;
 class DatabaseInstance;
 
