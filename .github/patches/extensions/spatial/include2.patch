@@ -6,7 +6,7 @@ index 7a531b5b89f..657d866c221 100644
  #include "duckdb/optimizer/matcher/function_matcher.hpp"
  #include "duckdb/optimizer/optimizer_extension.hpp"
  #include "duckdb/optimizer/remove_unused_columns.hpp"
-+#include "duckdb/parser/expression_iterator.hpp"
++#include "duckdb/planner/expression_iterator.hpp"
  #include "duckdb/planner/expression/bound_constant_expression.hpp"
  #include "duckdb/planner/expression/bound_function_expression.hpp"
  #include "duckdb/planner/expression/bound_reference_expression.hpp"
