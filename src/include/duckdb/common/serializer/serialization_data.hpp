@@ -33,10 +33,10 @@ struct SerializationData {
 		virtual ~CustomData() = default;
 	};
 
-	stack<reference<ClientContext>> contexts;
-	stack<reference<DatabaseInstance>> databases;
-	stack<idx_t> enums;
-	stack<reference<bound_parameter_map_t>> parameter_data;
+	stack<reference<ClientContext>, std::list<reference<ClientContext>>> contexts;
+	stack<reference<DatabaseInstance>, std::list<reference<DatabaseInstance>>> databases;
+	stack<idx_t, std::list<idx_t>> enums;
+	stack<reference<bound_parameter_map_t>, std::list<reference<bound_parameter_map_t>>> parameter_data;
 	stack<const_reference<LogicalType>, std::list<const_reference<LogicalType>>> types;
 	stack<const_reference<CompressionInfo>, std::list<const_reference<CompressionInfo>>> compression_infos;
 	duckdb::unordered_map<std::string, duckdb::stack<duckdb::reference<CustomData>>> customs;
@@ -51,7 +51,7 @@ struct SerializationData {
 	void Unset() = delete;
 
 	template <class T>
-	inline void AssertNotEmpty(const stack<T> &e) {
+	inline void AssertNotEmpty(const stack<T, std::list<T>> &e) {
 		if (e.empty()) {
 			throw InternalException("SerializationData - unexpected empty stack");
 		}
