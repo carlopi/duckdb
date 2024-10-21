@@ -9,7 +9,7 @@
 #pragma once
 
 #include "duckdb/catalog/catalog.hpp"
-#include "duckdb/function/scalar_function.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 
