@@ -8,6 +8,7 @@
 #include "duckdb/common/to_string.hpp"
 #include "duckdb/common/types/date.hpp"
 #include "duckdb/common/types/vector_buffer.hpp"
+#include "duckdb/execution/partition_info.hpp"
 #include "duckdb/function/table/arrow.hpp"
 #include "duckdb/function/table/arrow/arrow_duck_schema.hpp"
 #include "duckdb/function/table/arrow/arrow_type_info.hpp"
