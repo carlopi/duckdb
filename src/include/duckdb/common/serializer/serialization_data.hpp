@@ -39,7 +39,7 @@ struct SerializationData {
 	stack<reference<bound_parameter_map_t>, std::list<reference<bound_parameter_map_t>>> parameter_data;
 	stack<const_reference<LogicalType>, std::list<const_reference<LogicalType>>> types;
 	stack<const_reference<CompressionInfo>, std::list<const_reference<CompressionInfo>>> compression_infos;
-	duckdb::unordered_map<std::string, duckdb::stack<duckdb::reference<CustomData>>> customs;
+	duckdb::unordered_map<std::string, duckdb::stack<duckdb::reference<CustomData>, std::list<duckdb::reference<CustomData>>>> customs;
 
 	template <class T>
 	void Set(T entry) = delete;
