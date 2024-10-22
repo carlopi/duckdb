@@ -7,6 +7,7 @@
 
 #include "duckdb/planner/expression/bound_cast_expression.hpp"
 #include "duckdb/planner/expression/bound_function_expression.hpp"
+#include "duckdb/common/exception/binder_exception.hpp"
 
 #include <string.h>
 
