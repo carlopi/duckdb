@@ -43,7 +43,6 @@ struct SerializationData {
 	                      duckdb::stack<duckdb::reference<CustomData>, std::list<duckdb::reference<CustomData>>>>
 	    customs;
 
-
 	template <class T>
 	void Set(T entry) = delete;
 
