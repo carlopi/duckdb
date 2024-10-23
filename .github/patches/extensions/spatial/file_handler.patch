@@ -1,0 +1,12 @@
+diff --git a/spatial/src/spatial/gdal/file_handler.cpp b/spatial/src/spatial/gdal/file_handler.cpp
+index 9f3a711ae2e..c8e62609fd9 100644
+--- a/spatial/src/spatial/gdal/file_handler.cpp
++++ b/spatial/src/spatial/gdal/file_handler.cpp
+@@ -4,6 +4,7 @@
+ #include "duckdb/main/client_context.hpp"
+ #include "duckdb/common/types/uuid.hpp"
+ #include "duckdb/main/client_data.hpp"
++#include "duckdb/main/client_context_state.hpp"
+ 
+ #include "cpl_vsi.h"
+ #include "cpl_vsi_virtual.h"
