@@ -12,10 +12,6 @@
 #pragma once
 
 #include "duckdb/function/function_set.hpp"
-#include "duckdb/function/built_in_functions.hpp"
-#include "duckdb/common/serializer/serializer.hpp"
-#include "duckdb/common/serializer/deserializer.hpp"
-#include "duckdb/planner/expression/bound_aggregate_expression.hpp"
 
 namespace duckdb {
 

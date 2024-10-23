@@ -1,0 +1,38 @@
+diff --git a/src/hnsw/hnsw_index_physical_create.cpp b/src/hnsw/hnsw_index_physical_create.cpp
+index 543b042..f8e9ab9 100644
+--- a/src/hnsw/hnsw_index_physical_create.cpp
++++ b/src/hnsw/hnsw_index_physical_create.cpp
+@@ -4,6 +4,7 @@
+ #include "duckdb/catalog/catalog_entry/duck_table_entry.hpp"
+ #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
+ #include "duckdb/common/exception/transaction_exception.hpp"
++#include "duckdb/common/types/column/column_data_scan_states.hpp"
+ #include "duckdb/main/attached_database.hpp"
+ #include "duckdb/main/database.hpp"
+ #include "duckdb/storage/storage_manager.hpp"
+@@ -318,4 +319,4 @@ double PhysicalCreateHNSWIndex::GetSinkProgress(ClientContext &context, GlobalSi
+ 	return 50.0 + (50.0 * static_cast<double>(state.built_count) / static_cast<double>(state.loaded_count));
+ }
+ 
+-} // namespace duckdb
+\ No newline at end of file
++} // namespace duckdb
+diff --git a/src/hnsw/hnsw_index_pragmas.cpp b/src/hnsw/hnsw_index_pragmas.cpp
+index 50b5779..50e777d 100644
+--- a/src/hnsw/hnsw_index_pragmas.cpp
++++ b/src/hnsw/hnsw_index_pragmas.cpp
+@@ -2,6 +2,7 @@
+ #include "duckdb/catalog/dependency_list.hpp"
+ #include "duckdb/common/mutex.hpp"
+ #include "duckdb/function/function_set.hpp"
++#include "duckdb/function/pragma_function.hpp"
+ #include "duckdb/optimizer/matcher/expression_matcher.hpp"
+ #include "duckdb/planner/expression_iterator.hpp"
+ #include "duckdb/planner/operator/logical_get.hpp"
+@@ -202,4 +203,4 @@ void HNSWModule::RegisterIndexPragmas(DatabaseInstance &db) {
+ 	ExtensionUtil::RegisterFunction(db, info_function);
+ }
+ 
+-} // namespace duckdb
+\ No newline at end of file
++} // namespace duckdb
