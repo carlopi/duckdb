@@ -493,7 +493,7 @@ jobs:
 
       - name: Test
         shell: bash
-        run: build/relassert/test/unittest
+        run: build/relassert/test/unittest "*"
 
   latest-storage:
     name: Latest Storage
