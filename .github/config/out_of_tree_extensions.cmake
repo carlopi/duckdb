@@ -20,7 +20,6 @@ duckdb_extension_load(httpfs
     GIT_URL https://github.com/duckdb/duckdb_httpfs
     GIT_TAG ee6f3d2629fc95ee6c2ae4c5c6499e2d33351ebb
     INCLUDE_DIR extension/httpfs/include
-    APPLY_PATCHES
     )
 
 ################# ARROW
