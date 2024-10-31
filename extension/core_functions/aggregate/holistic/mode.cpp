@@ -11,6 +11,7 @@
 #include "duckdb/function/create_sort_key.hpp"
 #include "duckdb/function/aggregate/sort_key_helpers.hpp"
 #include "duckdb/common/algorithm.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 #include <functional>
 
 // MODE( <expr1> )

@@ -1,6 +1,7 @@
 #include "core_functions/scalar/string_functions.hpp"
 #include "duckdb/function/scalar/string_common.hpp"
 #include "duckdb/common/local_file_system.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 #include <iostream>
 
 namespace duckdb {

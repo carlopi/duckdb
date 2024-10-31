@@ -1,6 +1,7 @@
 #include "core_functions/aggregate/algebraic_functions.hpp"
 #include "duckdb/common/types/null_value.hpp"
 #include "core_functions/aggregate/algebraic/covar.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 

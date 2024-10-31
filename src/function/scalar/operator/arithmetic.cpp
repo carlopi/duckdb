@@ -15,6 +15,7 @@
 #include "duckdb/function/scalar/operator_functions.hpp"
 #include "duckdb/function/scalar/string_functions.hpp"
 #include "duckdb/planner/expression/bound_function_expression.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 #include <limits>
 

@@ -3,6 +3,7 @@
 #include "duckdb/function/scalar/compressed_materialization_utils.hpp"
 #include "duckdb/common/serializer/serializer.hpp"
 #include "duckdb/common/serializer/deserializer.hpp"
+#include "duckdb/function/function_set_implementation.hpp"
 
 namespace duckdb {
 
