@@ -1,4 +1,5 @@
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
+#include "duckdb/execution/index/index_type_set.hpp"
 #include "duckdb/execution/operator/filter/physical_filter.hpp"
 #include "duckdb/execution/operator/schema/physical_create_art_index.hpp"
 #include "duckdb/execution/physical_plan_generator.hpp"

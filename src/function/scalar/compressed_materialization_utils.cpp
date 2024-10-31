@@ -1,3 +1,4 @@
+#include "duckdb/common/exception/binder_exception.hpp"
 #include "duckdb/function/scalar/compressed_materialization_utils.hpp"
 
 namespace duckdb {

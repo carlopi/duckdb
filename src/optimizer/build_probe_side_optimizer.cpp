@@ -3,6 +3,7 @@
 #include "duckdb/common/enums/join_type.hpp"
 #include "duckdb/common/type_visitor.hpp"
 #include "duckdb/common/types/row/tuple_data_layout.hpp"
+#include "duckdb/main/client_context.hpp"
 #include "duckdb/planner/operator/logical_any_join.hpp"
 #include "duckdb/planner/operator/logical_comparison_join.hpp"
 #include "duckdb/planner/operator/logical_get.hpp"

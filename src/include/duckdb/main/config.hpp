@@ -36,6 +36,7 @@ class FileSystem;
 class IndexTypeSet;
 struct ReplacementScanInput;
 
+enum class FileType;
 class BufferManager;
 class BufferPool;
 class CastFunctionSet;
