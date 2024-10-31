@@ -1,4 +1,5 @@
 #include "core_functions/scalar/generic_functions.hpp"
+#include "duckdb/function/scalar_function.hpp"
 
 namespace duckdb {
 

@@ -4,6 +4,7 @@
 #include "duckdb/common/vector_operations/vector_operations.hpp"
 #include "duckdb/common/vector_operations/unary_executor.hpp"
 #include "utf8proc_wrapper.hpp"
+#include "duckdb/function/scalar_function.hpp"
 
 #include <string.h>
 
