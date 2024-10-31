@@ -995,10 +995,6 @@ jobs:
       shell: bash
       run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build
 
-    - name: Fix permissions of test secrets
-      shell: bash
-      run: chmod -R 700 data/secrets
-
     # TODO: fix the authenticated proxy here
     - name: Install and run http proxy squid
       shell: bash
