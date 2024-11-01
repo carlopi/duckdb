@@ -190,7 +190,6 @@ jobs:
     name: Linux Extensions (x64)
     runs-on: ubuntu-latest
     container: ubuntu:18.04
-    needs: linux-release-64
     env:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
