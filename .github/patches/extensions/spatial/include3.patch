@@ -1,0 +1,31 @@
+diff --git a/spatial/include/spatial/gdal/file_handler.hpp b/spatial/include/spatial/gdal/file_handler.hpp
+index cd3fd9bce3c..ef18cdd2eff 100644
+--- a/spatial/include/spatial/gdal/file_handler.hpp
++++ b/spatial/include/spatial/gdal/file_handler.hpp
+@@ -2,6 +2,7 @@
+ 
+ #include "spatial/common.hpp"
+ #include "duckdb/main/database.hpp"
++#include "duckdb/main/client_context_state.hpp"
+ 
+ namespace spatial {
+ 
+diff --git a/spatial/include/spatial/geos/geos_wrappers.hpp b/spatial/include/spatial/geos/geos_wrappers.hpp
+index c946a65056a..f7cc2fbe67a 100644
+--- a/spatial/include/spatial/geos/geos_wrappers.hpp
++++ b/spatial/include/spatial/geos/geos_wrappers.hpp
+@@ -2,6 +2,7 @@
+ #include "spatial/common.hpp"
+ #include "spatial/core/geometry/geometry.hpp"
+ #include "geos_c.h"
++#include <sstream>
+ 
+ namespace spatial {
+ 
+@@ -212,4 +213,4 @@ geometry_t SerializeGEOSGeometry(Vector &result, const GEOSGeometry *geom, GEOSC
+ 
+ } // namespace geos
+ 
+-} // namespace spatial
+\ No newline at end of file
++} // namespace spatial
