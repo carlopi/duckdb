@@ -9,6 +9,7 @@ ifdef USE_MERGED_VCPKG_MANIFEST
 	EXTENSION_CONFIG_STEP = build/extension_configuration/vcpkg.json
 endif
 
+LTO ?= full
 GENERATOR ?=
 FORCE_COLOR ?=
 WARNINGS_AS_ERRORS ?=
