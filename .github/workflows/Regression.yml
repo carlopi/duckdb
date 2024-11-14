@@ -221,8 +221,8 @@ jobs:
     name: Regression test binary size
     runs-on: ubuntu-20.04
     env:
-      CC: gcc-10
-      CXX: g++-10
+      CC: clang
+      CXX: clang++
       GEN: ninja
       CORE_EXTENSIONS: "tpch;tpcds;json;parquet"
       EXTENSION_STATIC_BUILD: 1
