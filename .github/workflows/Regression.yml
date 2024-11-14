@@ -219,7 +219,7 @@ jobs:
 
   regression-test-binary-size:
     name: Regression test binary size
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     env:
       CC: clang
       CXX: clang++
