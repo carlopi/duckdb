@@ -15,9 +15,14 @@
 #  VCPKG_TOOLCHAIN_PATH=~/vcpkg/scripts/buildsystems/vcpkg.cmake
 #  VCPKG_TARGET_TRIPLET=arm64-osx
 
+if (WIN32)
+    set(STATIC_LINK_HTTPFS "DONT_LINK")
+else ()
+    set(STATIC_LINK_HTTPFS "")
+endif()
 ################# HTTPFS
 duckdb_extension_load(httpfs
-    LOAD_TESTS
+    LOAD_TESTS ${STATIC_LINK_HTTPFS}
     GIT_URL https://github.com/duckdb/duckdb_httpfs
     GIT_TAG 5546f3a06b31fdf4ca8372fe73415a48ac51e7bc
     INCLUDE_DIR extension/httpfs/include
