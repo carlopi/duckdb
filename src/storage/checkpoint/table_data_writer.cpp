@@ -86,8 +86,7 @@ void SingleFileTableDataWriter::FinalizeTable(const TableStatistics &global_stat
 	serializer.WriteProperty(101, "table_pointer", pointer);
 	serializer.WriteProperty(102, "total_rows", total_rows);
 
-	auto db_options = checkpoint_manager.db.GetDatabase().config.options;
-	auto v1_0_0_storage = db_options.serialization_compatibility.serialization_version < 3;
+	auto v1_0_0_storage = checkpoint_manager.db.GetCompatibilityVersion() < 3;
 	case_insensitive_map_t<Value> options;
 	if (!v1_0_0_storage) {
 		options.emplace("v1_0_0_storage", v1_0_0_storage);

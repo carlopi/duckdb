@@ -180,8 +180,7 @@ void SingleFileCheckpointWriter::CreateCheckpoint() {
 	    }
 	 */
 	SerializationOptions serialization_options;
-
-	serialization_options.serialization_compatibility = config.options.serialization_compatibility;
+	serialization_options.serialization_compatibility = SerializationCompatibility::FromIndex(db.GetCompatibilityVersion());
 
 	BinarySerializer serializer(*metadata_writer, serialization_options);
 	serializer.Begin();
