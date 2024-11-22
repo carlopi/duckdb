@@ -21,7 +21,7 @@ struct SerializationVersionInfo {
 // Do not edit them manually, your changes will be overwritten
 // clang-format off
 // START OF STORAGE VERSION INFO
-const uint64_t DEFAULT_STORAGE_VERSION_INFO = 64;
+__attribute__((unused)) const uint64_t DEFAULT_STORAGE_VERSION_INFO = 64;
 static const StorageVersionInfo storage_version_info[] = {
 	{"v0.0.4", 1},
 	{"v0.1.0", 1},
@@ -76,8 +76,8 @@ static const StorageVersionInfo storage_version_info[] = {
 // END OF STORAGE VERSION INFO
 
 // START OF SERIALIZATION VERSION INFO
-const uint64_t LATEST_SERIALIZATION_VERSION_INFO = 4;
-const uint64_t DEFAULT_SERIALIZATION_VERSION_INFO = 1;
+__attribute__((unused)) const uint64_t LATEST_SERIALIZATION_VERSION_INFO = 4;
+__attribute__((unused)) const uint64_t DEFAULT_SERIALIZATION_VERSION_INFO = 1;
 static const SerializationVersionInfo serialization_version_info[] = {
 	{"v0.10.0", 1},
 	{"v0.10.1", 1},

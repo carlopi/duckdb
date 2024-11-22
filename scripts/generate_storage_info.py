@@ -13,9 +13,9 @@ def generate_version_info_array(storage_versions, type, name, default):
     name_upper = name.upper()
     if 'latest' in storage_versions:
         latest_value = storage_versions['latest']
-        result.append(f"const uint64_t LATEST_{name_upper} = {latest_value};")
+        result.append(f"__attribute__((unused)) const uint64_t LATEST_{name_upper} = {latest_value};")
 
-    result.append(f"const uint64_t DEFAULT_{name_upper} = {default};")
+    result.append(f"__attribute__((unused)) const uint64_t DEFAULT_{name_upper} = {default};")
 
     result.append(f"static const {type} {name}[] = {{")
 
