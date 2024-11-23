@@ -102,7 +102,7 @@ public:
 		}
 
 		MemoryStream stream;
-		BinarySerializer serializer(stream);
+		BinarySerializer serializer(stream, SerializationOptions::Default());
 		serializer.Begin();
 		plan->Serialize(serializer);
 		serializer.End();
