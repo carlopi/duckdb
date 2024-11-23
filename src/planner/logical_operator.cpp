@@ -165,7 +165,7 @@ void LogicalOperator::Verify(ClientContext &context) {
 		MemoryStream stream;
 		// We are serializing a query plan
 		try {
-			BinarySerializer::Serialize(*expressions[expr_idx], stream);
+			BinarySerializer::Serialize(*expressions[expr_idx], stream, SerializationCompatibility::Default());
 		} catch (NotImplementedException &ex) {
 			// ignore for now (FIXME)
 			continue;
