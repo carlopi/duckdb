@@ -26,7 +26,17 @@
 namespace duckdb {
 
 class SerializationOptions {
+protected:
+	explicit SerializationOptions(const SerializationCompatibility &serialization_compat);
+	explicit SerializationOptions(const AttachedDatabase &db);
+
 public:
+	SerializationOptions(const SerializationOptions &opts) = default;
+	SerializationOptions(SerializationOptions &&opts) = default;
+	static SerializationOptions Default();
+	static SerializationOptions Latest();
+	static SerializationOptions From(const AttachedDatabase &db);
+	static SerializationOptions From(const SerializationCompatibility &serialization_compat);
 	bool serialize_enum_as_string = false;
 	bool serialize_default_values = false;
 	SerializationCompatibility serialization_compatibility = SerializationCompatibility::Default();
@@ -38,6 +48,8 @@ protected:
 	SerializationData data;
 
 public:
+	Serializer(const SerializationOptions &opts) : options(opts) {
+	}
 	virtual ~Serializer() {
 	}
 

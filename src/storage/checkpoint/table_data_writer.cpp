@@ -59,8 +59,10 @@ void SingleFileTableDataWriter::FinalizeTable(const TableStatistics &global_stat
 	// this is where the row groups for this table start
 	auto pointer = table_data_writer.GetMetaBlockPointer();
 
+	SerializationOptions serialization_options(SerializationOptions::From(table.GetStorage().db));
+
 	// Serialize statistics as a single unit
-	BinarySerializer stats_serializer(table_data_writer);
+	BinarySerializer stats_serializer(table_data_writer, serialization_options);
 	stats_serializer.Begin();
 	global_stats.Serialize(stats_serializer);
 	stats_serializer.End();
@@ -75,7 +77,7 @@ void SingleFileTableDataWriter::FinalizeTable(const TableStatistics &global_stat
 		}
 
 		// Each RowGroup is its own unit
-		BinarySerializer row_group_serializer(table_data_writer);
+		BinarySerializer row_group_serializer(table_data_writer, serialization_options);
 		row_group_serializer.Begin();
 		RowGroup::Serialize(row_group_pointer, row_group_serializer);
 		row_group_serializer.End();
