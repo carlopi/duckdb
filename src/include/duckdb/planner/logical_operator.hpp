@@ -23,7 +23,7 @@
 
 namespace duckdb {
 
-struct SerializationCompatibility;
+class SerializationCompatibility;
 
 //! LogicalOperator is the base class of the logical operators present in the
 //! logical query tree
