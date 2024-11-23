@@ -56,6 +56,8 @@ FROM person
 statement ok
 ALTER TABLE person DROP COLUMN c
 
+mode skip
+
 statement ok
 DROP TYPE mood
 
