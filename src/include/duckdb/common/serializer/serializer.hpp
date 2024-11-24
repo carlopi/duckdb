@@ -31,8 +31,6 @@ protected:
 	explicit SerializationOptions(const AttachedDatabase &db);
 
 public:
-	SerializationOptions(const SerializationOptions &opts) = default;
-	SerializationOptions(SerializationOptions &&opts) = default;
 	static SerializationOptions Default();
 	static SerializationOptions Latest();
 	static SerializationOptions From(const AttachedDatabase &db);
