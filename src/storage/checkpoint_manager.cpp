@@ -179,7 +179,7 @@ void SingleFileCheckpointWriter::CreateCheckpoint() {
 	        ]
 	    }
 	 */
-	SerializationOptions serialization_options(SerializationOptions::From(db));
+	SerializationOptions serialization_options(SerializationOptions::From(db)); // FIXME: should be from db or options?
 
 	BinarySerializer serializer(*metadata_writer, serialization_options);
 	serializer.Begin();
