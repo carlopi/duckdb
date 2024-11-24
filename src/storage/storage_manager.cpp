@@ -189,9 +189,9 @@ void SingleFileStorageManager::LoadDatabase(StorageOptions storage_options) {
 		}
 
 		// Initialize the block manager before creating a new database.
+		db.SetCompatibilityVersion(config.options.serialization_compatibility.duckdb_version.c_str());
 		auto sf_block_manager = make_uniq<SingleFileBlockManager>(db, path, options);
 		sf_block_manager->CreateNewDatabase();
-		db.SetCompatibilityVersion("latest");
 		block_manager = std::move(sf_block_manager);
 		table_io_manager = make_uniq<SingleFileTableIOManager>(*block_manager, row_group_size);
 		wal = make_uniq<WriteAheadLog>(db, wal_path);
