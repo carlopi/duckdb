@@ -175,7 +175,7 @@ static void WriteSecretFileToDisk(FileSystem &fs, const string &path, const Base
 
 	auto file_writer = BufferedFileWriter(fs, path, open_flags);
 
-	SerializationOptions serialization_options_default(SerializationOptions::Default()); // TODO ??
+	SerializationOptions serialization_options_default(SerializationOptions::DefaultOldestSupported());
 	auto serializer = BinarySerializer(file_writer, serialization_options_default);
 	serializer.Begin();
 	secret.Serialize(serializer);
