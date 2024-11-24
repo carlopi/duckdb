@@ -59,6 +59,7 @@ extern const uint64_t VERSION_NUMBER;
 string GetDuckDBVersion(idx_t version_number);
 optional_idx GetStorageVersion(const char *version_string);
 optional_idx GetSerializationVersion(const char *version_string);
+extern const uint64_t DEFAULT_STORAGE_VERSION_INFO;
 extern const uint64_t DEFAULT_SERIALIZATION_VERSION_INFO;
 extern const uint64_t LATEST_SERIALIZATION_VERSION_INFO;
 vector<string> GetSerializationCandidates();
