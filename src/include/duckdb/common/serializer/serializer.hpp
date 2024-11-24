@@ -46,7 +46,7 @@ protected:
 	SerializationData data;
 
 public:
-	Serializer(const SerializationOptions &opts) : options(opts) {
+	explicit Serializer(const SerializationOptions &opts) : options(opts) {
 	}
 	virtual ~Serializer() {
 	}
