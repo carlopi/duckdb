@@ -99,6 +99,10 @@ public:
 		}
 		return compatibility_version.GetIndex();
 	}
+	string GetCompatibilityVersionName() const {
+		idx_t id = GetCompatibilityVersion();
+		return GetSerializationVersionName(id);
+	}
 	void SetCompatibilityVersion(const string &compatibility_version) {
 		auto version = GetSerializationVersion(compatibility_version.c_str());
 		if (version.IsValid()) {
