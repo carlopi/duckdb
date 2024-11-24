@@ -180,14 +180,12 @@ void SingleFileBlockManager::CreateNewDatabase() {
 	// first fill in the new header
 	header_buffer.Clear();
 
-	auto &config = DBConfig::Get(db);
-
 	MainHeader main_header;
 
 	memset(main_header.compatibility_git_desc, 0, MainHeader::MAX_VERSION_SIZE);
-	memcpy(main_header.compatibility_git_desc, config.options.serialization_compatibility.duckdb_version.c_str(),
-	       MinValue<idx_t>(config.options.serialization_compatibility.duckdb_version.size(),
-	                       MainHeader::MAX_VERSION_SIZE));
+	string version_name = db.GetCompatibilityVersionName();
+	memcpy(main_header.compatibility_git_desc, version_name.c_str(),
+	       MinValue<idx_t>(version_name.size(), MainHeader::MAX_VERSION_SIZE));
 
 	main_header.version_number = VERSION_NUMBER;
 	memset(main_header.flags, 0, sizeof(uint64_t) * 4);
