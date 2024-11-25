@@ -13,8 +13,9 @@ SerializationOptions::SerializationOptions(const AttachedDatabase &db) {
 }
 
 SerializationOptions::SerializationOptions(const ClientContext &context) {
-        auto &config = DBConfig::GetConfig(context);
-	serialization_compatibility = SerializationCompatibility::FromIndex(config.options.serialization_compatibility.serialization_version);
+	auto &config = DBConfig::GetConfig(context);
+	serialization_compatibility =
+	    SerializationCompatibility::FromIndex(config.options.serialization_compatibility.serialization_version);
 }
 
 SerializationOptions SerializationOptions::DefaultOldestSupported() {
