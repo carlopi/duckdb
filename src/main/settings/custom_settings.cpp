@@ -1247,10 +1247,6 @@ Value StorageCompatibilityVersionSetting::GetSetting(const ClientContext &contex
 	return Value(version_name);
 }
 
-string StorageCompatibilityVersionSetting::GetSetting(const DBConfig &config) {
-	return config.options.serialization_compatibility.duckdb_version;
-}
-
 //===----------------------------------------------------------------------===//
 // Streaming Buffer Size
 //===----------------------------------------------------------------------===//
