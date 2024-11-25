@@ -29,8 +29,8 @@ class SerializationOptions {
 protected:
 	explicit SerializationOptions(const SerializationCompatibility &serialization_compat);
 	explicit SerializationOptions(const AttachedDatabase &db);
-
 	explicit SerializationOptions(const ClientContext &context);
+
 public:
 	static SerializationOptions DefaultOldestSupported();
 	static SerializationOptions Latest();
