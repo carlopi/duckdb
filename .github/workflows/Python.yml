@@ -142,7 +142,9 @@ jobs:
 
       - name: populate
         run: |
-          cp duckdb/toplevel/* .
+          cat duckdb/.github/config/in_tree_extensions.cmake duckdb/.github/config/out_of_tree_extensions.cmake > extension_config.cmake
+          echo "{\"dependencies\": []}" > vcpkg.json
+          cp duckdb/makefiles/build_extensions Makefile
 
       - name: Build Docker image
         shell: bash
