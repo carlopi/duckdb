@@ -203,7 +203,7 @@ jobs:
           fetch-depth: 0
           ref: ${{ inputs.git_ref }}
 
-      - uses: ./.github/actions/build_extensions_dockerized
+      - uses: ./duckdb/.github/actions/build_extensions_dockerized
         with:
           vcpkg_target_triplet: x64-linux
           deploy_as: linux_amd64
@@ -231,10 +231,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
+          path: 'duckdb'
           fetch-depth: 0
           ref: ${{ inputs.git_ref }}
 
-      - uses: ./.github/actions/build_extensions_dockerized
+      - uses: ./duckdb/.github/actions/build_extensions_dockerized
         with:
           vcpkg_target_triplet: arm64-linux
           deploy_as: linux_arm64
