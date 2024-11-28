@@ -33,19 +33,24 @@ AlterSequenceStmt = 'SEQUENCE'i IfExists? QualifiedSequenceName AlterSequenceOpt
 QualifiedSequenceName = CatalogQualification? SchemaQualification? SequenceName
 
 AlterSequenceOptions = RenameAlter / SetSequenceOption
-SetSequenceOption = List(SequenceOption)AttachStatement = 'ATTACH'i IfNotExists? Database? DatabasePath AttachAlias? AttachOptions?
+SetSequenceOption = List(SequenceOption)
+AttachStatement = 'ATTACH'i IfNotExists? Database? DatabasePath AttachAlias? AttachOptions?
 
 Database = 'DATABASE'i
 DatabasePath = StringLiteral
 AttachAlias = 'AS'i Identifier
 AttachOptions = Parens(GenericCopyOptionList)
+
 CallStatement = 'CALL'i TableFunctionName TableFunctionArguments
+
 CheckpointStatement = 'FORCE'i? 'CHECKPOINT'i CatalogName?
+
 CommentStatement = 'COMMENT'i 'ON'i CommentOnType ColumnReference 'IS'i CommentValue
 
 
 CommentOnType = 'TABLE'i / 'SEQUENCE'i / 'FUNCTION'i / ('MACRO'i 'TABLE'i?) / 'VIEW'i / 'DATABASE'i / 'INDEX'i / 'SCHEMA'i / 'TYPE'i / 'COLUMN'i
 CommentValue = 'NULL'i / StringLiteral
+
 Statement =
 	CreateStatement /
 	SelectStatement /
@@ -192,6 +197,7 @@ ReservedKeyword = 'ALL'i /
 %whitespace = [ \t\n\r]*
 List(D) = D (',' D)* ','?
 Parens(D) = '(' D ')'
+
 CopyStatement = 'COPY'i (CopyTable / CopySelect / CopyFromDatabase)
 
 CopyTable = BaseTableName InsertColumnList? FromOrTo CopyFileName CopyOptions?
@@ -222,11 +228,13 @@ CopyFromDatabase = 'FROM'i 'DATABASE'i Identifier 'TO'i Identifier CopyDatabaseF
 
 CopyDatabaseFlag = Parens(SchemaOrData)
 SchemaOrData = 'SCHEMA'i / 'DATA'i
+
 CreateIndexStmt = Unique? 'INDEX'i IfNotExists? IndexName? 'ON'i BaseTableName IndexType? Parens(List(IndexElement))
 
 IndexElement = Expression DescOrAsc? NullsFirstOrLast?
 Unique = 'UNIQUE'i
 IndexType = 'USING'i Identifier
+
 CreateMacroStmt = MacroOrFunction IfNotExists? QualifiedName List(MacroDefinition)
 
 MacroOrFunction = 'MACRO'i / 'FUNCTION'i
@@ -238,10 +246,13 @@ MacroParameter = NamedParameter / Identifier
 
 ScalarMacroDefinition = Expression
 TableMacroDefinition = 'TABLE'i SelectStatement
+
 CreateSchemaStmt = 'SCHEMA'i IfNotExists? QualifiedName
+
 CreateSecretStmt = 'SECRET'i IfNotExists? SecretName? SecretStorageSpecifier? Parens(GenericCopyOptionList)
 
 SecretStorageSpecifier = 'IN'i Identifier
+
 CreateSequenceStmt = 'SEQUENCE'i IfNotExists? QualifiedName SequenceOption*
 
 SequenceOption =
@@ -261,6 +272,7 @@ SeqOwnedBy = 'OWNED'i 'BY'i QualifiedName
 
 
 SeqMinOrMax = 'MINVALUE'i / 'MAXVALUE'i
+
 
 CreateStatement = 'CREATE'i OrReplace? Temporary? (CreateTableStmt / CreateMacroStmt / CreateSequenceStmt / CreateTypeStmt / CreateSchemaStmt / CreateViewStmt / CreateIndexStmt / CreateSecretStmt)
 OrReplace = 'OR'i 'REPLACE'i
@@ -315,13 +327,18 @@ AlwaysOrByDefault = 'ALWAYS'i / ('BY'i 'DEFAULT'i)
 GeneratedColumnType = 'VIRTUAL'i / 'STORED'i
 
 CommitAction = 'ON'i 'COMMIT'i 'PRESERVE'i 'ROWS'i
+
 CreateTypeStmt = 'TYPE'i IfNotExists? QualifiedName 'AS'i Type
+
 CreateViewStmt = 'VIEW'i IfNotExists? QualifiedName InsertColumnList? 'AS'i SelectStatement
+
 DeallocateStatement = 'DEALLOCATE'i 'PREPARE'i? Identifier
+
 DeleteStatement = WithClause? 'DELETE'i 'FROM'i InsertTarget DeleteUsingClause? WhereClause? ReturningClause?
 TruncateStatement = 'TRUNCATE'i 'TABLE'i? BaseTableName
 
 DeleteUsingClause = 'USING'i List(TableRef)
+
 DescribeStatement = ShowSelect / ShowAllTables / ShowQualifiedName
 
 ShowSelect = ShowOrDescribeOrSummarize SelectStatement
@@ -330,7 +347,9 @@ ShowQualifiedName = ShowOrDescribeOrSummarize (QualifiedName / StringLiteral)?
 
 ShowOrDescribeOrSummarize = ShowOrDescribe / 'SUMMARIZE'i
 ShowOrDescribe = 'SHOW'i / 'DESCRIBE'i / 'DESC'i
+
 DetachStatement = 'DETACH'i Database? IfExists? CatalogName
+
 DropStatement = 'DROP'i DropEntries DropBehavior?
 
 DropEntries =
@@ -363,14 +382,18 @@ IfExists = 'IF'i 'EXISTS'i
 QualifiedSchemaName = CatalogQualification? SchemaName
 
 DropSecretStorage = 'FROM'i Identifier
-ExecuteStatement = 'EXECUTE'i Identifier TableFunctionArguments?ExplainStatement = 'EXPLAIN'i 'ANALYZE'i? ExplainOptions? Statement
+
+ExecuteStatement = 'EXECUTE'i Identifier TableFunctionArguments?
+ExplainStatement = 'EXPLAIN'i 'ANALYZE'i? ExplainOptions? Statement
 
 ExplainOptions = Parens(GenericCopyOptionList)
+
 ExportStatement = 'EXPORT'i 'DATABASE'i ExportSource? StringLiteral Parens(GenericCopyOptionList)?
 
 ExportSource = CatalogName 'TO'i
 
 ImportStatement = 'IMPORT'i 'DATABASE'i StringLiteral
+
 ColumnReference = CatalogQualification? SchemaQualification? TableQualification? ColumnName
 FunctionExpression = FunctionIdentifier Parens(DistinctOrAll? List(FunctionArgument)? OrderByClause?) WithinGroupClause? FilterClause? ExportClause? OverClause?
 FunctionIdentifier = CatalogQualification? SchemaQualification? FunctionName
@@ -503,6 +526,7 @@ TrimExpression = 'TRIM'i Parens(TrimDirection? TrimSource? List(Expression))
 
 TrimDirection = 'BOTH'i / 'LEADING'i / 'TRAILING'i
 TrimSource = Expression? 'FROM'i
+
 InsertStatement = WithClause? 'INSERT'i OrAction? 'INTO'i InsertTarget ByNameOrPosition? InsertColumnList? InsertValues OnConflictClause? ReturningClause?
 
 OrAction = 'OR'i 'REPLACE'i / 'IGNORE'i
@@ -531,6 +555,7 @@ OnConflictNothing = 'DO'i 'NOTHING'i
 
 ReturningClause = 'RETURNING'i TargetList
 
+
 PivotStatement = PivotKeyword TableRef PivotOn? PivotUsing? GroupByClause?
 
 PivotOn = 'ON' PivotColumnList
@@ -549,14 +574,17 @@ ValueOrValues = 'VALUE' / 'VALUES'
 
 IncludeExcludeNulls = ('INCLUDE' / 'EXCLUDE') 'NULLS'
 UnpivotHeader = Identifier / Parens(List(Identifier))
+
 PragmaStatement = 'PRAGMA'i (PragmaAssign / PragmaFunction)
 
 PragmaAssign = SettingName '=' VariableList
 PragmaFunction = PragmaName PragmaParameters?
 PragmaParameters = List(Expression)
+
 PrepareStatement = 'PREPARE'i Identifier TypeList? 'AS'i Statement
 
 TypeList = Parens(List(Type))
+
 SelectStatement = SelectOrParens (SetopClause SelectStatement)* ResultModifiers
 
 SetopClause = ('UNION'i / 'EXCEPT'i / 'INTERSECT'i) DistinctOrAll? ByName?
@@ -668,6 +696,7 @@ AliasedExpression = Expression ('AS'i? Identifier)?
 
 ValuesClause = 'VALUES'i List(ValuesExpressions)
 ValuesExpressions = Parens(List(Expression))
+
 SetStatement = 'SET'i (StandardAssignment / SetTimeZone)
 
 StandardAssignment = (SetVariable / SetSetting) SetAssignment
@@ -683,6 +712,7 @@ VariableAssign = '=' / 'TO'
 VariableList = List(Expression)
 
 ResetStatement = 'RESET'i (SetSetting / SetVariable)
+
 TransactionStatement = BeginTransaction / RollbackTransaction / CommitTransaction
 
 BeginTransaction = StartOrBegin Transaction? ReadOrWrite?
@@ -694,13 +724,17 @@ Transaction = 'WORK'i / 'TRANSACTION'i
 ReadOrWrite = 'READ'i ('ONLY'i / 'WRITE'i)
 AbortOrRollback = 'ABORT'i / 'ROLLBACK'i
 CommitOrEnd = 'COMMIT'i / 'END'i
+
 UpdateStatement = WithClause? 'UPDATE'i UpdateTarget 'SET'i UpdateSetClause FromClause? WhereClause? ReturningClause?
 
 UpdateTarget = BaseTableName UpdateAlias?
 UpdateAlias = 'AS'i Identifier
 UpdateSetClause = List(UpdateSetElement)
 UpdateSetElement = ColumnName '=' Expression
+
 UseStatement = 'USE'i UseTarget
 
 UseTarget = (CatalogName '.' SchemaName) / SchemaName / CatalogName
+
 VacuumStatement = 'VACUUM'i 'FULL'i? QualifiedName?
+
