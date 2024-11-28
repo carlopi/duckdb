@@ -103,6 +103,7 @@ runs:
           fetch-depth: 0
 
       - name: Populate composed extension
+        shell: bash
         run: |
           cat duckdb/.github/config/in_tree_extensions.cmake duckdb/.github/config/out_of_tree_extensions.cmake > extension_config.cmake
           echo "{\"dependencies\": []}" > vcpkg.json
@@ -119,6 +120,7 @@ runs:
             ./extension-ci-tools/docker/${{ inputs.duckdb_arch }}
 
       - name: Create env file for docker
+        shell: bash
         run: |
           touch docker_env.txt
           echo "VCPKG_TARGET_TRIPLET=${{ inputs.vcpkg_target_triplet }}" >> docker_env.txt 
@@ -139,6 +141,7 @@ runs:
           message("::set-output name=timestamp::${current_date}")
 
       - name: Create Ccache directory
+        shell: bash
         run: |
           mkdir ccache_dir
 
@@ -156,10 +159,12 @@ runs:
           docker run --env-file=docker_env.txt -v `pwd`:/duckdb_build_dir -v `pwd`/ccache_dir:/ccache_dir duckdb/${{ inputs.duckdb_arch }} make configure_ci
 
       - name: Build extension (inside Docker)
+        shell: bash
         run: |
           docker run --env-file=docker_env.txt -v `pwd`:/duckdb_build_dir -v `pwd`/ccache_dir:/ccache_dir duckdb/${{ inputs.duckdb_arch }} make release
 
       - name: Test extension (inside docker)
+        shell: bash
         run: |
           docker run --env-file=docker_env.txt -v `pwd`:/duckdb_build_dir -v `pwd`/ccache_dir:/ccache_dir duckdb/${{ inputs.duckdb_arch }} make test_release
 
