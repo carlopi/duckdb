@@ -102,6 +102,7 @@ if (NOT MINGW)
             )
 endif()
 
+if (NOT MINGW)
 ################# SPATIAL
 duckdb_extension_load(spatial
     DONT_LINK LOAD_TESTS
@@ -111,6 +112,7 @@ duckdb_extension_load(spatial
     TEST_DIR test/sql
     APPLY_PATCHES
     )
+endif()
 
 ################# SQLITE_SCANNER
 # Static linking on windows does not properly work due to symbol collision
