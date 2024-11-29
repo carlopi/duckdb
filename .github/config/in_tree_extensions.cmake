@@ -5,14 +5,14 @@
 #   EXTENSION_CONFIGS=.github/config/in_tree_extensions.cmake make
 #
 
-duckdb_extension_load(autocomplete)
-duckdb_extension_load(core_functions)
-duckdb_extension_load(httpfs)
-duckdb_extension_load(icu)
-duckdb_extension_load(json)
-duckdb_extension_load(parquet)
-duckdb_extension_load(tpcds)
-duckdb_extension_load(tpch)
+duckdb_extension_load(autocomplete LOAD_TESTS)
+duckdb_extension_load(core_functions LOAD_TESTS)
+duckdb_extension_load(httpfs LOAD_TESTS)
+duckdb_extension_load(icu LOAD_TESTS)
+duckdb_extension_load(json LOAD_TESTS)
+duckdb_extension_load(parquet LOAD_TESTS)
+duckdb_extension_load(tpcds LOAD_TESTS)
+duckdb_extension_load(tpch LOAD_TESTS)
 
 # Test extension for the upcoming C CAPI extensions
 duckdb_extension_load(demo_capi DONT_LINK)
