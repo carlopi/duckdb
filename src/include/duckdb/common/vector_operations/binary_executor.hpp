@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #pragma once
+//#include <iostream>
 
 #include "duckdb/common/exception.hpp"
 #include "duckdb/common/types/vector.hpp"
@@ -184,6 +185,15 @@ struct BinaryExecutor {
 		}
 		ExecuteFlatLoop<LEFT_TYPE, RIGHT_TYPE, RESULT_TYPE, OPWRAPPER, OP, FUNC, LEFT_CONSTANT, RIGHT_CONSTANT>(
 		    ldata, rdata, result_data, count, result_validity, fun);
+
+
+		if (result_validity.AllValid() == false) {
+		//std::cout << "Checking\n";
+		result_validity.SetAllValidFlag(count);
+		if (result_validity.AllValid2()){
+		//	std::cout << "WE DID GOOD\n";
+		}
+		}
 	}
 #endif
 
@@ -213,6 +223,13 @@ struct BinaryExecutor {
 				    fun, lentry, rentry, result_validity, i);
 			}
 		}
+		if (result_validity.AllValid() == false) {
+		//std::cout << "Checking\n";
+		result_validity.SetAllValidFlag(count);
+		if (result_validity.AllValid2()){
+			//std::cout << "WE DID GOOD\n";
+		}
+		}
 	}
 
 	template <class LEFT_TYPE, class RIGHT_TYPE, class RESULT_TYPE, class OPWRAPPER, class OP, class FUNC>
@@ -228,6 +245,7 @@ struct BinaryExecutor {
 		    UnifiedVectorFormat::GetData<LEFT_TYPE>(ldata), UnifiedVectorFormat::GetData<RIGHT_TYPE>(rdata),
 		    result_data, ldata.sel, rdata.sel, count, ldata.validity, rdata.validity, FlatVector::Validity(result),
 		    fun);
+
 	}
 
 	template <class LEFT_TYPE, class RIGHT_TYPE, class RESULT_TYPE, class OPWRAPPER, class OP, class FUNC>

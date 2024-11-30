@@ -80,7 +80,52 @@ public:
 		return ValidityBuffer::EntryCount(count) * sizeof(V);
 	}
 	inline bool AllValid() const {
-		return !validity_mask;
+		return !validity_mask || all_valid;
+	}
+	inline bool AllValid2() const {
+		return AllValid() || all_valid;
+	}
+	inline void SetAllValidFlag(idx_t count)  {
+		all_valid = false;
+		if (AllValid() || count == 0) {
+			return;
+		}
+
+		const auto entry_count = EntryCount(count);
+		for (idx_t entry_idx = 0; entry_idx < entry_count-1;) {
+			auto entry = GetValidityEntry(entry_idx++);
+
+			// Handle all set
+			if (AllValid(entry)) {
+				continue;
+			}
+
+			return;
+		}
+		for (idx_t entry_idx = entry_count-1; entry_idx < entry_count;) {
+			auto entry = GetValidityEntry(entry_idx++);
+			// Handle ragged end (if not exactly multiple of BITS_PER_VALUE)
+			if (entry_idx == entry_count && count % BITS_PER_VALUE != 0) {
+				idx_t idx_in_entry;
+				GetEntryIndex(count, entry_idx, idx_in_entry);
+				for (idx_t i = 0; i < idx_in_entry; ++i) {
+					if (RowIsValid(entry, i)) {
+						continue;
+					}
+					return;
+				}
+				break;
+			}
+
+			// Handle all set
+			if (AllValid(entry)) {
+				continue;
+			}
+
+			return;
+		}
+		
+		all_valid = true;	
 	}
 	inline bool CheckAllValid(idx_t count) const {
 		return CountValid(count) == count;
@@ -197,7 +242,7 @@ public:
 			                        row_idx, capacity);
 		}
 #endif
-		if (!validity_mask) {
+		if (!validity_mask || all_valid) {
 			return true;
 		}
 		return RowIsValidUnsafe(row_idx);
@@ -231,6 +276,7 @@ public:
 	inline void SetInvalidUnsafe(idx_t entry_idx, idx_t idx_in_entry) {
 		D_ASSERT(validity_mask);
 		validity_mask[entry_idx] &= ~(V(1) << V(idx_in_entry));
+		all_valid = false;
 	}
 
 	//! Marks the bit at the specified row index as invalid (i.e. null)
@@ -283,6 +329,7 @@ public:
 		auto last_entry_bits = count % BITS_PER_VALUE;
 		validity_mask[last_entry_index] =
 		    (last_entry_bits == 0) ? 0 : static_cast<V>(ValidityBuffer::MAX_ENTRY << (last_entry_bits));
+		all_valid = false;
 	}
 
 	//! Marks exactly "count" bits in the validity mask as valid (not null)
@@ -299,6 +346,7 @@ public:
 		validity_mask[last_entry_index] |= (last_entry_bits == 0)
 		                                       ? ValidityBuffer::MAX_ENTRY
 		                                       : ~static_cast<V>(ValidityBuffer::MAX_ENTRY << (last_entry_bits));
+		all_valid = true;
 	}
 
 	inline bool IsMaskSet() const {
@@ -310,16 +358,19 @@ public:
 
 public:
 	inline void Initialize(validity_t *validity, idx_t new_capacity) {
+		all_valid = false;
 		validity_data.reset();
 		validity_mask = validity;
 		capacity = new_capacity;
 	}
 	inline void Initialize(const TemplatedValidityMask &other) {
+		all_valid = other.all_valid;
 		validity_mask = other.validity_mask;
 		validity_data = other.validity_data;
 		capacity = other.capacity;
 	}
 	inline void Initialize(idx_t count) {
+		all_valid = false;
 		capacity = count;
 		validity_data = make_buffer<ValidityBuffer>(count);
 		validity_mask = validity_data->owned_data.get();
@@ -328,8 +379,10 @@ public:
 		Initialize(capacity);
 	}
 	inline void Copy(const TemplatedValidityMask &other, idx_t count) {
+		all_valid = false;
 		capacity = count;
 		if (other.AllValid()) {
+			all_valid = true;
 			validity_data = nullptr;
 			validity_mask = nullptr;
 		} else {
@@ -342,6 +395,7 @@ protected:
 	V *validity_mask;
 	buffer_ptr<ValidityBuffer> validity_data;
 	idx_t capacity;
+	bool all_valid{false};
 };
 
 struct ValidityMask : public TemplatedValidityMask<validity_t> {
