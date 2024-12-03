@@ -69,7 +69,7 @@ jobs:
 
     - name: Build
       shell: bash
-      run: GEN=ninja make debug
+      run: DEBUG_STACKTRACE=1 GEN=ninja make debug
 
     - name: Set DUCKDB_INSTALL_LIB for ADBC tests
       shell: bash
