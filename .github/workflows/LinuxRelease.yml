@@ -54,9 +54,6 @@ jobs:
     # Builds binaries for linux_amd64_gcc4
     name: Linux (x64)
     runs-on: ubuntu-latest
-    container: quay.io/pypa/manylinux2014_x86_64
-    needs: linux-extensions-64
-    if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature' }}
     env:
       EXTENSION_CONFIGS: '${GITHUB_WORKSPACE}/.github/config/bundled_extensions.cmake'
       ENABLE_EXTENSION_AUTOLOADING: 1
@@ -65,73 +62,74 @@ jobs:
       BUILD_BENCHMARK: 1
       FORCE_WARN_UNUSED: 1
       DUCKDB_RUN_PARALLEL_CSV_TESTS: 1
-      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
     steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-        ref: ${{ inputs.git_ref }}
+      - uses: actions/checkout@v3
+        with:
+          path: 'duckdb'
+          fetch-depth: 0
+          ref: ${{ inputs.git_ref }}
 
-    - uses: ./.github/actions/manylinux_2014_setup
-      with:
-        ninja-build: 1
-        ccache: 0
-        python_alias: 1
-        aws-cli: 1
+      - uses: ./duckdb/.github/actions/build_extensions_dockerized
+        with:
+          vcpkg_target_triplet: x64-linux
+          duckdb_arch: linux_amd64_gcc4
+          treat_warn_as_error: 0
+          s3_id: ${{ secrets.S3_ID }}
+          s3_key: ${{ secrets.S3_KEY }}
+          signing_pk: ${{ secrets.DUCKDB_EXTENSION_SIGNING_PK }}
+          aarch64_cross_compile: 0
+          run_tests: 1 # Cannot run tests here due to cross-compiling
+          run_autoload_tests: 1
+          ninja: 1
 
-    - name: Install pytest
-      run: |
-        python3 -m pip install pytest
+      - name: Install pytest
+        run: |
+          python3 -m pip install pytest
 
-    - name: Build
-      shell: bash
-      run: make
+      - name: Print platform
+        shell: bash
+        run: ./build/release/duckdb -c "PRAGMA platform;"
 
-    - name: Print platform
-      shell: bash
-      run: ./build/release/duckdb -c "PRAGMA platform;"
+#      - name: Test
+#        shell: bash
+#        if: ${{ inputs.skip_tests != 'true' }}
+#        run: |
+#          python3 duckdb/scripts/run_tests_one_by_one.py build/release/test/unittest "*" --time_execution
 
-    - name: Test
-      shell: bash
-      if: ${{ inputs.skip_tests != 'true' }}
-      run: |
-        make
-        python3 scripts/run_tests_one_by_one.py build/release/test/unittest "*" --time_execution
+#      - name: Tools Tests
+#        shell: bash
+#        if: ${{ inputs.skip_tests != 'true' }}
+#        run: |
+#          python3 -m pytest duckdb/tools/shell/tests --shell-binary build/release/duckdb
 
-    - name: Tools Tests
-      shell: bash
-      if: ${{ inputs.skip_tests != 'true' }}
-      run: |
-        python3 -m pytest tools/shell/tests --shell-binary build/release/duckdb
+#      - name: Examples
+#        shell: bash
+# #       if: ${{ inputs.skip_tests != 'true' }}
+#        run: |
+#          (cd examples/embedded-c; make)
+#          (cd examples/embedded-c++; make)
+#          build/release/benchmark/benchmark_runner benchmark/tpch/sf1/q01.benchmark
+#          build/release/duckdb -c "COPY (SELECT 42) TO '/dev/stdout' (FORMAT PARQUET)" | cat
 
-    - name: Examples
-      shell: bash
-      if: ${{ inputs.skip_tests != 'true' }}
-      run: |
-        (cd examples/embedded-c; make)
-        (cd examples/embedded-c++; make)
-        build/release/benchmark/benchmark_runner benchmark/tpch/sf1/q01.benchmark
-        build/release/duckdb -c "COPY (SELECT 42) TO '/dev/stdout' (FORMAT PARQUET)" | cat
+      - name: Deploy
+        shell: bash
+#        env:
+#         AWS_ACCESS_KEY_ID: ${{ secrets.S3_DUCKDB_STAGING_ID }}
+#         AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_DUCKDB_STAGING_KEY }}
+        run: |
+         python3 scripts/amalgamation.py
+         zip -j duckdb_cli-linux-amd64.zip build/release/duckdb
+         zip -j libduckdb-linux-amd64.zip build/release/src/libduckdb*.* duckdb/src/amalgamation/duckdb.hpp duckdb/src/include/duckdb.h
+         zip -j libduckdb-src.zip duckdb/src/amalgamation/duckdb.hpp duckdb/src/amalgamation/duckdb.cpp duckdb/src/include/duckdb.h duckdb/src/include/duckdb_extension.h
+#         ./duckdb/scripts/upload-assets-to-staging.sh github_release libduckdb-src.zip libduckdb-linux-amd64.zip duckdb_cli-linux-amd64.zip
 
-    - name: Deploy
-      shell: bash
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.S3_DUCKDB_STAGING_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_DUCKDB_STAGING_KEY }}
-      run: |
-        python3 scripts/amalgamation.py
-        zip -j duckdb_cli-linux-amd64.zip build/release/duckdb
-        zip -j libduckdb-linux-amd64.zip build/release/src/libduckdb*.* src/amalgamation/duckdb.hpp src/include/duckdb.h
-        zip -j libduckdb-src.zip src/amalgamation/duckdb.hpp src/amalgamation/duckdb.cpp src/include/duckdb.h src/include/duckdb_extension.h
-        ./scripts/upload-assets-to-staging.sh github_release libduckdb-src.zip libduckdb-linux-amd64.zip duckdb_cli-linux-amd64.zip
-
-    - uses: actions/upload-artifact@v3
-      with:
-        name: duckdb-binaries-linux
-        path: |
-          libduckdb-linux-amd64.zip
-          duckdb_cli-linux-amd64.zip
+      - uses: actions/upload-artifact@v3
+        with:
+          name: duckdb-binaries-linux
+          path: |
+            libduckdb-linux-amd64.zip
+            duckdb_cli-linux-amd64.zip
 
  linux-release-aarch64:
    # Builds binaries for linux_arm64
@@ -173,7 +171,7 @@ jobs:
          AWS_ACCESS_KEY_ID: ${{ secrets.S3_DUCKDB_STAGING_ID }}
          AWS_SECRET_ACCESS_KEY: ${{ secrets.S3_DUCKDB_STAGING_KEY }}
        run: |
-         python3 scripts/amalgamation.py
+         cd duckdb && python3 scripts/amalgamation.py && cd ..
          zip -j duckdb_cli-linux-aarch64.zip build/release/duckdb
          zip -j libduckdb-linux-aarch64.zip build/release/src/libduckdb*.* src/amalgamation/duckdb.hpp src/include/duckdb.h
          ./scripts/upload-assets-to-staging.sh github_release libduckdb-linux-aarch64.zip duckdb_cli-linux-aarch64.zip
