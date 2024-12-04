@@ -103,6 +103,7 @@ if (NOT MINGW AND NO)   # postgres_scanner's libxml dependency is somehow proble
 endif()
 
 ################# SPATIAL
+if (NO)
 duckdb_extension_load(spatial
     DONT_LINK LOAD_TESTS
     GIT_URL https://github.com/duckdb/duckdb_spatial.git
@@ -111,6 +112,7 @@ duckdb_extension_load(spatial
     TEST_DIR test/sql
     APPLY_PATCHES
     )
+endif()
 
 ################# SQLITE_SCANNER
 # Static linking on windows does not properly work due to symbol collision
