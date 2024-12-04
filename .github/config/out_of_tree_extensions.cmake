@@ -46,8 +46,6 @@ if (NOT MINGW)
 endif()
 endif()
 
-
-if (NO)
 ################# DELTA
 # MinGW build is not available, and our current manylinux ci does not have enough storage space to run the rust build
 # for Delta
@@ -59,7 +57,6 @@ if (NOT MINGW AND NOT "${OS_NAME}" STREQUAL "linux")
             APPLY_PATCHES
     )
 endif()
-
 
 ################# EXCEL
 duckdb_extension_load(excel
@@ -84,7 +81,6 @@ if (NOT MINGW)
             GIT_TAG d62d91d8a089371c4d1862a88f2e62a97bc2af3a
             APPLY_PATCHES
             )
-endif()
 endif()
 
 ################# INET
