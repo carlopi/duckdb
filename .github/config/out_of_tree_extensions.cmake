@@ -34,6 +34,7 @@ if (NOT MINGW)
             GIT_TAG f743d4b3c2faecda15498d0219a1727ad6d62b5b
             )
 endif()
+endif()
 
 ################# AZURE
 if (NOT MINGW)
@@ -43,7 +44,6 @@ if (NOT MINGW)
             GIT_TAG a40ecb7bc9036eb8ecc5bf30db935a31b78011f5
             APPLY_PATCHES
             )
-endif()
 endif()
 
 
