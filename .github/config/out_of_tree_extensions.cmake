@@ -15,6 +15,7 @@
 #  VCPKG_TOOLCHAIN_PATH=~/vcpkg/scripts/buildsystems/vcpkg.cmake
 #  VCPKG_TARGET_TRIPLET=arm64-osx
 
+if (NO)
 ################# ARROW
 if (NOT MINGW)
     duckdb_extension_load(arrow
@@ -42,6 +43,7 @@ if (NOT MINGW)
             GIT_TAG a40ecb7bc9036eb8ecc5bf30db935a31b78011f5
             APPLY_PATCHES
             )
+endif()
 endif()
 
 
