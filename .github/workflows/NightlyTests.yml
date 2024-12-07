@@ -224,10 +224,6 @@ jobs:
     name: Clang 18
     runs-on: ubuntu-24.04
     env:
-      CC: /home/runner/work/llvm/bin/clang++
-      CPP: /home/runner/work/llvm/bin/clang-cpp
-      CXX: /home/runner/work/llvm/bin/clang++
-      LD: /home/runner/work/llvm/bin/ld.lld
       EXTENSION_STATIC_BUILD: 1
       CORE_EXTENSIONS: "json"
       TREAT_WARNINGS_AS_ERRORS: 1
@@ -255,7 +251,7 @@ jobs:
 
     - name: Build
       shell: bash
-      run: tree /home/runner/work/llvm && make release
+      run: CMAKE_LLVM_PATH=/home/runner/work/llvm make release
 
     - name: Test
       shell: bash
