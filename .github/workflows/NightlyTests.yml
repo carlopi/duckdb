@@ -491,8 +491,6 @@ jobs:
     runs-on: ubuntu-24.04
     needs: linux-memory-leaks
     env:
-      CC: gcc-10
-      CXX: g++-10
       GEN: ninja
       CORE_EXTENSIONS: "icu;parquet;tpch;tpcds;fts;json;inet"
       DISABLE_STRING_INLINE: 1
@@ -614,8 +612,6 @@ jobs:
     runs-on: ubuntu-24.04
     needs: linux-memory-leaks
     env:
-      CC: gcc-10
-      CXX: g++-10
       GEN: ninja
       CORE_EXTENSIONS: "icu;parquet;tpch;tpcds;fts;json;inet"
       FORCE_ASYNC_SINK_SOURCE: 1
@@ -807,8 +803,6 @@ jobs:
     runs-on: ubuntu-24.04
     needs: linux-memory-leaks
     env:
-      CC: gcc-10
-      CXX: g++-10
       GEN: ninja
       BLOCK_ALLOC_SIZE: 16384
       CORE_EXTENSIONS: "json;parquet"
