@@ -179,7 +179,7 @@ jobs:
       shell: bash
       run: make allunit
 
-  linux-clang-17
+  linux-clang-17:
     name: Clang 17
     runs-on: ubuntu-24.04
     env:
