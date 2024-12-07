@@ -251,7 +251,7 @@ jobs:
 
     - name: Build
       shell: bash
-      run: CMAKE_LLVM_PATH=/home/runner/work/llvm make release
+      run: apt install libncurses5 && CMAKE_LLVM_PATH=/home/runner/work/llvm make release
 
     - name: Test
       shell: bash
