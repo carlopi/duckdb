@@ -158,7 +158,7 @@ jobs:
     - name: Install LLVM and Clang
       uses: KyleMayes/install-llvm-action@v2
       with:
-        version: "18.1.8"
+        version: "18"
         directory: '/home/runner/work/llvm'
 
     - uses: actions/setup-python@v5
