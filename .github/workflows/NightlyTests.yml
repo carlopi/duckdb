@@ -31,7 +31,7 @@ env:
 jobs:
   linux-memory-leaks:
      name: Linux Memory Leaks
-     runs-on: ubuntu-20.04
+     runs-on: ubuntu-24.04
      env:
        GEN: ninja
 
@@ -103,11 +103,9 @@ jobs:
 
   smaller-binary:
     name: Smaller Binary
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     needs: linux-memory-leaks
     env:
-      CC: gcc-10
-      CXX: g++-10
       GEN: ninja
       BUILD_JEMALLOC: 1
       CORE_EXTENSIONS: "icu;tpch;tpcds;json"
@@ -141,9 +139,8 @@ jobs:
           build/release/test/unittest "*"
 
   linux-clang:
-    name: Clang 14
-    runs-on: ubuntu-20.04
-    needs: linux-memory-leaks
+    name: Clang 18
+    runs-on: ubuntu-24.04
     env:
       CC: /home/runner/work/llvm/bin/clang
       CPP: /home/runner/work/llvm/bin/clang-cpp
@@ -159,9 +156,9 @@ jobs:
         fetch-depth: 0
 
     - name: Install LLVM and Clang
-      uses: KyleMayes/install-llvm-action@v1
+      uses: KyleMayes/install-llvm-action@v2
       with:
-        version: "14.0"
+        version: "18.1.8"
         directory: '/home/runner/work/llvm'
 
     - uses: actions/setup-python@v5
