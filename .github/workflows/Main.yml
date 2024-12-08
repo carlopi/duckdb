@@ -208,4 +208,199 @@ jobs:
 
     - name: Test
       shell: bash
-      run: valgrind ./build/reldebug/test/unittest
+      run: valgrind ./build/reldebug/test/unittest --end-offset 500
+
+ valgrind2:
+    name: Valgrind
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-24.04
+    env:
+      OVERRIDE_GIT_DESCRIBE: ${{needs.linux-debug.outputs.git_describe}}
+      DISABLE_SANITIZER: 1
+      BUILD_JEMALLOC: 1
+      GEN: ninja
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install
+      shell: bash
+      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build valgrind
+
+    - name: Setup Ccache
+      uses: hendrikmuhs/ccache-action@main
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.ref == 'refs/heads/main' || github.repository != 'duckdb/duckdb' }}
+
+    - name: Build
+      shell: bash
+      run: make reldebug
+
+    - name: Output version info
+      shell: bash
+      run: ./build/reldebug/duckdb -c "PRAGMA version;"
+
+    - name: Test
+      shell: bash
+      run: valgrind ./build/reldebug/test/unittest test/sql/tpch/tpch_sf001.test_slow
+
+    - name: Test
+      shell: bash
+      run: valgrind ./build/reldebug/test/unittest --start-offset 500 --end-offset 999
+
+ valgrind3:
+    name: Valgrind
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-24.04
+    env:
+      OVERRIDE_GIT_DESCRIBE: ${{needs.linux-debug.outputs.git_describe}}
+      DISABLE_SANITIZER: 1
+      BUILD_JEMALLOC: 1
+      GEN: ninja
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install
+      shell: bash
+      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build valgrind
+
+    - name: Setup Ccache
+      uses: hendrikmuhs/ccache-action@main
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.ref == 'refs/heads/main' || github.repository != 'duckdb/duckdb' }}
+
+    - name: Build
+      shell: bash
+      run: make reldebug
+
+    - name: Output version info
+      shell: bash
+      run: ./build/reldebug/duckdb -c "PRAGMA version;"
+
+    - name: Test
+      shell: bash
+      run: valgrind ./build/reldebug/test/unittest test/sql/tpch/tpch_sf001.test_slow
+
+    - name: Test
+      shell: bash
+      run: valgrind ./build/reldebug/test/unittest --start-offset 1000 --end-offset 1500
+
+ valgrind4:
+    name: Valgrind
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-24.04
+    env:
+      OVERRIDE_GIT_DESCRIBE: ${{needs.linux-debug.outputs.git_describe}}
+      DISABLE_SANITIZER: 1
+      BUILD_JEMALLOC: 1
+      GEN: ninja
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install
+      shell: bash
+      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build valgrind
+
+    - name: Setup Ccache
+      uses: hendrikmuhs/ccache-action@main
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.ref == 'refs/heads/main' || github.repository != 'duckdb/duckdb' }}
+
+    - name: Build
+      shell: bash
+      run: make reldebug
+
+    - name: Output version info
+      shell: bash
+      run: ./build/reldebug/duckdb -c "PRAGMA version;"
+
+    - name: Test
+      shell: bash
+      run: valgrind ./build/reldebug/test/unittest test/sql/tpch/tpch_sf001.test_slow
+
+    - name: Test
+      shell: bash
+      run: valgrind ./build/reldebug/test/unittest --start-offset 1500 --end-offset 2000
+
+ valgrind5:
+    name: Valgrind
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-24.04
+    env:
+      OVERRIDE_GIT_DESCRIBE: ${{needs.linux-debug.outputs.git_describe}}
+      DISABLE_SANITIZER: 1
+      BUILD_JEMALLOC: 1
+      GEN: ninja
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install
+      shell: bash
+      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build valgrind
+
+    - name: Setup Ccache
+      uses: hendrikmuhs/ccache-action@main
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.ref == 'refs/heads/main' || github.repository != 'duckdb/duckdb' }}
+
+    - name: Build
+      shell: bash
+      run: make reldebug
+
+    - name: Output version info
+      shell: bash
+      run: ./build/reldebug/duckdb -c "PRAGMA version;"
+
+    - name: Test
+      shell: bash
+      run: valgrind ./build/reldebug/test/unittest test/sql/tpch/tpch_sf001.test_slow
+
+    - name: Test
+      shell: bash
+      run: valgrind ./build/reldebug/test/unittest --start-offset 2000 --end-offset 2500
+
+ valgrind6:
+    name: Valgrind
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+    runs-on: ubuntu-24.04
+    env:
+      OVERRIDE_GIT_DESCRIBE: ${{needs.linux-debug.outputs.git_describe}}
+      DISABLE_SANITIZER: 1
+      BUILD_JEMALLOC: 1
+      GEN: ninja
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install
+      shell: bash
+      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build valgrind
+
+    - name: Setup Ccache
+      uses: hendrikmuhs/ccache-action@main
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.ref == 'refs/heads/main' || github.repository != 'duckdb/duckdb' }}
+
+    - name: Build
+      shell: bash
+      run: make reldebug
+
+    - name: Output version info
+      shell: bash
+      run: ./build/reldebug/duckdb -c "PRAGMA version;"
+
+    - name: Test
+      shell: bash
+      run: valgrind ./build/reldebug/test/unittest test/sql/tpch/tpch_sf001.test_slow
+
+    - name: Test
+      shell: bash
+      run: valgrind ./build/reldebug/test/unittest --start-offset 2500 --end-offset 3000
