@@ -91,7 +91,11 @@ jobs:
           git clone --branch ${{ env.BASE_BRANCH }} https://github.com/duckdb/duckdb.git --depth=1
           cd duckdb
           make
+          echo "Current main is...."
+          ls -la build/release/duckdb
           cd ..
+          echo "PR is...."
+          ls -la build/release/duckdb
 
       # For NightlyTest we fetch the last commit hash that ran Regression on main
       - name: Build Main and Previous Successful Regression Hash
