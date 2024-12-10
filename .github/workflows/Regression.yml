@@ -45,10 +45,8 @@ env:
 jobs:
   regression-test-benchmark-runner:
     name: Regression Tests
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     env:
-      CC: gcc-10
-      CXX: g++-10
       GEN: ninja
       BUILD_BENCHMARK: 1
       BUILD_JEMALLOC: 1
@@ -87,7 +85,7 @@ jobs:
         if: ${{ !(github.repository == 'duckdb/duckdb' && github.ref == 'refs/heads/main') }}
         shell: bash
         run: |
-          make
+          LTO=thin make
           git clone --branch ${{ env.BASE_BRANCH }} https://github.com/duckdb/duckdb.git --depth=1
           cd duckdb
           make
