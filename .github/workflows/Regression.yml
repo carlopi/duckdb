@@ -87,7 +87,7 @@ jobs:
         if: ${{ !(github.repository == 'duckdb/duckdb' && github.ref == 'refs/heads/main') }}
         shell: bash
         run: |
-          make
+          DEBUG_STACKTRACE=1 make
           git clone --branch ${{ env.BASE_BRANCH }} https://github.com/duckdb/duckdb.git --depth=1
           cd duckdb
           make
