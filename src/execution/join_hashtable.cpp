@@ -1541,6 +1541,7 @@ bool JoinHashTable::PrepareExternalFinalize(const idx_t max_ht_size) {
 		const auto rhs_size = partitions[rhs]->SizeInBytes() + PointerTableSize(partitions[rhs]->Count());
 		return lhs_size < rhs_size;
 	});
+	std::swap (partition_indices[0], partition_indices[rand()%partition_indices.size()]);
 
 	// Determine which partitions should go next
 	idx_t count = 0;
@@ -1550,7 +1551,7 @@ bool JoinHashTable::PrepareExternalFinalize(const idx_t max_ht_size) {
 		const auto incl_count = count + partitions[partition_idx]->Count();
 		const auto incl_data_size = data_size + partitions[partition_idx]->SizeInBytes();
 		const auto incl_ht_size = incl_data_size + PointerTableSize(incl_count);
-		if (count > 0 && incl_ht_size > max_ht_size) {
+		if (count > 0) {// && incl_ht_size > max_ht_size) {
 			break; // Always add at least one partition
 		}
 		count = incl_count;
