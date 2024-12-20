@@ -6,6 +6,23 @@
 #define DUCKDB_QUOTE_DEFINE(x)      DUCKDB_QUOTE_DEFINE_IMPL(x)
 #endif
 
+#if defined(_WIN32) || defined(__APPLE__) || defined(__FreeBSD__)
+#else
+#if !defined(_GNU_SOURCE)
+#define _GNU_SOURCE
+#include <features.h>
+#ifndef __USE_GNU
+#define __MUSL__
+#endif
+#undef _GNU_SOURCE /* don't contaminate other includes unnecessarily */
+#else
+#include <features.h>
+#ifndef __USE_GNU
+#define __MUSL__
+#endif
+#endif
+#endif
+
 namespace duckdb {
 
 std::string DuckDBPlatform() { // NOLINT: allow definition in header
@@ -26,6 +43,9 @@ std::string DuckDBPlatform() { // NOLINT: allow definition in header
 #endif
 	std::string postfix = "";
 
+#if defined(__MUSL__)
+	os = "musllinux";
+#endif
 #ifdef _WIN32
 	os = "windows";
 #elif defined(__APPLE__)
@@ -37,10 +57,12 @@ std::string DuckDBPlatform() { // NOLINT: allow definition in header
 	arch = "arm64";
 #endif
 
+#if !defined(__MUSL__)
 #if !defined(_GLIBCXX_USE_CXX11_ABI) || _GLIBCXX_USE_CXX11_ABI == 0
 	if (os == "linux") {
 		postfix = "_gcc4";
 	}
+#endif
 #endif
 #if defined(__ANDROID__)
 	postfix += "_android"; // using + because it may also be gcc4
