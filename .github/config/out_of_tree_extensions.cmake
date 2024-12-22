@@ -24,7 +24,7 @@ duckdb_extension_load(httpfs
     )
 
 ################# ARROW
-if (NOT MINGW AND NOT ${WASM_ENABLED} AND NOT MUSL)
+if (NOT MINGW AND NOT ${WASM_ENABLED} AND NOT ${MUSL_ENABLED})
     duckdb_extension_load(arrow
             LOAD_TESTS DONT_LINK
             GIT_URL https://github.com/duckdb/arrow
@@ -156,7 +156,7 @@ duckdb_extension_load(vss
     )
 
 ################# MYSQL
-if (NOT MINGW AND NOT ${WASM_ENABLED} AND NOT MUSL)
+if (NOT MINGW AND NOT ${WASM_ENABLED} AND NOT ${MUSL_ENABLED})
     duckdb_extension_load(mysql_scanner
             DONT_LINK
             LOAD_TESTS
