@@ -224,6 +224,43 @@ jobs:
       duckdb_arch: linux_amd64
       duckdb_sha: ${{ github.sha }}
 
+ musllinux-extensions-64:
+    # Builds extensions for musllinux_amd64
+    name: Linux Extensions (musl + x64)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        duckdb_arch: [musllinux_amd64]
+        vcpkg_triplet: [x64-linux]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: 'duckdb'
+          fetch-depth: 0
+          ref: ${{ inputs.git_ref }}
+
+      - uses: ./duckdb/.github/actions/build_extensions_dockerized
+        with:
+          vcpkg_target_triplet: x64-linux
+          duckdb_arch: musllinux_amd64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: musllinux-extensions-64
+          path: |
+            build/release/extension/*/*.duckdb_extension
+
+ upload-musllinux-extensions-64:
+    name: Upload Linux Extensions (musl + x64)
+    needs: musllinux-extensions-64
+    uses: ./.github/workflows/_sign_deploy_extensions.yml
+    secrets: inherit
+    with:
+      extension_artifact_name: musllinux-extensions-64
+      duckdb_arch: musllinux_amd64
+      duckdb_sha: ${{ github.sha }}
+
  upload-linux-extensions-64-aarch64:
     name: Upload Linux Extensions (aarch64)
     needs: linux-extensions-64-aarch64
