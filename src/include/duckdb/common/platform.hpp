@@ -1,3 +1,5 @@
+#pragma once
+
 #include <string>
 
 // duplicated from string_util.h to avoid linking issues
