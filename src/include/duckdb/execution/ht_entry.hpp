@@ -10,7 +10,23 @@
 
 #include "duckdb/common/assert.hpp"
 #include "duckdb/common/typedefs.hpp"
-#include "duckdb/common/platform.hpp"
+
+#if defined(_WIN32) || defined(__APPLE__) || defined(__FreeBSD__) || defined(__MUSL__)
+#else
+#if !defined(_GNU_SOURCE)
+#define _GNU_SOURCE
+#include <features.h>
+#ifndef __USE_GNU
+#define __MUSL__
+#endif
+#undef _GNU_SOURCE /* don't contaminate other includes unnecessarily */
+#else
+#include <features.h>
+#ifndef __USE_GNU
+#define __MUSL__
+#endif
+#endif
+#endif
 
 namespace duckdb {
 
