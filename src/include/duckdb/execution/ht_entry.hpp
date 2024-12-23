@@ -10,10 +10,11 @@
 
 #include "duckdb/common/assert.hpp"
 #include "duckdb/common/typedefs.hpp"
+#include "duckdb/common/platform.hpp"
 
 namespace duckdb {
 
-#if !defined(DISABLE_POINTER_SALT) && defined(__ANDROID__)
+#if !defined(DISABLE_POINTER_SALT) && defined(__ANDROID__) && defined(__MUSL__)
 // Google, why does Android need 18446744 TB of address space?
 #define DISABLE_POINTER_SALT
 #endif
