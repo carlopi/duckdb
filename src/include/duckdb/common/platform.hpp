@@ -1,4 +1,6 @@
 #pragma once
+#ifndef DUCKDB_PLATFORM_INCLUDE
+#define DUCKDB_PLATFORM_INCLUDE
 
 #include <string>
 
@@ -80,3 +82,4 @@ std::string DuckDBPlatform() { // NOLINT: allow definition in header
 }
 
 } // namespace duckdb
+#endif
