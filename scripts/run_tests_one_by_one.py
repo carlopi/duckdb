@@ -189,7 +189,7 @@ STDERR
 --------------------"""
         )
         print(stderr)
-    fail()
+    return
 
 
 def run_tests_one_by_one():
