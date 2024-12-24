@@ -30,7 +30,11 @@
 
 namespace duckdb {
 
-#if !defined(DISABLE_POINTER_SALT) && defined(__ANDROID__) && defined(__MUSL__)
+#if !defined(DISABLE_POINTER_SALT) && defined(__ANDROID__)
+// Google, why does Android need 18446744 TB of address space?
+#define DISABLE_POINTER_SALT
+#endif
+#if !defined(DISABLE_POINTER_SALT) && defined(__MUSL__)
 // Google, why does Android need 18446744 TB of address space?
 #define DISABLE_POINTER_SALT
 #endif
