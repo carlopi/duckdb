@@ -38,6 +38,10 @@ namespace duckdb {
 // Google, why does Android need 18446744 TB of address space?
 #define DISABLE_POINTER_SALT
 #endif
+#if !defined(DISABLE_POINTER_SALT)
+// Google, why does Android need 18446744 TB of address space?
+#define DISABLE_POINTER_SALT
+#endif
 
 //! The ht_entry_t struct represents an individual entry within a hash table.
 /*!
