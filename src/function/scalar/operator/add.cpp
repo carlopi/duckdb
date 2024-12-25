@@ -128,17 +128,15 @@ struct OverflowCheckedAddition {
 };
 
 struct OverflowCheckedAdditionSigned {
-	template <class SRCTYPE, class UTYPE>
+	template <class SRCTYPE, class UTYPE, int N>
 	static inline bool Operation(SRCTYPE left, SRCTYPE right, SRCTYPE &result) {
-		UTYPE uresult = AddOperator::Operation<UTYPE, UTYPE, UTYPE>(UTYPE(left), UTYPE(right));
+		UTYPE l = UTYPE(left);
+		UTYPE r = UTYPE(right);
+		UTYPE uresult = l + r;
 
 		result = SRCTYPE(uresult);
-		
-		if ((left < 0 && right < 0 && result >= 0) || (left >= 0 && right >= 0 && result < 0)) {
-			return false;
-		}
-
-		return true;
+	
+		return (((( l & r & ~uresult ) | ( ~l & ~r & uresult)) >>(N-1) ) == 0);
 	}
 };
 
@@ -192,17 +190,17 @@ bool TryAddOperator::Operation(date_t left, int32_t right, date_t &result) {
 
 template <>
 bool TryAddOperator::Operation(int8_t left, int8_t right, int8_t &result) {
-	return OverflowCheckedAdditionSigned::Operation<int8_t, uint8_t>(left, right, result);
+	return OverflowCheckedAdditionSigned::Operation<int8_t, uint8_t, 8>(left, right, result);
 }
 
 template <>
 bool TryAddOperator::Operation(int16_t left, int16_t right, int16_t &result) {
-	return OverflowCheckedAdditionSigned::Operation<int16_t, uint16_t>(left, right, result);
+	return OverflowCheckedAdditionSigned::Operation<int16_t, uint16_t, 16>(left, right, result);
 }
 
 template <>
 bool TryAddOperator::Operation(int32_t left, int32_t right, int32_t &result) {
-	return OverflowCheckedAdditionSigned::Operation<int32_t, uint32_t>(left, right, result);
+	return OverflowCheckedAdditionSigned::Operation<int32_t, uint32_t, 32>(left, right, result);
 }
 
 template <>
@@ -211,14 +209,9 @@ bool TryAddOperator::Operation(int64_t left, int64_t right, int64_t &result) {
 	if (__builtin_add_overflow(left, right, &result)) {
 		return false;
 	}
-#else
-	// https://blog.regehr.org/archives/1139
-	result = int64_t((uint64_t)left + (uint64_t)right);
-	if ((left < 0 && right < 0 && result >= 0) || (left >= 0 && right >= 0 && result < 0)) {
-		return false;
-	}
-#endif
 	return true;
+#endif
+	return OverflowCheckedAdditionSigned::Operation<int64_t, uint64_t, 64>(left, right, result);
 }
 
 template <>
