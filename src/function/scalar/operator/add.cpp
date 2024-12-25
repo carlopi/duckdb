@@ -127,25 +127,52 @@ struct OverflowCheckedAddition {
 	}
 };
 
+struct OverflowCheckedAdditionSigned {
+	template <class SRCTYPE, class UTYPE>
+	static inline bool Operation(SRCTYPE left, SRCTYPE right, SRCTYPE &result) {
+		UTYPE uresult = AddOperator::Operation<UTYPE, UTYPE, UTYPE>(UTYPE(left), UTYPE(right));
+
+		result = SRCTYPE(uresult);
+		
+		if ((left < 0 && right < 0 && result >= 0) || (left >= 0 && right >= 0 && result < 0)) {
+			return false;
+		}
+
+		return true;
+	}
+};
+
+struct OverflowCheckedAdditionUnsigned {
+	template <class UTYPE>
+	static inline bool Operation(SRCTYPE left, SRCTYPE right, SRCTYPE &result) {
+		result = AddOperator::Operation<UTYPE, UTYPE, UTYPE>(UTYPE(left), UTYPE(right));
+
+		result = SRCTYPE(uresult);
+		
+		if (result < left) {
+			return false;
+		}
+
+		return true;
+	}
+};
+
 template <>
 bool TryAddOperator::Operation(uint8_t left, uint8_t right, uint8_t &result) {
-	return OverflowCheckedAddition::Operation<uint8_t, uint16_t>(left, right, result);
+	return OverflowCheckedAdditionUnsigned::Operation<uint8_t>(left, right, result);
 }
 template <>
 bool TryAddOperator::Operation(uint16_t left, uint16_t right, uint16_t &result) {
-	return OverflowCheckedAddition::Operation<uint16_t, uint32_t>(left, right, result);
+	return OverflowCheckedAdditionUnsigned::Operation<uint16_t>(left, right, result);
 }
 template <>
 bool TryAddOperator::Operation(uint32_t left, uint32_t right, uint32_t &result) {
-	return OverflowCheckedAddition::Operation<uint32_t, uint64_t>(left, right, result);
+	return OverflowCheckedAdditionUnsigned::Operation<uint32_t>(left, right, result);
 }
 
 template <>
 bool TryAddOperator::Operation(uint64_t left, uint64_t right, uint64_t &result) {
-	if (NumericLimits<uint64_t>::Maximum() - left < right) {
-		return false;
-	}
-	return OverflowCheckedAddition::Operation<uint64_t, uint64_t>(left, right, result);
+	return OverflowCheckedAdditionUnsigned::Operation<uint64_t>(left, right, result);
 }
 
 template <>
@@ -167,17 +194,17 @@ bool TryAddOperator::Operation(date_t left, int32_t right, date_t &result) {
 
 template <>
 bool TryAddOperator::Operation(int8_t left, int8_t right, int8_t &result) {
-	return OverflowCheckedAddition::Operation<int8_t, int16_t>(left, right, result);
+	return OverflowCheckedAdditionSigned::Operation<int8_t, uint8_t>(left, right, result);
 }
 
 template <>
 bool TryAddOperator::Operation(int16_t left, int16_t right, int16_t &result) {
-	return OverflowCheckedAddition::Operation<int16_t, int32_t>(left, right, result);
+	return OverflowCheckedAdditionSigned::Operation<int16_t, uint16_t>(left, right, result);
 }
 
 template <>
 bool TryAddOperator::Operation(int32_t left, int32_t right, int32_t &result) {
-	return OverflowCheckedAddition::Operation<int32_t, int64_t>(left, right, result);
+	return OverflowCheckedAdditionSigned::Operation<int32_t, uint32_t>(left, right, result);
 }
 
 template <>
