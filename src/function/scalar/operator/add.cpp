@@ -144,11 +144,9 @@ struct OverflowCheckedAdditionSigned {
 
 struct OverflowCheckedAdditionUnsigned {
 	template <class UTYPE>
-	static inline bool Operation(SRCTYPE left, SRCTYPE right, SRCTYPE &result) {
-		result = AddOperator::Operation<UTYPE, UTYPE, UTYPE>(UTYPE(left), UTYPE(right));
+	static inline bool Operation(UTYPE left, UTYPE right, UTYPE &result) {
+		result = left + right;
 
-		result = SRCTYPE(uresult);
-		
 		if (result < left) {
 			return false;
 		}
