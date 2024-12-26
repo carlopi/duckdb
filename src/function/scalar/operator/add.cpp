@@ -136,7 +136,7 @@ struct OverflowCheckedAdditionSigned {
 
 		result = SRCTYPE(uresult);
 	
-		return (((( l & r & ~uresult ) | ( ~l & ~r & uresult)) >>(N-1) ) == 0);
+		return (((( l & r & ~uresult ) | ( ~l & ~r & uresult)) & (1u<<(N-1)) ) == 0);
 	}
 };
 
