@@ -6,6 +6,7 @@
 #include "duckdb/parser/parsed_data/alter_table_info.hpp"
 #include "duckdb/parser/parsed_data/create_view_info.hpp"
 #include "duckdb/parser/parsed_data/comment_on_column_info.hpp"
+#include "duckdb/parser/query_node.hpp"
 #include "duckdb/common/limits.hpp"
 
 #include <algorithm>
