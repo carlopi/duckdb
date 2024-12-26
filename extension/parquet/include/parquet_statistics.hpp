@@ -10,6 +10,8 @@
 
 #include "duckdb.hpp"
 #ifndef DUCKDB_AMALGAMATION
+#include "duckdb/planner/table_filter.hpp"
+#include "duckdb/planner/filter/conjunction_filter.hpp"
 #include "duckdb/storage/statistics/base_statistics.hpp"
 #endif
 #include "parquet_types.h"

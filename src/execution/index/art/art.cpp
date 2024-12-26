@@ -1,5 +1,6 @@
 #include "duckdb/execution/index/art/art.hpp"
 
+#include "duckdb/common/exception/transaction_exception.hpp"
 #include "duckdb/common/types/conflict_manager.hpp"
 #include "duckdb/common/unordered_map.hpp"
 #include "duckdb/common/vector_operations/vector_operations.hpp"

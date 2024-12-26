@@ -19,7 +19,6 @@
 #include "duckdb/common/unordered_set.hpp"
 #include "duckdb/common/winapi.hpp"
 #include "duckdb/main/client_config.hpp"
-#include "duckdb/main/client_context_state.hpp"
 #include "duckdb/main/client_properties.hpp"
 #include "duckdb/main/external_dependencies.hpp"
 #include "duckdb/main/pending_query_result.hpp"
@@ -50,7 +49,6 @@ struct ParserOptions;
 class SimpleBufferedData;
 class BufferedData;
 struct ClientData;
-class ClientContextState;
 class RegisteredStateManager;
 
 struct PendingQueryParameters {
