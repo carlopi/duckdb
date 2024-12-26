@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 #pragma once
 
+#include "duckdb/common/optional_ptr.hpp"
 #include "duckdb/optimizer/join_order/join_relation.hpp"
 
 namespace duckdb {

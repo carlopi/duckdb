@@ -1,5 +1,6 @@
 #include "duckdb/planner/operator/logical_copy_database.hpp"
 #include "duckdb/parser/parsed_data/create_table_info.hpp"
+#include "duckdb/parser/query_node.hpp"
 
 namespace duckdb {
 

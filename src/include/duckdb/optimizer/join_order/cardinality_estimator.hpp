@@ -8,8 +8,7 @@
 #pragma once
 
 #include "duckdb/planner/column_binding_map.hpp"
-#include "duckdb/optimizer/join_order/query_graph.hpp"
-
+#include "duckdb/optimizer/join_order/join_relation.hpp"
 #include "duckdb/optimizer/join_order/relation_statistics_helper.hpp"
 
 namespace duckdb {

@@ -3,6 +3,7 @@
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
 #include "duckdb/catalog/catalog.hpp"
 #include "duckdb/common/extra_type_info.hpp"
+#include "duckdb/parser/query_node.hpp"
 
 namespace duckdb {
 
