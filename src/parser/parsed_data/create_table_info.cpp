@@ -4,7 +4,6 @@
 #include "duckdb/catalog/catalog.hpp"
 #include "duckdb/parser/query_node.hpp"
 
-
 namespace duckdb {
 
 CreateTableInfo::CreateTableInfo() : CreateInfo(CatalogType::TABLE_ENTRY, INVALID_SCHEMA) {
