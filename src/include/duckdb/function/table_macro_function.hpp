@@ -15,6 +15,7 @@
 #include "duckdb/planner/binder.hpp"
 #include "duckdb/planner/expression_binder.hpp"
 #include "duckdb/parser/expression/constant_expression.hpp"
+#include "duckdb/parser/query_node.hpp"
 
 namespace duckdb {
 
