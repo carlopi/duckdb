@@ -17,7 +17,7 @@ static void FuncNop(DataChunk &input, ExpressionState &state, Vector &result) {
 }
 
 unique_ptr<FunctionData> BindNop(ClientContext &context, ScalarFunction &bound_function,
-                                    vector<unique_ptr<Expression>> &arguments) {
+                                 vector<unique_ptr<Expression>> &arguments) {
 
 	bound_function.return_type = arguments[0]->return_type;
 
