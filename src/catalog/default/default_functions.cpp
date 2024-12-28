@@ -160,7 +160,7 @@ static const DefaultMacro internal_macros[] = {
 
 	// date functions
 	{DEFAULT_SCHEMA, "date_add", {"date", "interval", nullptr}, {{nullptr, nullptr}}, "date + interval"},
-	{DEFAULT_SCHEMA, "current_date", {nullptr}, {{nullptr, nullptr}}, "current_timestamp::DATE"},
+	{DEFAULT_SCHEMA, "current_date", {nullptr}, {{nullptr, nullptr}}, "___load_icu(current_timestamp)::DATE"},
 	{DEFAULT_SCHEMA, "today", {nullptr}, {{nullptr, nullptr}}, "current_timestamp::DATE"},
 	{DEFAULT_SCHEMA, "get_current_time", {nullptr}, {{nullptr, nullptr}}, "current_timestamp::TIMETZ"},
 
