@@ -9,6 +9,7 @@
 #include "duckdb/main/connection.hpp"
 #include "duckdb/main/database.hpp"
 #include "duckdb/main/extension_util.hpp"
+#include "duckdb/main/extension_loader_function.hpp"
 #include "duckdb/parser/parsed_data/create_collation_info.hpp"
 #include "duckdb/parser/parsed_data/create_scalar_function_info.hpp"
 #include "duckdb/parser/parsed_data/create_table_function_info.hpp"
@@ -382,6 +383,7 @@ static void LoadInternal(DuckDB &ddb) {
 	config.AddExtensionOption("TimeZone", "The current time zone", LogicalType::VARCHAR, Value(tz_string),
 	                          SetICUTimeZone);
 
+	RegisterLoadExtensionFunction(db, "___load_icu");
 	RegisterICUDateAddFunctions(db);
 	RegisterICUDatePartFunctions(db);
 	RegisterICUDateSubFunctions(db);
