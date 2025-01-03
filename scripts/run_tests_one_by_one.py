@@ -87,8 +87,6 @@ all_passed = True
 def fail():
     global all_passed
     all_passed = False
-    if not no_exit:
-        exit(1)
 
 
 def parse_assertions(stdout):
