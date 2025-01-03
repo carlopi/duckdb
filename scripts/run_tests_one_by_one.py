@@ -47,6 +47,7 @@ if not args.unittest_program:
 
 # Access the arguments
 unittest_program = args.unittest_program
+no_exit = args.no_exit
 fast_fail = args.fast_fail
 
 if no_exit:
