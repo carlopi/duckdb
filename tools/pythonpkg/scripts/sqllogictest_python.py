@@ -54,6 +54,7 @@ class SQLLogicTestExecutor(SQLLogicRunner):
                 'test/sql/pragma/profiling/test_custom_profiling_rows_scanned.test',  # we perform additional queries that mess with the expected metrics
                 'test/sql/pragma/profiling/test_custom_profiling_disable_metrics.test',  # we perform additional queries that mess with the expected metrics
                 'test/sql/pragma/profiling/test_custom_profiling_result_set_size.test',  # we perform additional queries that mess with the expected metrics
+                'test/sql/json/test_json_persistence.test',  # parsing error on SET
             ]
         )
         # TODO: get this from the `duckdb` package
