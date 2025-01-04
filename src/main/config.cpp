@@ -529,7 +529,7 @@ idx_t DBConfig::ParseMemoryLimit(const string &arg) {
 	}
 	string unit = StringUtil::Lower(arg.substr(start, idx - start));
 	idx_t multiplier;
-	if (unit == "byte" || unit == "bytes" || unit == "b") {
+	if (unit == "byte" || unit == "bytes" || unit == "b" || unit == "") {
 		multiplier = 1;
 	} else if (unit == "kilobyte" || unit == "kilobytes" || unit == "kb" || unit == "k") {
 		multiplier = 1000LL;
