@@ -54,6 +54,7 @@ class SQLLogicTestExecutor(SQLLogicRunner):
                 'test/sql/pragma/profiling/test_custom_profiling_rows_scanned.test',  # we perform additional queries that mess with the expected metrics
                 'test/sql/pragma/profiling/test_custom_profiling_disable_metrics.test',  # we perform additional queries that mess with the expected metrics
                 'test/sql/pragma/profiling/test_custom_profiling_result_set_size.test',  # we perform additional queries that mess with the expected metrics
+                'test/sql/cte/materialized/materialized_cte_modifiers.test',  # requires tpcds to be downloaded
             ]
         )
         # TODO: get this from the `duckdb` package
