@@ -1,6 +1,6 @@
 .PHONY: all opt unit clean debug release test unittest allunit benchmark docs doxygen format sqlite
 
-all: release
+all: relassert
 opt: release
 unit: unittest
 
