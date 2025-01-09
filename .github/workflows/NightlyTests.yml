@@ -280,24 +280,15 @@ jobs:
   python-address-sanitizer:
      name: Python Address Sanitizer (Linux)
      runs-on: ubuntu-latest
-     needs: linux-memory-leaks
-     container: ubuntu:18.04
-     if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature' }}
      env:
         GEN: ninja
         DUCKDEBUG: 1
         ASAN_OPTIONS: detect_leaks=0
-        ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
 
      steps:
-     - uses: actions/checkout@v3
+     - uses: actions/checkout@v4
        with:
          fetch-depth: 0
-
-     - uses: ./.github/actions/ubuntu_18_setup
-       with:
-         openssl: 0
-         python: 0
 
      - name: Install OpenSSL
        shell: bash
@@ -311,6 +302,7 @@ jobs:
          make install
          mkdir lib
          cp ./*.{so,so.1.0.0,a,pc} ./lib
+
 
      - name: Install Python 3 With Sanitizers
        shell: bash
@@ -344,7 +336,7 @@ jobs:
 
   python-sqllogic:
      name: Python SQLLogicTest Library (Linux)
-     runs-on: ubuntu-20.04
+     runs-on: ubuntu-24.04
      env:
         GEN: ninja
         DUCKDEBUG: 1
