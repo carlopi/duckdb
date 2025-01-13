@@ -82,24 +82,23 @@ struct MainHeader {
 	uint64_t flags[FLAG_COUNT];
 	static void CheckMagicBytes(FileHandle &handle);
 
-	string CompatibilityGitDesc() {
-		return string(char_ptr_cast(compatibility_git_desc), 0, MAX_VERSION_SIZE);
-	}
 	string LibraryGitDesc() {
 		return string(char_ptr_cast(library_git_desc), 0, MAX_VERSION_SIZE);
 	}
 	string LibraryGitHash() {
 		return string(char_ptr_cast(library_git_hash), 0, MAX_VERSION_SIZE);
 	}
+	string CompatibilityGitDesc() {
+		return string(char_ptr_cast(compatibility_git_desc), 0, MAX_VERSION_SIZE);
+	}
 
 	void Write(WriteStream &ser);
 	static MainHeader Read(ReadStream &source);
 
-	data_t compatibility_git_desc[MAX_VERSION_SIZE];
-
 private:
 	data_t library_git_desc[MAX_VERSION_SIZE];
 	data_t library_git_hash[MAX_VERSION_SIZE];
+	data_t compatibility_git_desc[MAX_VERSION_SIZE];
 };
 
 //! The DatabaseHeader contains information about the current state of the database. Every storage file has two
