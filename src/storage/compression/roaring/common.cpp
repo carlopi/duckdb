@@ -254,11 +254,13 @@ unique_ptr<CompressedSegmentState> RoaringInitSegment(ColumnSegment &segment, bl
 // Get Function
 //===--------------------------------------------------------------------===//
 CompressionFunction GetCompressionFunction(PhysicalType data_type) {
-	return CompressionFunction(CompressionType::COMPRESSION_ROARING, data_type, roaring::RoaringInitAnalyze,
-	                           roaring::RoaringAnalyze, roaring::RoaringFinalAnalyze, roaring::RoaringInitCompression,
-	                           roaring::RoaringCompress, roaring::RoaringFinalizeCompress, roaring::RoaringInitScan,
-	                           roaring::RoaringScan, roaring::RoaringScanPartial, roaring::RoaringFetchRow,
-	                           roaring::RoaringSkip, roaring::RoaringInitSegment);
+	auto fun = CompressionFunction(
+	    CompressionType::COMPRESSION_ROARING, data_type, roaring::RoaringInitAnalyze, roaring::RoaringAnalyze,
+	    roaring::RoaringFinalAnalyze, roaring::RoaringInitCompression, roaring::RoaringCompress,
+	    roaring::RoaringFinalizeCompress, roaring::RoaringInitScan, roaring::RoaringScan, roaring::RoaringScanPartial,
+	    roaring::RoaringFetchRow, roaring::RoaringSkip, roaring::RoaringInitSegment);
+	fun.target_serialization_version = SerializationCompatibility::FromString("v1.2.0").GetIndex();
+	return fun;
 }
 
 CompressionFunction RoaringCompressionFun::GetFunction(PhysicalType type) {
