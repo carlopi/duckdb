@@ -107,6 +107,9 @@ public:
 
 public:
 	bool Compare(idx_t property_version) const;
+	idx_t GetIndex() const {
+		return serialization_version;
+	}
 
 public:
 	//! The user provided version
