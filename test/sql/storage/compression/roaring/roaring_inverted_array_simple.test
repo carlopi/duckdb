@@ -6,7 +6,11 @@
 # because the bitpacking groups no longer fit the blocks.
 require block_size 262144
 
-load __TEST_DIR__/test_roaring.db
+statement ok
+ATTACH '__TEST_DIR__/test_bitpacking2.db' (COMPATIBILITY_VERSION 'v1.2.0')
+
+statement ok
+USE test_bitpacking2
 
 statement ok
 PRAGMA force_compression='roaring'
