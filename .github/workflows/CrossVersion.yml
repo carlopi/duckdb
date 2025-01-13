@@ -127,7 +127,7 @@ jobs:
           path: osx_v1_1_3
       - uses: actions/download-artifact@v4
         with:
-          name: files-osx-main
+          name: files-osx-serialization_compatibility_to_db_option_2
           path: osx_main
       - uses: actions/download-artifact@v4
         with:
@@ -139,7 +139,7 @@ jobs:
           path: linux_v1_1_3
       - uses: actions/download-artifact@v4
         with:
-          name: files-linux-main
+          name: files-linux-serialization_compatibility_to_db_option_2
           path: linux_main
 
       - name: Cross test
@@ -265,7 +265,7 @@ jobs:
           path: osx_v1_1_3
       - uses: actions/download-artifact@v4
         with:
-          name: files-osx-main
+          name: files-osx-serialization_compatibility_to_db_option_2
           path: osx_main
 
       - uses: actions/download-artifact@v4
@@ -278,7 +278,7 @@ jobs:
           path: linux_v1_1_3
       - uses: actions/download-artifact@v4
         with:
-          name: files-linux-main
+          name: files-linux-serialization_compatibility_to_db_option_2
           path: linux_main
 
       - name: Cross test
