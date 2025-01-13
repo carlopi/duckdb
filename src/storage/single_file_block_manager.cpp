@@ -187,7 +187,13 @@ void SingleFileBlockManager::CreateNewDatabase() {
 	string version_name = db.GetCompatibilityVersionName();
 	main_header.SetCompatibilityGitDesc(version_name);
 
-	main_header.version_number = VERSION_NUMBER;
+	if (db.GetCompatibilityVersion() < SerializationCompatibility::FromString("v1.2.0").GetIndex()) {
+		main_header.version_number = VERSION_NUMBER;
+	} else {
+		main_header.version_number = VERSION_NUMBER + 1;
+	}
+	D_ASSERT(main_header.version_number >= VERSION_NUMBER_LOWER);
+	D_ASSERT(main_header.version_number <= VERSION_NUMBER_UPPER);
 	memset(main_header.flags, 0, sizeof(uint64_t) * MainHeader::FLAG_COUNT);
 	AddStorageVersion(db, main_header.version_number);
 
