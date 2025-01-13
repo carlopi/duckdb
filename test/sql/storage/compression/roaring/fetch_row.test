@@ -3,6 +3,8 @@
 
 require block_size 262144
 
+require noforcestorage
+
 # load the DB from disk
 statement ok
 ATTACH '__TEST_DIR__/test_roaring_compression_fetch_row.db' (COMPATIBILITY_VERSION 'v1.2.0')
