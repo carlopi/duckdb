@@ -6,7 +6,11 @@ require block_size 262144
 
 require noforcestorage
 
-load __TEST_DIR__/test_roaring.db
+statement ok
+attach '__TEST_DIR__/test_roaring.db' (COMPATIBILITY_VERSION 'v1.2.0')
+
+statement ok
+USE test_roaring
 
 statement ok
 set logging_level='info';
