@@ -303,6 +303,7 @@ public:
 	//! Whether the validity mask should be separately compressed
 	//! or this compression function can also be used to decompress the validity
 	CompressionValidity validity = CompressionValidity::REQUIRES_VALIDITY;
+	idx_t target_serialization_version = DEFAULT_SERIALIZATION_VERSION_INFO;
 };
 
 //! The set of compression functions

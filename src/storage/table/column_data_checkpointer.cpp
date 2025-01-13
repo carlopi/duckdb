@@ -131,6 +131,8 @@ CompressionType ForceCompression(vector<optional_ptr<CompressionFunction>> &comp
 }
 
 void ColumnDataCheckpointer::InitAnalyze() {
+	const idx_t storage_compatibility = row_group.GetCollection().GetAttached().GetCompatibilityVersion();
+
 	analyze_states.resize(checkpoint_states.size());
 	for (idx_t i = 0; i < checkpoint_states.size(); i++) {
 		if (!has_changes[i]) {
@@ -145,6 +147,9 @@ void ColumnDataCheckpointer::InitAnalyze() {
 		for (idx_t j = 0; j < functions.size(); j++) {
 			auto &func = functions[j];
 			if (!func) {
+				continue;
+			}
+			if (func->target_serialization_version > storage_compatibility) {
 				continue;
 			}
 			states[j] = func->init_analyze(coldata, coldata.type.InternalType());
