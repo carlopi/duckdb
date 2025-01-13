@@ -89,6 +89,11 @@ struct MainHeader {
 	string CompatibilityGitDesc() {
 		return string(char_ptr_cast(compatibility_git_desc), 0, MAX_VERSION_SIZE);
 	}
+	void SetCompatibilityGitDesc(string compatibility_version_name) {
+		memset(compatibility_git_desc, 0, MAX_VERSION_SIZE);
+		memcpy(compatibility_git_desc, compatibility_version_name.c_str(),
+		       MinValue<idx_t>(compatibility_version_name.size(), MAX_VERSION_SIZE));
+	}
 
 	void Write(WriteStream &ser);
 	static MainHeader Read(ReadStream &source);
