@@ -36,8 +36,9 @@ void MainHeader::Write(WriteStream &ser) {
 	for (idx_t i = 0; i < FLAG_COUNT; i++) {
 		ser.Write<uint64_t>(flags[i]);
 	}
-	SerializeVersionNumber(ser, DuckDB::LibraryVersion());
+	ser.WriteData(compatibility_git_desc, MainHeader::MAX_VERSION_SIZE);
 	SerializeVersionNumber(ser, DuckDB::SourceID());
+	SerializeVersionNumber(ser, DuckDB::LibraryVersion());
 }
 
 void MainHeader::CheckMagicBytes(FileHandle &handle) {
@@ -84,6 +85,7 @@ MainHeader MainHeader::Read(ReadStream &source) {
 	for (idx_t i = 0; i < FLAG_COUNT; i++) {
 		header.flags[i] = source.Read<uint64_t>();
 	}
+	DeserializeVersionNumber(source, header.compatibility_git_desc);
 	DeserializeVersionNumber(source, header.library_git_desc);
 	DeserializeVersionNumber(source, header.library_git_hash);
 	return header;
@@ -181,6 +183,12 @@ void SingleFileBlockManager::CreateNewDatabase() {
 	header_buffer.Clear();
 
 	MainHeader main_header;
+
+	memset(main_header.compatibility_git_desc, 0, MainHeader::MAX_VERSION_SIZE);
+	string version_name = db.GetCompatibilityVersionName();
+	memcpy(main_header.compatibility_git_desc, version_name.c_str(),
+	       MinValue<idx_t>(version_name.size(), MainHeader::MAX_VERSION_SIZE));
+
 	main_header.version_number = VERSION_NUMBER;
 	memset(main_header.flags, 0, sizeof(uint64_t) * MainHeader::FLAG_COUNT);
 	AddStorageVersion(db, main_header.version_number);
@@ -241,6 +249,7 @@ void SingleFileBlockManager::LoadExistingDatabase() {
 	ReadAndChecksum(header_buffer, 0);
 	MainHeader main_header = DeserializeHeaderStructure<MainHeader>(header_buffer.buffer);
 	AddStorageVersion(db, main_header.version_number);
+	db.SetCompatibilityVersion(char_ptr_cast(header.compatibility_git_desc));
 
 	// read the database headers from disk
 	DatabaseHeader h1;
