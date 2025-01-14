@@ -135,7 +135,7 @@ void SingleFileStorageManager::LoadDatabase(StorageOptions storage_options) {
 	if (InMemory()) {
 		block_manager = make_uniq<InMemoryBlockManager>(BufferManager::GetBufferManager(db), DEFAULT_BLOCK_ALLOC_SIZE);
 		table_io_manager = make_uniq<SingleFileTableIOManager>(*block_manager, DEFAULT_ROW_GROUP_SIZE);
-		db.SetCompatibilityVersion("latest");
+		db.SetCompatibilityVersion(LATEST_SERIALIZATION_VERSION_INFO);
 		return;
 	}
 
@@ -189,8 +189,7 @@ void SingleFileStorageManager::LoadDatabase(StorageOptions storage_options) {
 		if (!storage_options.compatibility_version.empty()) {
 			compatibility_version = storage_options.compatibility_version;
 		}
-		// TODO fix handling for future version
-		db.SetCompatibilityVersion(compatibility_version);
+		db.SetCompatibilityVersion(compatibility_version, DEFAULT_SERIALIZATION_VERSION_INFO);
 
 		// Initialize the block manager before creating a new database.
 		auto sf_block_manager = make_uniq<SingleFileBlockManager>(db, path, options);

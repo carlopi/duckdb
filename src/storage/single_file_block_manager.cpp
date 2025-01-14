@@ -247,9 +247,14 @@ void SingleFileBlockManager::LoadExistingDatabase() {
 	MainHeader::CheckMagicBytes(*handle);
 	// otherwise, we check the metadata of the file
 	ReadAndChecksum(header_buffer, 0);
+
 	MainHeader main_header = DeserializeHeaderStructure<MainHeader>(header_buffer.buffer);
 	AddStorageVersion(db, main_header.version_number);
 	db.SetCompatibilityVersion(char_ptr_cast(header.compatibility_git_desc));
+
+	// Database files <= 1.1.3 had nothing in the compatibility_git_desc field, that is equivalent to version 1
+	const idx_t DEFAULT_STORAGE_VERSION_FOR_EMPTY_DBS = 1;
+	db.SetCompatibilityVersion(char_ptr_cast(main_header.compatibility_git_desc), DEFAULT_STORAGE_VERSION_FOR_EMPTY_DBS);
 
 	// read the database headers from disk
 	DatabaseHeader h1;
