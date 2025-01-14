@@ -184,10 +184,8 @@ void SingleFileBlockManager::CreateNewDatabase() {
 
 	MainHeader main_header;
 
-	memset(main_header.compatibility_git_desc, 0, MainHeader::MAX_VERSION_SIZE);
 	string version_name = db.GetCompatibilityVersionName();
-	memcpy(main_header.compatibility_git_desc, version_name.c_str(),
-	       MinValue<idx_t>(version_name.size(), MainHeader::MAX_VERSION_SIZE));
+	main_header.SetCompatibilityGitDesc(version_name);
 
 	main_header.version_number = VERSION_NUMBER;
 	memset(main_header.flags, 0, sizeof(uint64_t) * MainHeader::FLAG_COUNT);
@@ -254,7 +252,7 @@ void SingleFileBlockManager::LoadExistingDatabase() {
 
 	// Database files <= 1.1.3 had nothing in the compatibility_git_desc field, that is equivalent to version 1
 	const idx_t DEFAULT_STORAGE_VERSION_FOR_EMPTY_DBS = 1;
-	db.SetCompatibilityVersion(char_ptr_cast(main_header.compatibility_git_desc), DEFAULT_STORAGE_VERSION_FOR_EMPTY_DBS);
+	db.SetCompatibilityVersion(main_header.CompatibilityGitDesc(), DEFAULT_STORAGE_VERSION_FOR_EMPTY_DBS);
 
 	// read the database headers from disk
 	DatabaseHeader h1;
