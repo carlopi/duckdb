@@ -254,7 +254,6 @@ void SingleFileBlockManager::LoadExistingDatabase() {
 
 	MainHeader main_header = DeserializeHeaderStructure<MainHeader>(header_buffer.buffer);
 	AddStorageVersion(db, main_header.version_number);
-	db.SetCompatibilityVersion(char_ptr_cast(header.compatibility_git_desc));
 
 	// Database files <= 1.1.3 had nothing in the compatibility_git_desc field, that is equivalent to version 1
 	const idx_t DEFAULT_STORAGE_VERSION_FOR_EMPTY_DBS = 1;
