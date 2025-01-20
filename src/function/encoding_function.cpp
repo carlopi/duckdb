@@ -1,6 +1,7 @@
 #include "duckdb/function/encoding_function.hpp"
 #include "duckdb/main/config.hpp"
 
+
 namespace duckdb {
 
 struct DefaultEncodeMethod {
