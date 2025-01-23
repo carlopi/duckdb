@@ -206,11 +206,8 @@ jobs:
     name: Valgrind
     if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
     runs-on: ubuntu-20.04
-    needs: force-storage
     env:
       OVERRIDE_GIT_DESCRIBE: ${{needs.linux-debug.outputs.git_describe}}
-      CC: gcc-10
-      CXX: g++-10
       DISABLE_SANITIZER: 1
       BUILD_JEMALLOC: 1
       GEN: ninja
@@ -230,12 +227,16 @@ jobs:
 
     - name: Build
       shell: bash
-      run: make debug
+      run: make reldebug
 
     - name: Output version info
       shell: bash
-      run: ./build/debug/duckdb -c "PRAGMA version;"
+      run: ./build/reldebug/duckdb -c "PRAGMA version;"
 
     - name: Test
       shell: bash
-      run: valgrind ./build/debug/test/unittest test/sql/tpch/tpch_sf001.test_slow
+      run: valgrind ./build/reldebug/test/unittest
+
+    - name: Test
+      shell: bash
+      run: valgrind ./build/reldebug/test/unittest "*"
