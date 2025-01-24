@@ -1334,7 +1334,7 @@ ProgressData PhysicalHashJoin::GetProgress(ClientContext &context, GlobalSourceS
 	auto &sink = sink_state->Cast<HashJoinGlobalSinkState>();
 	auto &gstate = gstate_p.Cast<HashJoinGlobalSourceState>();
 
-	ProgressData res;
+	ProgressData res = {};
 
 	if (!sink.external) {
 		if (PropagatesBuildSide(join_type)) {
