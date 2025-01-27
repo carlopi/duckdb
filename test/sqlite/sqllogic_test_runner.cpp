@@ -802,9 +802,9 @@ void SQLLogicTestRunner::ExecuteFile(string script) {
 			}
 			string parameter = token.parameters[0];
 			if (parameter == "skip") {
-				skip_level++;
+			//	skip_level++;
 			} else if (parameter == "unskip") {
-				skip_level--;
+			//	skip_level--;
 			} else {
 				auto command = make_uniq<ModeCommand>(*this, std::move(parameter));
 				ExecuteCommand(std::move(command));
