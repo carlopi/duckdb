@@ -235,8 +235,8 @@ jobs:
 
     - name: Test
       shell: bash
-      run: valgrind ./build/reldebug/test/unittest
+      run: valgrind ./build/reldebug/test/unittest --order random
 
     - name: Test
       shell: bash
-      run: valgrind ./build/reldebug/test/unittest "*"
+      run: valgrind ./build/reldebug/test/unittest "*" --order random
