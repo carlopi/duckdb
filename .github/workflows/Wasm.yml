@@ -111,3 +111,4 @@ jobs:
       extension_artifact_name: duckdb-extensions-${{ matrix.duckdb_arch }}
       duckdb_arch: ${{ matrix.duckdb_arch }}
       duckdb_sha: ${{ github.sha }}
+      override_git_describe: ${{ inputs.override_git_describe }}

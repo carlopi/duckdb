@@ -213,6 +213,7 @@ jobs:
       extension_artifact_name: linux-extensions-64
       duckdb_arch: linux_amd64
       duckdb_sha: ${{ github.sha }}
+      override_git_describe: ${{ inputs.override_git_describe }}
 
  linux-extensions-64-musl:
     # Builds extensions for linux_amd64_musl
@@ -252,6 +253,7 @@ jobs:
       extension_artifact_name: linux-extensions-64-musl
       duckdb_arch: linux_amd64_musl
       duckdb_sha: ${{ github.sha }}
+      override_git_describe: ${{ inputs.override_git_describe }}
 
  upload-linux-extensions-64-aarch64:
     name: Upload Linux Extensions (aarch64)
@@ -262,6 +264,7 @@ jobs:
       extension_artifact_name: linux-extensions-64-aarch64
       duckdb_arch: linux_arm64
       duckdb_sha: ${{ github.sha }}
+      override_git_describe: ${{ inputs.override_git_describe }}
 
  linux-extensions-64-aarch64:
     # Builds extensions for linux_arm64

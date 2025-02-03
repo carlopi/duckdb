@@ -87,4 +87,5 @@ jobs:
       extension_artifact_name: windows_amd64_mingw-extensions
       duckdb_arch: windows_amd64_mingw
       duckdb_sha: ${{ github.sha }}
+      override_git_describe: ${{ inputs.override_git_describe }}
 

@@ -19,6 +19,9 @@ on:
       duckdb_sha:
         required: true
         type: string
+      # DuckDB prospective tag
+      override_git_describe:
+        type: string
 
 jobs:
   deploy:
@@ -56,5 +59,9 @@ jobs:
           pip install awscli
           TARGET_SHA=${{ inputs.duckdb_sha }}
           TARGET_SHA="${TARGET_SHA:0:10}"
+          OVERRIDE_GIT_DESCRIBE=${{ inputs.override_git_describe }}
+          if [[ ! -z "$OVERRIDE_GIT_DESCRIBE" ]]; then
+              TARGET_SHA="${TARGET_SHA}/${OVERRIDE_GIT_DESCRIBE}"
+          fi
           echo "Extensions to be uploaded to ${TARGET_SHA}"
           ./scripts/extension-upload-all.sh ${{ inputs.duckdb_arch }} "${TARGET_SHA}" deploy_me

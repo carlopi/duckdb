@@ -300,6 +300,7 @@ jobs:
       extension_artifact_name: windows_amd64-extensions
       duckdb_arch: windows_amd64
       duckdb_sha: ${{ github.sha }}
+      override_git_describe: ${{ inputs.override_git_describe }}
 
  win-packaged-upload:
    runs-on: windows-2019
