@@ -182,9 +182,7 @@ jobs:
 
   old-gcc:
     name: GCC 4.8
-    needs: linux-memory-leaks
     runs-on: ubuntu-latest
-    if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature' }}
     steps:
     - uses: actions/checkout@v3
       with:
