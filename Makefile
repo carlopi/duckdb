@@ -513,13 +513,13 @@ bundle-library-o: bundle-setup
 	cd build/release/bundle && \
 	echo ./*/*.o | xargs strip
 	echo ./*/*.o | xargs ${AR} cr ../libduckdb_bundle.a
-        ls -la ../libduckdb_bundle.a
+	ls -la ../libduckdb_bundle.a
 
 bundle-library-obj: bundle-setup
 	cd build/release/bundle && \
 	echo ./*/*.o | xargs strip
 	echo ./*/*.obj | xargs ${AR} cr ../libduckdb_bundle.a
-        ls -la ../libduckdb_bundle.a
+	ls -la ../libduckdb_bundle.a
 
 bundle-library: release
 	make bundle-library-o
