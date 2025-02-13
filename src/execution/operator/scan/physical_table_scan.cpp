@@ -132,18 +132,19 @@ SourceResultType PhysicalTableScan::GetData(ExecutionContext &context, DataChunk
 		}
 		return SourceResultType::HAVE_MORE_OUTPUT;
 	case OperatorResultType::FINISHED:
-		if (chunk.size() != 0) {
-			std::cout << "FINISHED in PhysicalTableScan::GetData with non-empty chunk size, extra execution\n";
-			return SourceResultType::HAVE_MORE_OUTPUT;
-		}
-		// TODO: This is not really correct, NEED_MORE_INPUT and FINISHED should also be distingued, but this will
-		// likely be a breaking change to be addressed in separate PR
-		if (function.in_out_function_final) {
-			function.in_out_function_final(context, data, chunk);
-			g_state.in_out_final = true;
-		}
-		return SourceResultType::FINISHED;
+		break;
 	}
+	if (chunk.size() != 0) {
+		std::cout << "FINISHED in PhysicalTableScan::GetData with non-empty chunk size, extra execution\n";
+		return SourceResultType::HAVE_MORE_OUTPUT;
+	}
+	// TODO: This is not really correct, NEED_MORE_INPUT and FINISHED should also be distingued, but this will
+	// likely be a breaking change to be addressed in separate PR
+	if (function.in_out_function_final) {
+		function.in_out_function_final(context, data, chunk);
+		g_state.in_out_final = true;
+	}
+	return SourceResultType::FINISHED;
 }
 
 ProgressData PhysicalTableScan::GetProgress(ClientContext &context, GlobalSourceState &gstate_p) const {
