@@ -108,7 +108,21 @@ SourceResultType PhysicalTableScan::GetData(ExecutionContext &context, DataChunk
 	if (g_state.in_out_final) {
 		function.in_out_function_final(context, data, chunk);
 	}
-	function.in_out_function(context, data, g_state.input_chunk, chunk);
+	switch (function.in_out_function(context, data, g_state.input_chunk, chunk)) {
+	case OperatorResultType::BLOCKED:
+		{
+			auto guard = g_state.Lock();
+			g_state.BlockSource(guard, input.interrupt_state);
+		}
+		return SourceResultType::BLOCKED;
+	case OperatorResultType::HAVE_MORE_OUTPUT:
+		return SourceResultType::HAVE_MORE_OUTPUT;
+	case OperatorResultType::NEED_MORE_INPUT:
+	case OperatorResultType::FINISHED:
+		// TODO: This is not really correct, NEED_MORE_INPUT and FINISHED should also be distingued, but this will
+		// likely be a breaking change to be addressed in separate PR
+		break;
+	}
 	if (chunk.size() == 0 && function.in_out_function_final) {
 		function.in_out_function_final(context, data, chunk);
 		g_state.in_out_final = true;
