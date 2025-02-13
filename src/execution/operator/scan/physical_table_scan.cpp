@@ -6,6 +6,7 @@
 #include "duckdb/transaction/transaction.hpp"
 
 #include <utility>
+#include <iostream>
 
 namespace duckdb {
 
@@ -108,12 +109,41 @@ SourceResultType PhysicalTableScan::GetData(ExecutionContext &context, DataChunk
 	if (g_state.in_out_final) {
 		function.in_out_function_final(context, data, chunk);
 	}
-	function.in_out_function(context, data, g_state.input_chunk, chunk);
-	if (chunk.size() == 0 && function.in_out_function_final) {
-		function.in_out_function_final(context, data, chunk);
-		g_state.in_out_final = true;
+	switch (function.in_out_function(context, data, g_state.input_chunk, chunk)) {
+	case OperatorResultType::BLOCKED:
+		std::cout << "BLOCKED in PhysicalTableScan::GetData, just wrong\n";
+		{
+			auto guard = g_state.Lock();
+			g_state.BlockSource(guard, input.interrupt_state);
+		}
+		return SourceResultType::BLOCKED;
+	case OperatorResultType::HAVE_MORE_OUTPUT:
+		if (chunk.size() == 0) {
+			std::cout << "HAVE_MORE_OUTPUT in PhysicalTableScan::GetData with empty chunk size, missing rows\n";
+			// This is logically WRONG, but keeps functionality the same
+			return SourceResultType::FINISHED;
+		}
+		return SourceResultType::HAVE_MORE_OUTPUT;
+	case OperatorResultType::NEED_MORE_INPUT:
+		if (chunk.size() == 0) {
+			std::cout << "NEED_MORE_INPUT in PhysicalTableScan::GetData with empty chunk size, missing rows\n";
+			// This is logically WRONG, but keeps functionality the same
+			return SourceResultType::FINISHED;
+		}
+		return SourceResultType::HAVE_MORE_OUTPUT;
+	case OperatorResultType::FINISHED:
+		if (chunk.size() != 0) {
+			std::cout << "FINISHED in PhysicalTableScan::GetData with non-empty chunk size, extra execution\n";
+			return SourceResultType::HAVE_MORE_OUTPUT;
+		}
+		// TODO: This is not really correct, NEED_MORE_INPUT and FINISHED should also be distingued, but this will
+		// likely be a breaking change to be addressed in separate PR
+		if (function.in_out_function_final) {
+			function.in_out_function_final(context, data, chunk);
+			g_state.in_out_final = true;
+		}
+		return SourceResultType::FINISHED;
 	}
-	return chunk.size() == 0 ? SourceResultType::FINISHED : SourceResultType::HAVE_MORE_OUTPUT;
 }
 
 ProgressData PhysicalTableScan::GetProgress(ClientContext &context, GlobalSourceState &gstate_p) const {
