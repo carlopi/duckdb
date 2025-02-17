@@ -291,7 +291,7 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          make
+          DISABLE_BUILTIN_EXTENSIONS=1 make
           git clone --branch ${{ env.BASE_BRANCH }} https://github.com/duckdb/duckdb.git --depth=1
           cd duckdb
           make
