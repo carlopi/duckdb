@@ -239,6 +239,7 @@ jobs:
       - uses: ./.github/actions/build_extensions
         with:
           treat_warn_as_error: 0
+          no_static_linking: 1
           run_tests: 0
           osx_arch: ${{ matrix.osx_arch }}
           vcpkg_target_triplet: ${{ matrix.vcpkg_triplet }}

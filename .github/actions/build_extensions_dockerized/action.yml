@@ -51,6 +51,7 @@ runs:
         run: |
           touch docker_env.txt
           echo "VCPKG_TARGET_TRIPLET=${{ inputs.vcpkg_target_triplet }}" >> docker_env.txt 
+          echo "DISABLE_BUILTIN_EXTENSIONS=1" >> docker_env.txt
           echo "BUILD_SHELL=1" >> docker_env.txt
           echo "OPENSSL_ROOT_DIR=/duckdb_build_dir/build/release/vcpkg_installed/${{ inputs.vcpkg_target_triplet }}" >> docker_env.txt
           echo "OPENSSL_DIR=/duckdb_build_dir/build/release/vcpkg_installed/${{ inputs.vcpkg_target_triplet }}" >> docker_env.txt
