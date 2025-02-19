@@ -156,7 +156,7 @@ SinkNextBatchType PipelineExecutor::NextBatch(DataChunk &source_chunk) {
 	if (rand() % 8) {
 		debug_blocked_next_batch_count++;
 
-		auto &callback_state = interrupt_state;
+		auto callback_state = interrupt_state;
 		std::thread rewake_thread([callback_state] {
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			callback_state.Callback();
@@ -361,7 +361,7 @@ PipelineExecuteResult PipelineExecutor::PushFinalize() {
 	if (rand() % 8) {
 		debug_blocked_combine_count++;
 
-		auto &callback_state = combine_input.interrupt_state;
+		auto callback_state = combine_input.interrupt_state;
 		std::thread rewake_thread([callback_state] {
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			callback_state.Callback();
@@ -508,7 +508,7 @@ SinkResultType PipelineExecutor::Sink(DataChunk &chunk, OperatorSinkInput &input
 	if (rand() % 8) {
 		debug_blocked_sink_count++;
 
-		auto &callback_state = input.interrupt_state;
+		auto callback_state = input.interrupt_state;
 		std::thread rewake_thread([callback_state] {
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			callback_state.Callback();

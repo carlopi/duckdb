@@ -108,7 +108,7 @@ SourceResultType PhysicalTableScan::GetData(ExecutionContext &context, DataChunk
 
 	if (rand() % 4) {
 
-		auto &callback_state = input.interrupt_state;
+		auto callback_state = input.interrupt_state;
 		std::thread rewake_thread([callback_state] {
 			std::this_thread::sleep_for(std::chrono::milliseconds(3));
 			callback_state.Callback();
