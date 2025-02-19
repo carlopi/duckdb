@@ -153,7 +153,7 @@ SinkNextBatchType PipelineExecutor::NextBatch(DataChunk &source_chunk) {
 		    next_data.batch_index, partition_info.batch_index.GetIndex());
 	}
 #ifdef DUCKDB_DEBUG_ASYNC_SINK_SOURCE
-	if (debug_blocked_next_batch_count < debug_blocked_target_count) {
+	if (rand() % 8) {
 		debug_blocked_next_batch_count++;
 
 		auto &callback_state = interrupt_state;
@@ -358,7 +358,7 @@ PipelineExecuteResult PipelineExecutor::PushFinalize() {
 	OperatorSinkCombineInput combine_input {*pipeline.sink->sink_state, *local_sink_state, interrupt_state};
 
 #ifdef DUCKDB_DEBUG_ASYNC_SINK_SOURCE
-	if (debug_blocked_combine_count < debug_blocked_target_count) {
+	if (rand() % 8) {
 		debug_blocked_combine_count++;
 
 		auto &callback_state = combine_input.interrupt_state;
@@ -485,7 +485,7 @@ void PipelineExecutor::SetTaskForInterrupts(weak_ptr<Task> current_task) {
 SourceResultType PipelineExecutor::GetData(DataChunk &chunk, OperatorSourceInput &input) {
 	//! Testing feature to enable async source on every operator
 #ifdef DUCKDB_DEBUG_ASYNC_SINK_SOURCE
-	if (debug_blocked_source_count < debug_blocked_target_count) {
+	if (rand() % 8) {
 		debug_blocked_source_count++;
 
 		auto &callback_state = input.interrupt_state;
@@ -505,7 +505,7 @@ SourceResultType PipelineExecutor::GetData(DataChunk &chunk, OperatorSourceInput
 SinkResultType PipelineExecutor::Sink(DataChunk &chunk, OperatorSinkInput &input) {
 	//! Testing feature to enable async sink on every operator
 #ifdef DUCKDB_DEBUG_ASYNC_SINK_SOURCE
-	if (debug_blocked_sink_count < debug_blocked_target_count) {
+	if (rand() % 8) {
 		debug_blocked_sink_count++;
 
 		auto &callback_state = input.interrupt_state;

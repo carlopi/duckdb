@@ -6,6 +6,7 @@
 #include "duckdb/transaction/transaction.hpp"
 
 #include <utility>
+#include <thread>
 
 namespace duckdb {
 
@@ -103,6 +104,18 @@ SourceResultType PhysicalTableScan::GetData(ExecutionContext &context, DataChunk
 	if (function.function) {
 		function.function(context.client, data, chunk);
 		return chunk.size() == 0 ? SourceResultType::FINISHED : SourceResultType::HAVE_MORE_OUTPUT;
+	}
+
+	if (rand() % 4) {
+
+		auto &callback_state = input.interrupt_state;
+		std::thread rewake_thread([callback_state] {
+			std::this_thread::sleep_for(std::chrono::milliseconds(3));
+			callback_state.Callback();
+		});
+		rewake_thread.detach();
+
+		return SourceResultType::BLOCKED;
 	}
 
 	if (g_state.in_out_final) {
