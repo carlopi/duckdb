@@ -355,8 +355,8 @@ jobs:
           ./scripts/upload-assets-to-staging.sh twine_upload tools/pythonpkg/wheelhouse/*.whl
 
       - name: Check completed
-         shell: bash
-         run: echo "All good"
+        shell: bash
+        run: echo "All good"
 
   win-python3:
       name: Python 3 Windows
