@@ -286,13 +286,14 @@ jobs:
         ./scripts/upload-assets-to-staging.sh twine_upload tools/pythonpkg/dist/duckdb-*.tar.gz tools/pythonpkg/wheelhouse/*.whl
 
   osx-python3:
-      if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main' || inputs.run_all == 'true'
       name: Python 3 OSX
       needs: linux-python3-10
       runs-on: macos-latest
       strategy:
        matrix:
         python_build: [cp38-*, cp39-*, cp310-*, cp311-*, cp312-*, cp313-*]
+
+
       env:
         CIBW_BUILD: ${{ matrix.python_build}}
         CIBW_ARCHS: 'x86_64 universal2 arm64'
@@ -354,6 +355,10 @@ jobs:
         shell: bash
         run: |
           ./scripts/upload-assets-to-staging.sh twine_upload tools/pythonpkg/wheelhouse/*.whl
+
+       - name: Check completed
+         shell: bash
+         run: echo "All good"
 
   win-python3:
       name: Python 3 Windows
