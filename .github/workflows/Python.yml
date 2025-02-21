@@ -354,7 +354,7 @@ jobs:
         run: |
           ./scripts/upload-assets-to-staging.sh twine_upload tools/pythonpkg/wheelhouse/*.whl
 
-       - name: Check completed
+      - name: Check completed
          shell: bash
          run: echo "All good"
 
