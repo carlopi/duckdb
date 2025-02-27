@@ -51,6 +51,8 @@ if (NOT MINGW AND NOT ${WASM_ENABLED})
 endif()
 
 ################# DELTA
+### Currently there is some problem with the delta-rs package, skipping for now
+if (FALSE)
 # MinGW build is not available, and our current manylinux ci does not have enough storage space to run the rust build
 # for Delta
 if (NOT MINGW AND NOT "${OS_NAME}" STREQUAL "linux" AND NOT ${WASM_ENABLED})
@@ -58,6 +60,7 @@ if (NOT MINGW AND NOT "${OS_NAME}" STREQUAL "linux" AND NOT ${WASM_ENABLED})
             GIT_URL https://github.com/duckdb/duckdb-delta
             GIT_TAG 846019edcc27000721ff9c4281e85a63d1aa10de
     )
+endif()
 endif()
 
 ################# EXCEL
