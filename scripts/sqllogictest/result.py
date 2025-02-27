@@ -362,7 +362,7 @@ class SQLLogicConnectionPool:
         env_var = os.getenv("LOCAL_EXTENSION_REPO")
         if env_var:
             con.execute("SET autoload_known_extensions=True")
-            con.execute(f"SET autoinstall_extension_repository='{env_var}'")
+            con.execute(f"SET custom_extension_repository='{env_var}'")
 
     def get_connection(self, name: Optional[str] = None) -> duckdb.DuckDBPyConnection:
         """
