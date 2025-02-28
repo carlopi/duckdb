@@ -173,7 +173,6 @@ jobs:
 
   linux-python3:
     name: Python 3 Linux
-    needs: manylinux-extensions-x64
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
@@ -246,12 +245,6 @@ jobs:
       run: |
         pip install 'cibuildwheel>=2.16.2' build
         python -m pip install numpy --config-settings=setup-args="-Dallow-noblas=true"
-
-    - uses: actions/download-artifact@v4
-      if: ${{ matrix.arch == 'x86_64' }}
-      with:
-        name: duckdb-extensions-${{ matrix.duckdb_arch }}
-        path: tools/pythonpkg
 
     - name: List extensions to be tested
       shell: bash
