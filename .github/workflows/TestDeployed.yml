@@ -27,7 +27,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
-        path: 'patch'
+        path: aaa_patch
 
     - uses: actions/checkout@v4
       with:
@@ -35,8 +35,9 @@ jobs:
 
     - name: Install pytest
       run: |
+        tree aaa_patch
         git checkout c009b4ea62f9fcf6ffed6aad51c8f1833121bbfb
-        git apply patch/test.patch
+        git apply aaa_patch/test.patch
         python3 -m pip install pytest
 
     - name: Build
