@@ -75,6 +75,7 @@ jobs:
         config: [ { runner: macos-14, arch: amd64, image: 'quay.io/pypa/manylinux2014_x86_64'}, {runner: macos-13, arch: arm64, image: 'quay.io/pypa/manylinux2014_aarch64'}]
     name: Docker tests (${{ matrix.config.runner }} - ${{ matrix.config.arch }} - ${{ matrix.config.image }})
     runs-on: ${{ matrix.config.runner }}
+
     env:
       EXTENSION_CONFIGS: '${GITHUB_WORKSPACE}/.github/config/out_of_tree_extensions.cmake;${GITHUB_WORKSPACE}/.github/config/in_tree_extensions.cmake"    \
       ENABLE_EXTENSION_AUTOLOADING: 1
