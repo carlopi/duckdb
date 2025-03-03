@@ -106,6 +106,7 @@ jobs:
         run: |
           python -m pip install pytest
           git checkout ${{ inputs.git_ref }}
+          git apply aaa_patch/test.patch
 
       - name: Build
         shell: bash
