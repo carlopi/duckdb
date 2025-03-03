@@ -111,6 +111,7 @@ jobs:
       - name: Install pytest
         run: |
           python -m pip install pytest
+          git checkout c009b4ea62f9fcf6ffed6aad51c8f1833121bbfb
 
       - name: Build
         shell: bash
