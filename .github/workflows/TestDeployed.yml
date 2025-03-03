@@ -33,7 +33,7 @@ jobs:
 
     - name: Install pytest
       run: |
-        git checkout 68bd4a5277430245e3d9edf1abbb9813520a3dff
+        git checkout c009b4ea62f9fcf6ffed6aad51c8f1833121bbfb
         git apply patch/test.patch
         python3 -m pip install pytest
 
