@@ -62,6 +62,58 @@ jobs:
         export PWD=`pwd`
         docker run -v$PWD:$PWD -e LOCAL_EXTENSION_REPO='http://extensions.duckdb.org' ${{ matrix.config.image }} bash -c "cd $PWD && ./build/release/test/unittest --order random --rng-seed 'time'"
 
+  musl:
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [ { runner: ubuntu-latest, arch: amd64, image: 'alpine:3'} ]
+
+    name: Test ${{ matrix.config.image }}
+    runs-on: ${{ matrix.config.runner }}
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        path: aaa_patch
+
+    - name: Install pytest
+      run: |
+        tree aaa_patch
+        git checkout ${{ inputs.git_ref }}
+        git apply aaa_patch/test.patch
+        python3 -m pip install pytest
+
+    - name: Build
+      shell: bash
+      run: |
+        export PWD=`pwd`
+        docker run                                                             \
+        -v$PWD:$PWD                                                            \
+        -e CMAKE_BUILD_PARALLEL_LEVEL=2                                        \
+        -e OVERRIDE_GIT_DESCRIBE=$OVERRIDE_GIT_DESCRIBE                        \
+        -e EXTENSION_CONFIGS="$PWD/.github/config/out_of_tree_extensions.cmake;$PWD/.github/config/in_tree_extensions.cmake"    \
+        -e ENABLE_EXTENSION_AUTOLOADING=1                                      \
+        -e ENABLE_EXTENSION_AUTOINSTALL=1                                      \
+        -e EXTENSION_TESTS_ONLY=1  \
+        -e BUILD_BENCHMARK=1                                                   \
+        ${{ matrix.config.image }}                  \
+        bash -c "apk update --y -qq && apk add -qq perl && apk add -qq ccache cmake git ninja ninja-build clang19 gcc libssl3 wget bash zip gettext unzip build-base curl make libffi-dev zlib openssh autoconf linux-headers libunwind-dev && git config --global --add safe.directory $PWD && make -C $PWD"
+
+    - name: Print platform
+      shell: bash
+      run: ./build/release/duckdb -c "PRAGMA platform;"
+
+    - name: Print platform
+      shell: bash
+      run: |
+        export PWD=`pwd`
+        docker run -v$PWD:$PWD -e LOCAL_EXTENSION_REPO='http://extensions.duckdb.org' ${{ matrix.config.image }} bash -c "cd $PWD && ./build/release/test/unittest --order random --rng-seed 'time'"
+
 
   xcode-release:
     # Builds binaries for osx_arm64 and osx_amd64
