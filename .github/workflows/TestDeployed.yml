@@ -102,7 +102,7 @@ jobs:
         -e EXTENSION_TESTS_ONLY=1  \
         -e BUILD_BENCHMARK=1                                                   \
         ${{ matrix.config.image }}                  \
-        sh -c "apk update --y -qq && apk add -qq libstdc++6 libstdc++ perl && apk add -qq ccache cmake git ninja ninja-build clang19 gcc libssl3 wget zip gettext unzip build-base curl make libffi-dev zlib openssh autoconf linux-headers libunwind-dev && git config --global --add safe.directory $PWD && make -C $PWD"
+        sh -c "apk update --y -qq && apk add -qq perl && apk add -qq ccache cmake git ninja ninja-build clang19 gcc libssl3 wget zip gettext unzip build-base curl make libffi-dev zlib openssh autoconf linux-headers libunwind-dev && apk add libstdc++6 libstdc++ && git config --global --add safe.directory $PWD && make -C $PWD"
 
     - name: Print platform
       shell: sh
