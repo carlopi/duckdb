@@ -118,6 +118,14 @@ jobs:
 
       - name: Print platform
         shell: bash
+        run: ./build/release/duckdb -c "FROM duckdb_extensions();"
+
+      - name: Print platform
+        shell: bash
         run: |
           LOCAL_EXTENSION_REPO='http://extensions.duckdb.org' ./build/release/test/unittest --order random --rng-seed 'time'
+
+      - name: Print platform
+        shell: bash
+        run: ./build/release/duckdb -c "FROM duckdb_extensions();"
 
