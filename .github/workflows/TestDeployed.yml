@@ -65,5 +65,7 @@ jobs:
 
     - name: Print platform
       shell: bash
-      run: cd duckdb && LOCAL_EXTENSION_REPO='http://extensions.duckdb.org' ./build/release/test/unittest --order random --rng-seed "time"
-
+      run: |
+        cd duckdb
+        export PWD=`pwd`
+        docker run -v$PWD:$PWD -e LOCAL_EXTENSION_REPO='http://extensions.duckdb.org' ${{ matrix.config.image }} bash -c "./build/release/test/unittest --order random --rng-seed 'time'"
