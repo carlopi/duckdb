@@ -116,7 +116,7 @@ jobs:
         shell: bash
         run: ./build/release/duckdb -c "PRAGMA platform;"
 
-      - name: Print platform
+      - name: Print extensions PRE
         shell: bash
         run: ./build/release/duckdb -c "FROM duckdb_extensions();"
 
@@ -125,7 +125,7 @@ jobs:
         run: |
           LOCAL_EXTENSION_REPO='http://extensions.duckdb.org' ./build/release/test/unittest --order random --rng-seed 'time'
 
-      - name: Print platform
+      - name: Print extensions POST
         shell: bash
         run: ./build/release/duckdb -c "FROM duckdb_extensions();"
 
