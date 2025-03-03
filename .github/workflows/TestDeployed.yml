@@ -73,7 +73,6 @@ jobs:
       fail-fast: false
       matrix:
         config: [ { runner: macos-14, arch: amd64, image: 'quay.io/pypa/manylinux2014_x86_64'}, {runner: macos-13, arch: arm64, image: 'quay.io/pypa/manylinux2014_aarch64'}]
-
     name: Docker tests (${{ matrix.config.runner }} - ${{ matrix.config.arch }} - ${{ matrix.config.image }})
     runs-on: ${{ matrix.config.runner }}
     env:
