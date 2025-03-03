@@ -77,8 +77,6 @@ jobs:
 
     name: Docker tests (${{ matrix.config.runner }} - ${{ matrix.config.arch }} - ${{ matrix.config.image }})
     runs-on: ${{ matrix.config.runner }}
-    runs-on: macos-14
-    needs: xcode-debug
     env:
       EXTENSION_CONFIGS: '${GITHUB_WORKSPACE}/.github/config/out_of_tree_extensions.cmake;${GITHUB_WORKSPACE}/.github/config/in_tree_extensions.cmake"    \
       ENABLE_EXTENSION_AUTOLOADING: 1
