@@ -69,7 +69,6 @@ jobs:
 
   xcode-release:
     # Builds binaries for osx_arm64 and osx_amd64
-    name: OSX Release
     strategy:
       fail-fast: false
       matrix:
