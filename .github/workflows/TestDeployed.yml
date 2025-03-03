@@ -77,7 +77,7 @@ jobs:
     runs-on: ${{ matrix.config.runner }}
 
     env:
-      EXTENSION_CONFIGS: '${GITHUB_WORKSPACE}/.github/config/out_of_tree_extensions.cmake;${GITHUB_WORKSPACE}/.github/config/in_tree_extensions.cmake"
+      EXTENSION_CONFIGS: '${GITHUB_WORKSPACE}/.github/config/out_of_tree_extensions.cmake;${GITHUB_WORKSPACE}/.github/config/in_tree_extensions.cmake'
       ENABLE_EXTENSION_AUTOLOADING: 1
       ENABLE_EXTENSION_AUTOINSTALL: 1
       EXTENSION_TESTS_ONLY=1  \
