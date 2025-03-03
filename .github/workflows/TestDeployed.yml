@@ -9,10 +9,6 @@ on:
       git_ref:
         type: string
 
-concurrency:
-  group: tedstdeployed2-${{ github.workflow }}-${{ github.ref }}-${{ github.head_ref || '' }}-${{ github.base_ref || '' }}z
-  cancel-in-progress: false
-
 jobs:
   tests:
     strategy:
@@ -36,7 +32,7 @@ jobs:
     - name: Install pytest
       run: |
         tree aaa_patch
-        git checkout c009b4ea62f9fcf6ffed6aad51c8f1833121bbfb
+        git checkout ${{ inputs.git_ref }}
         git apply aaa_patch/test.patch
         python3 -m pip install pytest
 
