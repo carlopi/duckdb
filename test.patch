@@ -23,6 +23,69 @@ index a4c8fe19fc..296f28d8d7 100644
  	DBConfig config;
  	config.options.allow_unsigned_extensions = true;
  
+diff --git a/test/extension/load_extension.test b/test/extension/load_extension.test
+index c40b06f929..fe38a9f3e0 100644
+--- a/test/extension/load_extension.test
++++ b/test/extension/load_extension.test
+@@ -6,6 +6,9 @@ require notmingw
+ 
+ require skip_reload
+ 
++statement ok
++SET allow_unsigned_extensions = true;
++
+ statement ok
+ PRAGMA enable_verification
+ 
+diff --git a/test/extension/load_test_alias.test b/test/extension/load_test_alias.test
+index 51b9ad54fc..ac700e948c 100644
+--- a/test/extension/load_test_alias.test
++++ b/test/extension/load_test_alias.test
+@@ -6,6 +6,9 @@ require skip_reload
+ 
+ require notmingw
+ 
++statement ok
++SET allow_unsigned_extensions = true;
++
+ statement ok
+ PRAGMA enable_verification
+ 
+diff --git a/test/extension/test_alias_point.test b/test/extension/test_alias_point.test
+index 1b95a9360b..2b2b9cc22e 100644
+--- a/test/extension/test_alias_point.test
++++ b/test/extension/test_alias_point.test
+@@ -6,6 +6,9 @@ require skip_reload
+ 
+ require notmingw
+ 
++statement ok
++SET allow_unsigned_extensions = true;
++
+ statement ok
+ PRAGMA enable_verification
+ 
+diff --git a/test/extension/test_custom_type_modifier_cast.test b/test/extension/test_custom_type_modifier_cast.test
+index 8a19071a84..77d8c6b7d6 100644
+--- a/test/extension/test_custom_type_modifier_cast.test
++++ b/test/extension/test_custom_type_modifier_cast.test
+@@ -6,6 +6,9 @@ require skip_reload
+ 
+ require notmingw
+ 
++statement ok
++SET allow_unsigned_extensions = true;
++
+ statement ok
+ PRAGMA enable_verification
+ 
+@@ -15,4 +18,4 @@ LOAD '__BUILD_DIRECTORY__/test/extension/loadable_extension_demo.duckdb_extensio
+ statement error
+ SELECT 1::MINMAX(500, 1000);
+ ----
+-Conversion Error: Value 1 is outside of range [500,1000]
+\ No newline at end of file
++Conversion Error: Value 1 is outside of range [500,1000]
 diff --git a/test/extension/test_remote_optimizer.cpp b/test/extension/test_remote_optimizer.cpp
 index 98f7a1a1c9..27ca6b18a4 100644
 --- a/test/extension/test_remote_optimizer.cpp
@@ -35,43 +98,27 @@ index 98f7a1a1c9..27ca6b18a4 100644
  	pid_t pid = fork();
  
  	int port = 4242;
-diff --git a/test/sql/copy/csv/test_copy.test b/test/sql/copy/csv/test_copy.test
-index 8ae494956b..dee00e0f13 100644
---- a/test/sql/copy/csv/test_copy.test
-+++ b/test/sql/copy/csv/test_copy.test
-@@ -121,11 +121,17 @@ COPY test4 (a,c) FROM '__TEST_DIR__/test4.csv' (SEP 1);
- ----
- "sep" expects a string argument!
+diff --git a/test/extension/test_tags.test b/test/extension/test_tags.test
+index f61e35acc4..7127357f40 100644
+--- a/test/extension/test_tags.test
++++ b/test/extension/test_tags.test
+@@ -6,6 +6,9 @@ require skip_reload
  
--# multiple format options
-+# multiple format options/1, last one wins
- statement error
--COPY test4 (a,c) FROM '__TEST_DIR__/test4.csv' (FORMAT 'csv', FORMAT 'json');
-+COPY test4 (a,c) FROM '__TEST_DIR__/test4.csv' (FORMAT 'csv', FORMAT 'some_other_copy_function');
- ----
--Copy Function with name "json" is not in the catalog, but it exists in the json extension.
-+Catalog Error: Copy Function with name some_other_copy_function does not exist
-+
-+# multiple format options/2, last one wins
-+query I
-+COPY test4 (a,c) FROM '__TEST_DIR__/test4.csv' (FORMAT 'some_other_copy_function', FORMAT 'csv');
-+----
-+5000
+ require notmingw
  
- # number as escape string
- statement error
-diff --git a/test/sql/copy/partitioned/hive_partitioned_auto_detect.test b/test/sql/copy/partitioned/hive_partitioned_auto_detect.test
-index 6e77e9fb5c..3b97bf27b6 100644
---- a/test/sql/copy/partitioned/hive_partitioned_auto_detect.test
-+++ b/test/sql/copy/partitioned/hive_partitioned_auto_detect.test
-@@ -2,6 +2,7 @@
- # description: basic tests for the hive partition auto detection
- # group: [partitioned]
- 
++statement ok
++SET allow_unsigned_extensions = true;
 +
  statement ok
  PRAGMA enable_verification
  
+@@ -21,4 +24,4 @@ sub_point	DuckDB Labs
+ query II
+ SELECT type_name, tags['ext:author'] FROM duckdb_types() WHERE tags['ext:name'] = 'loadable_extension_demo' ORDER BY type_name;
+ ----
+-POINT	DuckDB Labs
+\ No newline at end of file
++POINT	DuckDB Labs
 diff --git a/test/sqlite/sqllogic_test_runner.cpp b/test/sqlite/sqllogic_test_runner.cpp
 index 346dc72524..4ede2e519e 100644
 --- a/test/sqlite/sqllogic_test_runner.cpp
