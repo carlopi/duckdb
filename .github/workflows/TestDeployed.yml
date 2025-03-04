@@ -60,7 +60,7 @@ jobs:
       shell: bash
       run: |
         export PWD=`pwd`
-        docker run -v$PWD:$PWD -e LOCAL_EXTENSION_REPO='http://extensions.duckdb.org' ${{ matrix.config.image }} bash -c "cd $PWD && ./build/release/test/unittest --durations yes
+        docker run -v$PWD:$PWD -e LOCAL_EXTENSION_REPO='http://extensions.duckdb.org' ${{ matrix.config.image }} bash -c "cd $PWD && ./build/release/test/unittest --durations yes"
 
   musl:
     strategy:
