@@ -60,7 +60,7 @@ jobs:
       shell: bash
       run: |
         export PWD=`pwd`
-        docker run -v$PWD:$PWD -e LOCAL_EXTENSION_REPO='http://extensions.duckdb.org' ${{ matrix.config.image }} bash -c "cd $PWD && ./build/release/test/unittest --duration yes
+        docker run -v$PWD:$PWD -e LOCAL_EXTENSION_REPO='http://extensions.duckdb.org' ${{ matrix.config.image }} bash -c "cd $PWD && ./build/release/test/unittest --durations yes
 
   musl:
     strategy:
@@ -109,7 +109,7 @@ jobs:
       shell: sh
       run: |
         export PWD=`pwd`
-        docker run -v$PWD:$PWD -e LOCAL_EXTENSION_REPO='http://extensions.duckdb.org' ${{ matrix.config.image }} sh -c "apk update --y -qq && apk add -qq perl && apk add -qq ccache cmake git ninja ninja-build clang19 gcc libssl3 wget zip gettext unzip build-base curl make libffi-dev zlib openssh autoconf linux-headers libunwind-dev musl && apk add -qq libgcc libstdc++ libstdc++-dev libbsd-dev && cd $PWD && ./build/release/test/unittest --duration yes"
+        docker run -v$PWD:$PWD -e LOCAL_EXTENSION_REPO='http://extensions.duckdb.org' ${{ matrix.config.image }} sh -c "apk update --y -qq && apk add -qq perl && apk add -qq ccache cmake git ninja ninja-build clang19 gcc libssl3 wget zip gettext unzip build-base curl make libffi-dev zlib openssh autoconf linux-headers libunwind-dev musl && apk add -qq libgcc libstdc++ libstdc++-dev libbsd-dev && cd $PWD && ./build/release/test/unittest --durations yes"
 
 
   xcode-release:
@@ -172,7 +172,7 @@ jobs:
       - name: Print platform
         shell: bash
         run: |
-          LOCAL_EXTENSION_REPO='http://extensions.duckdb.org' ./build/release/test/unittest --duration yes
+          LOCAL_EXTENSION_REPO='http://extensions.duckdb.org' ./build/release/test/unittest --durations yes
 
       - name: Print extensions POST
         shell: bash
