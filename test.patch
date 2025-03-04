@@ -35,6 +35,19 @@ index 98f7a1a1c9..27ca6b18a4 100644
  	pid_t pid = fork();
  
  	int port = 4242;
+diff --git a/test/sql/extensions/checked_load.test b/test/sql/extensions/checked_load.test
+index 186cf7aa35..4144a48a56 100644
+--- a/test/sql/extensions/checked_load.test
++++ b/test/sql/extensions/checked_load.test
+@@ -7,6 +7,8 @@ LOAD 'README.md';
+ ----
+ The file is not a DuckDB extension. The metadata at the end of the file is invalid
+ 
++require allow_unsigned_extensions
++
+ statement ok
+ SET allow_extensions_metadata_mismatch=true;
+ 
 diff --git a/test/sqlite/sqllogic_test_runner.cpp b/test/sqlite/sqllogic_test_runner.cpp
 index 18a1a5a033..f099e7e29b 100644
 --- a/test/sqlite/sqllogic_test_runner.cpp
