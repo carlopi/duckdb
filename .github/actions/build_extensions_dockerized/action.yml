@@ -25,8 +25,8 @@ runs:
         name: Checkout Extension CI tools
         with:
           path: 'extension-ci-tools'
-          ref: 'main'
-          repository: 'duckdb/extension-ci-tools'
+          ref: 'native'
+          repository: 'carlopi/extension-ci-tools'
           fetch-depth: 0
 
       - name: Populate composed extension
