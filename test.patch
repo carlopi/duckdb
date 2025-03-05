@@ -47,52 +47,6 @@ index fd2722e53d..e6f8c7fadd 100644
            GIT_SUBMODULES "${SUBMODULES}"
            PATCH_COMMAND ${PATCH_COMMAND}
    )
-diff --git a/test.patch b/test.patch
-index 1575e26ec4..88f12cbaa0 100644
---- a/test.patch
-+++ b/test.patch
-@@ -27,18 +27,18 @@ index e714601444..a8b4afb7d5 100644
-              GIT_URL https://github.com/duckdb/duckdb-postgres
-              GIT_TAG 8461ed8b6f726564934e9c831cdc88d431e3148f
- diff --git a/CMakeLists.txt b/CMakeLists.txt
--index fd2722e53d..e6f8c7fadd 100644
-+index fd2722e53d..8e4d39e5f5 100644
- --- a/CMakeLists.txt
- +++ b/CMakeLists.txt
--@@ -284,6 +284,7 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
-+@@ -284,7 +284,6 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
-    set(SUN TRUE)
-  endif()
-  
--+SET(OVERRIDE_GIT_DESCRIBE v1.2.1-0-g8e52ec4395)
-- 
-+-
-  if (OVERRIDE_GIT_DESCRIBE)
-    if (OVERRIDE_GIT_DESCRIBE MATCHES "^v[0-9]+\.[0-9]+\.[0-9]+\-[0-9]+\-g[a-f0-9]+$")
--@@ -1087,7 +1088,7 @@ macro(register_external_extension NAME URL COMMIT DONT_LINK DONT_BUILD LOAD_TEST
-+     set(GIT_DESCRIBE "${OVERRIDE_GIT_DESCRIBE}")
-+@@ -1087,7 +1086,7 @@ macro(register_external_extension NAME URL COMMIT DONT_LINK DONT_BUILD LOAD_TEST
-    FETCHCONTENT_DECLARE(
-            ${NAME}_extension_fc
-            GIT_REPOSITORY ${URL}
-@@ -85,7 +85,7 @@ index 186cf7aa35..4144a48a56 100644
-  SET allow_extensions_metadata_mismatch=true;
-  
- diff --git a/test/sqlite/sqllogic_test_runner.cpp b/test/sqlite/sqllogic_test_runner.cpp
--index 18a1a5a033..f5900236d6 100644
-+index 18a1a5a033..991f722170 100644
- --- a/test/sqlite/sqllogic_test_runner.cpp
- +++ b/test/sqlite/sqllogic_test_runner.cpp
- @@ -26,9 +26,12 @@ SQLLogicTestRunner::SQLLogicTestRunner(string dbpath) : dbpath(std::move(dbpath)
-@@ -125,7 +125,7 @@ index 18a1a5a033..f5900236d6 100644
-  	} else if (excluded_from_autoloading) {
- -		return RequireResult::MISSING;
- +		extensions.insert(param);
--+		auto r1 = con->Query("INSTALL " + param + " FROM http://extensions.duckdb.org/8e52ec4395/");
-++		auto r1 = con->Query("INSTALL " + param + ";");
- +		 if (r1->HasError()) {
- +			return RequireResult::MISSING;
- +		}
 diff --git a/test/api/test_results.cpp b/test/api/test_results.cpp
 index a4c8fe19fc..296f28d8d7 100644
 --- a/test/api/test_results.cpp
