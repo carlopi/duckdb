@@ -27,10 +27,18 @@ index 938bbe5f3f..11c6552796 100644
              GIT_URL https://github.com/duckdb/duckdb-postgres
              GIT_TAG 79fcce4a7478d245189d851ce289def2b42f4f93
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index fd2722e53d..8bcccc7c43 100644
+index fd2722e53d..bf5090cef4 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -1087,7 +1087,7 @@ macro(register_external_extension NAME URL COMMIT DONT_LINK DONT_BUILD LOAD_TEST
+@@ -284,6 +284,7 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
+   set(SUN TRUE)
+ endif()
+ 
++SET(OVERRIDE_GIT_DESCRIBE 'v1.2.1-0-g8e52ec4395')
+ 
+ if (OVERRIDE_GIT_DESCRIBE)
+   if (OVERRIDE_GIT_DESCRIBE MATCHES "^v[0-9]+\.[0-9]+\.[0-9]+\-[0-9]+\-g[a-f0-9]+$")
+@@ -1087,7 +1088,7 @@ macro(register_external_extension NAME URL COMMIT DONT_LINK DONT_BUILD LOAD_TEST
    FETCHCONTENT_DECLARE(
            ${NAME}_extension_fc
            GIT_REPOSITORY ${URL}
