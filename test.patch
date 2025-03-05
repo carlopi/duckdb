@@ -1,3 +1,31 @@
+diff --git a/.github/config/out_of_tree_extensions.cmake b/.github/config/out_of_tree_extensions.cmake
+index 938bbe5f3f..11c6552796 100644
+--- a/.github/config/out_of_tree_extensions.cmake
++++ b/.github/config/out_of_tree_extensions.cmake
+@@ -55,6 +55,7 @@ endif()
+ # for Delta
+ if (NOT MINGW AND NOT "${OS_NAME}" STREQUAL "linux" AND NOT ${WASM_ENABLED})
+     duckdb_extension_load(delta
++    LOAD_TESTS
+             GIT_URL https://github.com/duckdb/duckdb-delta
+             GIT_TAG 6d626173e9efa6615c25eb08d979d1372100d5db
+     )
+@@ -79,6 +80,7 @@ endif()
+ if (NOT MINGW AND NOT ${WASM_ENABLED} AND NOT ${MUSL_ENABLED})
+     duckdb_extension_load(iceberg
+ #            ${LOAD_ICEBERG_TESTS} TODO: re-enable once autoloading test is fixed
++    LOAD_TESTS
+             GIT_URL https://github.com/duckdb/duckdb-iceberg
+             GIT_TAG 43b4e37f6e859d6c1c67b787ac511659e9e0b6fb
+             )
+@@ -98,6 +100,7 @@ duckdb_extension_load(inet
+ #       uses a remote rds server but that's not something we want to run here.
+ if (NOT MINGW AND NOT ${WASM_ENABLED})
+     duckdb_extension_load(postgres_scanner
++    LOAD_TESTS
+             DONT_LINK
+             GIT_URL https://github.com/duckdb/duckdb-postgres
+             GIT_TAG 79fcce4a7478d245189d851ce289def2b42f4f93
 diff --git a/CMakeLists.txt b/CMakeLists.txt
 index fd2722e53d..8bcccc7c43 100644
 --- a/CMakeLists.txt
@@ -49,7 +77,7 @@ index 186cf7aa35..4144a48a56 100644
  SET allow_extensions_metadata_mismatch=true;
  
 diff --git a/test/sqlite/sqllogic_test_runner.cpp b/test/sqlite/sqllogic_test_runner.cpp
-index 18a1a5a033..f099e7e29b 100644
+index 18a1a5a033..f5900236d6 100644
 --- a/test/sqlite/sqllogic_test_runner.cpp
 +++ b/test/sqlite/sqllogic_test_runner.cpp
 @@ -26,9 +26,12 @@ SQLLogicTestRunner::SQLLogicTestRunner(string dbpath) : dbpath(std::move(dbpath)
@@ -89,7 +117,7 @@ index 18a1a5a033..f099e7e29b 100644
  	} else if (excluded_from_autoloading) {
 -		return RequireResult::MISSING;
 +		extensions.insert(param);
-+		auto r1 = con->Query("INSTALL " + param);
++		auto r1 = con->Query("INSTALL " + param + " FROM http://extensions.duckdb.org/8e52ec4395/");
 +		 if (r1->HasError()) {
 +			return RequireResult::MISSING;
 +		}
