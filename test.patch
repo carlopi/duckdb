@@ -27,14 +27,14 @@ index e714601444..a8b4afb7d5 100644
              GIT_URL https://github.com/duckdb/duckdb-postgres
              GIT_TAG 8461ed8b6f726564934e9c831cdc88d431e3148f
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index fd2722e53d..bf5090cef4 100644
+index fd2722e53d..e6f8c7fadd 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -284,6 +284,7 @@ if(${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
    set(SUN TRUE)
  endif()
  
-+SET(OVERRIDE_GIT_DESCRIBE 'v1.2.1-0-g8e52ec4395')
++SET(OVERRIDE_GIT_DESCRIBE v1.2.1-0-g8e52ec4395)
  
  if (OVERRIDE_GIT_DESCRIBE)
    if (OVERRIDE_GIT_DESCRIBE MATCHES "^v[0-9]+\.[0-9]+\.[0-9]+\-[0-9]+\-g[a-f0-9]+$")
