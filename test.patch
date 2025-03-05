@@ -1,5 +1,5 @@
 diff --git a/.github/config/out_of_tree_extensions.cmake b/.github/config/out_of_tree_extensions.cmake
-index 938bbe5f3f..11c6552796 100644
+index e714601444..a8b4afb7d5 100644
 --- a/.github/config/out_of_tree_extensions.cmake
 +++ b/.github/config/out_of_tree_extensions.cmake
 @@ -55,6 +55,7 @@ endif()
@@ -25,7 +25,7 @@ index 938bbe5f3f..11c6552796 100644
 +    LOAD_TESTS
              DONT_LINK
              GIT_URL https://github.com/duckdb/duckdb-postgres
-             GIT_TAG 79fcce4a7478d245189d851ce289def2b42f4f93
+             GIT_TAG 8461ed8b6f726564934e9c831cdc88d431e3148f
 diff --git a/CMakeLists.txt b/CMakeLists.txt
 index fd2722e53d..bf5090cef4 100644
 --- a/CMakeLists.txt
