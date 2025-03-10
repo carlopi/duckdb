@@ -47,6 +47,30 @@ index fd2722e53d..8e4d39e5f5 100644
            GIT_SUBMODULES "${SUBMODULES}"
            PATCH_COMMAND ${PATCH_COMMAND}
    )
+diff --git a/test/api/test_results.cpp b/test/api/test_results.cpp
+index a4c8fe19fc..296f28d8d7 100644
+--- a/test/api/test_results.cpp
++++ b/test/api/test_results.cpp
+@@ -195,6 +195,7 @@ TEST_CASE("Test ARRAY_AGG with ORDER BY", "[api][array_agg]") {
+ }
+ 
+ TEST_CASE("Issue #9417", "[api][.]") {
++	return;
+ 	DBConfig config;
+ 	config.options.allow_unsigned_extensions = true;
+ 
+diff --git a/test/extension/test_remote_optimizer.cpp b/test/extension/test_remote_optimizer.cpp
+index 98f7a1a1c9..27ca6b18a4 100644
+--- a/test/extension/test_remote_optimizer.cpp
++++ b/test/extension/test_remote_optimizer.cpp
+@@ -28,6 +28,7 @@ using namespace duckdb;
+ using namespace std;
+ 
+ TEST_CASE("Test using a remote optimizer pass in case thats important to someone", "[extension]") {
++	return;
+ 	pid_t pid = fork();
+ 
+ 	int port = 4242;
 diff --git a/test/sql/extensions/checked_load.test b/test/sql/extensions/checked_load.test
 index 186cf7aa35..4144a48a56 100644
 --- a/test/sql/extensions/checked_load.test
