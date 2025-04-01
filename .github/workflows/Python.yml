@@ -125,7 +125,6 @@ jobs:
 
   manylinux-extensions-x64:
     name: Linux Extensions (linux_amd64_gcc4)
-    needs: linux-python3-10
     runs-on: ubuntu-latest
     strategy:
       matrix:
