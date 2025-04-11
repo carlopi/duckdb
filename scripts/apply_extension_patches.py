@@ -6,11 +6,14 @@ import os
 
 # Get the directory and construct the patch file pattern
 directory = sys.argv[1]
-patch_pattern = f"{directory}*.patch"
+patch_pattern = f"{directory}/*.patch"
+
+print("HELLO", patch_pattern)
 
 # Find patch files matching the pattern
 patches = glob.glob(patch_pattern)
 
+print("HELLO2")
 
 def raise_error(error_msg):
     sys.stderr.write(error_msg + '\n')
@@ -18,7 +21,9 @@ def raise_error(error_msg):
 
 
 patches = sorted(os.listdir(directory))
+print("HELLO2.3", patches)
 for patch in patches:
+    print("HELLO3", patch)
     if not patch.endswith('.patch'):
         raise_error(
             f'Patch file {patch} found in directory {directory} does not end in ".patch" - rename the patch file'
