@@ -50,6 +50,7 @@ subprocess.run(["git", "reset", "--hard", "HEAD"], check=True)
 ARGUMENTS = ["patch", "-p1", "--forward", "-i"]
 for patch in patches:
     print(f"Applying patch: {patch}\n")
+    exit(0)
     arguments = []
     arguments.extend(ARGUMENTS)
     arguments.append(os.path.join(directory, patch))
