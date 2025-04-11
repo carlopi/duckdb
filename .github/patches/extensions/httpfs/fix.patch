@@ -1,7 +1,7 @@
-diff --git a/extension/httpfs/hffs.cpp b/extension/httpfs/hffs.cpp
+diff --git a/src/hffs.cpp b/src/hffs.cpp
 index 0273141..7ef5432 100644
---- a/extension/httpfs/hffs.cpp
-+++ b/extension/httpfs/hffs.cpp
+--- a/src/hffs.cpp
++++ b/src/hffs.cpp
 @@ -201,7 +201,7 @@ end:
  // - hf://datasets/lhoestq/demo1/default/train/*.parquet
  // - hf://datasets/lhoestq/demo1/*/train/file_[abc].parquet
@@ -20,10 +20,10 @@ index 0273141..7ef5432 100644
  	for (const auto &file : files) {
  
  		vector<string> file_splits = StringUtil::Split(file, "/");
-diff --git a/extension/httpfs/include/hffs.hpp b/extension/httpfs/include/hffs.hpp
+diff --git a/src/include/hffs.hpp b/src/include/hffs.hpp
 index 27f44c3..49c7f83 100644
---- a/extension/httpfs/include/hffs.hpp
-+++ b/extension/httpfs/include/hffs.hpp
+--- a/src/include/hffs.hpp
++++ b/src/include/hffs.hpp
 @@ -22,7 +22,7 @@ class HuggingFaceFileSystem : public HTTPFileSystem {
  public:
  	~HuggingFaceFileSystem() override;
@@ -33,10 +33,10 @@ index 27f44c3..49c7f83 100644
  
  	duckdb::unique_ptr<ResponseWrapper> HeadRequest(FileHandle &handle, string hf_url, HeaderMap header_map) override;
  	duckdb::unique_ptr<ResponseWrapper> GetRequest(FileHandle &handle, string hf_url, HeaderMap header_map) override;
-diff --git a/extension/httpfs/include/httpfs.hpp b/extension/httpfs/include/httpfs.hpp
+diff --git a/src/include/httpfs.hpp b/src/include/httpfs.hpp
 index 9dc9eda..e2fac97 100644
---- a/extension/httpfs/include/httpfs.hpp
-+++ b/extension/httpfs/include/httpfs.hpp
+--- a/src/include/httpfs.hpp
++++ b/src/include/httpfs.hpp
 @@ -148,7 +148,7 @@ public:
  	static duckdb::unique_ptr<duckdb_httplib_openssl::Headers> InitializeHeaders(HeaderMap &header_map,
  	                                                                             const HTTPParams &http_params);
@@ -46,10 +46,10 @@ index 9dc9eda..e2fac97 100644
  		return {path}; // FIXME
  	}
  
-diff --git a/extension/httpfs/include/s3fs.hpp b/extension/httpfs/include/s3fs.hpp
+diff --git a/src/include/s3fs.hpp b/src/include/s3fs.hpp
 index c8fd897..8e8a4df 100644
---- a/extension/httpfs/include/s3fs.hpp
-+++ b/extension/httpfs/include/s3fs.hpp
+--- a/src/include/s3fs.hpp
++++ b/src/include/s3fs.hpp
 @@ -211,7 +211,7 @@ public:
  	// Note: caller is responsible to not call this method twice on the same buffer
  	static void UploadBuffer(S3FileHandle &file_handle, shared_ptr<S3WriteBuffer> write_buffer);
@@ -59,10 +59,10 @@ index c8fd897..8e8a4df 100644
  	bool ListFiles(const string &directory, const std::function<void(const string &, bool)> &callback,
  	               FileOpener *opener = nullptr) override;
  
-diff --git a/extension/httpfs/s3fs.cpp b/extension/httpfs/s3fs.cpp
+diff --git a/src/s3fs.cpp b/src/s3fs.cpp
 index 48a6ce5..4898c36 100644
---- a/extension/httpfs/s3fs.cpp
-+++ b/extension/httpfs/s3fs.cpp
+--- a/src/s3fs.cpp
++++ b/src/s3fs.cpp
 @@ -887,7 +887,7 @@ static bool Match(vector<string>::const_iterator key, vector<string>::const_iter
  	return key == key_end && pattern == pattern_end;
  }

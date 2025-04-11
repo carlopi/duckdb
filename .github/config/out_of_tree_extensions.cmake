@@ -23,9 +23,9 @@
 #  - IMPORTANT: add a comment that tells people to restore the windows build when removing the patches
 duckdb_extension_load(httpfs
     LOAD_TESTS
-    GIT_URL https://github.com/duckdb/duckdb-httpfs
-    GIT_TAG 85ac4667bcb0d868199e156f8dd918b0278db7b9
-    INCLUDE_DIR extension/httpfs/include
+    GIT_URL https://github.com/carlopi/duckdb_httpfs
+    GIT_TAG 344423094c84c37de1cd4b867f77a3aa2d95c725
+    INCLUDE_DIR include
     APPLY_PATCHES
     )
 
