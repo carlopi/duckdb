@@ -1073,10 +1073,10 @@ macro(register_external_extension NAME URL COMMIT DONT_LINK DONT_BUILD LOAD_TEST
           ${NAME}_extension_fc
           GIT_REPOSITORY ${URL}
           GIT_TAG ${COMMIT}
-          GIT_SUBMODULES "${SUBMODULES}"
-          PATCH_COMMAND ${PATCH_COMMAND}
+          GIT_SUBMODULES ""
+          PATCH_COMMAND "${PATCH_COMMAND}"
   )
-  FETCHCONTENT_POPULATE(${NAME}_EXTENSION_FC)
+  FETCHCONTENT_POPULATE(${NAME}_extension_fc)
 
   # Autogenerate version tag if not provided
   if ("${EXTENSION_VERSION}" STREQUAL "")
