@@ -1065,9 +1065,13 @@ endfunction()
 
 # Downloads the external extension repo at the specified commit and calls register_extension
 macro(register_external_extension NAME URL COMMIT DONT_LINK DONT_BUILD LOAD_TESTS PATH INCLUDE_PATH TEST_PATH APPLY_PATCHES LINKED_LIBS SUBMODULES EXTENSION_VERSION)
+	message(STATUS "hello, register_external_extension, ${NAME}")
   include(FetchContent)
+	message(STATUS "hello, register_external_extension, ${NAME}, fetchcontented")
   if (${APPLY_PATCHES})
-    set(PATCH_COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/apply_extension_patches.py ${CMAKE_SOURCE_DIR}/.github/patches/extensions/${NAME}/)
+	message(STATUS "hello, register_external_extension, ${NAME}, setting PATCH COMMAND")
+    set(PATCH_COMMAND "${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/apply_extension_patches.py ${CMAKE_SOURCE_DIR}/.github/patches/extensions/${NAME}/")
+	message(STATUS "hello, register_external_extension, ${NAME}, setting PATCH COMMAND to ${PATCH_COMMAND}")
   endif()
   FETCHCONTENT_DECLARE(
           ${NAME}_extension_fc
