@@ -1070,7 +1070,7 @@ macro(register_external_extension NAME URL COMMIT DONT_LINK DONT_BUILD LOAD_TEST
 	message(STATUS "hello, register_external_extension, ${NAME}, fetchcontented")
   if (${APPLY_PATCHES})
 	message(STATUS "hello, register_external_extension, ${NAME}, setting PATCH COMMAND")
-    set(PATCH_COMMAND "${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/apply_extension_patches.py ${CMAKE_SOURCE_DIR}/.github/patches/extensions/${NAME}/")
+    set(PATCH_COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/apply_extension_patches.py ${CMAKE_SOURCE_DIR}/.github/patches/extensions/${NAME})
 	message(STATUS "hello, register_external_extension, ${NAME}, setting PATCH COMMAND to ${PATCH_COMMAND}")
   endif()
   FETCHCONTENT_DECLARE(
