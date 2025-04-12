@@ -37,7 +37,7 @@ private:
 
 public:
 	static constexpr uint32_t MAXIMUM_POSSIBLE_SIZE = INVALID_INDEX - 1;
-	static constexpr idx_t INITIAL_TARGET_CAPACITY = 1048576;
+	static constexpr idx_t INITIAL_TARGET_CAPACITY = 32;
 
 	//! PrimitiveDictionary is a fixed-size linear probing hash table for primitive types
 	//! It is used to dictionary-encode data in, e.g., Parquet files
