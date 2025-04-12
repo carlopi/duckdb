@@ -84,8 +84,8 @@ jobs:
     - name: Test
       if: ${{ inputs.skip_tests != 'true' }}
       shell: bash
-      run: GEN=ninja make unittest_relassert
-
+      run: |
+          python3 scripts/run_tests_one_by_one.py build/relassert/test/unittest "*" --no-exit --timeout 1200
     - name: Amalgamation
       if: ${{ inputs.skip_tests != 'true' }}
       shell: bash
