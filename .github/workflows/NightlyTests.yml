@@ -65,11 +65,10 @@ jobs:
 
   release-assert:
     name: Release Assertions
-    runs-on: ubuntu-22.04
-    needs: linux-memory-leaks
+    runs-on: ubuntu-latest
     env:
-      CC: gcc-10
-      CXX: g++-10
+      CC: clang
+      CXX: clang++
       GEN: ninja
       BUILD_JEMALLOC: 1
       CORE_EXTENSIONS: "icu;tpch;tpcds;fts;json;inet"
@@ -84,7 +83,7 @@ jobs:
 
     - name: Install
       shell: bash
-      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build
+      run: sudo apt-get update -y -qq && sudo apt-get install -y -qq ninja-build clang
 
     - name: Setup Ccache
       uses: hendrikmuhs/ccache-action@main
@@ -104,8 +103,9 @@ jobs:
   release-assert-osx:
     name: Release Assertions OSX
     runs-on: macos-latest
-    needs: linux-memory-leaks
     env:
+      CC: clang
+      CXX: clang++
       GEN: ninja
       CORE_EXTENSIONS: "icu;tpch;tpcds;fts;json;inet"
       DISABLE_SANITIZER: 1
@@ -121,7 +121,7 @@ jobs:
         python-version: '3.12'
 
     - name: Install Ninja
-      run: brew install ninja
+      run: brew install ninja llvm
 
     - name: Setup Ccache
       uses: hendrikmuhs/ccache-action@main
@@ -131,7 +131,7 @@ jobs:
 
     - name: Build
       shell: bash
-      run: UNSAFE_NUMERIC_CAST=1 make relassert
+      run: CMAKE_LLVM_PATH='/opt/homebrew/opt/llvm' UNSAFE_NUMERIC_CAST=1 make relassert
 
     - name: Test
       shell: bash
@@ -141,8 +141,9 @@ jobs:
   release-assert-osx-storage:
     name: Release Assertions OSX Storage
     runs-on: macos-latest
-    needs: linux-memory-leaks
     env:
+      CC: clang
+      CXX: clang++
       GEN: ninja
       CORE_EXTENSIONS: "icu;tpch;tpcds;fts;json;inet"
       DISABLE_SANITIZER: 1
@@ -158,7 +159,7 @@ jobs:
         python-version: '3.12'
 
     - name: Install Ninja
-      run: brew install ninja
+      run: brew install ninja llvm
 
     - name: Setup Ccache
       uses: hendrikmuhs/ccache-action@main
@@ -168,7 +169,7 @@ jobs:
 
     - name: Build
       shell: bash
-      run: UNSAFE_NUMERIC_CAST=1 make relassert
+      run: CMAKE_LLVM_PATH='/opt/homebrew/opt/llvm' UNSAFE_NUMERIC_CAST=1 make relassert
 
     - name: Test
       shell: bash
