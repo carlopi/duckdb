@@ -105,6 +105,7 @@ jobs:
       EXTENSION_CONFIGS: '${GITHUB_WORKSPACE}/.github/config/bundled_extensions.cmake'
       ENABLE_EXTENSION_AUTOLOADING: 1
       ENABLE_EXTENSION_AUTOINSTALL: 1
+      LTO: thin
       OSX_BUILD_UNIVERSAL: 1
       GEN: ninja
 
@@ -272,6 +273,7 @@ jobs:
           EXTENSION_TESTS_ONLY: 1
           ENABLE_EXTENSION_AUTOLOADING: 1
           ENABLE_EXTENSION_AUTOINSTALL: 1
+          LTO: thin
         run: |
           rm -rf build/release
           make

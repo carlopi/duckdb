@@ -53,6 +53,7 @@ jobs:
       EXTENSION_CONFIGS: '${GITHUB_WORKSPACE}/.github/config/bundled_extensions.cmake'
       ENABLE_EXTENSION_AUTOLOADING: 1
       ENABLE_EXTENSION_AUTOINSTALL: 1
+      LTO: thin
       GEN: ninja
 
     steps:
@@ -109,6 +110,7 @@ jobs:
     env:
       ENABLE_EXTENSION_AUTOLOADING: 1
       ENABLE_EXTENSION_AUTOINSTALL: 1
+      LTO: thin
     steps:
       - uses: actions/checkout@v4
         with:
@@ -186,6 +188,7 @@ jobs:
           -e EXTENSION_CONFIGS="$PWD/.github/config/bundled_extensions.cmake"    \
           -e ENABLE_EXTENSION_AUTOLOADING=1                                      \
           -e ENABLE_EXTENSION_AUTOINSTALL=1                                      \
+          -e LTO=thin                                                            \
           -e BUILD_BENCHMARK=1                                                   \
           -e FORCE_WARN_UNUSED=1                                                 \
           quay.io/pypa/manylinux_2_28_${{ matrix.config.image }}                  \
