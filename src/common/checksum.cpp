@@ -65,6 +65,7 @@ hash_t ChecksumRemainder(void *ptr, size_t len) noexcept {
 }
 
 uint64_t Checksum(uint8_t *buffer, size_t size) {
+	D_ASSERT(((uint64_t)(void*)buffer )%8 == 0);
 	uint64_t result = 5381;
 	uint64_t *ptr = reinterpret_cast<uint64_t *>(buffer);
 	size_t i;
