@@ -754,7 +754,7 @@ ParquetReader::ParquetReader(ClientContext &context_p, OpenFileInfo file_p, Parq
 	// or if this file has cached metadata
 	// or if the cached version already expired
 	if (!metadata_p) {
-		Value metadata_cache = false;
+		Value metadata_cache = true;
 		context_p.TryGetCurrentSetting("parquet_metadata_cache", metadata_cache);
 		if (!metadata_cache.GetValue<bool>()) {
 			metadata = LoadMetadata(context_p, allocator, *file_handle, parquet_options.encryption_config,
