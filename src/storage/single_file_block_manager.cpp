@@ -1,6 +1,7 @@
 #include "duckdb/storage/single_file_block_manager.hpp"
 
 #include "duckdb/common/allocator.hpp"
+#include "duckdb/common/buffered_file_handle.hpp"
 #include "duckdb/common/checksum.hpp"
 #include "duckdb/common/exception.hpp"
 #include "duckdb/common/serializer/memory_stream.hpp"
@@ -267,6 +268,8 @@ void SingleFileBlockManager::LoadExistingDatabase() {
 		// this can only happen in read-only mode - as that is when we set FILE_FLAGS_NULL_IF_NOT_EXISTS
 		throw IOException("Cannot open database \"%s\" in read-only mode: database does not exist", path);
 	}
+
+	handle = make_uniq<BufferedFileHandle>(std::move(handle), 0, Storage::FILE_HEADER_SIZE * 3, Allocator::Get(db));
 
 	MainHeader::CheckMagicBytes(*handle);
 	// otherwise, we check the metadata of the file
