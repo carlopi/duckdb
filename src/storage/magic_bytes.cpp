@@ -19,7 +19,7 @@ DataFileType MagicBytes::CheckMagicBytes(FileSystem &fs, const string &path, uni
 		if (!handle) {
 			return DataFileType::FILE_DOES_NOT_EXIST;
 		}
-		file_handle = make_uniq<BufferedFileHandle>(std::move(handle), 0, Storage::FILE_HEADER_SIZE * 3);
+		file_handle = make_uniq<BufferedFileHandle>(std::move(handle), (size_t)0, Storage::FILE_HEADER_SIZE * 3);
 	}
 
 	constexpr const idx_t MAGIC_BYTES_READ_SIZE = 16;
