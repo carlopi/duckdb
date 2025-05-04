@@ -3,7 +3,8 @@
 
 namespace duckdb {
 
-BufferedFileHandle::BufferedFileHandle(unique_ptr<FileHandle> inner_handle, size_t start, size_t end, Allocator &allocator)
+BufferedFileHandle::BufferedFileHandle(unique_ptr<FileHandle> inner_handle, size_t start, size_t end,
+                                       Allocator &allocator)
     : WrappedFileHandle(std::move(inner_handle)), start(start), end(end) {
 	if (start > end) {
 		throw InvalidInputException("Range in BufferedFileHandle constructor wrongly set");
