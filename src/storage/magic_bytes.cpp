@@ -1,6 +1,7 @@
 #include "duckdb/storage/magic_bytes.hpp"
 #include "duckdb/common/local_file_system.hpp"
 #include "duckdb/storage/storage_info.hpp"
+#include "duckdb/common/buffered_file_handle.hpp"
 
 namespace duckdb {
 
@@ -18,13 +19,13 @@ DataFileType MagicBytes::CheckMagicBytes(FileSystem &fs, const string &path, uni
 		if (!handle) {
 			return DataFileType::FILE_DOES_NOT_EXIST;
 		}
-		file_handle = std::move(handle);
+		file_handle = make_uniq<BufferedFileHandle>(std::move(handle), 0, Storage::FILE_HEADER_SIZE * 3);
 	}
 
 	constexpr const idx_t MAGIC_BYTES_READ_SIZE = 16;
 	char buffer[MAGIC_BYTES_READ_SIZE] = {};
 
-	file_handle->Read(buffer, MAGIC_BYTES_READ_SIZE);
+	file_handle->Read(buffer, MAGIC_BYTES_READ_SIZE, 0);
 	if (memcmp(buffer, "SQLite format 3\0", 16) == 0) {
 		return DataFileType::SQLITE_FILE;
 	}
