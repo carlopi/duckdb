@@ -13,7 +13,7 @@ namespace duckdb {
 struct FileHandle;
 
 struct BufferedFileHandle : public WrappedFileHandle {
-	DUCKDB_API BufferedFileHandle(unique_ptr<FileHandle> inner_handle, size_t start, size_t end, Allocator &allocator);
+	DUCKDB_API BufferedFileHandle(unique_ptr<FileHandle> inner_handle, size_t start, size_t end);
 	DUCKDB_API ~BufferedFileHandle();
 
 	DUCKDB_API int64_t Read(void *buffer, idx_t nr_bytes) override {

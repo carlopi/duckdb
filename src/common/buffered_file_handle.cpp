@@ -3,8 +3,7 @@
 
 namespace duckdb {
 
-BufferedFileHandle::BufferedFileHandle(unique_ptr<FileHandle> inner_handle, size_t start, size_t end,
-                                       Allocator &allocator)
+BufferedFileHandle::BufferedFileHandle(unique_ptr<FileHandle> inner_handle, size_t start, size_t end)
     : WrappedFileHandle(std::move(inner_handle)), start(start), end(end) {
 	if (start > end) {
 		throw InvalidInputException("Range in BufferedFileHandle constructor wrongly set");
@@ -13,7 +12,7 @@ BufferedFileHandle::BufferedFileHandle(unique_ptr<FileHandle> inner_handle, size
 	if (end > file_size) {
 		end = file_size;
 	}
-	buffered = allocator.Allocate(end - start);
+	buffered = Allocator::DefaultAllocator().Allocate(end - start);
 	GetInner().Read(buffered.get(), end - start, start);
 }
 
