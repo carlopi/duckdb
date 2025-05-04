@@ -3,6 +3,7 @@
 #include "duckdb/common/allocator.hpp"
 #include "duckdb/common/exception.hpp"
 #include "duckdb/common/file_system.hpp"
+#include "duckdb/common/buffered_file_handle.hpp"
 #include "duckdb/common/helper.hpp"
 #include "duckdb/storage/storage_info.hpp"
 #include "duckdb/storage/block_manager.hpp"
@@ -101,6 +102,11 @@ void FileBuffer::Resize(BlockManager &block_manager) {
 }
 
 void FileBuffer::Read(FileHandle &handle, uint64_t location) {
+	D_ASSERT(type != FileBufferType::TINY_BUFFER);
+	handle.Read(internal_buffer, internal_size, location);
+}
+
+void FileBuffer::Read(BufferedFileHandle &handle, uint64_t location) {
 	D_ASSERT(type != FileBufferType::TINY_BUFFER);
 	handle.Read(internal_buffer, internal_size, location);
 }

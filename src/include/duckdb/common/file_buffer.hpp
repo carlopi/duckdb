@@ -15,6 +15,7 @@ namespace duckdb {
 class Allocator;
 class BlockManager;
 struct FileHandle;
+struct BufferedFileHandle;
 
 enum class FileBufferType : uint8_t { BLOCK = 1, MANAGED_BUFFER = 2, TINY_BUFFER = 3 };
 
@@ -43,6 +44,7 @@ public:
 public:
 	//! Read into the FileBuffer from the specified location.
 	void Read(FileHandle &handle, uint64_t location);
+	void Read(BufferedFileHandle &handle, uint64_t location);
 	//! Write the contents of the FileBuffer to the specified location.
 	void Write(FileHandle &handle, uint64_t location);
 
