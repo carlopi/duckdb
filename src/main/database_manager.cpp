@@ -151,7 +151,7 @@ vector<string> DatabaseManager::GetAttachedDatabasePaths() {
 }
 
 void DatabaseManager::GetDatabaseType(ClientContext &context, AttachInfo &info, const DBConfig &config,
-                                      AttachOptions &options) {
+                                      AttachOptions &options, unique_ptr<FileHandle> file_handle) {
 
 	// Test if the database is a DuckDB database file.
 	if (StringUtil::CIEquals(options.db_type, "DUCKDB")) {
@@ -163,8 +163,12 @@ void DatabaseManager::GetDatabaseType(ClientContext &context, AttachInfo &info, 
 	if (options.db_type.empty()) {
 		CheckPathConflict(context, info.path);
 
-		auto &fs = FileSystem::GetFileSystem(context);
-		DBPathAndType::CheckMagicBytes(fs, info.path, options.db_type);
+		if (file_handle) {
+			MainHeader::CheckMagicBytes(*file_handle);
+		} else {
+			auto &fs = FileSystem::GetFileSystem(context);
+			DBPathAndType::CheckMagicBytes(fs, info.path, options.db_type);
+		}
 	}
 
 	if (options.db_type.empty()) {
