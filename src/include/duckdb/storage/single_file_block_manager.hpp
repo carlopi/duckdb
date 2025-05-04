@@ -103,7 +103,10 @@ private:
 	//!	to detect inconsistencies with the file header.
 	void Initialize(const DatabaseHeader &header, const optional_idx block_alloc_size);
 
-	void ReadAndChecksum(FileBuffer &handle, uint64_t location, bool skip_block_header = false) const;
+	template <typename FILE_HANDLE_TYPE>
+	void ReadAndChecksum(FILE_HANDLE_TYPE &handle, FileBuffer &buffer, uint64_t location,
+	                     bool skip_block_header = false) const;
+	void VerifyChecksum(FileBuffer &handle, uint64_t location, bool skip_block_header = false) const;
 	void ChecksumAndWrite(FileBuffer &handle, uint64_t location, bool skip_block_header = false) const;
 
 	idx_t GetBlockLocation(block_id_t block_id);

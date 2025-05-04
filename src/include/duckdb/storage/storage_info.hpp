@@ -90,7 +90,8 @@ struct MainHeader {
 	uint64_t version_number;
 	//! The set of flags used by the database
 	uint64_t flags[FLAG_COUNT];
-	static void CheckMagicBytes(FileHandle &handle);
+	template <typename FILE_HANDLE_TYPE>
+	static void CheckMagicBytes(FILE_HANDLE_TYPE &handle);
 
 	string LibraryGitDesc() {
 		return string(char_ptr_cast(library_git_desc), 0, MAX_VERSION_SIZE);

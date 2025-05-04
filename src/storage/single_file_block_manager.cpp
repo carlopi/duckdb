@@ -3,6 +3,7 @@
 #include "duckdb/common/allocator.hpp"
 #include "duckdb/common/checksum.hpp"
 #include "duckdb/common/exception.hpp"
+#include "duckdb/common/buffered_file_handle.hpp"
 #include "duckdb/common/serializer/memory_stream.hpp"
 #include "duckdb/main/attached_database.hpp"
 #include "duckdb/main/config.hpp"
@@ -41,7 +42,8 @@ void MainHeader::Write(WriteStream &ser) {
 	SerializeVersionNumber(ser, DuckDB::SourceID());
 }
 
-void MainHeader::CheckMagicBytes(FileHandle &handle) {
+template <typename FILE_HANDLE_TYPE>
+void MainHeader::CheckMagicBytes(FILE_HANDLE_TYPE &handle) {
 	data_t magic_bytes[MAGIC_BYTE_SIZE];
 	if (handle.GetFileSize() < MainHeader::MAGIC_BYTE_SIZE + MainHeader::MAGIC_BYTE_OFFSET) {
 		throw IOException("The file \"%s\" exists, but it is not a valid DuckDB database file!", handle.GetPath());
@@ -268,9 +270,11 @@ void SingleFileBlockManager::LoadExistingDatabase() {
 		throw IOException("Cannot open database \"%s\" in read-only mode: database does not exist", path);
 	}
 
-	MainHeader::CheckMagicBytes(*handle);
+	BufferedFileHandle buffered(*handle, 0, Storage::FILE_HEADER_SIZE * 3, Allocator::Get(db));
+
+	MainHeader::CheckMagicBytes(buffered);
 	// otherwise, we check the metadata of the file
-	ReadAndChecksum(header_buffer, 0, true);
+	ReadAndChecksum(buffered, header_buffer, 0, true);
 
 	uint64_t delta = 0;
 	if (GetBlockHeaderSize() > DEFAULT_BLOCK_HEADER_STORAGE_SIZE) {
@@ -291,11 +295,11 @@ void SingleFileBlockManager::LoadExistingDatabase() {
 
 	// read the database headers from disk
 	DatabaseHeader h1;
-	ReadAndChecksum(header_buffer, Storage::FILE_HEADER_SIZE);
+	ReadAndChecksum(buffered, header_buffer, Storage::FILE_HEADER_SIZE);
 	h1 = DeserializeDatabaseHeader(main_header, header_buffer.buffer);
 
 	DatabaseHeader h2;
-	ReadAndChecksum(header_buffer, Storage::FILE_HEADER_SIZE * 2ULL);
+	ReadAndChecksum(buffered, header_buffer, Storage::FILE_HEADER_SIZE * 2ULL);
 	h2 = DeserializeDatabaseHeader(main_header, header_buffer.buffer);
 
 	// check the header with the highest iteration count
@@ -312,12 +316,19 @@ void SingleFileBlockManager::LoadExistingDatabase() {
 	LoadFreeList();
 }
 
-void SingleFileBlockManager::ReadAndChecksum(FileBuffer &block, uint64_t location, bool skip_block_header) const {
+template <typename FILE_HANDLE_TYPE>
+void SingleFileBlockManager::ReadAndChecksum(FILE_HANDLE_TYPE &handle, FileBuffer &block, uint64_t location,
+                                             bool skip_block_header) const {
+	// read the buffer from disk
+	block.Read(handle, location);
+
+	VerifyChecksum(block, location, skip_block_header);
+}
+
+void SingleFileBlockManager::VerifyChecksum(FileBuffer &block, uint64_t location, bool skip_block_header) const {
 	//! calculate delta header bytes (if any)
 	uint64_t delta = GetBlockHeaderSize() - Storage::DEFAULT_BLOCK_HEADER_SIZE;
 
-	// read the buffer from disk
-	block.Read(*handle, location);
 	uint64_t stored_checksum;
 	uint64_t computed_checksum;
 
@@ -397,6 +408,7 @@ void SingleFileBlockManager::Initialize(const DatabaseHeader &header, const opti
 }
 
 void SingleFileBlockManager::LoadFreeList() {
+	return;
 	MetaBlockPointer free_pointer(free_list_id, 0);
 	if (!free_pointer.IsValid()) {
 		// no free list
@@ -620,7 +632,7 @@ idx_t SingleFileBlockManager::GetBlockLocation(block_id_t block_id) {
 void SingleFileBlockManager::Read(Block &block) {
 	D_ASSERT(block.id >= 0);
 	D_ASSERT(std::find(free_list.begin(), free_list.end(), block.id) == free_list.end());
-	ReadAndChecksum(block, GetBlockLocation(block.id));
+	ReadAndChecksum(*handle, block, GetBlockLocation(block.id));
 }
 
 void SingleFileBlockManager::ReadBlocks(FileBuffer &buffer, block_id_t start_block, idx_t block_count) {
