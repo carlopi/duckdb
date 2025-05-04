@@ -41,4 +41,4 @@ void BufferedFileHandle::Read(void *buffer, idx_t nr_bytes, idx_t location) {
 	}
 }
 
-}; // namespace duckdb
+} // namespace duckdb
