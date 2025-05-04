@@ -1,7 +1,6 @@
 
 #include "duckdb/common/buffered_file_handle.hpp"
 
-#include <iostream>
 namespace duckdb {
 
 BufferedFileHandle::BufferedFileHandle(unique_ptr<FileHandle> inner_handle, size_t start, size_t end, Allocator &allocator)
@@ -22,7 +21,6 @@ BufferedFileHandle::~BufferedFileHandle() {
 }
 
 void BufferedFileHandle::Read(void *buffer, idx_t nr_bytes, idx_t location) {
-	std::cout << "BufferedFileHandle::Read " << nr_bytes << " from  " << location << "\n";
 	data_ptr_t ptr = static_cast<data_ptr_t>(buffer);
 	idx_t current_location = location;
 
