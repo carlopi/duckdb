@@ -117,7 +117,7 @@ struct WrappedFileHandle : public FileHandle {
 public:
 	DUCKDB_API explicit WrappedFileHandle(unique_ptr<FileHandle> inner);
 	WrappedFileHandle(const WrappedFileHandle &) = delete;
-	DUCKDB_API override ~WrappedFileHandle() {};
+	DUCKDB_API ~WrappedFileHandle() override {};
 
 	// Read at [nr_bytes] bytes into [buffer], and return the bytes actually read.
 	// File offset will be changed, which advances for number of bytes read.
