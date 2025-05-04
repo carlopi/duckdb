@@ -115,9 +115,9 @@ public:
 
 struct WrappedFileHandle : public FileHandle {
 public:
-	DUCKDB_API WrappedFileHandle(unique_ptr<FileHandle> inner);
+	DUCKDB_API explicit WrappedFileHandle(unique_ptr<FileHandle> inner);
 	WrappedFileHandle(const WrappedFileHandle &) = delete;
-	DUCKDB_API ~WrappedFileHandle() {};
+	DUCKDB_API override ~WrappedFileHandle() {};
 
 	// Read at [nr_bytes] bytes into [buffer], and return the bytes actually read.
 	// File offset will be changed, which advances for number of bytes read.
@@ -134,8 +134,8 @@ public:
 	}
 	DUCKDB_API string ReadLine();
 	DUCKDB_API bool Trim(idx_t offset_bytes, idx_t length_bytes);
-	DUCKDB_API virtual idx_t GetProgress() override;
-	DUCKDB_API virtual FileCompressionType GetFileCompressionType() override;
+	DUCKDB_API idx_t GetProgress() override;
+	DUCKDB_API FileCompressionType GetFileCompressionType() override;
 	DUCKDB_API void Truncate(int64_t new_size) override = 0;
 
 	DUCKDB_API bool CanSeek();
