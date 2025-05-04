@@ -273,7 +273,8 @@ void SingleFileBlockManager::LoadExistingDatabase() {
 		throw IOException("Cannot open database \"%s\" in read-only mode: database does not exist", path);
 	}
 
-	handle = make_uniq<BufferedFileHandle>(std::move(handle), 0, Storage::FILE_HEADER_SIZE * 3, Allocator::Get(db));
+	handle =
+	    make_uniq<BufferedFileHandle>(std::move(handle), (size_t)0, Storage::FILE_HEADER_SIZE * 3, Allocator::Get(db));
 
 	MainHeader::CheckMagicBytes(*handle);
 	// otherwise, we check the metadata of the file
