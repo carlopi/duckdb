@@ -12,6 +12,10 @@ DataFileType MagicBytes::CheckMagicBytes(FileSystem &fs, const string &path, uni
 		auto handle = fs.OpenFile(path, FileFlags::FILE_FLAGS_READ | FileFlags::FILE_FLAGS_NULL_IF_NOT_EXISTS |
 		                                    FileFlags::FILE_FLAGS_PARALLEL_ACCESS | FileLockType::READ_LOCK);
 		if (!handle) {
+			// Try again without extra flags
+			handle = fs.OpenFile(path, FileFlags::FILE_FLAGS_READ | FileFlags::FILE_FLAGS_NULL_IF_NOT_EXISTS);
+		}
+		if (!handle) {
 			return DataFileType::FILE_DOES_NOT_EXIST;
 		}
 		file_handle = std::move(handle);
