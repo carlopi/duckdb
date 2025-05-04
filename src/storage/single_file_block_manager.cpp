@@ -408,7 +408,6 @@ void SingleFileBlockManager::Initialize(const DatabaseHeader &header, const opti
 }
 
 void SingleFileBlockManager::LoadFreeList() {
-	return;
 	MetaBlockPointer free_pointer(free_list_id, 0);
 	if (!free_pointer.IsValid()) {
 		// no free list
