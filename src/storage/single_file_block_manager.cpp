@@ -204,6 +204,10 @@ void SingleFileBlockManager::CreateNewDatabase() {
 	// open the RDBMS handle
 	auto &fs = FileSystem::Get(db);
 	handle = fs.OpenFile(path, flags);
+	if (!handle) {
+		throw InternalException("Cannot create database \"%s\" due to unforseen file system problem", path);
+	}
+
 	header_buffer.Clear();
 
 	options.version_number = GetVersionNumber();
