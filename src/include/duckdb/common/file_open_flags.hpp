@@ -111,6 +111,10 @@ public:
 		return flags;
 	}
 
+	bool operator==(const FileOpenFlags &rhs) const {
+		return flags == rhs.flags && lock == rhs.lock && compression == rhs.compression;
+	}
+
 private:
 	idx_t flags = 0;
 	FileLockType lock = FileLockType::NO_LOCK;

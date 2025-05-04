@@ -77,12 +77,13 @@ SourceResultType PhysicalAttach::GetData(ExecutionContext &context, DataChunk &c
 	}
 
 	// Get the database type and attach the database.
-	db_manager.GetDatabaseType(context.client, *info, config, options);
+	unique_ptr<FileHandle> file_handle;
+	db_manager.GetDatabaseType(context.client, *info, config, options, file_handle);
 	auto attached_db = db_manager.AttachDatabase(context.client, *info, options);
 
 	//! Initialize the database.
 	const auto storage_options = info->GetStorageOptions();
-	attached_db->Initialize(context.client, storage_options);
+	attached_db->Initialize(context.client, storage_options, std::move(file_handle));
 	if (!options.default_table.name.empty()) {
 		attached_db->GetCatalog().SetDefaultTable(options.default_table.schema, options.default_table.name);
 	}

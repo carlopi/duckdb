@@ -52,7 +52,7 @@ public:
 	void CreateNewDatabase();
 	//! Loads an existing database. We pass the provided block allocation size as a parameter
 	//! to detect inconsistencies with the file header.
-	void LoadExistingDatabase();
+	void LoadExistingDatabase(unique_ptr<FileHandle> file_handle);
 
 	//! Creates a new Block using the specified block_id and returns a pointer
 	unique_ptr<Block> ConvertBlock(block_id_t block_id, FileBuffer &source_buffer) override;

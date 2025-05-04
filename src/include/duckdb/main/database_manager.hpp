@@ -47,7 +47,8 @@ public:
 	optional_ptr<AttachedDatabase> GetDatabase(ClientContext &context, const string &name);
 	//! Attach a new database
 	optional_ptr<AttachedDatabase> AttachDatabase(ClientContext &context, const AttachInfo &info,
-	                                              const AttachOptions &options);
+	                                              const AttachOptions &options,
+	                                              unique_ptr<FileHandle> file_handle = nullptr);
 	//! Detach an existing database
 	void DetachDatabase(ClientContext &context, const string &name, OnEntryNotFound if_not_found);
 	//! Returns a reference to the system catalog
@@ -65,7 +66,7 @@ public:
 	//! necessary. We can only grab the file handle, if it is not yet held, even for uncommitted changes. Thus, we have
 	//! to lock for this operation.
 	void GetDatabaseType(ClientContext &context, AttachInfo &info, const DBConfig &config, AttachOptions &options,
-	                     unique_ptr<FileHandle> file_handle = nullptr);
+	                     unique_ptr<FileHandle> &file_handle);
 	//! Scans the catalog set and adds each committed database entry, and each database entry of the current
 	//! transaction, to a vector holding AttachedDatabase references
 	vector<reference<AttachedDatabase>> GetDatabases(ClientContext &context);

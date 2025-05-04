@@ -92,11 +92,13 @@ bool StorageManager::InMemory() {
 	return path == IN_MEMORY_PATH;
 }
 
-void StorageManager::Initialize(StorageOptions options) {
+void StorageManager::Initialize(StorageOptions options, unique_ptr<FileHandle> handle) {
 	bool in_memory = InMemory();
 	if (in_memory && read_only) {
 		throw CatalogException("Cannot launch in-memory database in read-only mode!");
 	}
+
+	file_handle = std::move(handle);
 
 	// Create or load the database from disk, if not in-memory mode.
 	LoadDatabase(options);
@@ -229,7 +231,7 @@ void SingleFileStorageManager::LoadDatabase(StorageOptions storage_options) {
 		// We'll construct the SingleFileBlockManager with the default block allocation size,
 		// and later adjust it when reading the file header.
 		auto sf_block_manager = make_uniq<SingleFileBlockManager>(db, path, options);
-		sf_block_manager->LoadExistingDatabase();
+		sf_block_manager->LoadExistingDatabase(std::move(file_handle));
 		block_manager = std::move(sf_block_manager);
 		table_io_manager = make_uniq<SingleFileTableIOManager>(*block_manager, row_group_size);
 

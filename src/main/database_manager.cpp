@@ -40,7 +40,8 @@ optional_ptr<AttachedDatabase> DatabaseManager::GetDatabase(ClientContext &conte
 }
 
 optional_ptr<AttachedDatabase> DatabaseManager::AttachDatabase(ClientContext &context, const AttachInfo &info,
-                                                               const AttachOptions &options) {
+                                                               const AttachOptions &options,
+                                                               unique_ptr<FileHandle> file_handle) {
 	if (AttachedDatabase::NameIsReserved(info.name)) {
 		throw BinderException("Attached database name \"%s\" cannot be used because it is a reserved name", info.name);
 	}
@@ -151,7 +152,7 @@ vector<string> DatabaseManager::GetAttachedDatabasePaths() {
 }
 
 void DatabaseManager::GetDatabaseType(ClientContext &context, AttachInfo &info, const DBConfig &config,
-                                      AttachOptions &options, unique_ptr<FileHandle> file_handle) {
+                                      AttachOptions &options, unique_ptr<FileHandle> &file_handle) {
 
 	// Test if the database is a DuckDB database file.
 	if (StringUtil::CIEquals(options.db_type, "DUCKDB")) {
@@ -167,7 +168,7 @@ void DatabaseManager::GetDatabaseType(ClientContext &context, AttachInfo &info, 
 			MainHeader::CheckMagicBytes(*file_handle);
 		} else {
 			auto &fs = FileSystem::GetFileSystem(context);
-			DBPathAndType::CheckMagicBytes(fs, info.path, options.db_type);
+			DBPathAndType::CheckMagicBytes(fs, info.path, options.db_type, file_handle);
 		}
 	}
 

@@ -176,14 +176,15 @@ string AttachedDatabase::ExtractDatabaseName(const string &dbpath, FileSystem &f
 	return name;
 }
 
-void AttachedDatabase::Initialize(optional_ptr<ClientContext> context, StorageOptions options) {
+void AttachedDatabase::Initialize(optional_ptr<ClientContext> context, StorageOptions options,
+                                  unique_ptr<FileHandle> file_handle) {
 	if (IsSystem()) {
 		catalog->Initialize(context, true);
 	} else {
 		catalog->Initialize(context, false);
 	}
 	if (storage) {
-		storage->Initialize(options);
+		storage->Initialize(options, std::move(file_handle));
 	}
 }
 

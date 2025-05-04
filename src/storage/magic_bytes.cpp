@@ -4,19 +4,23 @@
 
 namespace duckdb {
 
-DataFileType MagicBytes::CheckMagicBytes(FileSystem &fs, const string &path) {
+DataFileType MagicBytes::CheckMagicBytes(FileSystem &fs, const string &path, unique_ptr<FileHandle> &file_handle) {
 	if (path.empty() || path == IN_MEMORY_PATH) {
 		return DataFileType::DUCKDB_FILE;
 	}
-	auto handle = fs.OpenFile(path, FileFlags::FILE_FLAGS_READ | FileFlags::FILE_FLAGS_NULL_IF_NOT_EXISTS);
-	if (!handle) {
-		return DataFileType::FILE_DOES_NOT_EXIST;
+	if (!file_handle) {
+		auto handle = fs.OpenFile(path, FileFlags::FILE_FLAGS_READ | FileFlags::FILE_FLAGS_NULL_IF_NOT_EXISTS |
+		                                    FileFlags::FILE_FLAGS_PARALLEL_ACCESS | FileLockType::READ_LOCK);
+		if (!handle) {
+			return DataFileType::FILE_DOES_NOT_EXIST;
+		}
+		file_handle = std::move(handle);
 	}
 
 	constexpr const idx_t MAGIC_BYTES_READ_SIZE = 16;
 	char buffer[MAGIC_BYTES_READ_SIZE] = {};
 
-	handle->Read(buffer, MAGIC_BYTES_READ_SIZE);
+	file_handle->Read(buffer, MAGIC_BYTES_READ_SIZE);
 	if (memcmp(buffer, "SQLite format 3\0", 16) == 0) {
 		return DataFileType::SQLITE_FILE;
 	}

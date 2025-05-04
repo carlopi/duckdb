@@ -72,7 +72,7 @@ public:
 	//! Initialize a database or load an existing database from the database file path. The block_alloc_size is
 	//! either set, or invalid. If invalid, then DuckDB defaults to the default_block_alloc_size (DBConfig),
 	//! or the file's block allocation size, if it is an existing database.
-	void Initialize(StorageOptions options);
+	void Initialize(StorageOptions options, unique_ptr<FileHandle> file_handle);
 
 	DatabaseInstance &GetDatabase();
 	AttachedDatabase &GetAttached() {
@@ -143,6 +143,7 @@ public:
 		DynamicCastCheck<TARGET>(this);
 		return reinterpret_cast<const TARGET &>(*this);
 	}
+	unique_ptr<FileHandle> file_handle;
 };
 
 //! Stores database in a single file.

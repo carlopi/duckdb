@@ -262,12 +262,16 @@ void SingleFileBlockManager::CreateNewDatabase() {
 	max_block = 0;
 }
 
-void SingleFileBlockManager::LoadExistingDatabase() {
+void SingleFileBlockManager::LoadExistingDatabase(unique_ptr<FileHandle> file_handle) {
 	auto flags = GetFileFlags(false);
 
 	// open the RDBMS handle
 	auto &fs = FileSystem::Get(db);
-	handle = fs.OpenFile(path, flags);
+	if (file_handle && file_handle->GetFlags() == flags) {
+		handle = std::move(file_handle);
+	} else {
+		handle = fs.OpenFile(path, flags);
+	}
 	if (!handle) {
 		// this can only happen in read-only mode - as that is when we set FILE_FLAGS_NULL_IF_NOT_EXISTS
 		throw IOException("Cannot open database \"%s\" in read-only mode: database does not exist", path);

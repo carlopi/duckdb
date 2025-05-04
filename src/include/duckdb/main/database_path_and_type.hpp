@@ -17,9 +17,9 @@ struct DBPathAndType {
 	//! Parse database extension type and rest of path from combined form (type:path)
 	static void ExtractExtensionPrefix(string &path, string &db_type);
 	//! Check the magic bytes of a file and set the database type based on that
-	static void CheckMagicBytes(FileSystem &fs, string &path, string &db_type);
+	static void CheckMagicBytes(FileSystem &fs, string &path, string &db_type, unique_ptr<FileHandle> &file_handle);
 
 	//! Run ExtractExtensionPrefix followed by CheckMagicBytes
-	static void ResolveDatabaseType(FileSystem &fs, string &path, string &db_type);
+	static void ResolveDatabaseType(FileSystem &fs, string &path, string &db_type, unique_ptr<FileHandle> &file_handle);
 };
 } // namespace duckdb
