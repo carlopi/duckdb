@@ -273,7 +273,7 @@ void SingleFileStorageManager::LoadDatabase(StorageOptions storage_options) {
 		                            "version when creating the database to enable larger row groups",
 		                            row_group_size);
 	}
-	default_wal_must_not_exist = (GetStorageVersion() < 6);		// This starts being supported in 1.3.0
+	default_wal_must_not_exist = (GetStorageVersion() < 5);		// This starts being supported in 1.3.0
 
 	load_complete = true;
 }
