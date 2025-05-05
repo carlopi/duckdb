@@ -133,6 +133,10 @@ protected:
 	optional_idx storage_version;
 
 public:
+	bool wal_must_not_exist {false};
+	idx_t block_pointer;
+
+public:
 	template <class TARGET>
 	TARGET &Cast() {
 		DynamicCastCheck<TARGET>(this);

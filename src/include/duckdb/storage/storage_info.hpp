@@ -131,6 +131,8 @@ struct DatabaseHeader {
 	idx_t vector_size;
 	//! The serialization compatibility version
 	idx_t serialization_compatibility;
+	//! Whether a .wal is certaint NOT to exist
+	idx_t wal_must_not_exist;
 
 	void Write(WriteStream &ser);
 	static DatabaseHeader Read(const MainHeader &header, ReadStream &source);

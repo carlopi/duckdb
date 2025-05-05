@@ -64,11 +64,13 @@ optional_ptr<WriteAheadLog> StorageManager::GetWAL() {
 	if (InMemory() || read_only || !load_complete) {
 		return nullptr;
 	}
+
 	return wal.get();
 }
 
 void StorageManager::ResetWAL() {
 	wal->Delete();
+	wal_must_not_exist = true;
 }
 
 string StorageManager::GetWALPath() {
@@ -230,6 +232,7 @@ void SingleFileStorageManager::LoadDatabase(StorageOptions storage_options) {
 		// and later adjust it when reading the file header.
 		auto sf_block_manager = make_uniq<SingleFileBlockManager>(db, path, options);
 		sf_block_manager->LoadExistingDatabase();
+		bool WAL_MUST_NOT_EXIST = db.GetStorageManager().wal_must_not_exist;
 		block_manager = std::move(sf_block_manager);
 		table_io_manager = make_uniq<SingleFileTableIOManager>(*block_manager, row_group_size);
 
@@ -258,7 +261,11 @@ void SingleFileStorageManager::LoadDatabase(StorageOptions storage_options) {
 		checkpoint_reader.LoadFromStorage();
 
 		auto wal_path = GetWALPath();
-		wal = WriteAheadLog::Replay(fs, db, wal_path);
+		if (WAL_MUST_NOT_EXIST) {
+			wal = make_uniq<WriteAheadLog>(db, wal_path);
+		} else {
+			wal = WriteAheadLog::Replay(fs, db, wal_path);
+		}
 	}
 	if (row_group_size > 122880ULL && GetStorageVersion() < 4) {
 		throw InvalidInputException("Unsupported row group size %llu - row group sizes >= 122_880 are only supported "
@@ -300,6 +307,7 @@ public:
 	bool HasRowGroupData() override;
 
 private:
+	StorageManager &storage_manager;
 	idx_t initial_wal_size = 0;
 	idx_t initial_written = 0;
 	WriteAheadLog &wal;
@@ -308,7 +316,7 @@ private:
 };
 
 SingleFileStorageCommitState::SingleFileStorageCommitState(StorageManager &storage, WriteAheadLog &wal)
-    : wal(wal), state(WALCommitState::IN_PROGRESS) {
+    : storage_manager(storage), wal(wal), state(WALCommitState::IN_PROGRESS) {
 	auto initial_size = storage.GetWALSize();
 	initial_written = wal.GetTotalWritten();
 	initial_wal_size = initial_size;
@@ -339,6 +347,17 @@ void SingleFileStorageCommitState::RevertCommit() {
 void SingleFileStorageCommitState::FlushCommit() {
 	if (state != WALCommitState::IN_PROGRESS) {
 		return;
+	}
+	if (storage_manager.wal_must_not_exist) {
+		storage_manager.wal_must_not_exist = false;
+
+		DatabaseHeader header;
+		header.meta_block = storage_manager.GetBlockManager().GetMetaBlock();
+		header.meta_block = storage_manager.block_pointer;
+		header.block_alloc_size = storage_manager.GetBlockManager().GetBlockAllocSize();
+		header.vector_size = STANDARD_VECTOR_SIZE;
+		header.wal_must_not_exist = storage_manager.wal_must_not_exist;
+		storage_manager.GetBlockManager().WriteHeader(header);
 	}
 	wal.Flush();
 	state = WALCommitState::FLUSHED;
@@ -403,6 +422,7 @@ void SingleFileStorageManager::CreateCheckpoint(optional_ptr<ClientContext> clie
 	if (GetWALSize() > 0 || config.options.force_checkpoint || options.action == CheckpointAction::ALWAYS_CHECKPOINT) {
 		// we only need to checkpoint if there is anything in the WAL
 		try {
+			db.GetStorageManager().wal_must_not_exist = true;
 			SingleFileCheckpointWriter checkpointer(client_context, db, *block_manager, options.type);
 			checkpointer.CreateCheckpoint();
 		} catch (std::exception &ex) {

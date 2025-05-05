@@ -211,7 +211,9 @@ void SingleFileCheckpointWriter::CreateCheckpoint() {
 	header.meta_block = meta_block.block_pointer;
 	header.block_alloc_size = block_manager.GetBlockAllocSize();
 	header.vector_size = STANDARD_VECTOR_SIZE;
+	header.wal_must_not_exist = storage_manager.wal_must_not_exist;
 	block_manager.WriteHeader(header);
+	storage_manager.block_pointer = meta_block.block_pointer;
 
 #ifdef DUCKDB_BLOCK_VERIFICATION
 	// extend verify_block_usage_count

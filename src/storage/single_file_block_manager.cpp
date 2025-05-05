@@ -99,6 +99,7 @@ void DatabaseHeader::Write(WriteStream &ser) {
 	ser.Write<idx_t>(block_alloc_size);
 	ser.Write<idx_t>(vector_size);
 	ser.Write<idx_t>(serialization_compatibility);
+	ser.Write<idx_t>(wal_must_not_exist);
 }
 
 DatabaseHeader DatabaseHeader::Read(const MainHeader &main_header, ReadStream &source) {
@@ -127,10 +128,13 @@ DatabaseHeader DatabaseHeader::Read(const MainHeader &main_header, ReadStream &s
 	if (main_header.version_number == 64) {
 		// version number 64 does not have the serialization compatibility in the file - default to 1
 		header.serialization_compatibility = 1;
+		source.Read<idx_t>();
 	} else {
 		// read from the file
 		header.serialization_compatibility = source.Read<idx_t>();
 	}
+	header.wal_must_not_exist = source.Read<idx_t>();
+	// header.wal_must_not_exist = 0;
 	return header;
 }
 
@@ -227,12 +231,16 @@ void SingleFileBlockManager::CreateNewDatabase() {
 	// header 1
 	h1.iteration = 0;
 	h1.meta_block = idx_t(INVALID_BLOCK);
+
+	db.GetStorageManager().block_pointer = h1.meta_block;
+
 	h1.free_list = idx_t(INVALID_BLOCK);
 	h1.block_count = 0;
 	// We create the SingleFileBlockManager with the desired block allocation size before calling CreateNewDatabase.
 	h1.block_alloc_size = GetBlockAllocSize();
 	h1.vector_size = STANDARD_VECTOR_SIZE;
 	h1.serialization_compatibility = options.storage_version.GetIndex();
+	h1.wal_must_not_exist = 0; // FIXME: depend on storage
 	SerializeHeaderStructure<DatabaseHeader>(h1, header_buffer.buffer);
 	ChecksumAndWrite(header_buffer, Storage::FILE_HEADER_SIZE);
 
@@ -246,6 +254,7 @@ void SingleFileBlockManager::CreateNewDatabase() {
 	h2.block_alloc_size = GetBlockAllocSize();
 	h2.vector_size = STANDARD_VECTOR_SIZE;
 	h2.serialization_compatibility = options.storage_version.GetIndex();
+	h2.wal_must_not_exist = 0; // FIXME: depend on storage
 	SerializeHeaderStructure<DatabaseHeader>(h2, header_buffer.buffer);
 	ChecksumAndWrite(header_buffer, Storage::FILE_HEADER_SIZE * 2ULL);
 
@@ -362,6 +371,7 @@ void SingleFileBlockManager::ChecksumAndWrite(FileBuffer &block, uint64_t locati
 void SingleFileBlockManager::Initialize(const DatabaseHeader &header, const optional_idx block_alloc_size) {
 	free_list_id = header.free_list;
 	meta_block = header.meta_block;
+	db.GetStorageManager().block_pointer = meta_block;
 	iteration_count = header.iteration;
 	max_block = NumericCast<block_id_t>(header.block_count);
 	if (options.storage_version.IsValid()) {
@@ -394,6 +404,8 @@ void SingleFileBlockManager::Initialize(const DatabaseHeader &header, const opti
 	}
 
 	SetBlockAllocSize(header.block_alloc_size);
+
+	db.GetStorageManager().wal_must_not_exist = header.wal_must_not_exist;
 }
 
 void SingleFileBlockManager::LoadFreeList() {
