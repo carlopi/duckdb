@@ -134,6 +134,7 @@ protected:
 
 public:
 	bool wal_must_not_exist {false};
+	bool default_wal_must_not_exist;
 	idx_t block_pointer;
 
 public:

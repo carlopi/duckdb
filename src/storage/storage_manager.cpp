@@ -70,7 +70,7 @@ optional_ptr<WriteAheadLog> StorageManager::GetWAL() {
 
 void StorageManager::ResetWAL() {
 	wal->Delete();
-	wal_must_not_exist = true;
+	wal_must_not_exist = db.GetStorageManager().default_wal_must_not_exist;
 }
 
 string StorageManager::GetWALPath() {
@@ -273,6 +273,7 @@ void SingleFileStorageManager::LoadDatabase(StorageOptions storage_options) {
 		                            "version when creating the database to enable larger row groups",
 		                            row_group_size);
 	}
+	default_wal_must_not_exist = (GetStorageVersion() < 6);		// This starts being supported in 1.3.0
 
 	load_complete = true;
 }
@@ -422,7 +423,7 @@ void SingleFileStorageManager::CreateCheckpoint(optional_ptr<ClientContext> clie
 	if (GetWALSize() > 0 || config.options.force_checkpoint || options.action == CheckpointAction::ALWAYS_CHECKPOINT) {
 		// we only need to checkpoint if there is anything in the WAL
 		try {
-			db.GetStorageManager().wal_must_not_exist = true;
+			db.GetStorageManager().wal_must_not_exist = db.GetStorageManager().default_wal_must_not_exist;
 			SingleFileCheckpointWriter checkpointer(client_context, db, *block_manager, options.type);
 			checkpointer.CreateCheckpoint();
 		} catch (std::exception &ex) {
