@@ -1,6 +1,7 @@
 #include "duckdb/function/table/system_functions.hpp"
 #include "duckdb/main/database_manager.hpp"
 #include "duckdb/main/attached_database.hpp"
+#include "duckdb/storage/storage_manager.hpp"
 
 namespace duckdb {
 
@@ -74,8 +75,9 @@ void DuckDBDatabasesFunction(ClientContext &context, TableFunctionInput &data_p,
 		bool is_readonly = attached.IsReadOnly();
 		// path, VARCHAR
 		Value db_path;
+		bool in_memory = false;
 		if (!is_internal) {
-			bool in_memory = attached.GetCatalog().InMemory();
+			in_memory = attached.GetCatalog().InMemory();
 			if (!in_memory) {
 				db_path = Value(attached.GetCatalog().GetDBPath());
 			}
@@ -84,7 +86,13 @@ void DuckDBDatabasesFunction(ClientContext &context, TableFunctionInput &data_p,
 		// comment, VARCHAR
 		output.SetValue(col++, count, Value(attached.comment));
 		// tags, MAP
-		output.SetValue(col++, count, Value::MAP(attached.tags));
+		auto x = attached.tags;
+		if (!is_internal && !in_memory) {
+			if (attached.GetStorageManager().GetStorageVersion() >= 5) {
+				x["has_wal"] = attached.GetStorageManager().wal_must_not_exist ? "no" : "maybe";
+			}
+		}
+		output.SetValue(col++, count, Value::MAP(x));
 		// internal, BOOLEAN
 		output.SetValue(col++, count, Value::BOOLEAN(is_internal));
 		// type, VARCHAR
