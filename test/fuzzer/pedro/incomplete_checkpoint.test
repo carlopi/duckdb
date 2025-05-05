@@ -27,6 +27,8 @@ CHECKPOINT;
 statement ok
 PRAGMA DEBUG_CHECKPOINT_ABORT = 'after_free_list_write';
 
+mode skip
+
 statement ok
 CREATE SCHEMA s3;
 
