@@ -95,7 +95,8 @@ public:
 	idx_t FreeBlocks() override;
 	//! Whether or not the attached database is a remote file
 	bool IsRemote() override;
-
+        //! Inform SingleFileBlockManager Wal is about to be created
+	void WalToBeFlushed() override;
 private:
 	//! Loads the free list of the file.
 	void LoadFreeList();
@@ -152,5 +153,6 @@ private:
 	StorageManagerOptions options;
 	//! Lock for performing various operations in the single file block manager
 	mutex block_lock;
+	DatabaseHeader cached;
 };
 } // namespace duckdb

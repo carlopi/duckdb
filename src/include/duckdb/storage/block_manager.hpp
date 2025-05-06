@@ -142,6 +142,10 @@ public:
 	//! Verify the block usage count
 	virtual void VerifyBlocks(const unordered_map<block_id_t, idx_t> &block_usage_count) {
 	}
+	//! Inform BlockManager Wal is about to be created
+	virtual void WalToBeFlushed() {
+		// Default implementation is a NOP
+	}
 
 private:
 	//! The lock for the set of blocks

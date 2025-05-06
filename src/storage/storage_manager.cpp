@@ -273,7 +273,7 @@ void SingleFileStorageManager::LoadDatabase(StorageOptions storage_options) {
 		                            "version when creating the database to enable larger row groups",
 		                            row_group_size);
 	}
-	default_wal_must_not_exist = (GetStorageVersion() < 5);		// This starts being supported in 1.3.0
+	default_wal_must_not_exist = true || (GetStorageVersion() < 5);		// This starts being supported in 1.3.0
 
 	load_complete = true;
 }
@@ -351,14 +351,7 @@ void SingleFileStorageCommitState::FlushCommit() {
 	}
 	if (storage_manager.wal_must_not_exist) {
 		storage_manager.wal_must_not_exist = false;
-
-		DatabaseHeader header;
-		header.meta_block = storage_manager.GetBlockManager().GetMetaBlock();
-		header.meta_block = storage_manager.block_pointer;
-		header.block_alloc_size = storage_manager.GetBlockManager().GetBlockAllocSize();
-		header.vector_size = STANDARD_VECTOR_SIZE;
-		header.wal_must_not_exist = storage_manager.wal_must_not_exist;
-		storage_manager.GetBlockManager().WriteHeader(header);
+		storage_manager.GetBlockManager().WalToBeFlushed();
 	}
 	wal.Flush();
 	state = WALCommitState::FLUSHED;

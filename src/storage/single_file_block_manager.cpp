@@ -232,8 +232,6 @@ void SingleFileBlockManager::CreateNewDatabase() {
 	h1.iteration = 0;
 	h1.meta_block = idx_t(INVALID_BLOCK);
 
-	db.GetStorageManager().block_pointer = h1.meta_block;
-
 	h1.free_list = idx_t(INVALID_BLOCK);
 	h1.block_count = 0;
 	// We create the SingleFileBlockManager with the desired block allocation size before calling CreateNewDatabase.
@@ -245,7 +243,7 @@ void SingleFileBlockManager::CreateNewDatabase() {
 	ChecksumAndWrite(header_buffer, Storage::FILE_HEADER_SIZE);
 
 	// header 2
-	DatabaseHeader h2;
+	DatabaseHeader &h2 = cached;
 	h2.iteration = 0;
 	h2.meta_block = idx_t(INVALID_BLOCK);
 	h2.free_list = idx_t(INVALID_BLOCK);
@@ -312,11 +310,14 @@ void SingleFileBlockManager::LoadExistingDatabase() {
 		// h1 is active header
 		active_header = 0;
 		Initialize(h1, GetOptionalBlockAllocSize());
+		cached = h1;
 	} else {
 		// h2 is active header
 		active_header = 1;
 		Initialize(h2, GetOptionalBlockAllocSize());
+		cached = h2;
 	}
+
 	AddStorageVersionTag();
 	LoadFreeList();
 }
@@ -371,7 +372,6 @@ void SingleFileBlockManager::ChecksumAndWrite(FileBuffer &block, uint64_t locati
 void SingleFileBlockManager::Initialize(const DatabaseHeader &header, const optional_idx block_alloc_size) {
 	free_list_id = header.free_list;
 	meta_block = header.meta_block;
-	db.GetStorageManager().block_pointer = meta_block;
 	iteration_count = header.iteration;
 	max_block = NumericCast<block_id_t>(header.block_count);
 	if (options.storage_version.IsValid()) {
@@ -732,7 +732,13 @@ protected:
 	}
 };
 
-void SingleFileBlockManager::WriteHeader(DatabaseHeader header) {
+void SingleFileBlockManager::WriteHeader(DatabaseHeader input) {
+	DatabaseHeader &header = cached;
+	header.meta_block = input.meta_block;
+	header.block_alloc_size = input.block_alloc_size;
+	header.vector_size = input.vector_size;
+	header.wal_must_not_exist = input.wal_must_not_exist;
+
 	auto free_list_blocks = GetFreeListBlocks();
 
 	// now handle the free list
@@ -835,6 +841,28 @@ void SingleFileBlockManager::TrimFreeBlocks() {
 		}
 	}
 	newly_freed_list.clear();
+}
+
+void SingleFileBlockManager::WalToBeFlushed() {
+	DatabaseHeader &header = cached;
+	header.wal_must_not_exist = false;
+//	header.iteration = ++iteration_count;
+	
+	handle->Sync();
+
+	header_buffer.Clear();
+
+	// set the header inside the buffer
+	MemoryStream serializer(Allocator::Get(db));
+	header.Write(serializer);
+	memcpy(header_buffer.buffer, serializer.GetData(), serializer.GetPosition());
+	// now write the header to the file, active_header determines whether we write to h1 or h2
+	// note that if active_header is h1 we write to h2, and vice versa
+	ChecksumAndWrite(header_buffer, active_header == 0 ? Storage::FILE_HEADER_SIZE : Storage::FILE_HEADER_SIZE * 2);
+	// switch active header to the other header
+//	active_header = 1 - active_header;
+	//! Ensure the header write ends up on disk
+	handle->Sync();
 }
 
 } // namespace duckdb

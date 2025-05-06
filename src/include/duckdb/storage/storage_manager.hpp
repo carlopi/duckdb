@@ -133,9 +133,8 @@ protected:
 	optional_idx storage_version;
 
 public:
-	bool wal_must_not_exist {false};
+	bool wal_must_not_exist;
 	bool default_wal_must_not_exist;
-	idx_t block_pointer;
 
 public:
 	template <class TARGET>
