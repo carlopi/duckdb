@@ -57,10 +57,10 @@ SELECT SUM(i) FROM encrypted.tbl
 45
 
 query I
-SELECT tags FROM duckdb_databases() WHERE database_name LIKE '%encrypted%' ORDER BY database_name;
+SELECT tags.storage_version FROM duckdb_databases() WHERE database_name LIKE '%encrypted%' ORDER BY database_name;
 ----
-{storage_version=v1.3.0+}
-{storage_version=v1.0.0+}
+v1.3.0+
+v1.0.0+
 
 statement ok
 DETACH encrypted
