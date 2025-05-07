@@ -799,7 +799,7 @@ SerializationCompatibility SerializationCompatibility::Default() {
 	res.manually_set = false;
 	return res;
 #else
-	auto res = FromString("v0.10.2");
+	auto res = FromString("v1.3.0");
 	res.manually_set = false;
 	return res;
 #endif
