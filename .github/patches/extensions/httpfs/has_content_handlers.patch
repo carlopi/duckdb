@@ -1,3 +1,15 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index e69deca..2940a14 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -28,6 +28,7 @@ build_loadable_extension(
+   extension/httpfs/hffs.cpp
+   extension/httpfs/s3fs.cpp
+   extension/httpfs/httpfs.cpp
++  extension/httpfs/httpfs_client.cpp
+   extension/httpfs/http_state.cpp
+   extension/httpfs/crypto.cpp
+   extension/httpfs/create_secret_functions.cpp
 diff --git a/extension/httpfs/httpfs.cpp b/extension/httpfs/httpfs.cpp
 index 4c91065..71b1e1c 100644
 --- a/extension/httpfs/httpfs.cpp
