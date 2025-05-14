@@ -239,9 +239,8 @@ struct GetRequestInfo : public BaseRequest {
 	    : BaseRequest(RequestType::GET_REQUEST, endpoint, path, headers, params) {
 		AddContentHandlers(std::move(response_handler_p), std::move(content_handler_p));
 	}
-	void AddContentHandlers (
-	               std::function<bool(const HTTPResponse &response)> &&response_handler_p,
-	               std::function<bool(const_data_ptr_t data, idx_t data_length)> &&content_handler_p) {
+	void AddContentHandlers(std::function<bool(const HTTPResponse &response)> &&response_handler_p,
+	                        std::function<bool(const_data_ptr_t data, idx_t data_length)> &&content_handler_p) {
 		response_handler = std::move(response_handler_p);
 		content_handler = std::move(content_handler_p);
 		assigned_content_handlers = true;
