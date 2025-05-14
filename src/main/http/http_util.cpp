@@ -279,7 +279,7 @@ public:
 	}
 	unique_ptr<HTTPResponse> Get(GetRequestInfo &info) override {
 		auto headers = TransformHeaders(info.headers, info.params);
-		if (!info.response_handler && !info.content_handler) {
+		if (!info.HasContentHandlers()) {
 			return TransformResult(client->Get(info.path, headers));
 		} else {
 			return TransformResult(client->Get(

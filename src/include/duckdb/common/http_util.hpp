@@ -221,21 +221,38 @@ struct BaseRequest {
 };
 
 struct GetRequestInfo : public BaseRequest {
+	GetRequestInfo(const string &url, const HTTPHeaders &headers, HTTPParams &params)
+	    : BaseRequest(RequestType::GET_REQUEST, url, headers, params) {
+	}
 	GetRequestInfo(const string &url, const HTTPHeaders &headers, HTTPParams &params,
-	               std::function<bool(const HTTPResponse &response)> response_handler_p,
-	               std::function<bool(const_data_ptr_t data, idx_t data_length)> content_handler_p)
-	    : BaseRequest(RequestType::GET_REQUEST, url, headers, params), content_handler(std::move(content_handler_p)),
-	      response_handler(std::move(response_handler_p)) {
+	               std::function<bool(const HTTPResponse &response)> &&response_handler_p,
+	               std::function<bool(const_data_ptr_t data, idx_t data_length)> &&content_handler_p)
+	    : BaseRequest(RequestType::GET_REQUEST, url, headers, params) {
+		AddContentHandlers(std::move(response_handler_p), std::move(content_handler_p));
+	}
+	GetRequestInfo(const string &endpoint, const string &path, const HTTPHeaders &headers, HTTPParams &params)
+	    : BaseRequest(RequestType::GET_REQUEST, endpoint, path, headers, params) {
 	}
 	GetRequestInfo(const string &endpoint, const string &path, const HTTPHeaders &headers, HTTPParams &params,
-	               std::function<bool(const HTTPResponse &response)> response_handler_p,
-	               std::function<bool(const_data_ptr_t data, idx_t data_length)> content_handler_p)
-	    : BaseRequest(RequestType::GET_REQUEST, endpoint, path, headers, params),
-	      content_handler(std::move(content_handler_p)), response_handler(std::move(response_handler_p)) {
+	               std::function<bool(const HTTPResponse &response)> &&response_handler_p,
+	               std::function<bool(const_data_ptr_t data, idx_t data_length)> &&content_handler_p)
+	    : BaseRequest(RequestType::GET_REQUEST, endpoint, path, headers, params) {
+		AddContentHandlers(std::move(response_handler_p), std::move(content_handler_p));
+	}
+	void AddContentHandlers (
+	               std::function<bool(const HTTPResponse &response)> &&response_handler_p,
+	               std::function<bool(const_data_ptr_t data, idx_t data_length)> &&content_handler_p) {
+		response_handler = std::move(response_handler_p);
+		content_handler = std::move(content_handler_p);
+		assigned_content_handlers = true;
+	}
+	bool HasContentHandlers() const {
+		return assigned_content_handlers;
 	}
 
 	std::function<bool(const_data_ptr_t data, idx_t data_length)> content_handler;
 	std::function<bool(const HTTPResponse &response)> response_handler;
+	bool assigned_content_handlers {false};
 };
 
 struct PutRequestInfo : public BaseRequest {

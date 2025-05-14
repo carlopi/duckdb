@@ -370,7 +370,7 @@ static unique_ptr<ExtensionInstallInfo> InstallFromHttpUrl(DatabaseInstance &db,
 	params.logger = http_logger;
 
 	auto &http_util = HTTPUtil::Get(db);
-	GetRequestInfo get_request(url, headers, params, nullptr, nullptr);
+	GetRequestInfo get_request(url, headers, params);
 	get_request.try_request = true;
 
 	auto response = http_util.Request(get_request);

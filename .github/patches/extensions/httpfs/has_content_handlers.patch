@@ -1,0 +1,13 @@
+diff --git a/extension/httpfs/httpfs_client.cpp b/extension/httpfs/httpfs_client.cpp
+index 26e485b..502d91c 100644
+--- a/extension/httpfs/httpfs_client.cpp
++++ b/extension/httpfs/httpfs_client.cpp
+@@ -47,7 +47,7 @@ public:
+ 			state->get_count++;
+ 		}
+ 		auto headers = TransformHeaders(info.headers, info.params);
+-		if (!info.response_handler && !info.content_handler) {
++		if (!info.HasContentHandlers()) {
+ 			return TransformResult(client->Get(info.path, headers));
+ 		} else {
+ 			return TransformResult(client->Get(info.path.c_str(), headers,
