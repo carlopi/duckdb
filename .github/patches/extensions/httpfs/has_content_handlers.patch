@@ -1,3 +1,15 @@
+diff --git a/extension/httpfs/httpfs.cpp b/extension/httpfs/httpfs.cpp
+index 4c91065..71b1e1c 100644
+--- a/extension/httpfs/httpfs.cpp
++++ b/extension/httpfs/httpfs.cpp
+@@ -13,6 +13,7 @@
+ #include "duckdb/main/database.hpp"
+ #include "duckdb/main/secret/secret_manager.hpp"
+ #include "http_state.hpp"
++#include "httpfs_client.hpp"
+ 
+ #include <chrono>
+ #include <map>
 diff --git a/extension/httpfs/httpfs_client.cpp b/extension/httpfs/httpfs_client.cpp
 index 26e485b..502d91c 100644
 --- a/extension/httpfs/httpfs_client.cpp
@@ -11,3 +23,23 @@ index 26e485b..502d91c 100644
  			return TransformResult(client->Get(info.path, headers));
  		} else {
  			return TransformResult(client->Get(info.path.c_str(), headers,
+diff --git a/extension/httpfs/include/httpfs_client.hpp b/extension/httpfs/include/httpfs_client.hpp
+index 4b0c33e..4e41e12 100644
+--- a/extension/httpfs/include/httpfs_client.hpp
++++ b/extension/httpfs/include/httpfs_client.hpp
+@@ -1,3 +1,5 @@
++#pragma once
++
+ #include "duckdb/common/http_util.hpp"
+ 
+ namespace duckdb {
+diff --git a/extension/httpfs/s3fs.cpp b/extension/httpfs/s3fs.cpp
+index 8245318..8169cbb 100644
+--- a/extension/httpfs/s3fs.cpp
++++ b/extension/httpfs/s3fs.cpp
+@@ -1,4 +1,5 @@
+ #include "s3fs.hpp"
++#include "httpfs_client.hpp"
+ 
+ #include "crypto.hpp"
+ #include "duckdb.hpp"
