@@ -104,7 +104,7 @@ jobs:
     runs-on: macos-latest
     env:
       GEN: ninja
-      CORE_EXTENSIONS: "icu;tpch;tpcds;fts;json;inet;httpfs;spatial"
+      CORE_EXTENSIONS: "icu;tpch;tpcds;fts;json;inet;httpfs;avro"
       DISABLE_SANITIZER: 1
       CRASH_ON_ASSERT: 1
       RUN_SLOW_VERIFIERS: 1
