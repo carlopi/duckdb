@@ -108,7 +108,7 @@ jobs:
       DISABLE_SANITIZER: 1
       CRASH_ON_ASSERT: 1
       RUN_SLOW_VERIFIERS: 1
-      VCPKG_TOOLCHAIN_PATH: /home/runner/work/duckdb/duckdb/vcpkg/scripts/buildsystems/vcpkg.cmake
+      VCPKG_TOOLCHAIN_PATH: /Users/runner/work/duckdb/duckdb/vcpkg/scripts/buildsystems/vcpkg.cmake
 
     steps:
     - uses: actions/checkout@v3
