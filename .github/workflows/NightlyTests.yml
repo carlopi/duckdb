@@ -102,13 +102,13 @@ jobs:
   release-assert-osx:
     name: Release Assertions OSX
     runs-on: macos-latest
-    needs: linux-memory-leaks
     env:
       GEN: ninja
       CORE_EXTENSIONS: "icu;tpch;tpcds;fts;json;inet;httpfs;spatial"
       DISABLE_SANITIZER: 1
       CRASH_ON_ASSERT: 1
       RUN_SLOW_VERIFIERS: 1
+      VCPKG_TOOLCHAIN_PATH: /home/runner/work/duckdb/duckdb/vcpkg/scripts/buildsystems/vcpkg.cmake
 
     steps:
     - uses: actions/checkout@v3
@@ -120,6 +120,12 @@ jobs:
 
     - name: Install Ninja
       run: brew install ninja llvm
+
+    - name: Setup vcpkg
+      uses: lukka/run-vcpkg@v11.1
+      with:
+        vcpkgGitCommitId: '5e5d0e1cd7785623065e77eff011afdeec1a3574'
+        vcpkgGitURL: 'https://github.com/microsoft/vcpkg.git'
 
     - name: Setup Ccache
       uses: hendrikmuhs/ccache-action@main
