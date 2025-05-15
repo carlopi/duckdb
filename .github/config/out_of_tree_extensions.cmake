@@ -26,7 +26,7 @@ duckdb_extension_load(httpfs
 ################# AVRO
 if (NOT MINGW)
     duckdb_extension_load(avro
-            LOAD_TESTS
+            LOAD_TESTS DONT_LINK
             GIT_URL https://github.com/duckdb/duckdb-avro
             GIT_TAG ff766174cc6cc9c4ed93fc4b75871bcdffcc6e65
     )
@@ -112,7 +112,7 @@ endif()
 if (NOT MINGW)
 ################# SPATIAL
 duckdb_extension_load(spatial
-    LOAD_TESTS
+    LOAD_TESTS DONT_LINK
     GIT_URL https://github.com/duckdb/duckdb-spatial
     GIT_TAG 494d94912cc7ebcd8c43c9b6fc173a3e4142740f
     INCLUDE_DIR spatial/include
@@ -135,14 +135,15 @@ duckdb_extension_load(sqlite_scanner
         )
 
 duckdb_extension_load(sqlsmith
-        LOAD_TESTS
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --lto-whole-program-visibility")
+        LOAD_TESTS DONT_LINK
         GIT_URL https://github.com/duckdb/duckdb-sqlsmith
         GIT_TAG 06e8da8a95710c996fcd62f385962ccd36a363f6
         )
 
 ################# VSS
 duckdb_extension_load(vss
-        LOAD_TESTS
+        LOAD_TESTS DONT_LINK
         GIT_URL https://github.com/duckdb/duckdb-vss
         GIT_TAG ccfa7c9c1f1f540fa7f433a93d32bed772aa44f4
         TEST_DIR test/sql
@@ -160,7 +161,7 @@ endif()
 
 ################# FTS
 duckdb_extension_load(fts
-        LOAD_TESTS
+        LOAD_TESTS DONT_LINK
         GIT_URL https://github.com/duckdb/duckdb-fts
         GIT_TAG 3aa6a180b9c101d78070f5f7214c27552bb091c8
         TEST_DIR test/sql
