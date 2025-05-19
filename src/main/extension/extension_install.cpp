@@ -247,8 +247,8 @@ static void WriteExtensionFiles(FileSystem &fs, const string &temp_path, const s
 	WriteExtensionMetadataFileToDisk(fs, metadata_tmp_path, info);
 
 	// First remove the local extension we are about to replace
-       if (fs.FileExists(local_file_path)) {
-               fs.RemoveFile(local_file_path);
+       if (fs.FileExists(local_extension_path)) {
+               fs.RemoveFile(local_extension_path);
        }
        if (fs.FileExists(metadata_file_path)) {
                fs.RemoveFile(metadata_file_path);
