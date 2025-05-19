@@ -247,10 +247,12 @@ static void WriteExtensionFiles(FileSystem &fs, const string &temp_path, const s
 	WriteExtensionMetadataFileToDisk(fs, metadata_tmp_path, info);
 
 	// First remove the local extension we are about to replace
-	fs.TryRemoveFile(local_extension_path);
-
-	// Then remove the old metadata file
-	fs.TryRemoveFile(metadata_file_path);
+       if (fs.FileExists(local_file_path)) {
+               fs.RemoveFile(local_file_path);
+       }
+       if (fs.FileExists(metadata_file_path)) {
+               fs.RemoveFile(metadata_file_path);
+       }
 
 	fs.MoveFile(metadata_tmp_path, metadata_file_path);
 	fs.MoveFile(temp_path, local_extension_path);
