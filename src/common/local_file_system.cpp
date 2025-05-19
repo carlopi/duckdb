@@ -679,7 +679,7 @@ void LocalFileSystem::RemoveDirectory(const string &directory, optional_ptr<File
 }
 
 bool LocalFileSystem::TryRemoveFile(const string &filename, optional_ptr<FileOpener> opener) {
-	if (FileExists(filename, opener) {
+	if (FileExists(filename, opener)) {
 		RemoveFile(filename, opener);
 		return true;
 	}
@@ -1186,7 +1186,7 @@ void LocalFileSystem::RemoveDirectory(const string &directory, optional_ptr<File
 }
 
 bool LocalFileSystem::TryRemoveFile(const string &filename, optional_ptr<FileOpener> opener) {
-	if (FileExists(filename, opener) {
+	if (FileExists(filename, opener)) {
 		RemoveFile(filename, opener);
 		return true;
 	}
