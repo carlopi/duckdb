@@ -58,6 +58,7 @@ public:
 
 	//! Check if path is a pipe
 	bool IsPipe(const string &filename, optional_ptr<FileOpener> opener = nullptr) override;
+	bool TryRemoveFile(const string &filename, optional_ptr<FileOpener> opener) override;
 	//! Remove a file from disk
 	void RemoveFile(const string &filename, optional_ptr<FileOpener> opener = nullptr) override;
 	//! Sync a file handle to disk

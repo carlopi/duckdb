@@ -678,6 +678,14 @@ void LocalFileSystem::RemoveDirectory(const string &directory, optional_ptr<File
 	RemoveDirectoryRecursive(normalized_dir);
 }
 
+bool LocalFileSystem::TryRemoveFile(const string &filename, optional_ptr<FileOpener> opener) {
+	if (FileExists(filename, opener) {
+		RemoveFile(filename, opener);
+		return true;
+	}
+	return false;
+}
+
 void LocalFileSystem::RemoveFile(const string &filename, optional_ptr<FileOpener> opener) {
 	auto normalized_file = NormalizeLocalPath(filename);
 	if (std::remove(normalized_file) != 0) {
@@ -1175,6 +1183,14 @@ void LocalFileSystem::RemoveDirectory(const string &directory, optional_ptr<File
 		return;
 	}
 	DeleteDirectoryRecursive(*this, directory);
+}
+
+bool LocalFileSystem::TryRemoveFile(const string &filename, optional_ptr<FileOpener> opener) {
+	if (FileExists(filename, opener) {
+		RemoveFile(filename, opener);
+		return true;
+	}
+	return false;
 }
 
 void LocalFileSystem::RemoveFile(const string &filename, optional_ptr<FileOpener> opener) {
