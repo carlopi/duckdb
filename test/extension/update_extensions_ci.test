@@ -185,6 +185,64 @@ json	REPOSITORY	./build/extension_metadata_test_data/repository	v0.0.1
 tpcds	CUSTOM_PATH	./build/extension_metadata_test_data/direct_install/tpcds.duckdb_extension	v0.0.1
 tpch	REPOSITORY	./build/extension_metadata_test_data/repository	v0.0.2
 
+## Try various failing installations and match their error
+statement error
+FORCE INSTALL '${DIRECT_INSTALL_DIR}/json_incorrect_platform.duckdb_extension';
+----
+Failed to install './build/extension_metadata_test_data/direct_install/json_incorrect_platform.duckdb_extension'
+The file was built for the platform 'test_platform', but we can only load extensions built for platform
+
+statement error
+FORCE INSTALL json_incorrect_platform FROM '${LOCAL_EXTENSION_REPO_INCORRECT_PLATFORM}'
+----
+Failed to install 'json_incorrect_platform'
+The file was built for the platform 'test_platform', but we can only load extensions built for platform
+
+statement error
+FORCE INSTALL '${DIRECT_INSTALL_DIR}/json_incorrect_version.duckdb_extension';
+----
+Failed to install './build/extension_metadata_test_data/direct_install/json_incorrect_version.duckdb_extension'
+The file was built specifically for DuckDB version 'v1337' and can only be loaded with that version of DuckDB. (this version of DuckDB is
+
+statement error
+FORCE INSTALL json_incorrect_version FROM '${LOCAL_EXTENSION_REPO_INCORRECT_DUCKDB_VERSION}';
+----
+Failed to install 'json_incorrect_version'
+The file was built specifically for DuckDB version 'v1337' and can only be loaded with that version of DuckDB. (this version of DuckDB is
+
+# These should print both errors
+statement error
+FORCE INSTALL '${DIRECT_INSTALL_DIR}/json_incorrect_version_and_platform.duckdb_extension';
+----
+Also, the file was built for the platform 'test_platform', but we can only load extensions built for platform
+
+statement error
+FORCE INSTALL json_incorrect_version_and_platform FROM '${LOCAL_EXTENSION_REPO_VERSION_AND_PLATFORM_INCORRECT}'
+----
+Also, the file was built for the platform 'test_platform', but we can only load extensions built for platform
+
+## Now try the same for loading, this time only with the direct load syntax
+statement error
+LOAD '${DIRECT_INSTALL_DIR}/json_incorrect_version_and_platform.duckdb_extension';
+----
+Also, the file was built for the platform 'test_platform', but we can only load extensions built for platform
+
+statement error
+LOAD '${DIRECT_INSTALL_DIR}/json_incorrect_platform.duckdb_extension';
+----
+The file was built for the platform 'test_platform', but we can only load extensions built for platform
+
+statement error
+LOAD '${DIRECT_INSTALL_DIR}/json_incorrect_version.duckdb_extension';
+----
+The file was built specifically for DuckDB version 'v1337' and can only be loaded with that version of DuckDB. (this version of DuckDB is
+
+# Note that this is the json extension with incorrect platform and version
+statement error
+FORCE INSTALL '${DIRECT_INSTALL_DIR}/json.duckdb_extension';
+----
+Also, the file was built for the platform 'test_platform', but we can only load extensions built for platform
+
 restart
 
 # override the default behaviour of skipping HTTP errors and connection failures: this test fails on connection issues
