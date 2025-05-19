@@ -411,7 +411,6 @@ jobs:
   extension-updating:
     name: Extension updating test
     runs-on: ubuntu-22.04
-    needs: linux-memory-leaks
     env:
       CC: gcc-10
       CXX: g++-10
