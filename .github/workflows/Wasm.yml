@@ -76,7 +76,7 @@ jobs:
         shell: bash
         run: |
           cat duckdb/.github/config/in_tree_extensions.cmake duckdb/.github/config/out_of_tree_extensions.cmake > extension_config.cmake
-          echo "{\"dependencies\": []}" > vcpkg.json
+          echo "{\"dependencies\": [],   \"vcpkg-configuration\": {\"registries\": [{\"kind\": \"git\",\"repository\": \"https://github.com/duckdb/vcpkg-duckdb-ports\", \"baseline\": \"3c7b96fa186c27eae2226a1b5b292f2b2dd3cf8f\", \"packages\": [ \"vcpkg-cmake\"]}]},\"builtin-baseline\" : \"5e5d0e1cd7785623065e77eff011afdeec1a3574\"" > vcpkg.json
           cp duckdb/.github/helper_makefile/build_all_extensions Makefile
 
       - name: Run configure
