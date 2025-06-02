@@ -12,6 +12,8 @@
 #include "sqllogic_test_logger.hpp"
 #include "duckdb/common/random_engine.hpp"
 
+#include "yaml-cpp/yaml.h"
+
 #ifdef DUCKDB_OUT_OF_TREE
 #include DUCKDB_EXTENSION_HEADER
 #endif
@@ -135,6 +137,19 @@ void SQLLogicTestRunner::Reconnect() {
 	// Set the local extension repo for autoinstalling extensions
 	if (!local_extension_repo.empty()) {
 		auto res1 = con->Query("SET autoinstall_extension_repository='" + local_extension_repo + "'");
+	}
+	auto env_var = std::getenv("YAML_CONFIG");
+	if (env_var) {
+		YAML::Node config = YAML::LoadFile(env_var);
+
+		if (config["on_connect"]) {
+			auto queries = config["on_connect"];
+
+			auto res = con->Query(ReplaceKeywords(ReplaceKeywords(queries.as<std::string>())));
+			if (res->HasError()) {
+				FAIL("Startup queries provided via on_connect failed");
+			}
+		}
 	}
 }
 
