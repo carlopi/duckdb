@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "duckdb/common/unique_ptr.hpp"
 #include "duckdb/common/constants.hpp"
 #include "duckdb/common/shared_ptr.hpp"
 #include <string.h>
@@ -82,31 +83,31 @@ make_unsafe_uniq(ARGS&&... args) // NOLINT: mimic std style
 }
 
 template<class DATA_TYPE>
-inline unique_ptr<DATA_TYPE[], std::default_delete<DATA_TYPE>, true>
+inline unique_ptr<DATA_TYPE[], std::default_delete<DATA_TYPE[]>, true>
 make_uniq_array(size_t n) // NOLINT: mimic std style
 {
-	return unique_ptr<DATA_TYPE[], std::default_delete<DATA_TYPE>, true>(new DATA_TYPE[n]());
+	return unique_ptr<DATA_TYPE[], std::default_delete<DATA_TYPE[]>, true>(new DATA_TYPE[n]());
 }
 
 template<class DATA_TYPE>
-inline unique_ptr<DATA_TYPE[], std::default_delete<DATA_TYPE>, true>
+inline unique_ptr_impl<DATA_TYPE[], true, std::default_delete<DATA_TYPE[]>>
 make_uniq_array_uninitialized(size_t n) // NOLINT: mimic std style
 {
-	return unique_ptr<DATA_TYPE[], std::default_delete<DATA_TYPE>, true>(new DATA_TYPE[n]);
+	return unique_ptr_impl<DATA_TYPE[], true, std::default_delete<DATA_TYPE[]>>(new DATA_TYPE[n]);
 }
 
 template<class DATA_TYPE>
-inline unique_ptr<DATA_TYPE[], std::default_delete<DATA_TYPE>, false>
+inline unique_ptr_impl<DATA_TYPE[], false, std::default_delete<DATA_TYPE[]>>
 make_unsafe_uniq_array(size_t n) // NOLINT: mimic std style
 {
-	return unique_ptr<DATA_TYPE[], std::default_delete<DATA_TYPE>, false>(new DATA_TYPE[n]());
+	return unique_ptr_impl<DATA_TYPE[], false, std::default_delete<DATA_TYPE[]>>(new DATA_TYPE[n]());
 }
 
 template<class DATA_TYPE>
-inline unique_ptr<DATA_TYPE[], std::default_delete<DATA_TYPE>, false>
+inline unique_ptr_impl<DATA_TYPE[], false, std::default_delete<DATA_TYPE[]>>
 make_unsafe_uniq_array_uninitialized(size_t n) // NOLINT: mimic std style
 {
-	return unique_ptr<DATA_TYPE[], std::default_delete<DATA_TYPE>, false>(new DATA_TYPE[n]);
+	return unique_ptr_impl<DATA_TYPE[], false, std::default_delete<DATA_TYPE[]>>(new DATA_TYPE[n]);
 }
 
 template<class DATA_TYPE, class... ARGS>
@@ -127,8 +128,8 @@ unique_ptr<S> make_unique_base(Args &&... args) {
 #endif // DUCKDB_ENABLE_DEPRECATED_API
 
 template <typename SRC, typename TGT>
-unique_ptr<TGT> unique_ptr_cast(unique_ptr<SRC> src) { // NOLINT: mimic std style
-	return unique_ptr<TGT>(static_cast<TGT *>(src.release()));
+duckdb::unique_ptr<TGT> unique_ptr_cast(duckdb::unique_ptr<SRC> src) { // NOLINT: mimic std style
+	return duckdb::unique_ptr<TGT>(static_cast<TGT *>(src.release()));
 }
 
 template <typename SRC, typename TGT>
@@ -145,7 +146,7 @@ struct SharedConstructor {
 
 struct UniqueConstructor {
 	template <class T, typename... ARGS>
-	static unique_ptr<T> Create(ARGS &&...args) {
+	static duckdb::unique_ptr<T> Create(ARGS &&...args) {
 		return make_uniq<T>(std::forward<ARGS>(args)...);
 	}
 };

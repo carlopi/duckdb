@@ -101,12 +101,12 @@ public:
 	// Construct from unique_ptr, takes over ownership of the unique_ptr
 	template <class U, class DELETER, bool SAFE_P,
 	          typename std::enable_if<compatible_with_t<U, T>::value &&
-	                                      std::is_convertible<typename unique_ptr<U, DELETER>::pointer, T *>::value,
+	                                      std::is_convertible<typename unique_ptr_impl<U, true, DELETER>::pointer, T *>::value,
 	                                  int>::type = 0>
 #ifdef DUCKDB_CLANG_TIDY
 	[[clang::reinitializes]]
 #endif
-	shared_ptr(unique_ptr<U, DELETER, SAFE_P> &&other) // NOLINT: not marked as explicit
+	shared_ptr(unique_ptr_impl<U, SAFE_P, DELETER> &&other) // NOLINT: not marked as explicit
 	    : internal(std::move(other)) {
 		__enable_weak_this(internal.get(), internal.get());
 	}
@@ -144,9 +144,9 @@ public:
 	// Assign from moved unique_ptr
 	template <class U, class DELETER, bool SAFE_P,
 	          typename std::enable_if<compatible_with_t<U, T>::value &&
-	                                      std::is_convertible<typename unique_ptr<U, DELETER>::pointer, T *>::value,
+	                                      std::is_convertible<typename unique_ptr_impl<U, true, DELETER>::pointer, T *>::value,
 	                                  int>::type = 0>
-	shared_ptr<T> &operator=(unique_ptr<U, DELETER, SAFE_P> &&ref) {
+	shared_ptr<T> &operator=(unique_ptr_impl<U, SAFE_P, DELETER> &&ref) {
 		shared_ptr(std::move(ref)).swap(*this);
 		return *this;
 	}

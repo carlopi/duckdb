@@ -9,8 +9,8 @@
 
 namespace duckdb {
 
-template <class DATA_TYPE, class DELETER = std::default_delete<DATA_TYPE>, bool SAFE = true>
-class unique_ptr : public std::unique_ptr<DATA_TYPE, DELETER> { // NOLINT: naming
+template <class DATA_TYPE, bool SAFE, class DELETER>
+class unique_ptr_impl : public std::unique_ptr<DATA_TYPE, DELETER> { // NOLINT: naming
 public:
 	using original = std::unique_ptr<DATA_TYPE, DELETER>;
 	using original::original; // NOLINT
@@ -54,11 +54,10 @@ public:
 	}
 };
 
-// FIXME: DELETER is defined, but we use std::default_delete???
-template <class DATA_TYPE, class DELETER, bool SAFE>
-class unique_ptr<DATA_TYPE[], DELETER, SAFE> : public std::unique_ptr<DATA_TYPE[], std::default_delete<DATA_TYPE[]>> {
+template <class DATA_TYPE, bool SAFE, class DELETER>
+class unique_ptr_impl<DATA_TYPE[], SAFE, DELETER> : public std::unique_ptr<DATA_TYPE[], DELETER> {
 public:
-	using original = std::unique_ptr<DATA_TYPE[], std::default_delete<DATA_TYPE[]>>;
+	using original = std::unique_ptr<DATA_TYPE[], DELETER>;
 	using original::original;
 
 private:
@@ -82,13 +81,16 @@ public:
 	}
 };
 
-template <typename T>
-using unique_array = unique_ptr<T[], std::default_delete<T>, true>;
+template <typename T, class DELETER = std::default_delete<T>, bool VALUE=true>
+using unique_ptr = unique_ptr_impl<T, VALUE, DELETER>;
 
 template <typename T>
-using unsafe_unique_array = unique_ptr<T[], std::default_delete<T>, false>;
+using unique_array = unique_ptr_impl<T[], true, std::default_delete<T[]>>;
 
 template <typename T>
-using unsafe_unique_ptr = unique_ptr<T, std::default_delete<T>, false>;
+using unsafe_unique_array = unique_ptr_impl<T[], false, std::default_delete<T[]>>;
+
+template <typename T>
+using unsafe_unique_ptr = unique_ptr_impl<T, false, std::default_delete<T>>;
 
 } // namespace duckdb
