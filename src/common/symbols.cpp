@@ -1,7 +1,7 @@
 // this file is used to instantiate symbols for LLDB so e.g.
 // vector and unique_ptr can be accessed from the debugger
 
-#ifdef DEBUG
+#ifdef DEBUGZ
 
 #include "duckdb/catalog/catalog.hpp"
 #include "duckdb/catalog/catalog_entry/list.hpp"
