@@ -191,7 +191,6 @@ jobs:
    name: Windows (ARM64)
    if: github.ref == 'refs/heads/main' || github.repository != 'duckdb/duckdb' || inputs.run_all == 'true'
    runs-on: windows-latest
-   needs: win-release-64
 
    steps:
      - uses: actions/checkout@v4
@@ -202,6 +201,9 @@ jobs:
      - uses: actions/setup-python@v5
        with:
          python-version: '3.12'
+
+     - name: Configure VS Toolchain (Windows)
+       uses: ilammy/msvc-dev-cmd@v1
 
      - name: Setup Ccache
        uses: hendrikmuhs/ccache-action@main
