@@ -49,7 +49,7 @@ using reference = std::reference_wrapper<T>;
 template<class DATA_TYPE, bool SAFE = true>
 struct TemplatedUniqueIf
 {
-    typedef unique_ptr<DATA_TYPE, std::default_delete<DATA_TYPE>, SAFE> templated_unique_single_t;
+    typedef unique_ptr_impl<DATA_TYPE, SAFE, std::default_delete<DATA_TYPE>> templated_unique_single_t;
 };
 
 template<class DATA_TYPE, size_t N>
@@ -63,7 +63,7 @@ inline
 typename TemplatedUniqueIf<DATA_TYPE, true>::templated_unique_single_t
 make_uniq(ARGS&&... args) // NOLINT: mimic std style
 {
-    return unique_ptr<DATA_TYPE, std::default_delete<DATA_TYPE>, true>(new DATA_TYPE(std::forward<ARGS>(args)...));
+    return unique_ptr_impl<DATA_TYPE, true, std::default_delete<DATA_TYPE>>(new DATA_TYPE(std::forward<ARGS>(args)...));
 }
 
 template<class DATA_TYPE, class... ARGS>
@@ -79,14 +79,14 @@ inline
 typename TemplatedUniqueIf<DATA_TYPE, false>::templated_unique_single_t
 make_unsafe_uniq(ARGS&&... args) // NOLINT: mimic std style
 {
-    return unique_ptr<DATA_TYPE, std::default_delete<DATA_TYPE>, false>(new DATA_TYPE(std::forward<ARGS>(args)...));
+    return unique_ptr_impl<DATA_TYPE, false, std::default_delete<DATA_TYPE>>(new DATA_TYPE(std::forward<ARGS>(args)...));
 }
 
 template<class DATA_TYPE>
-inline unique_ptr<DATA_TYPE[], std::default_delete<DATA_TYPE[]>, true>
+inline unique_ptr<DATA_TYPE[]>
 make_uniq_array(size_t n) // NOLINT: mimic std style
 {
-	return unique_ptr<DATA_TYPE[], std::default_delete<DATA_TYPE[]>, true>(new DATA_TYPE[n]());
+	return unique_ptr<DATA_TYPE[]>(new DATA_TYPE[n]());
 }
 
 template<class DATA_TYPE>

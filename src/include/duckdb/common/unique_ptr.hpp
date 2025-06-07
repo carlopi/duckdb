@@ -81,8 +81,8 @@ public:
 	}
 };
 
-template <typename T, class DELETER = std::default_delete<T>, bool VALUE=true>
-using unique_ptr = unique_ptr_impl<T, VALUE, DELETER>;
+template <typename T>
+using unique_ptr = unique_ptr_impl<T, true, std::default_delete<T>>;
 
 template <typename T>
 using unique_array = unique_ptr_impl<T[], true, std::default_delete<T[]>>;
