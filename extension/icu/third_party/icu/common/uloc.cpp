@@ -45,8 +45,8 @@
 #include "uenumimp.h"
 #include "uassert.h"
 #include "charstr.h"
-
 #include <stdio.h> /* for sprintf */
+#include <locale>
 
 U_NAMESPACE_USE
 
@@ -2229,7 +2229,7 @@ uloc_acceptLanguageFromHTTP(char *result, int32_t resultAvailable, UAcceptResult
     }
 
     for(s=httpAcceptLanguage;s&&*s;) {
-        while(isspace(*s)) /* eat space at the beginning */
+        while(isspace(*s, std::locale::classic())) /* eat space at the beginning */
             s++;
         itemEnd=uprv_strchr(s,',');
         paramEnd=uprv_strchr(s,';');
@@ -2242,13 +2242,13 @@ uloc_acceptLanguageFromHTTP(char *result, int32_t resultAvailable, UAcceptResult
             if(*t=='q') {
                 t++;
             }
-            while(isspace(*t)) {
+            while(isspace(*t, std::locale::classic())) {
                 t++;
             }
             if(*t=='=') {
                 t++;
             }
-            while(isspace(*t)) {
+            while(isspace(*t, std::locale::classic())) {
                 t++;
             }
             items[n].q = (float)_uloc_strtod(t,NULL);
@@ -2259,7 +2259,7 @@ uloc_acceptLanguageFromHTTP(char *result, int32_t resultAvailable, UAcceptResult
         }
         items[n].dummy=0;
         /* eat spaces prior to semi */
-        for(t=(paramEnd-1);(paramEnd>s)&&isspace(*t);t--)
+        for(t=(paramEnd-1);(paramEnd>s)&&isspace(*t, std::locale::classic());t--)
             ;
         int32_t slen = static_cast<int32_t>(((t+1)-s));
         if(slen > ULOC_FULLNAME_CAPACITY) {
