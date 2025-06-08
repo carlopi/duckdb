@@ -13,13 +13,21 @@
 #include <cstdint>
 #include <memory>
 
+#ifndef DUCKDB_WRAP_STD
+namespace duckdb_wrapped {
+namespace std {
+using ::std::unique_ptr;
+}
+} // namespace duckdb_wrapped
+#endif
+
 struct sqlite3;
 struct sqlite3_stmt;
 enum class MetadataResult : uint8_t;
 
 namespace duckdb_shell {
+using duckdb_wrapped::std::unique_ptr;
 using std::string;
-using std::unique_ptr;
 using std::vector;
 struct ColumnarResult;
 struct RowResult;
@@ -27,6 +35,10 @@ class ColumnRenderer;
 class RowRenderer;
 
 using idx_t = uint64_t;
+
+static bool CharacterIsSpace(char c) {
+	return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
+}
 
 enum class RenderMode : uint32_t {
 	LINE = 0,  /* One column per line.  Blank line between records */
@@ -69,7 +81,7 @@ enum class LargeNumberRendering { NONE = 0, FOOTER = 1, ALL = 2, DEFAULT = 3 };
 #define SHFLG_HeaderSet     0x00000080 /* .header has been used */
 
 /* ctype macros that work with signed characters */
-#define IsSpace(X) isspace((unsigned char)X)
+#define IsSpace(X) CharacterIsSpace((unsigned char)X)
 #define IsDigit(X) isdigit((unsigned char)X)
 #define ToLower(X) (char)tolower((unsigned char)X)
 
