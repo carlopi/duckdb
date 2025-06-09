@@ -7,8 +7,11 @@
 #include "duckdb/common/shared_ptr.hpp"
 
 namespace std {
-template <class C> bool isspace(C c) {
-	static_assert(sizeof(C) == 0, "Naked issspace is discontinued, either use StringUtil::CharacterIsSpace or duckdb_wrapped::std::isspace");
+template <class C>
+bool isspace(C c) {
+	static_assert(
+	    sizeof(C) == 0,
+	    "Naked issspace is discontinued, either use StringUtil::CharacterIsSpace or duckdb_wrapped::std::isspace");
 	return false;
 }
 
