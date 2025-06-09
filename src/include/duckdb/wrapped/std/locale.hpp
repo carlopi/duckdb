@@ -6,7 +6,7 @@
 #define DUCKDB_WRAP_STD
 
 namespace duckdb_wrapped {
-	namespace std {
-		using ::std::isspace;
-	}
-} // namespace explicit_std;
+namespace std {
+using ::std::isspace;
+} // namespace std
+} // namespace duckdb_wrapped
