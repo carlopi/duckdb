@@ -352,8 +352,11 @@ static double timeDiff(FILETIME *pStart, FILETIME *pEnd) {
 	return (double)((i64End - i64Start) / 10000000.0);
 }
 
+namespace duckdb_shell {
+
 bool CharacterIsSpace(char c) {
 	return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
+}
 }
 
 /*
