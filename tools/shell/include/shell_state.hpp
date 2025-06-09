@@ -12,6 +12,7 @@
 #include <string>
 #include <cstdint>
 #include <memory>
+#include "duckdb/common/string_util.hpp"
 
 #ifndef DUCKDB_WRAP_STD
 namespace duckdb_wrapped {
@@ -35,8 +36,6 @@ class ColumnRenderer;
 class RowRenderer;
 
 using idx_t = uint64_t;
-
-bool CharacterIsSpace(char c);
 
 enum class RenderMode : uint32_t {
 	LINE = 0,  /* One column per line.  Blank line between records */
@@ -79,7 +78,7 @@ enum class LargeNumberRendering { NONE = 0, FOOTER = 1, ALL = 2, DEFAULT = 3 };
 #define SHFLG_HeaderSet     0x00000080 /* .header has been used */
 
 /* ctype macros that work with signed characters */
-#define IsSpace(X) CharacterIsSpace((unsigned char)X)
+#define IsSpace(X) duckdb::StringUtil::CharacterIsSpace((unsigned char)X)
 #define IsDigit(X) isdigit((unsigned char)X)
 #define ToLower(X) (char)tolower((unsigned char)X)
 
