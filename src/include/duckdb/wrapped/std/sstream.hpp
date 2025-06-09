@@ -6,8 +6,8 @@
 
 namespace duckdb_wrapped {
 namespace std {
+using ::std::basic_stringstream;
 using ::std::stringstream;
 using ::std::wstringstream;
-using ::std::basic_stringstream;
 } // namespace std
 } // namespace duckdb_wrapped
