@@ -47,7 +47,7 @@ else()
   endif()
 endif()
 
-if(NOT MSVC)
+if(NOT WIN32)
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -include 'duckdb/common/shadow_forbidden_functions.hpp'")
 if (DEFINED ENV{SHADOW_FORBIDDEN_FUNCTIONS})
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -include 'duckdb/common/shadow_forbidden_functions.hpp'")
