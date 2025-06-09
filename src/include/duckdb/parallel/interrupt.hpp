@@ -8,13 +8,13 @@
 
 #pragma once
 
+#include <condition_variable>
+
 #include "duckdb/common/atomic.hpp"
 #include "duckdb/common/enums/operator_result_type.hpp"
 #include "duckdb/common/mutex.hpp"
 #include "duckdb/common/shared_ptr.hpp"
 #include "duckdb/parallel/task.hpp"
-
-#include <condition_variable>
 
 namespace duckdb {
 
