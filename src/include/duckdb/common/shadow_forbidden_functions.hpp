@@ -17,13 +17,13 @@ bool isspace(C c) {
 
 #ifndef DUCKDB_ENABLE_DEPRECATED_API
 template <class T, class... ARGS>
-static duckdb::unique_ptr<T> make_unique(ARGS&&... __args) { // NOLINT: mimic std style
+static std::unique_ptr<T> make_unique(ARGS&&... __args) { // NOLINT: mimic std style
 	static_assert(sizeof(T) == 0, "Use make_uniq instead of make_unique!");
 	return nullptr;
 }
 
 template <class T, class... ARGS>
-static duckdb::shared_ptr<T> make_shared(ARGS&&... __args) { // NOLINT: mimic std style
+static std::shared_ptr<T> make_shared(ARGS&&... __args) { // NOLINT: mimic std style
 	static_assert(sizeof(T) == 0, "Use make_shared_ptr instead of make_shared!");
 	return nullptr;
 }
