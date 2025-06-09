@@ -36,9 +36,7 @@ class RowRenderer;
 
 using idx_t = uint64_t;
 
-bool CharacterIsSpace(char c) {
-	return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
-}
+bool CharacterIsSpace(char c);
 
 enum class RenderMode : uint32_t {
 	LINE = 0,  /* One column per line.  Blank line between records */
