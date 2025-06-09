@@ -47,6 +47,7 @@ else()
   endif()
 endif()
 
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -include 'duckdb/common/shadow_forbidden_functions.hpp'")
 if("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang$")
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -include 'duckdb/common/shadow_forbidden_functions.hpp'")
 if (DEFINED ENV{SHADOW_FORBIDDEN_FUNCTIONS})
