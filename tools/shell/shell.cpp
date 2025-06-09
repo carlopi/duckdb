@@ -357,7 +357,7 @@ namespace duckdb_shell {
 bool CharacterIsSpace(char c) {
 	return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
 }
-}
+} // namespace duckdb_shell
 
 /*
 ** Print the timing results.
