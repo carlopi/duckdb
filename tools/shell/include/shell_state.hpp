@@ -36,7 +36,7 @@ class RowRenderer;
 
 using idx_t = uint64_t;
 
-static bool CharacterIsSpace(char c) {
+bool CharacterIsSpace(char c) {
 	return c == ' ' || c == '\t' || c == '\n' || c == '\v' || c == '\f' || c == '\r';
 }
 
