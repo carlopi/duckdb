@@ -195,7 +195,6 @@ jobs:
     # Builds extensions for osx_arm64 and osx_amd64
     name: OSX Extensions Release
     runs-on: macos-14
-    needs: xcode-debug
     strategy:
       matrix:
         label: [ 'x86_64', 'arm64' ]
@@ -216,6 +215,7 @@ jobs:
       GEN: ninja
       # TODO check here as well
       DUCKDB_PLATFORM: ${{ matrix.duckdb_arch }}
+      SHADOW_FORBIDDEN_FUNCTIONS: 1
 
     steps:
       - uses: actions/checkout@v4
