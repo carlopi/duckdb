@@ -32,62 +32,62 @@ statement ok
 set logging_level='debug'
 
 query I
-FROM 's3://test-bucket/http_log/test.parquet'
+FROM 's3://test-bucket/http_log/test.parquet?a'
 ----
 value-1
 
 query I
-FROM 's3://test-bucket/http_log/test.parquet'
+FROM 's3://test-bucket/http_log/test.parquet?0'
 ----
 value-1
 
 query I
-FROM 's3://test-bucket/http_log/test.parquet'
+FROM 's3://test-bucket/http_log/test.parquet?1'
 ----
 value-1
 
 query I
-FROM 's3://test-bucket/http_log/test.parquet'
+FROM 's3://test-bucket/http_log/test.parquet?2'
 ----
 value-1
 
 query I
-FROM 's3://test-bucket/http_log/test.parquet'
+FROM 's3://test-bucket/http_log/test.parquet?3'
 ----
 value-1
 
 query I
-FROM 's3://test-bucket/http_log/test.parquet'
+FROM 's3://test-bucket/http_log/test.parquet?4'
 ----
 value-1
 
 query I
-FROM 's3://test-bucket/http_log/test.parquet'
+FROM 's3://test-bucket/http_log/test.parquet?5'
 ----
 value-1
 
 query I
-FROM 's3://test-bucket/http_log/test.parquet'
+FROM 's3://test-bucket/http_log/test.parquet?6'
 ----
 value-1
 
 query I
-FROM 's3://test-bucket/http_log/test.parquet'
+FROM 's3://test-bucket/http_log/test.parquet?7'
 ----
 value-1
 
 query I
-FROM 's3://test-bucket/http_log/test.parquet'
+FROM 's3://test-bucket/http_log/test.parquet?8'
 ----
 value-1
 
 query I
-FROM 's3://test-bucket/http_log/test.parquet'
+FROM 's3://test-bucket/http_log/test.parquet?9'
 ----
 value-1
 
 query I
-FROM 's3://test-bucket/http_log/test.parquet'
+FROM 's3://test-bucket/http_log/test.parquet?10'
 ----
 value-1
 
