@@ -41,3 +41,86 @@ SELECT request.type, parse_filename(request.url) FROM duckdb_logs_parsed('HTTP')
 ----
 HEAD	test.parquet
 GET	test.parquet
+
+query I
+FROM 's3://test-bucket/http_log/test.parquet'
+----
+value-1
+
+query I
+FROM 's3://test-bucket/http_log/test.parquet'
+----
+value-1
+
+query I
+FROM 's3://test-bucket/http_log/test.parquet'
+----
+value-1
+
+query I
+FROM 's3://test-bucket/http_log/test.parquet'
+----
+value-1
+
+query I
+FROM 's3://test-bucket/http_log/test.parquet'
+----
+value-1
+
+query I
+FROM 's3://test-bucket/http_log/test.parquet'
+----
+value-1
+
+query I
+FROM 's3://test-bucket/http_log/test.parquet'
+----
+value-1
+
+query I
+FROM 's3://test-bucket/http_log/test.parquet'
+----
+value-1
+
+query I
+FROM 's3://test-bucket/http_log/test.parquet'
+----
+value-1
+
+query I
+FROM 's3://test-bucket/http_log/test.parquet'
+----
+value-1
+
+query I
+FROM 's3://test-bucket/http_log/test.parquet'
+----
+value-1
+
+query II
+SELECT request.type, parse_filename(request.url) FROM duckdb_logs_parsed('HTTP');
+----
+HEAD	test.parquet
+GET	test.parquet
+HEAD	test.parquet
+GET	test.parquet
+HEAD	test.parquet
+GET	test.parquet
+HEAD	test.parquet
+GET	test.parquet
+HEAD	test.parquet
+GET	test.parquet
+HEAD	test.parquet
+GET	test.parquet
+HEAD	test.parquet
+GET	test.parquet
+HEAD	test.parquet
+GET	test.parquet
+HEAD	test.parquet
+GET	test.parquet
+HEAD	test.parquet
+GET	test.parquet
+HEAD	test.parquet
+GET	test.parquet
+HEAD	test.parquet
+GET	test.parquet
