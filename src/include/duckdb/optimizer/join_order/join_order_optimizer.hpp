@@ -27,6 +27,12 @@ class JoinOrderOptimizer {
 public:
 	explicit JoinOrderOptimizer(ClientContext &context);
 	JoinOrderOptimizer CreateChildOptimizer();
+	~JoinOrderOptimizer() {
+		if (depth == 1 && (actual_max_depth > 20 || actual_count_child > 40)) {
+		std::cout << actual_max_depth << "\t" << actual_count_child << " is my max depth and count_children\n";
+		}
+	}
+	JoinOrderOptimizer (JoinOrderOptimizer && x) =default;
 
 public:
 	//! Perform join reordering inside a plan
@@ -60,7 +66,11 @@ private:
 	unordered_map<idx_t, RelationStats> materialized_cte_stats;
 	//! Stats of Delim Scans of the Delim Join that is currently being optimized
 	optional_ptr<RelationStats> delim_scan_stats;
+	idx_t actual_max_depth;
+	idx_t *max_depth;
 	idx_t depth;
+idx_t actual_count_child;
+idx_t *count_child ;
 	static constexpr idx_t THRESHOLD_AVOID_IN_DEPTH_VISIT = 25;
 };
 

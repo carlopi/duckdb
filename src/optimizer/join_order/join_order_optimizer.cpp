@@ -12,6 +12,10 @@ namespace duckdb {
 
 JoinOrderOptimizer::JoinOrderOptimizer(ClientContext &context)
     : context(context), query_graph_manager(context), depth(1) {
+actual_max_depth = depth;
+max_depth = &actual_max_depth;	
+actual_count_child = 1;
+count_child = &actual_count_child;
 }
 
 JoinOrderOptimizer JoinOrderOptimizer::CreateChildOptimizer() {
@@ -19,13 +23,21 @@ JoinOrderOptimizer JoinOrderOptimizer::CreateChildOptimizer() {
 	child_optimizer.materialized_cte_stats = materialized_cte_stats;
 	child_optimizer.delim_scan_stats = delim_scan_stats;
 	child_optimizer.depth = depth + 1;
+	child_optimizer.max_depth = max_depth;
+	
+	if (*(child_optimizer.max_depth) < depth + 1) {
+		*(child_optimizer.max_depth) = depth + 1;
+	}
+	child_optimizer.count_child = count_child;
+	(*child_optimizer.count_child)++;
+
 	return child_optimizer;
 }
 
 unique_ptr<LogicalOperator> JoinOrderOptimizer::Optimize(unique_ptr<LogicalOperator> plan,
                                                          optional_ptr<RelationStats> stats) {
 
-	if (depth > THRESHOLD_AVOID_IN_DEPTH_VISIT) {
+	if (depth > THRESHOLD_AVOID_IN_DEPTH_VISIT * 3) {
 		// Very deep plans will eventually consume quite some stack space
 		// Returning the current plan is always a valid choice
 		return std::move(plan);
