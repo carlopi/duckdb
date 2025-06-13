@@ -100,7 +100,7 @@ runs:
           docker run --env-file=docker_env.txt -v `pwd`:/duckdb_build_dir -v `pwd`/ccache_dir:/ccache_dir duckdb/${{ inputs.duckdb_arch }} make release
 
       - name: Save Ccache
-        if: ${{ inputs.save_cache }}
+        if: ${{ inputs.save_cache == 1 }}
         uses: actions/cache/save@v4
         with:
           path: ./ccache_dir
