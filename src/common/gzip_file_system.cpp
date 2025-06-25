@@ -125,7 +125,7 @@ void MiniZStreamWrapper::Initialize(CompressedFile &file, bool write) {
 		if (gzip_hdr[3] & GZIP_FLAG_EXTRA) {
 			uint8_t gzip_xlen[2];
 			file.child_handle->Seek(data_start);
-			file.child_handle->Read(gzip_xlen, 2);
+			file.child_handle->ReadAll(gzip_xlen, 2);
 			auto xlen = NumericCast<idx_t>((uint8_t)gzip_xlen[0] | (uint8_t)gzip_xlen[1] << 8);
 			data_start += xlen + 2;
 		}

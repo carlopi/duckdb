@@ -62,7 +62,15 @@ public:
 
 	// Read at [nr_bytes] bytes into [buffer], and return the bytes actually read.
 	// File offset will be changed, which advances for number of bytes read.
-	DUCKDB_API int64_t Read(void *buffer, idx_t nr_bytes);
+	DUCKDB_API [[nodiscard]] int64_t Read(void *buffer, idx_t nr_bytes);
+	DUCKDB_API void ReadAll(void *buffer, idx_t nr_bytes) {
+		int64_t bytes_read = 0;
+		while (bytes_read < nr_bytes) {
+			auto current_read = Read(buffer, nr_bytes);
+			bytes_read += current_read;
+			buffer = (char*)buffer + current_read;
+		}
+	}
 	DUCKDB_API int64_t Write(void *buffer, idx_t nr_bytes);
 	// Read at [nr_bytes] bytes into [buffer].
 	// File offset will not be changed.
@@ -138,7 +146,15 @@ public:
 	DUCKDB_API virtual void Write(FileHandle &handle, void *buffer, int64_t nr_bytes, idx_t location);
 	//! Read nr_bytes from the specified file into the buffer, moving the file pointer forward by nr_bytes. Returns the
 	//! amount of bytes read.
-	DUCKDB_API virtual int64_t Read(FileHandle &handle, void *buffer, int64_t nr_bytes);
+	DUCKDB_API [[nodiscard]] virtual int64_t Read(FileHandle &handle, void *buffer, int64_t nr_bytes);
+	DUCKDB_API virtual void ReadAll(FileHandle &handle, void *buffer, int64_t nr_bytes) {
+		int64_t bytes_read = 0;
+		while (bytes_read < nr_bytes) {
+			auto current_read = Read(handle, buffer, nr_bytes);
+			bytes_read += current_read;
+			buffer = (char*)buffer + current_read;
+		}
+	}
 	//! Write nr_bytes from the buffer into the file, moving the file pointer forward by nr_bytes.
 	DUCKDB_API virtual int64_t Write(FileHandle &handle, void *buffer, int64_t nr_bytes);
 	//! Excise a range of the file. The OS can drop pages from the page-cache, and the file-system is free to deallocate

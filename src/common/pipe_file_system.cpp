@@ -23,7 +23,7 @@ public:
 	}
 };
 
-int64_t PipeFile::ReadChunk(void *buffer, int64_t nr_bytes) {
+[[nodiscard]] int64_t PipeFile::ReadChunk(void *buffer, int64_t nr_bytes) {
 	return child_handle->Read(buffer, UnsafeNumericCast<idx_t>(nr_bytes));
 }
 int64_t PipeFile::WriteChunk(void *buffer, int64_t nr_bytes) {
@@ -34,7 +34,7 @@ void PipeFileSystem::Reset(FileHandle &handle) {
 	throw InternalException("Cannot reset pipe file system");
 }
 
-int64_t PipeFileSystem::Read(FileHandle &handle, void *buffer, int64_t nr_bytes) {
+[[nodiscard]] int64_t PipeFileSystem::Read(FileHandle &handle, void *buffer, int64_t nr_bytes) {
 	auto &pipe = handle.Cast<PipeFile>();
 	return pipe.ReadChunk(buffer, nr_bytes);
 }

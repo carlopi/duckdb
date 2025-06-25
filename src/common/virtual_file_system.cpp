@@ -62,7 +62,7 @@ void VirtualFileSystem::Write(FileHandle &handle, void *buffer, int64_t nr_bytes
 	handle.file_system.Write(handle, buffer, nr_bytes, location);
 }
 
-int64_t VirtualFileSystem::Read(FileHandle &handle, void *buffer, int64_t nr_bytes) {
+[[nodiscard]] int64_t VirtualFileSystem::Read(FileHandle &handle, void *buffer, int64_t nr_bytes) {
 	return handle.file_system.Read(handle, buffer, nr_bytes);
 }
 

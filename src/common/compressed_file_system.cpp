@@ -129,7 +129,7 @@ void CompressedFile::Close() {
 	stream_data.refresh = false;
 }
 
-int64_t CompressedFileSystem::Read(FileHandle &handle, void *buffer, int64_t nr_bytes) {
+[[nodiscard]] int64_t CompressedFileSystem::Read(FileHandle &handle, void *buffer, int64_t nr_bytes) {
 	auto &compressed_file = handle.Cast<CompressedFile>();
 	return compressed_file.ReadData(buffer, nr_bytes);
 }

@@ -415,7 +415,7 @@ void FileSystem::Write(FileHandle &handle, void *buffer, int64_t nr_bytes, idx_t
 	throw NotImplementedException("%s: Write (with location) is not implemented!", GetName());
 }
 
-int64_t FileSystem::Read(FileHandle &handle, void *buffer, int64_t nr_bytes) {
+[[nodiscard]] int64_t FileSystem::Read(FileHandle &handle, void *buffer, int64_t nr_bytes) {
 	throw NotImplementedException("%s: Read is not implemented!", GetName());
 }
 
@@ -687,7 +687,7 @@ FileHandle::FileHandle(FileSystem &file_system, string path_p, FileOpenFlags fla
 FileHandle::~FileHandle() {
 }
 
-int64_t FileHandle::Read(void *buffer, idx_t nr_bytes) {
+[[nodiscard]] int64_t FileHandle::Read(void *buffer, idx_t nr_bytes) {
 	return file_system.Read(*this, buffer, UnsafeNumericCast<int64_t>(nr_bytes));
 }
 

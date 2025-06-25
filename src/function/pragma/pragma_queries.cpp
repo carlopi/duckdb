@@ -148,7 +148,7 @@ string PragmaImportDatabase(ClientContext &context, const FunctionParameters &pa
 		auto handle = fs.OpenFile(file_path, FileFlags::FILE_FLAGS_READ);
 		auto fsize = fs.GetFileSize(*handle);
 		auto buffer = make_unsafe_uniq_array<char>(UnsafeNumericCast<size_t>(fsize));
-		fs.Read(*handle, buffer.get(), fsize);
+		fs.ReadAll(*handle, buffer.get(), fsize);
 		auto query = string(buffer.get(), UnsafeNumericCast<uint32_t>(fsize));
 		// Replace the placeholder with the path provided to IMPORT
 		if (file == "load.sql") {
