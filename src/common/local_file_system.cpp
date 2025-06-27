@@ -491,7 +491,7 @@ void LocalFileSystem::Read(FileHandle &handle, void *buffer, int64_t nr_bytes, i
 	DUCKDB_LOG_FILE_SYSTEM_READ(handle, bytes_to_read, location - UnsafeNumericCast<idx_t>(bytes_to_read));
 }
 
-int64_t LocalFileSystem::Read(FileHandle &handle, void *buffer, int64_t nr_bytes) {
+[[nodiscard]] int64_t LocalFileSystem::Read(FileHandle &handle, void *buffer, int64_t nr_bytes) {
 	auto &unix_handle = handle.Cast<UnixFileHandle>();
 	int fd = unix_handle.fd;
 	int64_t bytes_read = read(fd, buffer, UnsafeNumericCast<size_t>(nr_bytes));
@@ -1009,7 +1009,7 @@ void LocalFileSystem::Read(FileHandle &handle, void *buffer, int64_t nr_bytes, i
 	DUCKDB_LOG_FILE_SYSTEM_READ(handle, bytes_read, location);
 }
 
-int64_t LocalFileSystem::Read(FileHandle &handle, void *buffer, int64_t nr_bytes) {
+[[nodiscard]] int64_t LocalFileSystem::Read(FileHandle &handle, void *buffer, int64_t nr_bytes) {
 	HANDLE hFile = handle.Cast<WindowsFileHandle>().fd;
 	auto &pos = handle.Cast<WindowsFileHandle>().position;
 	auto n = std::min<idx_t>(std::max<idx_t>(GetFileSize(handle), pos) - pos, nr_bytes);
