@@ -12,6 +12,9 @@ mkdir -p build/coverage
 
 # run tests
 build/coverage/test/unittest
+build/coverage/test/unittest --test-config test/configs/force_storage.json
+build/coverage/test/unittest --test-config test/configs/latest_storage.json
+build/coverage/test/unittest --test-config test/configs/force_storage_restart.json
 build/coverage/test/unittest "[detailed_profiler]"
 build/coverage/test/unittest test/sql/tpch/tpch_sf01.test_slow
 python3 -m pytest --shell-binary build/coverage/duckdb tools/shell/tests/
