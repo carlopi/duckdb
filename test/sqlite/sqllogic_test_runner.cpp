@@ -26,6 +26,7 @@ SQLLogicTestRunner::SQLLogicTestRunner(string dbpath) : dbpath(std::move(dbpath)
 	auto env_var = std::getenv("LOCAL_EXTENSION_REPO");
 	if (!env_var) {
 		config->options.autoload_known_extensions = false;
+		config->options.autoinstall_known_extensions = false;
 	} else {
 		local_extension_repo = env_var;
 		config->options.autoload_known_extensions = true;
@@ -567,7 +568,18 @@ RequireResult SQLLogicTestRunner::CheckRequire(SQLLogicParser &parser, const vec
 			return RequireResult::MISSING;
 		}
 	} else if (excluded_from_autoloading) {
-		return RequireResult::MISSING;
+		if (!local_extension_repo.empty()) {
+			auto install_ext = con->Query("INSTALL " + param + " FROM '" + local_extension_repo + "'");
+			if (install_ext->HasError()) {
+				return RequireResult::MISSING;
+			}
+			auto load_ext = con->Query("LOAD " + param);
+			if (load_ext->HasError()) {
+				return RequireResult::MISSING;
+			}
+		} else {
+			return RequireResult::PRESENT;
+		}
 	}
 	return RequireResult::PRESENT;
 }
