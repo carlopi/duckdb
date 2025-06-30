@@ -64,7 +64,7 @@ public:
 		return lookup_result;
 	}
 
-	shared_ptr<HTTPUtil> GetHTTPUtil() {
+	shared_ptr<HTTPUtil>& GetHTTPUtil() {
 		return http_util;
 	}
 

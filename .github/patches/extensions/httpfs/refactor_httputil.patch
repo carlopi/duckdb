@@ -1,0 +1,34 @@
+diff --git a/duckdb b/duckdb
+index 2063dda..6267d4e 160000
+--- a/duckdb
++++ b/duckdb
+@@ -1 +1 @@
+-Subproject commit 2063dda3e6bd955c364ce8e61939c6248a907be6
++Subproject commit 6267d4e31b033aaf3125c12bd3514d02dec53720
+diff --git a/extension-ci-tools b/extension-ci-tools
+index c1d18ec..cca140d 160000
+--- a/extension-ci-tools
++++ b/extension-ci-tools
+@@ -1 +1 @@
+-Subproject commit c1d18ec811d4fc74f68a122ee68387f13090eddc
++Subproject commit cca140d4cc47f3f3e40f29b49c305bd92845771f
+diff --git a/extension/httpfs/httpfs.cpp b/extension/httpfs/httpfs.cpp
+index 4881e9d..67ea497 100644
+--- a/extension/httpfs/httpfs.cpp
++++ b/extension/httpfs/httpfs.cpp
+@@ -23,12 +23,10 @@ namespace duckdb {
+ 
+ shared_ptr<HTTPUtil> HTTPFSUtil::GetHTTPUtil(optional_ptr<FileOpener> opener) {
+ 	if (opener) {
+-		auto db = opener->TryGetDatabase();
+-		if (db) {
+-			auto &config = DBConfig::GetConfig(*db);
+-			return config.http_util;
+-		}
++		return opener->GetHTTPUtil();
+ 	}
++	std::cout << "No opener\n";
++	throw InternalException("BOOOOOOOOOOM");
+ 	return make_shared_ptr<HTTPFSUtil>();
+ }
+ 
