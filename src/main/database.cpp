@@ -287,8 +287,7 @@ void DatabaseInstance::Initialize(const char *database_path, DBConfig *user_conf
 	Configure(*config_ptr, database_path);
 
 	create_api_v1 = CreateAPIv1Wrapper;
-
-	db_file_system = make_uniq<DatabaseFileSystem>(*this);
+	db_file_system = make_uniq<DatabaseFileSystem>(config_ptr->http_util, *this);
 	db_manager = make_uniq<DatabaseManager>(*this);
 	if (config.buffer_manager) {
 		buffer_manager = config.buffer_manager;

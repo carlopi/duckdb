@@ -220,7 +220,7 @@ public:
 	unique_ptr<HTTPResponse> Request(BaseRequest &request);
 };
 
-class HTTPUtil {
+class HTTPUtil : public enable_shared_from_this<HTTPUtil> {
 public:
 	virtual ~HTTPUtil() = default;
 

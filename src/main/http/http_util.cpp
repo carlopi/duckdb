@@ -448,14 +448,14 @@ void HTTPParams::Initialize(optional_ptr<FileOpener> opener) {
 }
 
 unique_ptr<HTTPParams> HTTPUtil::InitializeParameters(DatabaseInstance &db, const string &url) {
-	DatabaseFileOpener opener(db);
+	DatabaseFileOpener opener(shared_from_this(), db);
 	FileOpenerInfo info;
 	info.file_path = url;
 	return InitializeParameters(&opener, &info);
 }
 
 unique_ptr<HTTPParams> HTTPUtil::InitializeParameters(ClientContext &context, const string &url) {
-	ClientContextFileOpener opener(context);
+	ClientContextFileOpener opener(shared_from_this(), context);
 	FileOpenerInfo info;
 	info.file_path = url;
 	return InitializeParameters(&opener, &info);

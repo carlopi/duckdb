@@ -13,12 +13,14 @@
 #include "duckdb/main/config.hpp"
 #include "duckdb/main/database.hpp"
 
+#include <iostream>
+
 namespace duckdb {
 class DatabaseInstance;
 
 class DatabaseFileOpener : public FileOpener {
 public:
-	explicit DatabaseFileOpener(DatabaseInstance &db_p) : db(db_p) {
+	explicit DatabaseFileOpener(shared_ptr<HTTPUtil> http_util, DatabaseInstance &db_p) : FileOpener(http_util), db(db_p) {
 	}
 
 	Logger &GetLogger() const override {
@@ -43,7 +45,7 @@ private:
 
 class DatabaseFileSystem : public OpenerFileSystem {
 public:
-	explicit DatabaseFileSystem(DatabaseInstance &db_p) : db(db_p), database_opener(db_p) {
+	explicit DatabaseFileSystem(shared_ptr<HTTPUtil> http_util, DatabaseInstance &db_p) : db(db_p), database_opener(http_util, db) {
 	}
 
 	FileSystem &GetFileSystem() const override {
