@@ -16,6 +16,8 @@ struct ConjunctionState : public ExpressionState {
 	unique_ptr<AdaptiveFilter> adaptive_filter;
 };
 
+
+
 unique_ptr<ExpressionState> ExpressionExecutor::InitializeState(const BoundConjunctionExpression &expr,
                                                                 ExpressionExecutorState &root) {
 	auto result = make_uniq<ConjunctionState>(expr, root);
