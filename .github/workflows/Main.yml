@@ -410,7 +410,7 @@ jobs:
       if: (success() || failure()) && steps.build.conclusion == 'success'
       shell: bash
       run: |
-        ./build/release/test/unittest --verify-vector sequence_operator --skip-compiled
+        ./build/release/test/unittest --verify-vector sequence_operator --skip-compiled 
 
     - name: Test nested_shuffle
       if: (success() || failure()) && steps.build.conclusion == 'success'
