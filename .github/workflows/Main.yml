@@ -349,70 +349,71 @@ jobs:
       env:
         CORE_EXTENSIONS: "json;parquet;icu;tpch;tpcds"
         GEN: ninja
-      run: make
+        BLOCK_ALLOC_SIZE: 16384
+      run: make relassert
 
     - name: test/configs/encrypted_db.json
       if: (success() || failure()) && steps.build.conclusion == 'success'
       shell: bash
       run: |
-        ./build/release/test/unittest --test-config test/configs/encrypted_db.json
+        ./build/relassert/test/unittest --test-config test/configs/encrypted_db.json
 
     - name: test/configs/force_storage.json
       if: (success() || failure()) && steps.build.conclusion == 'success'
       shell: bash
       run: |
-        ./build/release/test/unittest --test-config test/configs/force_storage.json
+        ./build/relassert/test/unittest --test-config test/configs/force_storage.json
 
     - name: test/configs/force_storage_restart.json
       if: (success() || failure()) && steps.build.conclusion == 'success'
       shell: bash
       run: |
-        ./build/release/test/unittest --test-config test/configs/force_storage_restart.json
+        ./build/relassert/test/unittest --test-config test/configs/force_storage_restart.json
 
     - name: test/configs/latest_storage.json
       if: (success() || failure()) && steps.build.conclusion == 'success'
       shell: bash
       run: |
-        ./build/release/test/unittest --test-config test/configs/latest_storage.json
+        ./build/relassert/test/unittest --test-config test/configs/latest_storage.json
 
     - name: test/configs/prefetch_all_parquet_files.json
       if: (success() || failure()) && steps.build.conclusion == 'success'
       shell: bash
       run: |
-        ./build/release/test/unittest --test-config test/configs/prefetch_all_parquet_files.json
+        ./build/relassert/test/unittest --test-config test/configs/prefetch_all_parquet_files.json
 
     - name: test/configs/no_local_filesystem.json
       if: (success() || failure()) && steps.build.conclusion == 'success'
       shell: bash
       run: |
-        ./build/release/test/unittest --test-config test/configs/no_local_filesystem.json
+        ./build/relassert/test/unittest --test-config test/configs/no_local_filesystem.json
 
     - name: Test dictionary_expression
       if: (success() || failure()) && steps.build.conclusion == 'success'
       shell: bash
       run: |
-        ./build/release/test/unittest --verify-vector dictionary_expression --skip-compiled
+        ./build/relassert/test/unittest --verify-vector dictionary_expression --skip-compiled
 
     - name: Test dictionary_operator
       if: (success() || failure()) && steps.build.conclusion == 'success'
       shell: bash
       run: |
-        ./build/release/test/unittest --verify-vector dictionary_operator --skip-compiled
+        ./build/relassert/test/unittest --verify-vector dictionary_operator --skip-compiled
 
     - name: Test constant_operator
       if: (success() || failure()) && steps.build.conclusion == 'success'
       shell: bash
       run: |
-        ./build/release/test/unittest --verify-vector constant_operator --skip-compiled
+        ./build/relassert/test/unittest --verify-vector constant_operator --skip-compiled
 
     - name: Test sequence_operator
       if: (success() || failure()) && steps.build.conclusion == 'success'
       shell: bash
       run: |
-        ./build/release/test/unittest --verify-vector sequence_operator --skip-compiled
+        ./build/relassert/test/unittest --verify-vector sequence_operator --skip-compiled
 
     - name: Test nested_shuffle
       if: (success() || failure()) && steps.build.conclusion == 'success'
       shell: bash
       run: |
-        ./build/release/test/unittest --verify-vector nested_shuffle --skip-compiled
+        ./build/relassert/test/unittest --verify-vector nested_shuffle --skip-compiled
