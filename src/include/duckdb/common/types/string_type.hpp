@@ -206,6 +206,13 @@ public:
 				return byte_swap(a_prefix) > byte_swap(b_prefix);
 			}
 #endif
+			auto l_data = left.GetData();
+			auto r_data = right.GetData();
+
+			if (l_data == r_data) {
+				return left_length > right_length;
+			}
+
 			auto memcmp_res = memcmp(left.GetData(), right.GetData(), min_length);
 			return memcmp_res > 0 || (memcmp_res == 0 && left_length > right_length);
 		}
