@@ -72,6 +72,30 @@ hash_t HashBytes(const_data_ptr_t ptr, const idx_t len) noexcept {
 	// MIT License Copyright (c) 2018-2021 Martin Ankerl
 	hash_t h = 0xe17a1465U ^ (len * 0xc6a4a7935bd1e995U);
 
+
+	if ( len < 12 ) {
+		auto remainder = len > 8 ? 8 : len;
+		auto remainder2 = len > 8 ? len - 8 : 0;
+		{
+			hash_t hr = 0;
+			memcpy(&hr, ptr, remainder);
+
+			h ^= hr;
+			h *= 0xd6e8feb86659fd93U;
+		}
+		{
+			hash_t hr = 0;
+			memcpy(&hr, ptr, remainder2);
+
+			h ^= hr;
+			h *= 0xd6e8feb86659fd93U;
+		}
+		return Hash(h);
+	}
+
+
+
+
 	// Hash/combine in blocks of 8 bytes
 	const auto remainder = len & 7U;
 	for (const auto end = ptr + len - remainder; ptr != end; ptr += 8U) {
@@ -112,19 +136,19 @@ hash_t Hash(string_t val) {
 		hash_t h = 0xe17a1465U ^ (val.GetSize() * 0xc6a4a7935bd1e995U);
 
 		// Hash/combine the first 8-byte block
-		if (!val.Empty()) {
+	//	if (!val.Empty()) {
 			h ^= Load<hash_t>(const_data_ptr_cast(val.GetPrefix()));
 			h *= 0xd6e8feb86659fd93U;
-		}
+	//	}
 
 		// Load remaining 4 bytes
-		if (val.GetSize() > sizeof(hash_t)) {
+	//	if (val.GetSize() > sizeof(hash_t)) {
 			hash_t hr = 0;
 			memcpy(&hr, const_data_ptr_cast(val.GetPrefix()) + sizeof(hash_t), 4U);
 
 			h ^= hr;
 			h *= 0xd6e8feb86659fd93U;
-		}
+	//	}
 
 		// Finalize
 		h = Hash(h);
