@@ -83,6 +83,7 @@ hash_t HashBytes(const_data_ptr_t ptr, const idx_t len) noexcept {
 			h ^= hr;
 			h *= 0xd6e8feb86659fd93U;
 		}
+		if (remainder2) ptr+=8;
 		{
 			hash_t hr = 0;
 			memcpy(&hr, ptr, remainder2);
