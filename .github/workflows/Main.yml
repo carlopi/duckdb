@@ -357,6 +357,12 @@ jobs:
       run: |
         ./build/release/test/unittest --test-config test/configs/encrypted_db.json
 
+    - name: test/configs/block_size_db.json.json
+      if: (success() || failure()) && steps.build.conclusion == 'success'
+      shell: bash
+      run: |
+        ./build/release/test/unittest --test-config test/configs/block_size_db.json
+
     - name: test/configs/force_storage.json
       if: (success() || failure()) && steps.build.conclusion == 'success'
       shell: bash
