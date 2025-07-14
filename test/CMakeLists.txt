@@ -24,15 +24,7 @@ if(${ENABLE_UNITTEST_CPP_TESTS})
   add_subdirectory(mbedtls)
 endif()
 add_subdirectory(extension)
-add_subdirectory(helpers)
 add_subdirectory(sqlite)
-
-if(NOT WIN32 AND NOT SUN)
-  if(${BUILD_TPCE})
-    add_subdirectory(tpce)
-  endif()
-  add_subdirectory(persistence)
-endif()
 
 set(UNITTEST_ROOT_DIRECTORY
     ""
@@ -43,6 +35,15 @@ if(DEFINED UNITTEST_ROOT_DIRECTORY AND NOT UNITTEST_ROOT_DIRECTORY STREQUAL "")
   add_definitions(-DDUCKDB_ROOT_DIRECTORY="${UNITTEST_ROOT_DIRECTORY}")
 else()
   add_definitions(-DDUCKDB_ROOT_DIRECTORY="${PROJECT_SOURCE_DIR}")
+endif()
+
+add_subdirectory(helpers)
+
+if(NOT WIN32 AND NOT SUN)
+  if(${BUILD_TPCE})
+    add_subdirectory(tpce)
+  endif()
+  add_subdirectory(persistence)
 endif()
 
 add_executable(unittest unittest.cpp ${ALL_OBJECT_FILES})
