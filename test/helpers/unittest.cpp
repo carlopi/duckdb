@@ -9,7 +9,7 @@
 
 namespace duckdb {
 
-int RunUnittest(int argc_in, char *argv[]) {
+int RunUnittest(int argc_in, char **argv) {
 	duckdb::unique_ptr<FileSystem> fs = FileSystem::CreateLocal();
 	string test_directory = DUCKDB_ROOT_DIRECTORY;
 

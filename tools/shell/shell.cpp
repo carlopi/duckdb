@@ -82,6 +82,7 @@
 #include "duckdb_shell_wrapper.h"
 #include "duckdb/common/box_renderer.hpp"
 #include "sqlite3.h"
+#include "unittest.hpp"
 typedef sqlite3_int64 i64;
 typedef sqlite3_uint64 u64;
 typedef unsigned char u8;
@@ -4772,10 +4773,42 @@ static char *cmdline_option_value(int argc, char **argv, int i) {
 #endif
 #endif
 
+string GetToolId(int &argc, char **&argv) {
+	if (argc == 1) {
+		return "cli";
+	}
+	string tool(argv[1]);
+	if (tool.find_first_of(".") != string::npos) {
+		return "cli";
+	}
+
+	argc--;
+	argv++;
+	return tool;
+}
+
 #if SQLITE_SHELL_IS_UTF8
 int SQLITE_CDECL main(int argc, char **argv) {
+	string get_tool = GetToolId(argc, argv);
+
+	if (get_tool == "unittest") {
+		return duckdb::RunUnittest(argc, argv);
+	} else if (get_tool == "version") {
+		printf("%s (%s) %s\n", duckdb::DuckDB::LibraryVersion(), duckdb::DuckDB::ReleaseCodename(),
+		       duckdb::DuckDB::SourceID());
+		return 0;
+	} else if (get_tool != "cli") {
+		std::cout << "Accepted tools are:\n";
+		std::cout << "\tcli [db name] [...options]   -- Command Line Interface for duckdb\n";
+		std::cout << "\thelp [tool name]             -- Help\n";
+		std::cout << "\tversion                      -- Version\n";
+		std::cout << "\tunittest [unittest options]  -- Unit test\n";
+		std::cout << "\n";
+		return 0;
+	}
 #else
 int SQLITE_CDECL wmain(int argc, wchar_t **wargv) {
+
 	char **argv;
 #endif
 	char *zErrMsg = nullptr;

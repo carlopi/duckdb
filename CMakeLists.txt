@@ -1337,10 +1337,9 @@ foreach(EXT_NAME IN LISTS DUCKDB_EXTENSION_NAMES)
   endif()
 endforeach()
 
-if (BUILD_MAIN_DUCKDB_LIBRARY)
   add_subdirectory(src)
+  add_subdirectory(test)
   add_subdirectory(tools)
-endif()
 
 # Add subdirectories for registered extensions
 foreach(EXT_NAME IN LISTS DUCKDB_EXTENSION_NAMES)
@@ -1528,7 +1527,6 @@ add_custom_target(duckdb_platform DEPENDS ${PROJECT_BINARY_DIR}/duckdb_platform_
 
 if(NOT CLANG_TIDY)
   if(${BUILD_UNITTESTS})
-    add_subdirectory(test)
     if(NOT WIN32
       AND NOT SUN
       AND ${BUILD_BENCHMARKS})

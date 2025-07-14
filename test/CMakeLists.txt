@@ -46,7 +46,10 @@ if(NOT WIN32 AND NOT SUN)
   add_subdirectory(persistence)
 endif()
 
-add_executable(unittest unittest.cpp ${ALL_OBJECT_FILES})
+add_library(unittest_library STATIC ${ALL_OBJECT_FILES})
+add_executable(unittest unittest.cpp)
+target_link_libraries(unittest_library test_helpers)
+target_link_libraries(unittest unittest_library)
 
 if(NOT WIN32
    AND NOT SUN
