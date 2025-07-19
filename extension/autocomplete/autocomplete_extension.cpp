@@ -1,5 +1,3 @@
-#define DUCKDB_EXTENSION_MAIN
-
 #include "autocomplete_extension.hpp"
 
 #include "duckdb/catalog/catalog.hpp"
@@ -11,13 +9,16 @@
 #include "duckdb/function/table_function.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/main/client_data.hpp"
-#include "duckdb/main/extension_util.hpp"
+#include "duckdb/main/extension/extension_loader.hpp"
 #include "duckdb/parser/keyword_helper.hpp"
 #include "duckdb/parser/parser.hpp"
 #include "matcher.hpp"
 #include "duckdb/catalog/default/builtin_types/types.hpp"
 #include "duckdb/main/attached_database.hpp"
 #include "tokenizer.hpp"
+#include "duckdb/catalog/catalog_entry/pragma_function_catalog_entry.hpp"
+#include "duckdb/catalog/catalog_entry/scalar_function_catalog_entry.hpp"
+#include "duckdb/catalog/catalog_entry/table_function_catalog_entry.hpp"
 
 namespace duckdb {
 
@@ -222,6 +223,49 @@ static bool KnownExtension(const string &fname) {
 	return false;
 }
 
+static vector<AutoCompleteCandidate> SuggestPragmaName(ClientContext &context) {
+	vector<AutoCompleteCandidate> suggestions;
+	auto all_pragmas = Catalog::GetAllEntries(context, CatalogType::PRAGMA_FUNCTION_ENTRY);
+	for (const auto &pragma : all_pragmas) {
+		AutoCompleteCandidate candidate(pragma.get().name, 0);
+		suggestions.push_back(std::move(candidate));
+	}
+	return suggestions;
+}
+
+static vector<AutoCompleteCandidate> SuggestSettingName(ClientContext &context) {
+	auto &db_config = DBConfig::GetConfig(context);
+	const auto &options = db_config.GetOptions();
+	vector<AutoCompleteCandidate> suggestions;
+	for (const auto &option : options) {
+		AutoCompleteCandidate candidate(option.name, 0);
+		suggestions.push_back(std::move(candidate));
+	}
+	return suggestions;
+}
+
+static vector<AutoCompleteCandidate> SuggestScalarFunctionName(ClientContext &context) {
+	vector<AutoCompleteCandidate> suggestions;
+	auto scalar_functions = Catalog::GetAllEntries(context, CatalogType::SCALAR_FUNCTION_ENTRY);
+	for (const auto &scalar_function : scalar_functions) {
+		AutoCompleteCandidate candidate(scalar_function.get().name, 0);
+		suggestions.push_back(std::move(candidate));
+	}
+
+	return suggestions;
+}
+
+static vector<AutoCompleteCandidate> SuggestTableFunctionName(ClientContext &context) {
+	vector<AutoCompleteCandidate> suggestions;
+	auto table_functions = Catalog::GetAllEntries(context, CatalogType::TABLE_FUNCTION_ENTRY);
+	for (const auto &table_function : table_functions) {
+		AutoCompleteCandidate candidate(table_function.get().name, 0);
+		suggestions.push_back(std::move(candidate));
+	}
+
+	return suggestions;
+}
+
 static vector<AutoCompleteCandidate> SuggestFileName(ClientContext &context, string &prefix, idx_t &last_pos) {
 	vector<AutoCompleteCandidate> result;
 	auto &config = DBConfig::GetConfig(context);
@@ -337,10 +381,16 @@ static duckdb::unique_ptr<SQLAutoCompleteFunctionData> GenerateSuggestions(Clien
 			new_suggestions = SuggestFileName(context, tokenizer.last_word, suggestion_pos);
 			break;
 		case SuggestionState::SUGGEST_SCALAR_FUNCTION_NAME:
+			new_suggestions = SuggestScalarFunctionName(context);
+			break;
 		case SuggestionState::SUGGEST_TABLE_FUNCTION_NAME:
+			new_suggestions = SuggestTableFunctionName(context);
+			break;
 		case SuggestionState::SUGGEST_PRAGMA_NAME:
+			new_suggestions = SuggestPragmaName(context);
+			break;
 		case SuggestionState::SUGGEST_SETTING_NAME:
-			// TODO:
+			new_suggestions = SuggestSettingName(context);
 			break;
 		default:
 			throw InternalException("Unrecognized suggestion state");
@@ -468,18 +518,18 @@ static duckdb::unique_ptr<FunctionData> CheckPEGParserBind(ClientContext &contex
 void CheckPEGParserFunction(ClientContext &context, TableFunctionInput &data_p, DataChunk &output) {
 }
 
-static void LoadInternal(DatabaseInstance &db) {
+static void LoadInternal(ExtensionLoader &loader) {
 	TableFunction auto_complete_fun("sql_auto_complete", {LogicalType::VARCHAR}, SQLAutoCompleteFunction,
 	                                SQLAutoCompleteBind, SQLAutoCompleteInit);
-	ExtensionUtil::RegisterFunction(db, auto_complete_fun);
+	loader.RegisterFunction(auto_complete_fun);
 
 	TableFunction check_peg_parser_fun("check_peg_parser", {LogicalType::VARCHAR}, CheckPEGParserFunction,
 	                                   CheckPEGParserBind, nullptr);
-	ExtensionUtil::RegisterFunction(db, check_peg_parser_fun);
+	loader.RegisterFunction(check_peg_parser_fun);
 }
 
-void AutocompleteExtension::Load(DuckDB &db) {
-	LoadInternal(*db.instance);
+void AutocompleteExtension::Load(ExtensionLoader &loader) {
+	LoadInternal(loader);
 }
 
 std::string AutocompleteExtension::Name() {
@@ -493,15 +543,7 @@ std::string AutocompleteExtension::Version() const {
 } // namespace duckdb
 extern "C" {
 
-DUCKDB_EXTENSION_API void autocomplete_init(duckdb::DatabaseInstance &db) {
-	LoadInternal(db);
-}
-
-DUCKDB_EXTENSION_API const char *autocomplete_version() {
-	return duckdb::AutocompleteExtension::DefaultVersion();
+DUCKDB_CPP_EXTENSION_ENTRY(autocomplete, loader) {
+	LoadInternal(loader);
 }
 }
-
-#ifndef DUCKDB_EXTENSION_MAIN
-#error DUCKDB_EXTENSION_MAIN not defined
-#endif
