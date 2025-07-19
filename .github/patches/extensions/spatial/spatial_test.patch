@@ -1,0 +1,57 @@
+diff --git a/test/sql/index/rtree_persistence.test b/test/sql/index/rtree_persistence.test
+index a971dd5..c14e0c0 100644
+--- a/test/sql/index/rtree_persistence.test
++++ b/test/sql/index/rtree_persistence.test
+@@ -1,8 +1,10 @@
+-require spatial
++# name: test/sql/index/rtree_persistence.test
+ 
+ # Create a persistent database
+ load __TEST_DIR__/rtree_persistence_test.db
+ 
++require spatial
++
+ statement ok
+ CREATE TABLE t1 AS SELECT point::GEOMETRY as geom
+ FROM st_generatepoints({min_x: 0, min_y: 0, max_x: 10000, max_y: 10000}::BOX_2D, 1_000_000, 1337);
+@@ -31,4 +33,4 @@ physical_plan	<REGEX>:.*RTREE_INDEX_SCAN.*
+ query I
+ SELECT count(*) FROM t1 WHERE ST_Within(geom, ST_MakeEnvelope(450, 450, 650, 650));
+ ----
+-352
+\ No newline at end of file
++352
+diff --git a/test/sql/index/rtree_persistence_load.test b/test/sql/index/rtree_persistence_load.test
+index 15ca910..a965353 100644
+--- a/test/sql/index/rtree_persistence_load.test
++++ b/test/sql/index/rtree_persistence_load.test
+@@ -1,3 +1,5 @@
++# name: test/sql/index/rtree_persistence_load.test
++
+ require spatial
+ 
+ # Create a persistent database
+@@ -39,4 +41,4 @@ physical_plan	<REGEX>:.*RTREE_INDEX_SCAN.*
+ query I
+ SELECT count(*) FROM t1 WHERE ST_Within(geom, ST_MakeEnvelope(450, 450, 650, 650));
+ ----
+-43
+\ No newline at end of file
++43
+diff --git a/test/sql/index/rtree_persistence_wal.test b/test/sql/index/rtree_persistence_wal.test
+index 14b3c53..80596f0 100644
+--- a/test/sql/index/rtree_persistence_wal.test
++++ b/test/sql/index/rtree_persistence_wal.test
+@@ -1,3 +1,5 @@
++# name: test/sql/index/rtree_persistence_wal.test
++
+ require spatial
+ 
+ # Create a persistent database
+@@ -34,4 +36,4 @@ physical_plan	<REGEX>:.*RTREE_INDEX_SCAN.*
+ query I
+ SELECT count(*) FROM t1 WHERE ST_Within(geom, ST_MakeEnvelope(450, 450, 650, 650));
+ ----
+-43
+\ No newline at end of file
++43
