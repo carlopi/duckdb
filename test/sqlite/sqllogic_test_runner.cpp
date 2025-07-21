@@ -112,7 +112,8 @@ void SQLLogicTestRunner::EndLoop() {
 	}
 }
 
-ExtensionLoadResult SQLLogicTestRunner::LoadExtension(DuckDB &db, const std::string &extension, const std::string &local_extension_repo) {
+ExtensionLoadResult SQLLogicTestRunner::LoadExtension(DuckDB &db, const std::string &extension,
+                                                      const std::string &local_extension_repo) {
 	Connection con(db);
 	auto result = con.Query("LOAD " + extension);
 	if (!result->HasError()) {
@@ -120,19 +121,14 @@ ExtensionLoadResult SQLLogicTestRunner::LoadExtension(DuckDB &db, const std::str
 	}
 
 #ifdef DUCKDB_EXTENSIONS_TEST_WITH_LOADABLE
+
 	// Note: weird comma's are on purpose to do easy string contains on a list of extension names
 	if (StringUtil::Contains(DUCKDB_EXTENSIONS_TEST_WITH_LOADABLE, "," + extension + ",")) {
-		{
-			auto res = con.Query("INSTALL " + extension + " FROM '" + local_extension_repo + "';");
-			if (res->HasError()) {
-				return ExtensionLoadResult::EXTENSION_UNKNOWN;
-			}
-		}
-		{
-			auto res = con.Query("LOAD " + extension + ";");
-			if (res->HasError()) {
-				return ExtensionLoadResult::EXTENSION_UNKNOWN;
-			}
+		auto result = con.Query((string) "LOAD '" + DUCKDB_EXTENSIONS_BUILD_PATH + "/" + extension + "/" + extension +
+		                        ".duckdb_extension'");
+		if (result->HasError()) {
+			result->Print();
+			return ExtensionLoadResult::EXTENSION_UNKNOWN;
 		}
 		return ExtensionLoadResult::LOADED_EXTENSION;
 	}
