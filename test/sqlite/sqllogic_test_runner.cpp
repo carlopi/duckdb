@@ -112,12 +112,32 @@ void SQLLogicTestRunner::EndLoop() {
 	}
 }
 
-ExtensionLoadResult SQLLogicTestRunner::LoadExtension(DuckDB &db, const std::string &extension) {
+ExtensionLoadResult SQLLogicTestRunner::LoadExtension(DuckDB &db, const std::string &extension, const std::string &local_extension_repo) {
 	Connection con(db);
 	auto result = con.Query("LOAD " + extension);
 	if (!result->HasError()) {
 		return ExtensionLoadResult::LOADED_EXTENSION;
 	}
+
+#ifdef DUCKDB_EXTENSIONS_TEST_WITH_LOADABLE
+	// Note: weird comma's are on purpose to do easy string contains on a list of extension names
+	if (StringUtil::Contains(DUCKDB_EXTENSIONS_TEST_WITH_LOADABLE, "," + extension + ",")) {
+		{
+			auto res = con.Query("INSTALL " + extension + " FROM '" + local_extension_repo + "';");
+			if (res->HasError()) {
+				return ExtensionLoadResult::EXTENSION_UNKNOWN;
+			}
+		}
+		{
+			auto res = con.Query("LOAD " + extension + ";");
+			if (res->HasError()) {
+				return ExtensionLoadResult::EXTENSION_UNKNOWN;
+			}
+		}
+		return ExtensionLoadResult::LOADED_EXTENSION;
+	}
+#endif
+
 	return ExtensionHelper::LoadExtension(db, extension);
 }
 
@@ -136,7 +156,7 @@ void SQLLogicTestRunner::LoadDatabase(string dbpath, bool load_extensions) {
 
 		auto &test_config = TestConfiguration::Get();
 		for (auto ext : test_config.ExtensionToBeLoadedOnLoad()) {
-			SQLLogicTestRunner::LoadExtension(*db, ext);
+			SQLLogicTestRunner::LoadExtension(*db, ext, local_extension_repo);
 		}
 	} catch (std::exception &ex) {
 		ErrorData err(ex);
@@ -148,7 +168,7 @@ void SQLLogicTestRunner::LoadDatabase(string dbpath, bool load_extensions) {
 	// load any previously loaded extensions again
 	if (load_extensions) {
 		for (auto &extension : extensions) {
-			SQLLogicTestRunner::LoadExtension(*db, extension);
+			SQLLogicTestRunner::LoadExtension(*db, extension, local_extension_repo);
 		}
 	}
 }
@@ -596,7 +616,7 @@ RequireResult SQLLogicTestRunner::CheckRequire(SQLLogicParser &parser, const vec
 	bool perform_install = false;
 	bool perform_load = false;
 	if (!config->options.autoload_known_extensions) {
-		auto result = SQLLogicTestRunner::LoadExtension(*db, param);
+		auto result = SQLLogicTestRunner::LoadExtension(*db, param, local_extension_repo);
 		if (result == ExtensionLoadResult::LOADED_EXTENSION) {
 			// add the extension to the list of loaded extensions
 			extensions.insert(param);
