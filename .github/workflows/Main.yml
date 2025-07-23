@@ -370,6 +370,7 @@ jobs:
       env:
         CORE_EXTENSIONS: "json;parquet;icu;tpch;tpcds"
         GEN: ninja
+        STANDARD_VECTOR_SIZE: 4
         BLOCK_VERIFICATION: 1
       run: make
 
@@ -485,6 +486,7 @@ jobs:
         CORE_EXTENSIONS: "json;parquet;icu;tpch;tpcds"
         GEN: ninja
         BLOCK_VERIFICATION: 1
+        STANDARD_VECTOR_SIZE: 4
       run: make
 
     - name: test/configs/encrypted_db.json
