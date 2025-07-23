@@ -370,6 +370,121 @@ jobs:
       env:
         CORE_EXTENSIONS: "json;parquet;icu;tpch;tpcds"
         GEN: ninja
+        BLOCK_VERIFICATION: 1
+      run: make
+
+    - name: test/configs/encrypted_db.json
+      if: (success() || failure()) && steps.build.conclusion == 'success'
+      shell: bash
+      run: |
+        ./build/release/test/unittest --test-config test/configs/encrypted_db.json
+
+    - name: test/configs/force_storage.json
+      if: (success() || failure()) && steps.build.conclusion == 'success'
+      shell: bash
+      run: |
+        ./build/release/test/unittest --test-config test/configs/force_storage.json
+
+    - name: test/configs/force_storage_restart.json
+      if: (success() || failure()) && steps.build.conclusion == 'success'
+      shell: bash
+      run: |
+        ./build/release/test/unittest --test-config test/configs/force_storage_restart.json
+
+    - name: test/configs/latest_storage.json
+      if: (success() || failure()) && steps.build.conclusion == 'success'
+      shell: bash
+      run: |
+        ./build/release/test/unittest --test-config test/configs/latest_storage.json
+
+    - name: test/configs/prefetch_all_parquet_files.json
+      if: (success() || failure()) && steps.build.conclusion == 'success'
+      shell: bash
+      run: |
+        ./build/release/test/unittest --test-config test/configs/prefetch_all_parquet_files.json
+
+    - name: test/configs/no_local_filesystem.json
+      if: (success() || failure()) && steps.build.conclusion == 'success'
+      shell: bash
+      run: |
+        ./build/release/test/unittest --test-config test/configs/no_local_filesystem.json
+
+    - name: test/configs/small_block_size.json
+      if: (success() || failure()) && steps.build.conclusion == 'success'
+      shell: bash
+      run: |
+        ./build/release/test/unittest --test-config test/configs/small_block_size.json
+
+    - name: test/configs/latest_storage_block_size_16kB.json
+      if: (success() || failure()) && steps.build.conclusion == 'success'
+      shell: bash
+      run: |
+        ./build/release/test/unittest --test-config test/configs/latest_storage_block_size_16kB.json
+
+    - name: Test dictionary_expression
+      if: (success() || failure()) && steps.build.conclusion == 'success'
+      shell: bash
+      run: |
+        ./build/release/test/unittest --verify-vector dictionary_expression --skip-compiled
+
+    - name: Test dictionary_operator
+      if: (success() || failure()) && steps.build.conclusion == 'success'
+      shell: bash
+      run: |
+        ./build/release/test/unittest --verify-vector dictionary_operator --skip-compiled
+
+    - name: Test constant_operator
+      if: (success() || failure()) && steps.build.conclusion == 'success'
+      shell: bash
+      run: |
+        ./build/release/test/unittest --verify-vector constant_operator --skip-compiled
+
+    - name: Test sequence_operator
+      if: (success() || failure()) && steps.build.conclusion == 'success'
+      shell: bash
+      run: |
+        ./build/release/test/unittest --verify-vector sequence_operator --skip-compiled
+
+    - name: Test nested_shuffle
+      if: (success() || failure()) && steps.build.conclusion == 'success'
+      shell: bash
+      run: |
+        ./build/release/test/unittest --verify-vector nested_shuffle --skip-compiled
+
+ linux-configs2:
+    name: Tests with different configurations
+    runs-on: macos-latest
+    env:
+      BASE_BRANCH: ${{ github.base_ref || 'main' }}
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+
+    - name: Install Ninja
+      run: brew install ninja
+
+    - name: Setup Ccache
+      uses: hendrikmuhs/ccache-action@main
+      with:
+        key: ${{ github.job }}
+        save: ${{ github.ref == 'refs/heads/main' || github.repository != 'duckdb/duckdb' }}
+
+    - name: Build
+      id: build
+      shell: bash
+      # Bring back BLOCK_VERIFICATION: 1, and consider bringing back fts
+      # DEBUG_STACKTRACE: 1 + reldebug ?
+      env:
+        CORE_EXTENSIONS: "json;parquet;icu;tpch;tpcds"
+        GEN: ninja
+        BLOCK_VERIFICATION: 1
       run: make
 
     - name: test/configs/encrypted_db.json
