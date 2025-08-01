@@ -168,9 +168,9 @@ jobs:
         shell: bash
         run: |
           touch report
-          for folder in osx_v1_0_0 osx_v1_1_3 osx_main linux_main linux_v1_0_0 linux_v1_1_3 linux_v1_2_2 linux_v1_2 osx_v1_2_2 osx_v1_2; do
+          for folder in osx_v1_0_0 osx_v1_1_3 osx_main linux_main linux_v1_0_0 linux_v1_1_3 linux_v1_2_2 linux_v1_3-ossivalis osx_v1_2_2 osx_v1_3-ossivalis; do
             for filename in $folder/*; do
-              touch $filename.wal && cp $filename.wal a.db.wal 2>/dev/null && cp $filename a.db 2>/dev/null && (./build/release/duckdb a.db -c "ATTACH 'b.db'; COPY FROM DATABASE a TO b;" 2>out || (grep "but it is not a valid DuckDB database file!" out 2>/dev/null || ( echo "--> " $filename && cat out && echo "" && (grep -i "internal error" out && echo "--> " $filename >> report && cat out >> report && echo "" >> report)))) || true
+              touch $filename.wal && cp $filename.wal a.db.wal 2>/dev/null && cp $filename a.db 2>/dev/null && (./build/release/duckdb a.db -c "ATTACH 'b.db' (STORAGE_VERSION 'latest'); COPY FROM DATABASE a TO b;" 2>out || (grep "but it is not a valid DuckDB database file!" out 2>/dev/null || ( echo "--> " $filename && cat out && echo "" && (grep -i "internal error" out && echo "--> " $filename >> report && cat out >> report && echo "" >> report)))) || true
               rm -f b.db a.db b.db.wal a.db.wal
             done
           done
@@ -324,9 +324,9 @@ jobs:
         shell: bash
         run: |
           touch report
-          for folder in osx_v1_0_0 osx_v1_1_3 osx_main osx_v1_3-ossivalis linux_main linux_v1_3-ossivalis linux_v1_0_0 linux_v1_1_3 linux_v1_2_2 linux_v1_2 osx_v1_2_2 osx_v1_2; do
+          for folder in osx_v1_0_0 osx_v1_1_3 osx_main linux_main linux_v1_0_0 linux_v1_1_3 linux_v1_2_2 linux_v1_3-ossivalis osx_v1_2_2 osx_v1_3-ossivalis; do
             for filename in $folder/*; do
-              touch $filename.wal && cp $filename.wal a.db.wal 2>/dev/null && cp $filename a.db 2>/dev/null && (./build/release/duckdb a.db -c "ATTACH 'b.db'; COPY FROM DATABASE a TO b;" 2>out || (grep "but it is not a valid DuckDB database file!" out 2>/dev/null || ( echo "--> " $filename && cat out && echo "" && (grep -i "internal error" out && echo "--> " $filename >> report && cat out >> report && echo "" >> report)))) || true
+              touch $filename.wal && cp $filename.wal a.db.wal 2>/dev/null && cp $filename a.db 2>/dev/null && (./build/release/duckdb a.db -c "ATTACH 'b.db' (STORAGE_VERSION 'latest'); COPY FROM DATABASE a TO b;" 2>out || (grep "but it is not a valid DuckDB database file!" out 2>/dev/null || ( echo "--> " $filename && cat out && echo "" && (grep -i "internal error" out && echo "--> " $filename >> report && cat out >> report && echo "" >> report)))) || true
               rm -f b.db a.db b.db.wal a.db.wal
             done
           done
