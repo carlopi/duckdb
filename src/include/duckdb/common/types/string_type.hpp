@@ -185,6 +185,7 @@ public:
 			const uint32_t min_length = std::min<uint32_t>(left_length, right_length);
 
 #ifndef DUCKDB_DEBUG_NO_INLINE
+			// Load bytes 1st to 4th
 			uint32_t a_prefix = Load<uint32_t>(const_data_ptr_cast(left.GetPrefix()));
 			uint32_t b_prefix = Load<uint32_t>(const_data_ptr_cast(right.GetPrefix()));
 
@@ -203,11 +204,41 @@ public:
 			//	if the prefix is equal, the extra bytes are guaranteed to be /0 for the shorter one
 
 			if (a_prefix != b_prefix) {
+				// Compare after byte swap
 				return byte_swap(a_prefix) > byte_swap(b_prefix);
 			}
-#endif
+
+			auto a_ptr = const_data_ptr_cast(left.GetData());
+			auto b_ptr = const_data_ptr_cast(right.GetData());
+
+			// Load bytes 5th to 12th
+			uint64_t a_prefix_2 = Load<uint64_t>(a_ptr + 4);
+			uint64_t b_prefix_2 = Load<uint64_t>(b_ptr + 4);
+
+			if (a_prefix_2 != b_prefix_2) {
+				// Check bytes 5th to 8th
+				auto a32 = a_prefix_2 << 32 >> 32;
+				auto b32 = b_prefix_2 << 32 >> 32;
+				if (a32 == b32) {
+					// Then move to 9th to 12th
+					a32 = (a_prefix_2 >> 32);
+					b32 = (b_prefix_2 >> 32);
+				}
+				// Compare after byte swap
+				return byte_swap(a32) > byte_swap(b32);
+			}
+
+			if (min_length <= 12 || a_ptr == b_ptr) {
+				// Either one of the strings is shorter than 12, or they point to the same data
+				return left_length > right_length;
+			}
+
+			auto memcmp_res = memcmp(a_ptr + 12, b_ptr + 12, min_length - 12);
+			return memcmp_res > 0 || (memcmp_res == 0 && left_length > right_length);
+#else
 			auto memcmp_res = memcmp(left.GetData(), right.GetData(), min_length);
 			return memcmp_res > 0 || (memcmp_res == 0 && left_length > right_length);
+#endif
 		}
 	};
 
