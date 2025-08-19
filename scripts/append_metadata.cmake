@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15...3.29)
+cmake_minimum_required(VERSION 3.10...3.29)
 
 # Usage: cmake -DEXTENSION=path/to/extension.duckdb_extension -DPLATFORM_FILE=README.md -DDUCKDB_VERSION=tag1 -DEXTENSION_VERSION=tag2 -P scripts/append_metadata.cmake
 # Currently hardcoded to host up to 8 fields
@@ -18,8 +18,35 @@ set(META8 "" CACHE STRING "Metadata field")
 # null.txt should contain exactly 1 byte of value \x00
 file(READ "${NULL_FILE}" EMPTY_BYTE)
 
-string(REPEAT "${EMPTY_BYTE}" 32 EMPTY_32)
-string(REPEAT "${EMPTY_BYTE}" 256 EMPTY_256)
+string(APPEND EMPTY_4 ${EMPTY_BYTE})
+string(APPEND EMPTY_4 ${EMPTY_BYTE})
+string(APPEND EMPTY_4 ${EMPTY_BYTE})
+string(APPEND EMPTY_4 ${EMPTY_BYTE})
+string(APPEND EMPTY_32 ${EMPTY_4})
+string(APPEND EMPTY_32 ${EMPTY_4})
+string(APPEND EMPTY_32 ${EMPTY_4})
+string(APPEND EMPTY_32 ${EMPTY_4})
+string(APPEND EMPTY_32 ${EMPTY_4})
+string(APPEND EMPTY_32 ${EMPTY_4})
+string(APPEND EMPTY_32 ${EMPTY_4})
+string(APPEND EMPTY_32 ${EMPTY_4})
+string(APPEND EMPTY_256 ${EMPTY_32})
+string(APPEND EMPTY_256 ${EMPTY_32})
+string(APPEND EMPTY_256 ${EMPTY_32})
+string(APPEND EMPTY_256 ${EMPTY_32})
+string(APPEND EMPTY_256 ${EMPTY_32})
+string(APPEND EMPTY_256 ${EMPTY_32})
+string(APPEND EMPTY_256 ${EMPTY_32})
+string(APPEND EMPTY_256 ${EMPTY_32})
+
+string(LENGTH "${EMPTY_BYTE}" LEN)
+message(STATUS "LEN is ${LEN}")
+string(LENGTH "${EMPTY_4}" LEN)
+message(STATUS "LEN is ${LEN}")
+string(LENGTH "${EMPTY_32}" LEN)
+message(STATUS "LEN is ${LEN}")
+string(LENGTH "${EMPTY_256}" LEN)
+message(STATUS "LEN is ${LEN}")
 
 # 0 for custom section
 string(APPEND CUSTOM_SECTION "${EMPTY_BYTE}")
