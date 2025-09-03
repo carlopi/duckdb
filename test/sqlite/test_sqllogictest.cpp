@@ -114,7 +114,7 @@ static void testRunner() {
 
 static string ParseGroupFromPath(string file) {
 	string extension = "";
-	if (file.find(".test_slow") != std::string::npos) {
+	if (false) if (file.find(".test_slow") != std::string::npos) {
 		// "slow" in the name indicates a slow test (i.e. only run as part of allunit)
 		extension = "[.]";
 	}
