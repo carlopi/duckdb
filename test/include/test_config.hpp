@@ -56,6 +56,7 @@ public:
 	string OnConnectionCommand();
 	string OnCleanupCommand();
 	SortStyle GetDefaultSortStyle();
+	bool SkipLoadStaticallyLinkedExtensions();
 	vector<string> ExtensionToBeLoadedOnLoad();
 	vector<string> ErrorMessagesToBeSkipped();
 	string GetStorageVersion();

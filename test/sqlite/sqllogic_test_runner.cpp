@@ -22,9 +22,10 @@ namespace duckdb {
 SQLLogicTestRunner::SQLLogicTestRunner(string dbpath) : dbpath(std::move(dbpath)), finished_processing_file(false) {
 	config = GetTestConfig();
 	config->options.allow_unredacted_secrets = true;
-	config->options.load_extensions = false;
 
 	auto &test_config = TestConfiguration::Get();
+	config->options.load_extensions = !test_config.SkipLoadStaticallyLinkedExtensions();
+
 	autoloading_mode = test_config.GetExtensionAutoLoadingMode();
 
 	config->options.autoload_known_extensions = false;
@@ -133,8 +134,8 @@ void SQLLogicTestRunner::LoadDatabase(string dbpath, bool load_extensions) {
 	db.reset();
 	con.reset();
 	named_connection_map.clear();
-	// now re-open the current database
 
+	// now re-open the current database
 	try {
 		db = make_uniq<DuckDB>(dbpath, config.get());
 		// always load core functions

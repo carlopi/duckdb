@@ -50,6 +50,7 @@ static const TestConfigOption test_config_options[] = {
     {"skip_error_messages", "Skip compiled tests", LogicalType::LIST(LogicalType::VARCHAR), nullptr},
     {"sort_style", "Default sort style if none is configured in the test (none, rowsort, valuesort)",
      LogicalType::VARCHAR, TestConfiguration::CheckSortStyle},
+    {"skip_load_static_extensions", "Load all extensions statically linked in duckdb", LogicalType::BOOLEAN, nullptr},
     {"statically_loaded_extensions", "Extensions to be loaded (from the statically available one)",
      LogicalType::LIST(LogicalType::VARCHAR), nullptr},
     {"storage_version", "Database storage version to use by default", LogicalType::VARCHAR, nullptr},
@@ -233,6 +234,10 @@ SortStyle TestConfiguration::GetDefaultSortStyle() {
 		throw std::runtime_error("eek: unknown sort style in TestConfig");
 	}
 	return default_sort_style_enum;
+}
+
+bool TestConfiguration::SkipLoadStaticallyLinkedExtensions() {
+	return GetOptionOrDefault("skip_load_static_extensions", false);
 }
 
 vector<string> TestConfiguration::ExtensionToBeLoadedOnLoad() {
