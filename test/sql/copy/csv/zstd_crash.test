@@ -5,6 +5,8 @@
 statement ok
 PRAGMA enable_verification
 
+require no_static_extension_loading "EXPECTED: Test relies on no parquet"
+
 require no_extension_autoloading "EXPECTED: zstd requires the parquet extension, currently not autoloaded"
 
 # zstd requires the parquet extension

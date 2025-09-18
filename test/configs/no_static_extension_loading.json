@@ -1,0 +1,5 @@
+{
+  "description": "Run with no extension statically loaded on startup.",
+  "skip_load_static_extensions": "true",
+  "skip_compiled": "true"
+}

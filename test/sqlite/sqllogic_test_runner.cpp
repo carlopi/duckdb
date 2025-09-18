@@ -575,6 +575,24 @@ RequireResult SQLLogicTestRunner::CheckRequire(SQLLogicParser &parser, const vec
 		}
 		return RequireResult::PRESENT;
 	}
+	if (param == "no_static_extension_loading") {
+		if (params.size() < 2) {
+			parser.Fail("require no_extension_autoloading needs an explanation string");
+		}
+		size_t index = 1;
+		string explanation = ParseExplanation(parser, params, index);
+		if (explanation.rfind("EXPECTED", 0) == 0 || explanation.rfind("FIXME", 0) == 0) {
+			// good, explanation is properly formatted
+		} else {
+			parser.Fail(
+			    "require no_extension_autoloading explanation string should begin with either 'EXPECTED' or FIXME'");
+		}
+		if (config->options.load_extensions) {
+			// If autoloading is on, we skip this test
+			return RequireResult::MISSING;
+		}
+		return RequireResult::PRESENT;
+	}
 	if (param == "no_extension_autoloading") {
 		if (params.size() < 2) {
 			parser.Fail("require no_extension_autoloading needs an explanation string");
