@@ -283,7 +283,7 @@ jobs:
         env:
           LOCAL_EXTENSION_REPO: /tmp/extension-repository-${{ github.sha }}
         run: |
-          ./build/release/test/unittest --autoloading available --skip-compiled
+          ./build/release/test/unittest --autoloading all --skip-compiled
 
   check-load-install-extensions:
     name: Checks extension entries
