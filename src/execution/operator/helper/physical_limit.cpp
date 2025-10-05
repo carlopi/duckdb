@@ -178,7 +178,7 @@ SourceResultType PhysicalLimit::GetData(ExecutionContext &context, DataChunk &ch
 			return SourceResultType::FINISHED;
 		}
 		if (HandleOffset(chunk, state.current_offset, gstate.offset, gstate.limit)) {
-			break;
+			return SourceResultType::FINISHED;
 		}
 	}
 
