@@ -101,6 +101,17 @@ SourceResultType PhysicalTableScan::GetData(ExecutionContext &context, DataChunk
 
 	TableFunctionInput data(bind_data.get(), l_state.local_state.get(), g_state.global_state.get());
 
+	if (function.wrapped_function) {
+		auto res = function.wrapped_function(context.client, data, chunk, input.interrupt_state);
+
+		if (res == SourceResultType::BLOCKED) {
+			auto guard = g_state.Lock();
+			return g_state.BlockSource(guard, input.interrupt_state);
+		} else {
+			return res;
+		}
+	}
+
 	if (function.function) {
 		function.function(context.client, data, chunk);
 		return chunk.size() == 0 ? SourceResultType::FINISHED : SourceResultType::HAVE_MORE_OUTPUT;
@@ -262,6 +273,9 @@ bool PhysicalTableScan::Equals(const PhysicalOperator &other_p) const {
 	if (function.function != other.function.function) {
 		return false;
 	}
+	if (function.wrapped_function != other.function.wrapped_function) {
+		return false;
+	}
 	if (column_ids != other.column_ids) {
 		return false;
 	}
@@ -272,7 +286,7 @@ bool PhysicalTableScan::Equals(const PhysicalOperator &other_p) const {
 }
 
 bool PhysicalTableScan::ParallelSource() const {
-	if (!function.function) {
+	if (!function.function && !function.wrapped_function) {
 		// table in-out functions cannot be executed in parallel as part of a PhysicalTableScan
 		// since they have only a single input row
 		return false;
