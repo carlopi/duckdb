@@ -33,9 +33,12 @@
 
 #include <cassert>
 #include <chrono>
-#include <thread>
 #include <cstring>
 #include <sstream>
+
+#ifdef DUCKDB_DEBUG_ASYNC_PARQUET_READS
+#include <thread>
+#endif
 
 namespace duckdb {
 
@@ -1301,6 +1304,7 @@ SourceResultType ParquetReader::ScanInternal(ClientContext &context, ParquetRead
 		return SourceResultType::FINISHED;
 	}
 
+#ifdef DUCKDB_DEBUG_ASYNC_PARQUET_READS
 	if (rand() % 4 == 0) {
 		auto &callback_state = interrupt_state;
 		std::thread rewake_thread([callback_state] {
@@ -1312,6 +1316,7 @@ SourceResultType ParquetReader::ScanInternal(ClientContext &context, ParquetRead
 		keep_going = false;
 		return SourceResultType::BLOCKED;
 	}
+#endif
 
 	// see if we have to switch to the next row group in the parquet file
 	if (state.current_group < 0 || (int64_t)state.offset_in_group >= GetGroup(state).num_rows) {
