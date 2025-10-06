@@ -89,6 +89,7 @@ public:
 		if (blocked_tasks.empty()) {
 			return false;
 		}
+		if (can_block)
 		for (auto &entry : blocked_tasks) {
 			entry.Callback();
 		}
