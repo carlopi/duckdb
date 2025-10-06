@@ -17,6 +17,9 @@
 #include "duckdb/common/file_system.hpp"
 #include "duckdb/common/allocator.hpp"
 
+#include <chrono>
+#include <thread>
+
 namespace duckdb {
 
 // A ReadHead for prefetching data in a specific range
@@ -121,6 +124,45 @@ struct ReadAheadBuffer {
 			read_head.data_isset = true;
 		}
 	}
+
+	// Prefetch all read heads
+	SourceResultType Prefetch(InterruptState &state) {
+		if (read_heads.size() > 1) {
+			Prefetch();
+			return SourceResultType::HAVE_MORE_OUTPUT;
+		} else if (read_heads.size() == 0) {
+			return SourceResultType::FINISHED;
+		} else {
+			auto &read_head = *read_heads.begin();
+			if (read_head.GetEnd() > file_handle.GetFileSize()) {
+				throw std::runtime_error("Prefetch registered requested for bytes outside file");
+			}
+
+			auto &callback_state = state;
+
+			std::thread rewake_thread([callback_state, &read_head, this] {
+				// std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+				try {
+					read_head.buffer_handle =
+					    file_handle.Read(read_head.buffer_ptr, read_head.size, read_head.location);
+					D_ASSERT(read_head.buffer_handle.IsValid());
+					read_head.data_isset = true;
+				} catch (...) {
+					std::cout << "Had thrown .....\n";
+					callback_state.Callback();
+					return;
+				}
+				callback_state.Callback();
+			});
+			rewake_thread.detach();
+
+			return SourceResultType::BLOCKED;
+
+			// CALLBACK:
+
+			return SourceResultType::BLOCKED;
+		}
+	}
 };
 
 class ThriftFileTransport : public duckdb_apache::thrift::transport::TVirtualTransport<ThriftFileTransport> {
@@ -179,6 +221,9 @@ public:
 	// Prefetch all previously registered ranges
 	void PrefetchRegistered() {
 		ra_buffer.Prefetch();
+	}
+	SourceResultType PrefetchRegistered(InterruptState &interrupt_state) {
+		return ra_buffer.Prefetch(interrupt_state);
 	}
 
 	void ClearPrefetch() {
