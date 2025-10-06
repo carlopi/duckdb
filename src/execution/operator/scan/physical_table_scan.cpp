@@ -104,9 +104,11 @@ SourceResultType PhysicalTableScan::GetData(ExecutionContext &context, DataChunk
 	if (function.wrapped_function) {
 		auto res = function.wrapped_function(context.client, data, chunk, input.interrupt_state);
 
+		return res;
+
 		if (res == SourceResultType::BLOCKED) {
-			auto guard = g_state.Lock();
-			return g_state.BlockSource(guard, input.interrupt_state);
+			///	auto guard = g_state.Lock();
+			//	return g_state.BlockSource(guard, input.interrupt_state);
 		} else {
 			return res;
 		}
