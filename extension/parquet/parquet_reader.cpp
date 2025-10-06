@@ -1274,8 +1274,9 @@ SourceResultType ParquetReader::Scan(ClientContext &context, ParquetReaderScanSt
 
 		result.Reset();
 
-		if (keep_going == false)
+		if (keep_going == false) {
 			return SourceResultType::FINISHED;
+		}
 	}
 	return SourceResultType::FINISHED;
 }
@@ -1305,7 +1306,8 @@ SourceResultType ParquetReader::ScanInternal(ClientContext &context, ParquetRead
 	}
 
 #ifdef DUCKDB_DEBUG_ASYNC_PARQUET_READS
-	if (rand() % 4 == 0) {
+	auto z = (rand() + 1) % 3;
+	if (z == 0) {
 		auto &callback_state = interrupt_state;
 		std::thread rewake_thread([callback_state] {
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -1398,7 +1400,8 @@ SourceResultType ParquetReader::ScanInternal(ClientContext &context, ParquetRead
 				trans.FinalizeRegistration();
 
 				if (!lazy_fetch) {
-					trans.PrefetchRegistered();
+					keep_going = true;
+					return trans.PrefetchRegistered(interrupt_state);
 				}
 			}
 		}
