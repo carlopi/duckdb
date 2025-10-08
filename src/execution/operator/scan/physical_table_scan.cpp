@@ -7,6 +7,8 @@
 
 #include <utility>
 
+#include <iostream>
+
 namespace duckdb {
 
 PhysicalTableScan::PhysicalTableScan(PhysicalPlan &physical_plan, vector<LogicalType> types, TableFunction function_p,
@@ -113,7 +115,11 @@ SourceResultType PhysicalTableScan::GetData(ExecutionContext &context, DataChunk
 
 	case OperatorResultType::BLOCKED: {
 		auto guard = g_state.Lock();
-		return g_state.BlockSource(guard, input.interrupt_state);
+		auto x =  g_state.BlockSource(guard, input.interrupt_state);
+		if (x != SourceResultType::BLOCKED) {
+			std::cout << "ASASDASD\n";
+		}
+		return x;
 	}
 	default:
 		// FIXME: Handling for other cases (such as NEED_MORE_INPUT) breaks current functionality and extensions that

@@ -3,10 +3,10 @@
 #include "duckdb/common/limits.hpp"
 #include "duckdb/main/client_context.hpp"
 
-#ifdef DUCKDB_DEBUG_ASYNC_SINK_SOURCE
+//#ifdef DUCKDB_DEBUG_ASYNC_SINK_SOURCE
 #include <chrono>
 #include <thread>
-#endif
+//#endif
 
 namespace duckdb {
 
@@ -152,12 +152,14 @@ SinkNextBatchType PipelineExecutor::NextBatch(DataChunk &source_chunk) {
 		    "Pipeline batch index - gotten lower batch index %llu (down from previous batch index of %llu)",
 		    next_data.batch_index, partition_info.batch_index.GetIndex());
 	}
-#ifdef DUCKDB_DEBUG_ASYNC_SINK_SOURCE
-	if (debug_blocked_next_batch_count < debug_blocked_target_count) {
-		debug_blocked_next_batch_count++;
+//#ifdef DUCKDB_DEBUG_ASYNC_SINK_SOURCE
+//	if (debug_blocked_next_batch_count < debug_blocked_target_count) {
+	if (rand()% 10 == 0) {
+	//	debug_blocked_next_batch_count++;
 
 		auto &callback_state = interrupt_state;
 		std::thread rewake_thread([callback_state] {
+			//std::cout << "I am quack\n";
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			callback_state.Callback();
 		});
@@ -165,7 +167,7 @@ SinkNextBatchType PipelineExecutor::NextBatch(DataChunk &source_chunk) {
 
 		return SinkNextBatchType::BLOCKED;
 	}
-#endif
+//#endif
 	auto current_batch = partition_info.batch_index.GetIndex();
 	partition_info.batch_index = next_data.batch_index;
 	partition_info.partition_data = std::move(next_data.partition_data);
@@ -357,12 +359,14 @@ PipelineExecuteResult PipelineExecutor::PushFinalize() {
 	// Run the combine for the sink
 	OperatorSinkCombineInput combine_input {*pipeline.sink->sink_state, *local_sink_state, interrupt_state};
 
-#ifdef DUCKDB_DEBUG_ASYNC_SINK_SOURCE
-	if (debug_blocked_combine_count < debug_blocked_target_count) {
-		debug_blocked_combine_count++;
+//#ifdef DUCKDB_DEBUG_ASYNC_SINK_SOURCE
+	if (rand()% 10 == 0) {
+	//if (debug_blocked_combine_count < debug_blocked_target_count) {
+	//	debug_blocked_combine_count++;
 
 		auto &callback_state = combine_input.interrupt_state;
 		std::thread rewake_thread([callback_state] {
+	//		std::cout << "I am quackz\n";
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			callback_state.Callback();
 		});
@@ -370,7 +374,7 @@ PipelineExecuteResult PipelineExecutor::PushFinalize() {
 
 		return PipelineExecuteResult::INTERRUPTED;
 	}
-#endif
+//#endif
 	auto result = pipeline.sink->Combine(context, combine_input);
 
 	if (result == SinkCombineResultType::BLOCKED) {
@@ -484,12 +488,14 @@ void PipelineExecutor::SetTaskForInterrupts(weak_ptr<Task> current_task) {
 
 SourceResultType PipelineExecutor::GetData(DataChunk &chunk, OperatorSourceInput &input) {
 	//! Testing feature to enable async source on every operator
-#ifdef DUCKDB_DEBUG_ASYNC_SINK_SOURCE
-	if (debug_blocked_source_count < debug_blocked_target_count) {
-		debug_blocked_source_count++;
+//#ifdef DUCKDB_DEBUG_ASYNC_SINK_SOURCE
+	if (rand()% 10 == 0) {
+	//if (debug_blocked_source_count < debug_blocked_target_count) {
+	//	debug_blocked_source_count++;
 
 		auto &callback_state = input.interrupt_state;
 		std::thread rewake_thread([callback_state] {
+			//std::cout << "I am quackds\n";
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			callback_state.Callback();
 		});
@@ -497,19 +503,21 @@ SourceResultType PipelineExecutor::GetData(DataChunk &chunk, OperatorSourceInput
 
 		return SourceResultType::BLOCKED;
 	}
-#endif
+//#endif
 
 	return pipeline.source->GetData(context, chunk, input);
 }
 
 SinkResultType PipelineExecutor::Sink(DataChunk &chunk, OperatorSinkInput &input) {
 	//! Testing feature to enable async sink on every operator
-#ifdef DUCKDB_DEBUG_ASYNC_SINK_SOURCE
-	if (debug_blocked_sink_count < debug_blocked_target_count) {
-		debug_blocked_sink_count++;
+//#ifdef DUCKDB_DEBUG_ASYNC_SINK_SOURCE
+	if (rand()% 10 == 0) {
+//	if (debug_blocked_sink_count < debug_blocked_target_count) {
+//		debug_blocked_sink_count++;
 
 		auto &callback_state = input.interrupt_state;
 		std::thread rewake_thread([callback_state] {
+			//std::cout << "I am quack2\n";
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 			callback_state.Callback();
 		});
@@ -517,7 +525,7 @@ SinkResultType PipelineExecutor::Sink(DataChunk &chunk, OperatorSinkInput &input
 
 		return SinkResultType::BLOCKED;
 	}
-#endif
+//#endif
 	return pipeline.sink->Sink(context, chunk, input);
 }
 
