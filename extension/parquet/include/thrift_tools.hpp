@@ -128,6 +128,7 @@ struct ReadAheadBuffer {
 			read_head.data_isset = true;
 		}
 	}
+
 	// Prefetch all read heads
 	unique_ptr<duckdb::ToBeScheduledTask> Prefetch(InterruptState &state) {
 		if (read_heads.size() > 1) {
@@ -211,6 +212,13 @@ public:
 		RegisterPrefetch(pos, len, false);
 		FinalizeRegistration();
 		PrefetchRegistered();
+	}
+
+	// Prefetch a single buffer
+	unique_ptr<duckdb::ToBeScheduledTask> Prefetch(idx_t pos, uint64_t len, InterruptState &interrupt_state) {
+		RegisterPrefetch(pos, len, false);
+		FinalizeRegistration();
+		return PrefetchRegistered(interrupt_state);
 	}
 
 	// Register a buffer for prefixing
