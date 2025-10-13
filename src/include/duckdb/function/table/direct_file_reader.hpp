@@ -23,9 +23,9 @@ public:
 
 	bool TryInitializeScan(ClientContext &context, GlobalTableFunctionState &gstate,
 	                       LocalTableFunctionState &lstate) override;
-	unique_ptr<ToBeScheduledTask> Scan(ClientContext &context, GlobalTableFunctionState &global_state,
-	                                   LocalTableFunctionState &local_state, DataChunk &chunk,
-	                                   InterruptState &state) override;
+	unique_ptr<PromiseHolder> Scan(ClientContext &context, GlobalTableFunctionState &global_state,
+	                               LocalTableFunctionState &local_state, DataChunk &chunk,
+	                               InterruptState &state) override;
 	void FinishFile(ClientContext &context, GlobalTableFunctionState &gstate) override;
 
 	string GetReaderType() const override {

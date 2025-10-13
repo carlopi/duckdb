@@ -365,9 +365,9 @@ bool CSVFileScan::TryInitializeScan(ClientContext &context, GlobalTableFunctionS
 	return true;
 }
 
-unique_ptr<ToBeScheduledTask> CSVFileScan::Scan(ClientContext &context, GlobalTableFunctionState &global_state,
-                                                LocalTableFunctionState &local_state, DataChunk &chunk,
-                                                InterruptState &interrupt_state) {
+unique_ptr<PromiseHolder> CSVFileScan::Scan(ClientContext &context, GlobalTableFunctionState &global_state,
+                                            LocalTableFunctionState &local_state, DataChunk &chunk,
+                                            InterruptState &interrupt_state) {
 	auto &lstate = local_state.Cast<CSVLocalState>();
 	if (lstate.csv_reader->FinishedIterator()) {
 		return nullptr;

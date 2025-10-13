@@ -1260,8 +1260,8 @@ void ParquetReader::InitializeScan(ClientContext &context, ParquetReaderScanStat
 	state.repeat_buf.resize(allocator, STANDARD_VECTOR_SIZE);
 }
 
-unique_ptr<ToBeScheduledTask> ParquetReader::Scan(ClientContext &context, ParquetReaderScanState &state,
-                                                  DataChunk &result, InterruptState &interrupt_state) {
+unique_ptr<PromiseHolder> ParquetReader::Scan(ClientContext &context, ParquetReaderScanState &state, DataChunk &result,
+                                              InterruptState &interrupt_state) {
 	while (true) {
 		bool keep_going;
 		auto res = ScanInternal(context, state, result, interrupt_state, keep_going);
@@ -1298,9 +1298,9 @@ void ParquetReader::GetPartitionStats(const duckdb_parquet::FileMetaData &metada
 	}
 }
 
-unique_ptr<ToBeScheduledTask> ParquetReader::ScanInternal(ClientContext &context, ParquetReaderScanState &state,
-                                                          DataChunk &result, InterruptState &interrupt_state,
-                                                          bool &keep_going) {
+unique_ptr<PromiseHolder> ParquetReader::ScanInternal(ClientContext &context, ParquetReaderScanState &state,
+                                                      DataChunk &result, InterruptState &interrupt_state,
+                                                      bool &keep_going) {
 	if (state.finished) {
 		keep_going = false;
 		return nullptr;

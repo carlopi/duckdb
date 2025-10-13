@@ -588,8 +588,8 @@ public:
 		return partition_data;
 	}
 
-	static unique_ptr<ToBeScheduledTask> MultiFileScan(ClientContext &context, TableFunctionInput &data_p,
-	                                                   DataChunk &output, InterruptState &interrupt_state) {
+	static unique_ptr<PromiseHolder> MultiFileScan(ClientContext &context, TableFunctionInput &data_p,
+	                                               DataChunk &output, InterruptState &interrupt_state) {
 
 		if (!data_p.local_state) {
 			return nullptr;

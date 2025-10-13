@@ -530,9 +530,9 @@ void ReadJSONObjectsFunction(ClientContext &context, JSONReader &json_reader, JS
 	output.SetCardinality(count);
 }
 
-unique_ptr<ToBeScheduledTask> JSONReader::Scan(ClientContext &context, GlobalTableFunctionState &global_state,
-                                               LocalTableFunctionState &local_state, DataChunk &output,
-                                               InterruptState &interrupt_state) {
+unique_ptr<PromiseHolder> JSONReader::Scan(ClientContext &context, GlobalTableFunctionState &global_state,
+                                           LocalTableFunctionState &local_state, DataChunk &output,
+                                           InterruptState &interrupt_state) {
 	auto &gstate = global_state.Cast<JSONGlobalTableFunctionState>().state;
 	auto &lstate = local_state.Cast<JSONLocalTableFunctionState>().state;
 	auto &json_data = gstate.bind_data.bind_data->Cast<JSONScanData>();

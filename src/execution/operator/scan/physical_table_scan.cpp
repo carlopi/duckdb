@@ -111,37 +111,68 @@ SourceResultType PhysicalTableScan::GetData(ExecutionContext &context, DataChunk
 
 		//////TODO
 
-		if (res) {
-			// TODO: care in multi-thread??
-			auto x = reinterpret_cast<IOToBeScheduledTask *>(res.get());
+		/*
+		        if (res) {
+		            // TODO: care in multi-thread??
+		            auto x = reinterpret_cast<IOToBeScheduledTask *>(res.get());
 
+		            auto guard = g_state.Lock();
+		            auto rez = g_state.BlockSource(guard, input.interrupt_state);
+		            if (rez == SourceResultType::BLOCKED) {
+		                auto &callback_state = input.interrupt_state;
+		                auto &buffer_handle = x->buffer_handle;
+		                auto &file_handle = x->handle;
+		                auto &data_set = x->data_isset;
+		                data_ptr_t &ptr = x->ptr;
+		                auto size = x->size;
+		                auto location = x->location;
+
+		                std::thread rewake_thread(
+		                    [callback_state, &buffer_handle, &file_handle, &ptr, &data_set, size, location] {
+		                        try {
+		                            buffer_handle = file_handle.Read(ptr, size, location);
+		                            D_ASSERT(buffer_handle.IsValid());
+		                            data_set = true;
+		                        } catch (...) {
+		                            std::cout << "Had thrown .....\n";
+		                            callback_state.Callback();
+		                            return;
+		                        }
+		                        callback_state.Callback();
+		                    });
+		                rewake_thread.detach();
+		            }
+		            return rez;
+		*/
+
+		if (res) {
 			auto guard = g_state.Lock();
 			auto rez = g_state.BlockSource(guard, input.interrupt_state);
 			if (rez == SourceResultType::BLOCKED) {
-				auto &callback_state = input.interrupt_state;
-				auto &buffer_handle = x->buffer_handle;
-				auto &file_handle = x->handle;
-				auto &data_set = x->data_isset;
-				data_ptr_t &ptr = x->ptr;
-				auto size = x->size;
-				auto location = x->location;
+				auto &i_state = input.interrupt_state;
+				auto &callback_state = res->v[0]->promise_state;
+				auto &compute_callback = res->v[0]->compute_callback;
+				auto &cleanup_callback = res->v[0]->compute_cleanup;
 
-				std::thread rewake_thread(
-				    [callback_state, &buffer_handle, &file_handle, &ptr, &data_set, size, location] {
-					    try {
-						    buffer_handle = file_handle.Read(ptr, size, location);
-						    D_ASSERT(buffer_handle.IsValid());
-						    data_set = true;
-					    } catch (...) {
-						    std::cout << "Had thrown .....\n";
-						    callback_state.Callback();
-						    return;
-					    }
-					    callback_state.Callback();
-				    });
+				std::thread rewake_thread([i_state, callback_state, compute_callback, cleanup_callback] {
+					try {
+						std::cout << "About to compute_callback\n";
+						compute_callback(callback_state);
+						std::cout << "done compute_callback\n";
+
+					} catch (...) {
+						std::cout << "Had thrown .....\n";
+						// i_state.Callback();
+						cleanup_callback(callback_state);
+						return;
+					}
+					cleanup_callback(callback_state);
+					i_state.Callback();
+				});
 				rewake_thread.detach();
 			}
 			return rez;
+
 		} else {
 			// return res;
 			return chunk.size() == 0 ? SourceResultType::FINISHED : SourceResultType::HAVE_MORE_OUTPUT;

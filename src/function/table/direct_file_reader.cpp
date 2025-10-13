@@ -44,9 +44,9 @@ static inline void VERIFY(const string &filename, const string_t &content) {
 	}
 }
 
-unique_ptr<ToBeScheduledTask> DirectFileReader::Scan(ClientContext &context, GlobalTableFunctionState &global_state,
-                                                     LocalTableFunctionState &local_state, DataChunk &output,
-                                                     InterruptState &interrupt_state) {
+unique_ptr<PromiseHolder> DirectFileReader::Scan(ClientContext &context, GlobalTableFunctionState &global_state,
+                                                 LocalTableFunctionState &local_state, DataChunk &output,
+                                                 InterruptState &interrupt_state) {
 	auto &state = global_state.Cast<ReadFileGlobalState>();
 	if (done || file_list_idx.GetIndex() >= state.file_list->GetTotalFileCount()) {
 		return nullptr;

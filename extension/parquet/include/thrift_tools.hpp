@@ -129,8 +129,27 @@ struct ReadAheadBuffer {
 		}
 	}
 
+	struct LambdaState {
+		BufferHandle &buffer_handle;
+		CachingFileHandle &file_handle;
+		data_ptr_t &ptr;
+		idx_t size;
+		idx_t location;
+		bool &data_isset;
+	};
+	static void compute(void *in) {
+		std::cout << "compute!!!\n";
+		LambdaState *state = (LambdaState *)in;
+		state->buffer_handle = state->file_handle.Read(state->ptr, state->size, state->location);
+		D_ASSERT(state->buffer_handle.IsValid());
+		state->data_isset = true;
+	}
+	static void cleanup(void *state) {
+		std::cout << "cleanup!!!\n";
+		delete (LambdaState *)state;
+	}
 	// Prefetch all read heads
-	unique_ptr<duckdb::ToBeScheduledTask> Prefetch(InterruptState &state) {
+	unique_ptr<PromiseHolder> Prefetch(InterruptState &state) {
 		if (read_heads.size() > 1) {
 			Prefetch();
 			return nullptr;
@@ -141,32 +160,27 @@ struct ReadAheadBuffer {
 			if (read_head.GetEnd() > file_handle.GetFileSize()) {
 				throw std::runtime_error("Prefetch registered requested for bytes outside file");
 			}
-			/*
-			            struct LambdaState {
-			                BufferHandle &buffer_handle;
-			                CachingFileHandle &file_handle;
-			                data_ptr_t &ptr;
-			                idx_t size;
-			                idx_t location;
-			                bool &data_isset;
-			            };
 
-			            auto compute = [](LambdaState &state) {
-			                state.buffer_handle =
-			                 state.file_handle.Read(state.ptr, state.size, state.location);
-			                D_ASSERT(state.buffer_handle.IsValid());
-			                state.data_isset = true;
-			            };
+			LambdaState *in = new LambdaState({read_head.buffer_handle, file_handle, read_head.buffer_ptr,
+			                                   read_head.size, read_head.location, read_head.data_isset});
 
-			            LambdaState * in = new LambdaState({read_head.buffer_handle, file_handle, read_head.buffer_ptr,
-			   read_head.size, read_head.location, read_head.data_isset});
-			*/
-			// return
+			/*Promise promise;
+			promise.promise_state = in;
+			promise.compute_callback = compute;
+			promise.compute_cleanup = cleanup;*/
+
+			unique_ptr<PromiseHolder> promise_holder = make_uniq<PromiseHolder>();
+			promise_holder->v.push_back(make_uniq<Promise>());
+			promise_holder->v.back()->promise_state = in;
+			promise_holder->v.back()->compute_callback = compute;
+			promise_holder->v.back()->compute_cleanup = cleanup;
 
 			std::cout << "yoo\t" << read_head.size << " at " << read_head.location << "\n";
+			return std::move(promise_holder);
+			// return
 
-			return make_uniq<IOToBeScheduledTask>(read_head.buffer_handle, file_handle, read_head.buffer_ptr,
-			                                      read_head.size, read_head.location, read_head.data_isset);
+			//	return make_uniq<IOToBeScheduledTask>(read_head.buffer_handle, file_handle, read_head.buffer_ptr,
+			//	                                      read_head.size, read_head.location, read_head.data_isset);
 		}
 	}
 };
@@ -215,7 +229,7 @@ public:
 	}
 
 	// Prefetch a single buffer
-	unique_ptr<duckdb::ToBeScheduledTask> Prefetch(idx_t pos, uint64_t len, InterruptState &interrupt_state) {
+	unique_ptr<PromiseHolder> Prefetch(idx_t pos, uint64_t len, InterruptState &interrupt_state) {
 		RegisterPrefetch(pos, len, false);
 		FinalizeRegistration();
 		return PrefetchRegistered(interrupt_state);
@@ -235,7 +249,7 @@ public:
 	void PrefetchRegistered() {
 		ra_buffer.Prefetch();
 	}
-	unique_ptr<duckdb::ToBeScheduledTask> PrefetchRegistered(InterruptState &interrupt_state) {
+	unique_ptr<PromiseHolder> PrefetchRegistered(InterruptState &interrupt_state) {
 		return ra_buffer.Prefetch(interrupt_state);
 	}
 

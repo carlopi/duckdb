@@ -82,4 +82,19 @@ public:
 	}
 };
 
+typedef void (*promise_compute)(void *);
+typedef void (*promise_cleanup)(void *);
+
+class Promise {
+public:
+	void *promise_state;
+	promise_compute compute_callback;
+	promise_cleanup compute_cleanup;
+};
+
+class PromiseHolder {
+public:
+	std::vector<unique_ptr<Promise>> v;
+};
+
 } // namespace duckdb
