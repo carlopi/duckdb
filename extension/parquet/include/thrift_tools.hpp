@@ -17,8 +17,12 @@
 #include "duckdb/common/file_system.hpp"
 #include "duckdb/common/allocator.hpp"
 
+#include "duckdb/parallel/task_executor.hpp"
+#include "duckdb/parallel/executor_task.hpp"
 #include <chrono>
 #include <thread>
+
+#include <iostream>
 
 namespace duckdb {
 
@@ -124,43 +128,44 @@ struct ReadAheadBuffer {
 			read_head.data_isset = true;
 		}
 	}
-
 	// Prefetch all read heads
-	SourceResultType Prefetch(InterruptState &state) {
+	unique_ptr<duckdb::ToBeScheduledTask> Prefetch(InterruptState &state) {
 		if (read_heads.size() > 1) {
 			Prefetch();
-			return SourceResultType::HAVE_MORE_OUTPUT;
+			return nullptr;
 		} else if (read_heads.size() == 0) {
-			return SourceResultType::FINISHED;
+			return nullptr;
 		} else {
 			auto &read_head = *read_heads.begin();
 			if (read_head.GetEnd() > file_handle.GetFileSize()) {
 				throw std::runtime_error("Prefetch registered requested for bytes outside file");
 			}
+			/*
+			            struct LambdaState {
+			                BufferHandle &buffer_handle;
+			                CachingFileHandle &file_handle;
+			                data_ptr_t &ptr;
+			                idx_t size;
+			                idx_t location;
+			                bool &data_isset;
+			            };
 
-			auto &callback_state = state;
+			            auto compute = [](LambdaState &state) {
+			                state.buffer_handle =
+			                 state.file_handle.Read(state.ptr, state.size, state.location);
+			                D_ASSERT(state.buffer_handle.IsValid());
+			                state.data_isset = true;
+			            };
 
-			std::thread rewake_thread([callback_state, &read_head, this] {
-				// std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-				try {
-					read_head.buffer_handle =
-					    file_handle.Read(read_head.buffer_ptr, read_head.size, read_head.location);
-					D_ASSERT(read_head.buffer_handle.IsValid());
-					read_head.data_isset = true;
-				} catch (...) {
-					std::cout << "Had thrown .....\n";
-					callback_state.Callback();
-					return;
-				}
-				callback_state.Callback();
-			});
-			rewake_thread.detach();
+			            LambdaState * in = new LambdaState({read_head.buffer_handle, file_handle, read_head.buffer_ptr,
+			   read_head.size, read_head.location, read_head.data_isset});
+			*/
+			// return
 
-			return SourceResultType::BLOCKED;
+			std::cout << "yoo\t" << read_head.size << " at " << read_head.location << "\n";
 
-			// CALLBACK:
-
-			return SourceResultType::BLOCKED;
+			return make_uniq<IOToBeScheduledTask>(read_head.buffer_handle, file_handle, read_head.buffer_ptr,
+			                                      read_head.size, read_head.location, read_head.data_isset);
 		}
 	}
 };
@@ -222,7 +227,7 @@ public:
 	void PrefetchRegistered() {
 		ra_buffer.Prefetch();
 	}
-	SourceResultType PrefetchRegistered(InterruptState &interrupt_state) {
+	unique_ptr<duckdb::ToBeScheduledTask> PrefetchRegistered(InterruptState &interrupt_state) {
 		return ra_buffer.Prefetch(interrupt_state);
 	}
 

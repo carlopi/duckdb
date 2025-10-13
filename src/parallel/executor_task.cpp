@@ -3,6 +3,9 @@
 #include "duckdb/execution/executor.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/parallel/thread_context.hpp"
+#include "duckdb/main/client_context.hpp"
+
+#include <iostream>
 
 namespace duckdb {
 
@@ -58,6 +61,19 @@ TaskExecutionResult ExecutorTask::Execute(TaskExecutionMode mode) {
 		executor.PushError(ErrorData("Unknown exception in ExecutorTask::Execute"));
 	} // LCOV_EXCL_STOP
 	return TaskExecutionResult::TASK_ERROR;
+}
+
+IOToBeScheduledTask::IOToBeScheduledTask(BufferHandle &buffer_handle, CachingFileHandle &handle, data_ptr_t &ptr,
+                                         idx_t size, idx_t location, bool &data_isset)
+    : buffer_handle(buffer_handle), handle(handle), ptr(ptr), size(size), location(location), data_isset(data_isset) {
+}
+unique_ptr<IOTask> IOToBeScheduledTask::Schedule(Executor &executor, shared_ptr<Event> event) {
+	return make_uniq<IOTask>(executor, event, buffer_handle, handle, size, location);
+}
+
+IOTask::IOTask(Executor &executor, shared_ptr<Event> event, BufferHandle &buffer_handle, CachingFileHandle &handle,
+               idx_t start, idx_t end)
+    : ExecutorTask(executor, event), buffer_handle(buffer_handle), handle(handle), start(start), end(end) {
 }
 
 } // namespace duckdb

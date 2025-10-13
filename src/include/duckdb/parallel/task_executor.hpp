@@ -16,6 +16,7 @@
 
 namespace duckdb {
 class TaskScheduler;
+class Event;
 
 //! The TaskExecutor is a helper class that enables parallel scheduling and execution of tasks
 class TaskExecutor {
@@ -55,12 +56,30 @@ private:
 class BaseExecutorTask : public Task {
 public:
 	explicit BaseExecutorTask(TaskExecutor &executor);
+	BaseExecutorTask(const BaseExecutorTask &other) = default;
+	BaseExecutorTask(BaseExecutorTask &&other) = default;
 
 	virtual void ExecuteTask() = 0;
 	TaskExecutionResult Execute(TaskExecutionMode mode) override;
 
 protected:
 	TaskExecutor &executor;
+};
+
+class ToBeScheduledTask : public Task {
+public:
+	ToBeScheduledTask() = default;
+	ToBeScheduledTask(const ToBeScheduledTask &other) = default;
+	ToBeScheduledTask(ToBeScheduledTask &&other) = default;
+	unique_ptr<BaseExecutorTask> Schedule(Executor &executor, shared_ptr<Event> event) {
+		throw InternalException("ToBeScheduledTask cannot be call on base class");
+	}
+	string TaskType() const override {
+		return "ToBeScheduledTask";
+	}
+	TaskExecutionResult Execute(TaskExecutionMode mode) override {
+		throw InternalException("ASD");
+	}
 };
 
 } // namespace duckdb

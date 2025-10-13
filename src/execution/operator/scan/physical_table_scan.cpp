@@ -4,10 +4,15 @@
 #include "duckdb/common/string_util.hpp"
 #include "duckdb/planner/expression/bound_conjunction_expression.hpp"
 #include "duckdb/transaction/transaction.hpp"
+#include "duckdb/storage/caching_file_system.hpp"
 
 #include <utility>
+#include <thread>
 
+#include <iostream>
 namespace duckdb {
+
+class CachingFileHandle;
 
 PhysicalTableScan::PhysicalTableScan(PhysicalPlan &physical_plan, vector<LogicalType> types, TableFunction function_p,
                                      unique_ptr<FunctionData> bind_data_p, vector<LogicalType> returned_types_p,
@@ -104,13 +109,42 @@ SourceResultType PhysicalTableScan::GetData(ExecutionContext &context, DataChunk
 	if (function.wrapped_function) {
 		auto res = function.wrapped_function(context.client, data, chunk, input.interrupt_state);
 
-		return res;
+		//////TODO
 
-		if (res == SourceResultType::BLOCKED) {
-			///	auto guard = g_state.Lock();
-			//	return g_state.BlockSource(guard, input.interrupt_state);
+		if (res) {
+			// TODO: care in multi-thread??
+			auto x = reinterpret_cast<IOToBeScheduledTask *>(res.get());
+
+			auto guard = g_state.Lock();
+			auto rez = g_state.BlockSource(guard, input.interrupt_state);
+			if (rez == SourceResultType::BLOCKED) {
+				auto &callback_state = input.interrupt_state;
+				auto &buffer_handle = x->buffer_handle;
+				auto &file_handle = x->handle;
+				auto &data_set = x->data_isset;
+				data_ptr_t &ptr = x->ptr;
+				auto size = x->size;
+				auto location = x->location;
+
+				std::thread rewake_thread(
+				    [callback_state, &buffer_handle, &file_handle, &ptr, &data_set, size, location] {
+					    try {
+						    buffer_handle = file_handle.Read(ptr, size, location);
+						    D_ASSERT(buffer_handle.IsValid());
+						    data_set = true;
+					    } catch (...) {
+						    std::cout << "Had thrown .....\n";
+						    callback_state.Callback();
+						    return;
+					    }
+					    callback_state.Callback();
+				    });
+				rewake_thread.detach();
+			}
+			return rez;
 		} else {
-			return res;
+			// return res;
+			return chunk.size() == 0 ? SourceResultType::FINISHED : SourceResultType::HAVE_MORE_OUTPUT;
 		}
 	}
 

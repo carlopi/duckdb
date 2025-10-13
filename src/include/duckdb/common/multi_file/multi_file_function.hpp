@@ -588,11 +588,12 @@ public:
 		return partition_data;
 	}
 
-	static SourceResultType MultiFileScan(ClientContext &context, TableFunctionInput &data_p, DataChunk &output,
-	                                      InterruptState &interrupt_state) {
+	static unique_ptr<ToBeScheduledTask> MultiFileScan(ClientContext &context, TableFunctionInput &data_p,
+	                                                   DataChunk &output, InterruptState &interrupt_state) {
 
 		if (!data_p.local_state) {
-			return SourceResultType::FINISHED;
+			return nullptr;
+			// return SourceResultType::FINISHED;
 		}
 		auto &data = data_p.local_state->Cast<MultiFileLocalState>();
 		auto &gstate = data_p.global_state->Cast<MultiFileGlobalState>();
@@ -605,7 +606,7 @@ public:
 			auto res = data.reader->Scan(context, *gstate.global_state, *data.local_state, scan_chunk, interrupt_state);
 			output.SetCardinality(scan_chunk.size());
 
-			if (res == SourceResultType::BLOCKED) {
+			if (res) {
 				return res;
 			}
 
@@ -614,18 +615,21 @@ public:
 				                                           scan_chunk, output, data.executor,
 				                                           gstate.multi_file_reader_state);
 				// TODO: should it be `res`?
-				return SourceResultType::HAVE_MORE_OUTPUT;
+				return nullptr;
+				// return SourceResultType::HAVE_MORE_OUTPUT;
 			}
 
 			scan_chunk.Reset();
 			if (!TryInitializeNextBatch(context, bind_data, data, gstate)) {
 				// TODO: should it be `res`?
-				return SourceResultType::FINISHED;
+				return nullptr;
+				// return SourceResultType::FINISHED;
 			}
 		} while (true);
 		// This is not expected to be ever taken
 		D_ASSERT(false);
-		return SourceResultType::FINISHED;
+		return nullptr;
+		// return SourceResultType::FINISHED;
 	}
 
 	static unique_ptr<BaseStatistics> MultiFileScanStats(ClientContext &context, const FunctionData *bind_data_p,

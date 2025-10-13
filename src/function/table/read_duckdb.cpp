@@ -87,8 +87,9 @@ public:
 public:
 	bool TryInitializeScan(ClientContext &context, GlobalTableFunctionState &gstate,
 	                       LocalTableFunctionState &lstate) override;
-	SourceResultType Scan(ClientContext &context, GlobalTableFunctionState &global_state,
-	                      LocalTableFunctionState &local_state, DataChunk &chunk, InterruptState &state) override;
+	unique_ptr<ToBeScheduledTask> Scan(ClientContext &context, GlobalTableFunctionState &global_state,
+	                                   LocalTableFunctionState &local_state, DataChunk &chunk,
+	                                   InterruptState &state) override;
 	shared_ptr<BaseUnionData> GetUnionData(idx_t file_idx) override;
 	void FinishFile(ClientContext &context, GlobalTableFunctionState &gstate) override;
 	double GetProgressInFile(ClientContext &context) override;
@@ -300,18 +301,20 @@ bool DuckDBReader::TryInitializeScan(ClientContext &context, GlobalTableFunction
 	return true;
 }
 
-SourceResultType DuckDBReader::Scan(ClientContext &context, GlobalTableFunctionState &gstate_p,
-                                    LocalTableFunctionState &lstate_p, DataChunk &chunk,
-                                    InterruptState &interrupt_state) {
+unique_ptr<ToBeScheduledTask> DuckDBReader::Scan(ClientContext &context, GlobalTableFunctionState &gstate_p,
+                                                 LocalTableFunctionState &lstate_p, DataChunk &chunk,
+                                                 InterruptState &interrupt_state) {
 	chunk.Reset();
 	auto &lstate = lstate_p.Cast<DuckDBReadLocalState>();
 	TableFunctionInput input(bind_data.get(), lstate.local_state, global_state);
 	scan_function.function(context, input, chunk);
 	if (chunk.size() == 0) {
 		finished = true;
-		return SourceResultType::FINISHED;
+		return nullptr;
+		// return SourceResultType::FINISHED;
 	}
-	return SourceResultType::HAVE_MORE_OUTPUT;
+	return nullptr;
+	// return SourceResultType::HAVE_MORE_OUTPUT;
 }
 
 void DuckDBReader::FinishFile(ClientContext &context, GlobalTableFunctionState &gstate) {
