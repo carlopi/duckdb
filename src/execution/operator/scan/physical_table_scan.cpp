@@ -5,7 +5,7 @@
 #include "duckdb/planner/expression/bound_conjunction_expression.hpp"
 #include "duckdb/transaction/transaction.hpp"
 #include "duckdb/storage/caching_file_system.hpp"
-
+#include "duckdb/parallel/pipeline_event.hpp"
 #include <utility>
 #include <thread>
 
@@ -98,6 +98,42 @@ unique_ptr<GlobalSourceState> PhysicalTableScan::GetGlobalSourceState(ClientCont
 	return make_uniq<TableScanGlobalSourceState>(context, *this);
 }
 
+class PromiseTask : public BaseExecutorTask {
+public:
+	PromiseTask(TaskExecutor &executor, unique_ptr<Promise> && promise, InterruptState && interrupt_state) : BaseExecutorTask(executor), promise(std::move(promise)), interrupt_state(std::move(interrupt_state)) {
+	}
+	
+	void ExecuteTask() override {
+				auto &callback_state = promise->promise_state;
+				auto &compute_callback = promise->compute_callback;
+				auto &cleanup_callback = promise->compute_cleanup;
+					try {
+						std::cout << "About to compute_callback\n";
+						compute_callback(callback_state);
+						std::cout << "done compute_callback\n";
+
+					} catch (...) {
+						std::cout << "Had thrown .....\n";
+						// i_state.Callback();
+						cleanup_callback(callback_state);
+						return;
+					}
+					cleanup_callback(callback_state);
+					interrupt_state.Callback();
+					return;
+	}
+
+	string TaskType() const override {
+		return "PromiseTask";
+	}
+
+private:
+	unique_ptr<Promise> promise;
+	InterruptState interrupt_state;
+};
+
+
+
 SourceResultType PhysicalTableScan::GetData(ExecutionContext &context, DataChunk &chunk,
                                             OperatorSourceInput &input) const {
 	D_ASSERT(!column_ids.empty());
@@ -109,51 +145,26 @@ SourceResultType PhysicalTableScan::GetData(ExecutionContext &context, DataChunk
 	if (function.wrapped_function) {
 		auto res = function.wrapped_function(context.client, data, chunk, input.interrupt_state);
 
-		//////TODO
-
-		/*
-		        if (res) {
-		            // TODO: care in multi-thread??
-		            auto x = reinterpret_cast<IOToBeScheduledTask *>(res.get());
-
-		            auto guard = g_state.Lock();
-		            auto rez = g_state.BlockSource(guard, input.interrupt_state);
-		            if (rez == SourceResultType::BLOCKED) {
-		                auto &callback_state = input.interrupt_state;
-		                auto &buffer_handle = x->buffer_handle;
-		                auto &file_handle = x->handle;
-		                auto &data_set = x->data_isset;
-		                data_ptr_t &ptr = x->ptr;
-		                auto size = x->size;
-		                auto location = x->location;
-
-		                std::thread rewake_thread(
-		                    [callback_state, &buffer_handle, &file_handle, &ptr, &data_set, size, location] {
-		                        try {
-		                            buffer_handle = file_handle.Read(ptr, size, location);
-		                            D_ASSERT(buffer_handle.IsValid());
-		                            data_set = true;
-		                        } catch (...) {
-		                            std::cout << "Had thrown .....\n";
-		                            callback_state.Callback();
-		                            return;
-		                        }
-		                        callback_state.Callback();
-		                    });
-		                rewake_thread.detach();
-		            }
-		            return rez;
-		*/
-
 		if (res) {
 			auto guard = g_state.Lock();
 			auto rez = g_state.BlockSource(guard, input.interrupt_state);
 			if (rez == SourceResultType::BLOCKED) {
-				auto &i_state = input.interrupt_state;
-				auto &callback_state = res->v[0]->promise_state;
-				auto &compute_callback = res->v[0]->compute_callback;
-				auto &cleanup_callback = res->v[0]->compute_cleanup;
 
+				auto &i_state = input.interrupt_state;
+/*
+
+				if (context.pipeline) {
+					auto pipeline_event = make_shared_ptr<PipelineEvent>(context.pipeline->shared_from_this());
+
+					TaskExecutor executor(context.client);
+					auto task = make_uniq<PromiseTask>(executor, std::move(res->v[0]), std::move(i_state));
+					executor.ScheduleTask(std::move(task));
+				//	executor.WorkOnTasks();
+				}
+*/
+				auto &callback_state = res->v[0]->promise_state;
+				auto &compute_callback =res->v[0]->compute_callback;
+				auto &cleanup_callback = res->v[0]->compute_cleanup;
 				std::thread rewake_thread([i_state, callback_state, compute_callback, cleanup_callback] {
 					try {
 						std::cout << "About to compute_callback\n";
