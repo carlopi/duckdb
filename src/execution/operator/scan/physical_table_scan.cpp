@@ -147,7 +147,6 @@ go_back:
 
 				TaskExecutor executor(context.client);
 
-				std::cout << res->v.size() << "\n";
 				for (auto &promise : res->v) {
 					auto task = make_uniq<PromiseExecutionTask>(executor, std::move(promise));
 					executor.ScheduleTask(std::move(task));
