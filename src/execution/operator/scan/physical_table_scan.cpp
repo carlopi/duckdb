@@ -97,10 +97,10 @@ unique_ptr<LocalSourceState> PhysicalTableScan::GetLocalSourceState(ExecutionCon
 unique_ptr<GlobalSourceState> PhysicalTableScan::GetGlobalSourceState(ClientContext &context) const {
 	return make_uniq<TableScanGlobalSourceState>(context, *this);
 }
-
-class PromiseTask : public BaseExecutorTask {
+/*
+class PromiseExecutionTask : public BaseExecutorTask {
 public:
-	PromiseTask(TaskExecutor &executor, unique_ptr<Promise> && promise, InterruptState && interrupt_state) : BaseExecutorTask(executor), promise(std::move(promise)), interrupt_state(std::move(interrupt_state)) {
+	PromiseExecutionTask(TaskExecutor &executor, unique_ptr<Promise> && promise, InterruptState && interrupt_state) : BaseExecutorTask(executor), promise(std::move(promise)), interrupt_state(std::move(interrupt_state)) {
 	}
 	
 	void ExecuteTask() override {
@@ -108,12 +108,9 @@ public:
 				auto &compute_callback = promise->compute_callback;
 				auto &cleanup_callback = promise->compute_cleanup;
 					try {
-						std::cout << "About to compute_callback\n";
 						compute_callback(callback_state);
-						std::cout << "done compute_callback\n";
 
 					} catch (...) {
-						std::cout << "Had thrown .....\n";
 						// i_state.Callback();
 						cleanup_callback(callback_state);
 						return;
@@ -131,7 +128,73 @@ private:
 	unique_ptr<Promise> promise;
 	InterruptState interrupt_state;
 };
+class PromiseExecutionTask : public ExecutorTask {
+public:
+	PromiseExecutionTask(Executor &executor, shared_ptr<Event> event, unique_ptr<Promise> && promise) : ExecutorTask(executor, event), promise(std::move(promise))
+//interrupt_state(std::move(interrupt_state)) {
+	{
+	}
+	
+	TaskExecutionResult ExecuteTask(TaskExecutionMode mode) override {
+				auto &callback_state = promise->promise_state;
+				auto &compute_callback = promise->compute_callback;
+				auto &cleanup_callback = promise->compute_cleanup;
+					try {
+						compute_callback(callback_state);
 
+					} catch (...) {
+						// i_state.Callback();
+						cleanup_callback(callback_state);
+						return TaskExecutionResult::TASK_ERROR;
+					}
+					cleanup_callback(callback_state);
+					//interrupt_state.Callback();
+					return TaskExecutionResult::TASK_FINISHED;
+	}
+
+	string TaskType() const override {
+		return "PromiseTask";
+	}
+
+private:
+	unique_ptr<Promise> promise;
+	//InterruptState interrupt_state;
+};
+class PromiseExecutionEvent final : public Event {
+public:
+	PromiseExecutionEvent(Executor &pipeline_p, vector<unique_ptr<Promise>> &&promises)
+	    : Event(pipeline_p), promises(std::move(promises)), executor(pipeline_p) {
+		std::cout << "PromiseExecutionEvent!!!!\n";
+	}
+
+vector<unique_ptr<Promise>> promises;
+Executor &executor;
+public:
+	void Schedule() override {
+		std::cout << "Schedule!!!!\n";
+	//	auto &context = pipeline->GetClientContext();
+
+		// Schedule tasks equal to the number of threads, which will construct the index
+	//	auto &ts = TaskScheduler::GetScheduler(context);
+//		const auto num_threads = NumericCast<size_t>(ts.NumberOfThreads());
+
+		vector<shared_ptr<Task>> construct_tasks;
+//		for (size_t tnum = 0; tnum < num_threads; tnum++) {
+//			construct_tasks.push_back(make_uniq<HNSWIndexConstructTask>(shared_from_this(), context, gstate, tnum, op));
+//		}
+
+			construct_tasks.push_back(make_uniq<PromiseExecutionTask>(executor, shared_from_this(), std::move(promises[0])));
+		SetTasks(std::move(construct_tasks));
+		std::cout << "Schedule!!!!\n";
+	}
+
+	void FinishEvent() override {
+		std::cout << "FinishedEvent\n";
+	}
+};
+
+
+*/
 
 
 SourceResultType PhysicalTableScan::GetData(ExecutionContext &context, DataChunk &chunk,
@@ -152,7 +215,6 @@ SourceResultType PhysicalTableScan::GetData(ExecutionContext &context, DataChunk
 
 				auto &i_state = input.interrupt_state;
 /*
-
 				if (context.pipeline) {
 					auto pipeline_event = make_shared_ptr<PipelineEvent>(context.pipeline->shared_from_this());
 
@@ -162,25 +224,38 @@ SourceResultType PhysicalTableScan::GetData(ExecutionContext &context, DataChunk
 				//	executor.WorkOnTasks();
 				}
 */
-				auto &callback_state = res->v[0]->promise_state;
-				auto &compute_callback =res->v[0]->compute_callback;
-				auto &cleanup_callback = res->v[0]->compute_cleanup;
-				std::thread rewake_thread([i_state, callback_state, compute_callback, cleanup_callback] {
+/*
+				if (context.pipeline) {
+					auto new_event = make_shared_ptr<PromiseExecutionEvent>(context.pipeline->executor, std::move(res->v));
+					//auto pipeline_event = make_shared_ptr<PipelineEvent>(context.pipeline->shared_from_this());
+
+shared_ptr<Event> ev = 		shared_ptr_cast<PromiseExecutionEvent, Event>(new_event);
+					context.pipeline->Schedule(ev);
+
+AddDependency(ev);
+
+				}
+*/
+			for (auto & promise : res->v) {
+				auto &callback_state = promise->promise_state;
+				auto &compute_callback =promise->compute_callback;
+				auto &cleanup_callback = promise->compute_cleanup;
+				std::thread rewake_thread([i_state,callback_state, compute_callback, cleanup_callback] {
 					try {
-						std::cout << "About to compute_callback\n";
 						compute_callback(callback_state);
-						std::cout << "done compute_callback\n";
 
 					} catch (...) {
-						std::cout << "Had thrown .....\n";
 						// i_state.Callback();
 						cleanup_callback(callback_state);
 						return;
 					}
 					cleanup_callback(callback_state);
-					i_state.Callback();
+
+						i_state.Callback();
 				});
 				rewake_thread.detach();
+				}
+
 			}
 			return rez;
 
