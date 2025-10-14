@@ -138,14 +138,12 @@ struct ReadAheadBuffer {
 		bool &data_isset;
 	};
 	static void compute(void *in) {
-		std::cout << "compute!!!\n";
 		LambdaState *state = (LambdaState *)in;
 		state->buffer_handle = state->file_handle.Read(state->ptr, state->size, state->location);
 		D_ASSERT(state->buffer_handle.IsValid());
 		state->data_isset = true;
 	}
 	static void cleanup(void *state) {
-		std::cout << "cleanup!!!\n";
 		delete (LambdaState *)state;
 	}
 	// Prefetch all read heads
@@ -175,7 +173,6 @@ struct ReadAheadBuffer {
 			promise_holder->v.back()->compute_callback = compute;
 			promise_holder->v.back()->compute_cleanup = cleanup;
 
-			std::cout << "yoo\t" << read_head.size << " at " << read_head.location << "\n";
 			return std::move(promise_holder);
 			// return
 
