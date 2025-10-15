@@ -31,6 +31,11 @@ void TaskExecutor::ScheduleTask(unique_ptr<Task> task) {
 	++total_tasks;
 	scheduler.ScheduleTask(*token, std::move(task));
 }
+
+void TaskExecutor::ScheduleGuestTask(unique_ptr<Task> task, ProducerToken &alternative_token) {
+	scheduler.ScheduleTask(alternative_token, std::move(task));
+}
+
 void TaskExecutor::FinishTask() {
 	++completed_tasks;
 }
