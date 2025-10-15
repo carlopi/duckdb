@@ -1468,7 +1468,7 @@ unique_ptr<PromiseHolder> ParquetReader::ScanInternal(ClientContext &context, Pa
 			}
 			state.adaptive_filter->EndFilter(filter_state);
 		}
-
+unique_ptr<PromiseHolder> promise_holder = make_uniq<PromiseHolder>();
 		// we still may have to read some cols
 		for (idx_t i = 0; i < column_ids.size(); i++) {
 			auto col_idx = MultiFileLocalIndex(i);
@@ -1477,12 +1477,20 @@ unique_ptr<PromiseHolder> ParquetReader::ScanInternal(ClientContext &context, Pa
 			}
 			auto file_col_idx = column_ids[col_idx];
 			if (filter_count == 0) {
+				std::cout << "filter_count == 0\n";
 				root_reader.GetChildReader(file_col_idx).Skip(result.size());
 				continue;
 			}
+
 			auto &result_vector = result.data[i];
 			auto &child_reader = root_reader.GetChildReader(file_col_idx);
 			child_reader.Select(result.size(), define_ptr, repeat_ptr, result_vector, state.sel, filter_count);
+/*
+			promise_holder->v.push_back(make_uniq<Promise>());
+			promise_holder->v.back()->promise_state = in;
+			promise_holder->v.back()->compute_callback = compute;
+			promise_holder->v.back()->compute_cleanup = cleanup;
+*/
 		}
 		if (scan_count != filter_count) {
 			result.Slice(state.sel, filter_count);
