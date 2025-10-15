@@ -31,6 +31,12 @@ void TaskExecutor::ScheduleTask(unique_ptr<Task> task) {
 	++total_tasks;
 	scheduler.ScheduleTask(*token, std::move(task));
 }
+
+void TaskExecutor::ScheduleTask(unique_ptr<Task> task, ProducerToken &producer_token) {
+	++total_tasks;
+	scheduler.ScheduleTask(override_token, std::move(task));
+}
+
 void TaskExecutor::FinishTask() {
 	++completed_tasks;
 }

@@ -34,6 +34,8 @@ public:
 
 	//! Schedule a new task
 	void ScheduleTask(unique_ptr<Task> task);
+	//! Schedule a new task, supplying a ProducerToken to be used
+	void ScheduleTask(unique_ptr<Task> task, ProducerToken &alternative_token);
 	//! Label a task as finished
 	void FinishTask();
 
