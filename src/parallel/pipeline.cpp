@@ -181,7 +181,7 @@ bool Pipeline::LaunchScanTasks(shared_ptr<Event> &event, idx_t max_threads) {
 
 	// launch a task for every thread
 	vector<shared_ptr<Task>> tasks;
-	for (idx_t i = 0; i < max_threads * 1; i++) {
+	for (idx_t i = 0; i < max_threads * 8; i++) {
 		tasks.push_back(make_uniq<PipelineTask>(*this, event));
 	}
 	event->SetTasks(std::move(tasks));

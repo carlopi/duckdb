@@ -136,12 +136,14 @@ struct ReadAheadBuffer {
 		idx_t size;
 		idx_t location;
 		bool &data_isset;
+		InterruptState interrupt_state;
 	};
 	static void compute(void *in) {
 		LambdaState *state = (LambdaState *)in;
 		state->buffer_handle = state->file_handle.Read(state->ptr, state->size, state->location);
 		D_ASSERT(state->buffer_handle.IsValid());
 		state->data_isset = true;
+		state->interrupt_state.Callback();
 	}
 	static void cleanup(void *state) {
 		delete (LambdaState *)state;
@@ -160,7 +162,7 @@ struct ReadAheadBuffer {
 			}
 
 			LambdaState *in = new LambdaState({read_head.buffer_handle, file_handle, read_head.buffer_ptr,
-			                                   read_head.size, read_head.location, read_head.data_isset});
+			                                   read_head.size, read_head.location, read_head.data_isset, state});
 
 			/*Promise promise;
 			promise.promise_state = in;

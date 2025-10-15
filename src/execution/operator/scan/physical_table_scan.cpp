@@ -30,6 +30,7 @@ PhysicalTableScan::PhysicalTableScan(PhysicalPlan &physical_plan, vector<Logical
 class TableScanGlobalSourceState : public GlobalSourceState {
 public:
 	TableScanGlobalSourceState(ClientContext &context, const PhysicalTableScan &op) {
+		executor = make_uniq<TaskExecutor>(context);
 		if (op.dynamic_filters && op.dynamic_filters->HasFilters()) {
 			table_filters = op.dynamic_filters->GetFinalTableFilters(op, op.table_filters.get());
 		}
@@ -60,6 +61,7 @@ public:
 		}
 	}
 
+	unique_ptr<TaskExecutor> executor;
 	idx_t max_threads = 0;
 	unique_ptr<GlobalTableFunctionState> global_state;
 	bool in_out_final = false;
@@ -112,6 +114,8 @@ public:
 
 		} catch (...) {
 			// i_state.Callback();
+			ErrorData ed("ASDASDASD");
+			executor.PushError(ed);
 			cleanup_callback(callback_state);
 			return;
 		}
@@ -145,14 +149,32 @@ go_back:
 			auto rez = g_state.BlockSource(guard, input.interrupt_state);
 			if (rez == SourceResultType::BLOCKED) {
 
-				TaskExecutor executor(context.client);
+			auto &executor = *g_state.executor;
 
-				std::cout << res->v.size() << "\n";
+				//std::cout << res->v.size() << "\n";
 				for (auto &promise : res->v) {
 					auto task = make_uniq<PromiseExecutionTask>(executor, std::move(promise));
 					executor.ScheduleTask(std::move(task));
 				}
-				executor.WorkOnTasks();
+
+
+
+
+
+				//executor.WorkOnTasks();
+
+
+
+
+
+
+
+
+
+				// Should executor live one level up??
+
+
+				return rez;
 				/*
 				                auto &i_state = input.interrupt_state;
 				                auto &callback_state = promise->promise_state;
