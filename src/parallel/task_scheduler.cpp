@@ -274,51 +274,67 @@ void TaskScheduler::ExecuteForever(atomic<bool> *marker) {
 	shared_ptr<Task> task;
 	// loop until the marker is set to false
 	while (*marker) {
-		if (!Allocator::SupportsFlush()) {
-			// allocator can't flush, just start an untimed wait
-			queue->semaphore.wait();
-		} else if (!queue->semaphore.wait(INITIAL_FLUSH_WAIT)) {
-			// allocator can flush, we flush this threads outstanding allocations after it was idle for 0.5s
-			Allocator::ThreadFlush(allocator_background_threads, allocator_flush_threshold,
-			                       NumericCast<idx_t>(requested_thread_count.load()));
-			auto decay_delay = Allocator::DecayDelay();
-			if (!decay_delay.IsValid()) {
-				// no decay delay specified - just wait
+		try {
+			if (!Allocator::SupportsFlush()) {
+				// allocator can't flush, just start an untimed wait
 				queue->semaphore.wait();
-			} else {
-				if (!queue->semaphore.wait(UnsafeNumericCast<int64_t>(decay_delay.GetIndex()) * 1000000 -
-				                           INITIAL_FLUSH_WAIT)) {
-					// in total, the thread was idle for the entire decay delay (note: seconds converted to mus)
-					// mark it as idle and start an untimed wait
-					Allocator::ThreadIdle();
+			} else if (!queue->semaphore.wait(INITIAL_FLUSH_WAIT)) {
+				// allocator can flush, we flush this threads outstanding allocations after it was idle for 0.5s
+				Allocator::ThreadFlush(allocator_background_threads, allocator_flush_threshold,
+				                       NumericCast<idx_t>(requested_thread_count.load()));
+				auto decay_delay = Allocator::DecayDelay();
+				if (!decay_delay.IsValid()) {
+					// no decay delay specified - just wait
 					queue->semaphore.wait();
+				} else {
+					if (!queue->semaphore.wait(UnsafeNumericCast<int64_t>(decay_delay.GetIndex()) * 1000000 -
+					                           INITIAL_FLUSH_WAIT)) {
+						// in total, the thread was idle for the entire decay delay (note: seconds converted to mus)
+						// mark it as idle and start an untimed wait
+						Allocator::ThreadIdle();
+						queue->semaphore.wait();
+					}
 				}
 			}
-		}
-		if (queue->Dequeue(task)) {
-			auto process_mode = config.options.scheduler_process_partial ? TaskExecutionMode::PROCESS_PARTIAL
-			                                                             : TaskExecutionMode::PROCESS_ALL;
-			auto execute_result = task->Execute(process_mode);
+			if (queue->Dequeue(task)) {
+				auto process_mode = config.options.scheduler_process_partial ? TaskExecutionMode::PROCESS_PARTIAL
+				                                                             : TaskExecutionMode::PROCESS_ALL;
+				try {
 
-			switch (execute_result) {
-			case TaskExecutionResult::TASK_FINISHED:
-			case TaskExecutionResult::TASK_ERROR:
-				task.reset();
-				break;
-			case TaskExecutionResult::TASK_NOT_FINISHED: {
-				// task is not finished - reschedule immediately
-				auto &token = *task->token;
-				queue->Enqueue(token, std::move(task));
-				break;
+					auto execute_result = task->Execute(process_mode);
+					try {
+
+						switch (execute_result) {
+						case TaskExecutionResult::TASK_FINISHED:
+						case TaskExecutionResult::TASK_ERROR:
+							task.reset();
+							break;
+						case TaskExecutionResult::TASK_NOT_FINISHED: {
+							// task is not finished - reschedule immediately
+							auto &token = *task->token;
+							queue->Enqueue(token, std::move(task));
+							break;
+						}
+						case TaskExecutionResult::TASK_BLOCKED:
+							task->Deschedule();
+							task.reset();
+							break;
+						}
+					} catch (...) {
+						std::cout << "NOOOOOOOOO deschedule did throw\n";
+						// throw FatalException("BOOM");
+					}
+				} catch (...) {
+					std::cout << "NOOOOOOOOO Execute did throw\n";
+					// throw FatalException("BOOM");
+				}
+			} else if (queue->GetTasksInQueue() > 0) {
+				// failed to dequeue but there are still tasks remaining - signal again to retry
+				queue->semaphore.signal(1);
 			}
-			case TaskExecutionResult::TASK_BLOCKED:
-				task->Deschedule();
-				task.reset();
-				break;
-			}
-		} else if (queue->GetTasksInQueue() > 0) {
-			// failed to dequeue but there are still tasks remaining - signal again to retry
-			queue->semaphore.signal(1);
+		} catch (...) {
+			std::cout << "CAUGHT ExecuteForever\n";
+			// throw;
 		}
 	}
 	// this thread will exit, flush all of its outstanding allocations

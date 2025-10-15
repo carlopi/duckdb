@@ -110,13 +110,19 @@ public:
 		auto &compute_callback = promise->compute_callback;
 		auto &cleanup_callback = promise->compute_cleanup;
 		try {
+			// std::cout << "ComputeCallback\n";
 			compute_callback(callback_state);
+			// std::cout << "ComputeCallback done\n";
 
 		} catch (...) {
-			// i_state.Callback();
+			std::cout << "NOOOOOOOOO\n";
+			// ErrorData ed("ASDASDASD");
 			ErrorData ed("ASDASDASD");
+			std::cout << "NOOOOOOOOO1\n";
 			executor.PushError(ed);
+			std::cout << "NOOOOOOOOO2\n";
 			cleanup_callback(callback_state);
+			std::cout << "NOOOOOOOOO3\n";
 			return;
 		}
 		cleanup_callback(callback_state);
@@ -149,30 +155,15 @@ go_back:
 			auto rez = g_state.BlockSource(guard, input.interrupt_state);
 			if (rez == SourceResultType::BLOCKED) {
 
-			auto &executor = *g_state.executor;
+				auto &executor = *g_state.executor;
 
-				//std::cout << res->v.size() << "\n";
+				std::cout << res->v.size() << "\n";
 				for (auto &promise : res->v) {
 					auto task = make_uniq<PromiseExecutionTask>(executor, std::move(promise));
-					executor.ScheduleTask(std::move(task));
+					executor.ScheduleTask(std::move(task), context.pipeline->executor.GetToken());
 				}
 
-
-
-
-
-				//executor.WorkOnTasks();
-
-
-
-
-
-
-
-
-
 				// Should executor live one level up??
-
 
 				return rez;
 				/*
