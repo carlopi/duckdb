@@ -20,6 +20,7 @@
 #include "duckdb/common/enums/checkpoint_type.hpp"
 #include "duckdb/storage/storage_index.hpp"
 #include "duckdb/function/partition_stats.hpp"
+#include "duckdb/parallel/async_result.hpp"
 
 namespace duckdb {
 class AttachedDatabase;
@@ -133,8 +134,8 @@ public:
 	//! Checks the given set of table filters against the per-segment statistics. Returns false if any segments were
 	//! skipped.
 	bool CheckZonemapSegments(CollectionScanState &state);
-	void Scan(TransactionData transaction, CollectionScanState &state, DataChunk &result);
-	void ScanCommitted(CollectionScanState &state, DataChunk &result, TableScanType type);
+	AsyncResultType Scan(TransactionData transaction, CollectionScanState &state, DataChunk &result);
+	AsyncResultType ScanCommitted(CollectionScanState &state, DataChunk &result, TableScanType type);
 
 	idx_t GetSelVector(TransactionData transaction, idx_t vector_idx, SelectionVector &sel_vector, idx_t max_count);
 	idx_t GetCommittedSelVector(transaction_t start_time, transaction_t transaction_id, idx_t vector_idx,
@@ -219,7 +220,7 @@ private:
 	void SetCount(idx_t count);
 
 	template <TableScanType TYPE>
-	void TemplatedScan(TransactionData transaction, CollectionScanState &state, DataChunk &result);
+	AsyncResultType TemplatedScan(TransactionData transaction, CollectionScanState &state, DataChunk &result);
 
 	vector<MetaBlockPointer> CheckpointDeletes(MetadataManager &manager);
 

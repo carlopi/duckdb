@@ -300,16 +300,19 @@ bool DataTable::NextParallelScan(ClientContext &context, ParallelTableScanState 
 	}
 }
 
-void DataTable::Scan(DuckTransaction &transaction, DataChunk &result, TableScanState &state) {
+AsyncResultType DataTable::Scan(DuckTransaction &transaction, DataChunk &result, TableScanState &state) {
 	// scan the persistent segments
-	if (state.table_state.Scan(transaction, result)) {
+	auto res = state.table_state.Scan(transaction, result);
+	if (res.GetResultType() == SourceResultType::HAVE_MORE_OUTPUT) {
 		D_ASSERT(result.size() > 0);
-		return;
+		return AsyncResultType(SourceResultType::HAVE_MORE_OUTPUT);
+	} else if (res.GetResultType() == SourceResultType::BLOCKED) {
+		return res;
 	}
 
 	// scan the transaction-local segments
 	auto &local_storage = LocalStorage::Get(transaction);
-	local_storage.Scan(state.local_state, state.GetColumnIds(), result);
+	return local_storage.Scan(state.local_state, state.GetColumnIds(), result);
 }
 
 bool DataTable::CreateIndexScan(TableScanState &state, DataChunk &result, TableScanType type) {

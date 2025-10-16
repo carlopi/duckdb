@@ -179,14 +179,14 @@ CollectionScanState::CollectionScanState(TableScanState &parent_p)
       valid_sel(STANDARD_VECTOR_SIZE), random(-1), parent(parent_p) {
 }
 
-bool CollectionScanState::Scan(DuckTransaction &transaction, DataChunk &result) {
+AsyncResultType CollectionScanState::Scan(DuckTransaction &transaction, DataChunk &result) {
 	while (row_group) {
-		row_group->Scan(transaction, *this, result);
-		if (result.size() > 0) {
-			return true;
+		auto res = row_group->Scan(transaction, *this, result);
+		if (res.GetResultType() == SourceResultType::HAVE_MORE_OUTPUT) {
+			return AsyncResultType(SourceResultType::HAVE_MORE_OUTPUT);
 		} else if (max_row <= row_group->start + row_group->count) {
 			row_group = nullptr;
-			return false;
+			return AsyncResultType(SourceResultType::FINISHED);
 		} else {
 			do {
 				row_group = row_groups->GetNextSegment(row_group);
@@ -204,7 +204,7 @@ bool CollectionScanState::Scan(DuckTransaction &transaction, DataChunk &result) 
 			} while (row_group);
 		}
 	}
-	return false;
+	return AsyncResultType(SourceResultType::FINISHED);
 }
 
 bool CollectionScanState::ScanCommitted(DataChunk &result, SegmentLock &l, TableScanType type) {

@@ -507,7 +507,7 @@ bool RowGroup::CheckZonemapSegments(CollectionScanState &state) {
 }
 
 template <TableScanType TYPE>
-void RowGroup::TemplatedScan(TransactionData transaction, CollectionScanState &state, DataChunk &result) {
+AsyncResultType RowGroup::TemplatedScan(TransactionData transaction, CollectionScanState &state, DataChunk &result) {
 	const bool ALLOW_UPDATES = TYPE != TableScanType::TABLE_SCAN_COMMITTED_ROWS_DISALLOW_UPDATES &&
 	                           TYPE != TableScanType::TABLE_SCAN_COMMITTED_ROWS_OMIT_PERMANENTLY_DELETED;
 	const auto &column_ids = state.GetColumnIds();
@@ -515,7 +515,7 @@ void RowGroup::TemplatedScan(TransactionData transaction, CollectionScanState &s
 	while (true) {
 		if (state.vector_index * STANDARD_VECTOR_SIZE >= state.max_row_group_row) {
 			// exceeded the amount of rows to scan
-			return;
+			return AsyncResultType(SourceResultType::FINISHED);
 		}
 		idx_t current_row = state.vector_index * STANDARD_VECTOR_SIZE;
 		auto max_count = MinValue<idx_t>(STANDARD_VECTOR_SIZE, state.max_row_group_row - current_row);
@@ -661,13 +661,14 @@ void RowGroup::TemplatedScan(TransactionData transaction, CollectionScanState &s
 		state.vector_index++;
 		break;
 	}
+	return result.size() > 0 ? AsyncResultType(SourceResultType::HAVE_MORE_OUTPUT) : AsyncResultType(SourceResultType::FINISHED);
 }
 
-void RowGroup::Scan(TransactionData transaction, CollectionScanState &state, DataChunk &result) {
-	TemplatedScan<TableScanType::TABLE_SCAN_REGULAR>(transaction, state, result);
+AsyncResultType RowGroup::Scan(TransactionData transaction, CollectionScanState &state, DataChunk &result) {
+	return TemplatedScan<TableScanType::TABLE_SCAN_REGULAR>(transaction, state, result);
 }
 
-void RowGroup::ScanCommitted(CollectionScanState &state, DataChunk &result, TableScanType type) {
+AsyncResultType RowGroup::ScanCommitted(CollectionScanState &state, DataChunk &result, TableScanType type) {
 	auto &transaction_manager = DuckTransactionManager::Get(GetCollection().GetAttached());
 
 	transaction_t start_ts;
@@ -682,15 +683,12 @@ void RowGroup::ScanCommitted(CollectionScanState &state, DataChunk &result, Tabl
 	TransactionData data(transaction_id, start_ts);
 	switch (type) {
 	case TableScanType::TABLE_SCAN_COMMITTED_ROWS:
-		TemplatedScan<TableScanType::TABLE_SCAN_COMMITTED_ROWS>(data, state, result);
-		break;
+		return TemplatedScan<TableScanType::TABLE_SCAN_COMMITTED_ROWS>(data, state, result);
 	case TableScanType::TABLE_SCAN_COMMITTED_ROWS_DISALLOW_UPDATES:
-		TemplatedScan<TableScanType::TABLE_SCAN_COMMITTED_ROWS_DISALLOW_UPDATES>(data, state, result);
-		break;
+		return TemplatedScan<TableScanType::TABLE_SCAN_COMMITTED_ROWS_DISALLOW_UPDATES>(data, state, result);
 	case TableScanType::TABLE_SCAN_COMMITTED_ROWS_OMIT_PERMANENTLY_DELETED:
 	case TableScanType::TABLE_SCAN_LATEST_COMMITTED_ROWS:
-		TemplatedScan<TableScanType::TABLE_SCAN_COMMITTED_ROWS_OMIT_PERMANENTLY_DELETED>(data, state, result);
-		break;
+		return TemplatedScan<TableScanType::TABLE_SCAN_COMMITTED_ROWS_OMIT_PERMANENTLY_DELETED>(data, state, result);
 	default:
 		throw InternalException("Unrecognized table scan type");
 	}

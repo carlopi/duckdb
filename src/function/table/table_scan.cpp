@@ -97,7 +97,7 @@ public:
 public:
 	virtual unique_ptr<LocalTableFunctionState> InitLocalState(ExecutionContext &context,
 	                                                           TableFunctionInitInput &input) = 0;
-	virtual void TableScanFunc(ClientContext &context, TableFunctionInput &data_p, DataChunk &output) = 0;
+	virtual SourceResultType TableScanFunc(ClientContext &context, TableFunctionInput &data_p, DataChunk &output) = 0;
 	virtual double TableScanProgress(ClientContext &context, const FunctionData *bind_data_p) const = 0;
 	virtual OperatorPartitionData TableScanGetPartitionData(ClientContext &context,
 	                                                        TableFunctionGetPartitionInput &input) = 0;
@@ -156,7 +156,7 @@ public:
 		return std::move(l_state);
 	}
 
-	void TableScanFunc(ClientContext &context, TableFunctionInput &data_p, DataChunk &output) override {
+	SourceResultType TableScanFunc(ClientContext &context, TableFunctionInput &data_p, DataChunk &output) override {
 		auto &bind_data = data_p.bind_data->Cast<TableScanBindData>();
 		auto &duck_table = bind_data.table.Cast<DuckTableEntry>();
 		auto &tx = DuckTransaction::Get(context, duck_table.catalog);
@@ -195,14 +195,21 @@ public:
 
 		if (output.size() == 0) {
 			auto &local_storage = LocalStorage::Get(tx);
+			AsyncResultType res;
 			if (CanRemoveFilterColumns()) {
 				l_state.all_columns.Reset();
-				local_storage.Scan(l_state.scan_state.local_state, column_ids, l_state.all_columns);
+				res = local_storage.Scan(l_state.scan_state.local_state, column_ids, l_state.all_columns);
 				output.ReferenceColumns(l_state.all_columns, projection_ids);
 			} else {
-				local_storage.Scan(l_state.scan_state.local_state, column_ids, output);
+				res = local_storage.Scan(l_state.scan_state.local_state, column_ids, output);
 			}
+			if (res.GetResultType() == SourceResultType::BLOCKED) {
+				data_p.async_tasks = std::move(res.GetAsyncTasks());
+			}
+			return res.GetResultType();
 		}
+
+		return SourceResultType::HAVE_MORE_OUTPUT;
 	}
 
 	double TableScanProgress(ClientContext &context, const FunctionData *bind_data_p) const override {
@@ -260,7 +267,7 @@ public:
 		return std::move(l_state);
 	}
 
-	void TableScanFunc(ClientContext &context, TableFunctionInput &data_p, DataChunk &output) override {
+	SourceResultType TableScanFunc(ClientContext &context, TableFunctionInput &data_p, DataChunk &output) override {
 		auto &l_state = data_p.local_state->Cast<TableScanLocalState>();
 		l_state.scan_state.options.force_fetch_row = ClientConfig::GetConfig(context).force_fetch_row;
 
@@ -279,14 +286,16 @@ public:
 				storage.Scan(tx, output, l_state.scan_state);
 			}
 			if (output.size() > 0) {
-				return;
+				return SourceResultType::HAVE_MORE_OUTPUT;
 			}
 
 			auto next = storage.NextParallelScan(context, state, l_state.scan_state);
 			if (!next) {
-				return;
+				return SourceResultType::FINISHED;
 			}
 		} while (true);
+		D_ASSERT(false);
+		return SourceResultType::HAVE_MORE_OUTPUT;
 	}
 
 	double TableScanProgress(ClientContext &context, const FunctionData *bind_data_p) const override {

@@ -415,8 +415,8 @@ void LocalStorage::InitializeScan(DataTable &table, CollectionScanState &state,
 	storage->InitializeScan(state, table_filters);
 }
 
-void LocalStorage::Scan(CollectionScanState &state, const vector<StorageIndex> &, DataChunk &result) {
-	state.Scan(transaction, result);
+AsyncResultType LocalStorage::Scan(CollectionScanState &state, const vector<StorageIndex> &, DataChunk &result) {
+	return state.Scan(transaction, result);
 }
 
 void LocalStorage::InitializeParallelScan(DataTable &table, ParallelCollectionScanState &state) {

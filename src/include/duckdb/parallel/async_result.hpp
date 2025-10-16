@@ -18,6 +18,7 @@ public:
 
 class AsyncResultType {
 public:
+	AsyncResultType();
 	explicit AsyncResultType(SourceResultType t);
 	explicit AsyncResultType(vector<unique_ptr<AsyncTask>> &&task);
 	void ScheduleTasks(InterruptState &interrupt_state, Executor &executor);

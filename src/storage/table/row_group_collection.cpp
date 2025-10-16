@@ -259,7 +259,7 @@ bool RowGroupCollection::NextParallelScan(ClientContext &context, ParallelCollec
 	return false;
 }
 
-bool RowGroupCollection::Scan(DuckTransaction &transaction, const vector<StorageIndex> &column_ids,
+AsyncResultType RowGroupCollection::Scan(DuckTransaction &transaction, const vector<StorageIndex> &column_ids,
                               const std::function<bool(DataChunk &chunk)> &fun) {
 	vector<LogicalType> scan_types;
 	for (idx_t i = 0; i < column_ids.size(); i++) {
@@ -275,17 +275,18 @@ bool RowGroupCollection::Scan(DuckTransaction &transaction, const vector<Storage
 
 	while (true) {
 		chunk.Reset();
-		state.local_state.Scan(transaction, chunk);
+		auto res = state.local_state.Scan(transaction, chunk);
 		if (chunk.size() == 0) {
-			return true;
+			return res;
 		}
 		if (!fun(chunk)) {
-			return false;
+			// TODO ??
+			return AsyncResultType(SourceResultType::FINISHED);;
 		}
 	}
 }
 
-bool RowGroupCollection::Scan(DuckTransaction &transaction, const std::function<bool(DataChunk &chunk)> &fun) {
+AsyncResultType RowGroupCollection::Scan(DuckTransaction &transaction, const std::function<bool(DataChunk &chunk)> &fun) {
 	vector<StorageIndex> column_ids;
 	column_ids.reserve(types.size());
 	for (idx_t i = 0; i < types.size(); i++) {

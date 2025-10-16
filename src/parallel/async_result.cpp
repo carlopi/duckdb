@@ -37,6 +37,9 @@ private:
 	shared_ptr<Counter> counter;
 };
 
+AsyncResultType::AsyncResultType() : result_type(SourceResultType::HAVE_MORE_OUTPUT) {
+}
+
 AsyncResultType::AsyncResultType(SourceResultType t) : result_type(t) {
 	D_ASSERT(result_type != SourceResultType::BLOCKED);
 }
