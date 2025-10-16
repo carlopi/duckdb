@@ -323,7 +323,8 @@ unique_ptr<RowGroup> RowGroup::AlterType(RowGroupCollection &new_collection, con
 	while (true) {
 		// scan the table
 		scan_chunk.Reset();
-		ScanCommitted(scan_state, scan_chunk, TableScanType::TABLE_SCAN_COMMITTED_ROWS);
+		auto res = ScanCommitted(scan_state, scan_chunk, TableScanType::TABLE_SCAN_COMMITTED_ROWS);
+		// TODO
 		if (scan_chunk.size() == 0) {
 			break;
 		}
@@ -570,9 +571,11 @@ AsyncResultType RowGroup::TemplatedScan(TransactionData transaction, CollectionS
 				const auto &column = column_ids[i];
 				auto &col_data = GetColumn(column);
 				if (TYPE != TableScanType::TABLE_SCAN_REGULAR) {
-					col_data.ScanCommitted(state.vector_index, state.column_scans[i], result.data[i], ALLOW_UPDATES);
+					auto res = col_data.ScanCommitted(state.vector_index, state.column_scans[i], result.data[i], ALLOW_UPDATES);
+					// TODO?
 				} else {
-					col_data.Scan(transaction, state.vector_index, state.column_scans[i], result.data[i]);
+					auto res = col_data.Scan(transaction, state.vector_index, state.column_scans[i], result.data[i]);
+					// TODO?
 				}
 			}
 		} else {
