@@ -1261,16 +1261,6 @@ void ParquetReader::InitializeScan(ClientContext &context, ParquetReaderScanStat
 	state.repeat_buf.resize(allocator, STANDARD_VECTOR_SIZE);
 }
 
-AsyncResult ParquetReader::Scan(ClientContext &context, ParquetReaderScanState &state, DataChunk &result) {
-	while (ScanInternal(context, state, result)) {
-		if (result.size() > 0) {
-			return AsyncResult(SourceResultType::HAVE_MORE_OUTPUT);
-		}
-		result.Reset();
-	}
-	return AsyncResult(SourceResultType::FINISHED);
-}
-
 void ParquetReader::GetPartitionStats(vector<PartitionStatistics> &result) {
 	GetPartitionStats(*GetFileMetadata(), result);
 }
@@ -1288,9 +1278,10 @@ void ParquetReader::GetPartitionStats(const duckdb_parquet::FileMetaData &metada
 	}
 }
 
-bool ParquetReader::ScanInternal(ClientContext &context, ParquetReaderScanState &state, DataChunk &result) {
+AsyncResult ParquetReader::Scan(ClientContext &context, ParquetReaderScanState &state, DataChunk &result) {
+	result.Reset();
 	if (state.finished) {
-		return false;
+		return AsyncResult(SourceResultType::FINISHED);
 	}
 
 	// see if we have to switch to the next row group in the parquet file
@@ -1304,7 +1295,7 @@ bool ParquetReader::ScanInternal(ClientContext &context, ParquetReaderScanState 
 
 		if ((idx_t)state.current_group == state.group_idx_list.size()) {
 			state.finished = true;
-			return false;
+			return AsyncResult(SourceResultType::FINISHED);
 		}
 
 		// TODO: only need this if we have a deletion vector?
@@ -1376,7 +1367,8 @@ bool ParquetReader::ScanInternal(ClientContext &context, ParquetReaderScanState 
 				}
 			}
 		}
-		return true;
+		result.Reset();
+		return AsyncResult(SourceResultType::HAVE_MORE_OUTPUT);
 	}
 
 	auto scan_count = MinValue<idx_t>(STANDARD_VECTOR_SIZE, GetGroup(state).num_rows - state.offset_in_group);
@@ -1384,7 +1376,8 @@ bool ParquetReader::ScanInternal(ClientContext &context, ParquetReaderScanState 
 
 	if (scan_count == 0) {
 		state.finished = true;
-		return false; // end of last group, we are done
+		// end of last group, we are done
+		return AsyncResult(SourceResultType::FINISHED);
 	}
 
 	auto &deletion_filter = state.root_reader->Reader().deletion_filter;
@@ -1470,7 +1463,7 @@ bool ParquetReader::ScanInternal(ClientContext &context, ParquetReaderScanState 
 
 	rows_read += scan_count;
 	state.offset_in_group += scan_count;
-	return true;
+	return AsyncResult(SourceResultType::HAVE_MORE_OUTPUT);
 }
 
 } // namespace duckdb
