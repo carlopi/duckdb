@@ -117,13 +117,6 @@ SourceResultType PhysicalTableScan::GetData(ExecutionContext &context, DataChunk
 			}
 		}
 
-		auto expected_res = chunk.size() == 0 ? SourceResultType::FINISHED : SourceResultType::HAVE_MORE_OUTPUT;
-
-		if (res != expected_res) {
-			throw NotImplementedException(
-			    "Currently this differs from the reference implementation for `function_ext`");
-		}
-
 		return res;
 	}
 
