@@ -394,9 +394,9 @@ protected:
 
 	//! Internal function for parse chunk
 	template <class T>
-	void ParseChunkInternal(T &result) {
+	bool ParseChunkInternal(T &result) {
 		if (iterator.done) {
-			return;
+			return false;
 		}
 		if (!initialized) {
 			Initialize();
@@ -406,6 +406,10 @@ protected:
 			Process(result);
 		}
 		FinalizeChunkProcess();
+		if (iterator.done) {
+			return false;
+		}
+		return true;
 	}
 };
 

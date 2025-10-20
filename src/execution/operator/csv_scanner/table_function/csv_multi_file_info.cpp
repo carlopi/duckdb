@@ -371,9 +371,7 @@ AsyncResult CSVFileScan::Scan(ClientContext &context, GlobalTableFunctionState &
 	if (lstate.csv_reader->FinishedIterator()) {
 		return AsyncResult(SourceResultType::FINISHED);
 	}
-	lstate.csv_reader->Flush(chunk);
-	return chunk.size() == 0 ? AsyncResult(SourceResultType::FINISHED)
-	                         : AsyncResult(SourceResultType::HAVE_MORE_OUTPUT);
+	return std::move(lstate.csv_reader->Flush(chunk));
 }
 
 void CSVFileScan::FinishFile(ClientContext &context, GlobalTableFunctionState &global_state) {

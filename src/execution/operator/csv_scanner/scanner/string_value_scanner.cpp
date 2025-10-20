@@ -9,6 +9,7 @@
 #include "duckdb/execution/operator/csv_scanner/skip_scanner.hpp"
 #include "duckdb/function/cast/cast_function_set.hpp"
 #include "duckdb/main/client_data.hpp"
+#include "duckdb/parallel/async_result.hpp"
 #include "utf8proc_wrapper.hpp"
 
 #include <algorithm>
@@ -1030,22 +1031,30 @@ bool StringValueScanner::FinishedIterator() const {
 
 StringValueResult &StringValueScanner::ParseChunk() {
 	result.Reset();
-	ParseChunkInternal(result);
+	bool have_more_ouput = ParseChunkInternal(result);
+
+	if (have_more_ouput) {
+		result.async_result = AsyncResult(SourceResultType::HAVE_MORE_OUTPUT);
+	} else {
+		result.async_result = AsyncResult(SourceResultType::FINISHED);
+	}
 	return result;
 }
 
-void StringValueScanner::Flush(DataChunk &insert_chunk) {
+AsyncResult StringValueScanner::Flush(DataChunk &insert_chunk) {
 	bool continue_processing;
-	do {
+	AsyncResult async_result = AsyncResult(AsyncResultType::IMPLICIT);
+	{
 		continue_processing = false;
 		auto &process_result = ParseChunk();
+		async_result = std::move(process_result.async_result);
 		// First Get Parsed Chunk
 		auto &parse_chunk = process_result.ToChunk();
 		insert_chunk.Reset();
 		// We have to check if we got to error
 		error_handler->ErrorIfNeeded();
 		if (parse_chunk.size() == 0) {
-			return;
+			return AsyncResult(SourceResultType::FINISHED);
 		}
 		// convert the columns in the parsed chunk to the types of the table
 		insert_chunk.SetCardinality(parse_chunk);
@@ -1183,7 +1192,14 @@ void StringValueScanner::Flush(DataChunk &insert_chunk) {
 				continue_processing = true;
 			}
 		}
-	} while (continue_processing);
+	}
+	if (continue_processing) {
+		return AsyncResult(SourceResultType::HAVE_MORE_OUTPUT);
+	}
+	if (insert_chunk.size() > 0) {
+		return async_result;
+	}
+	return AsyncResult(SourceResultType::FINISHED);
 }
 
 void StringValueScanner::Initialize() {

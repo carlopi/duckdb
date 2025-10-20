@@ -15,6 +15,8 @@
 #include "duckdb/execution/operator/csv_scanner/csv_validator.hpp"
 namespace duckdb {
 
+class AsyncResult;
+
 struct CSVBufferUsage {
 	CSVBufferUsage(CSVBufferManager &buffer_manager_p, idx_t buffer_idx_p)
 	    : buffer_manager(buffer_manager_p), buffer_idx(buffer_idx_p) {
@@ -206,6 +208,8 @@ public:
 	unsafe_unique_array<idx_t> null_str_size;
 	idx_t null_str_count;
 
+	AsyncResult async_result;
+
 	//! Internal Data Chunk used for flushing
 	DataChunk parse_chunk;
 	int64_t number_of_rows = 0;
@@ -330,7 +334,7 @@ public:
 	StringValueResult &ParseChunk() override;
 
 	//! Flushes the result to the insert_chunk
-	void Flush(DataChunk &insert_chunk);
+	AsyncResult Flush(DataChunk &insert_chunk);
 
 	//! Function that creates and returns a non-boundary CSV Scanner, can be used for internal csv reading.
 	static unique_ptr<StringValueScanner> GetCSVScanner(ClientContext &context, CSVReaderOptions &options,
