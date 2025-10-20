@@ -406,9 +406,11 @@ protected:
 			Process(result);
 		}
 		FinalizeChunkProcess();
-		if (iterator.done) {
-			return false;
-		}
+		///
+		//		iterator.CheckIfDone();
+		//		if (iterator.done) {
+		// return false;
+		//		}
 		return true;
 	}
 };
