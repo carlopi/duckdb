@@ -130,6 +130,8 @@ SinkNextBatchType PipelineExecutor::NextBatch(DataChunk &source_chunk, const boo
 	OperatorPartitionData next_data(max_batch_index);
 	if (source_chunk.size() > 0 || have_more_output) {
 		// if we retrieved data - initialize the next batch index
+		// TODO : can't we get away with only getting batch_index ???? or the other way around, only fixing up
+		// source_chunk. Currently this function does 2 different jobs
 		auto partition_data = pipeline.source->GetPartitionData(context, source_chunk, *pipeline.source_state,
 		                                                        *local_source_state, required_partition_info);
 		auto batch_index = partition_data.batch_index;
