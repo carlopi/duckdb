@@ -62,6 +62,14 @@ AsyncResult &AsyncResult::operator=(AsyncResult &&other) noexcept {
 	return *this;
 }
 
+void AsyncResult::ExecuteSync() {
+	for (auto &t : async_tasks) {
+		t->Execute();
+	}
+	async_tasks.clear();
+	result_type = AsyncResultType::FINISHED;
+}
+
 void AsyncResult::ScheduleTasks(InterruptState &interrupt_state, Executor &executor) {
 	D_ASSERT(result_type == AsyncResultType::BLOCKED);
 
