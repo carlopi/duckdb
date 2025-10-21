@@ -1342,6 +1342,7 @@ AsyncResult ParquetReader::Scan(ClientContext &context, ParquetReaderScanState &
 					if (total_compressed_size > 0) {
 						auto res = trans.Prefetch(GetGroupOffset(state), total_row_group_span);
 						state.current_group_prefetched = true;
+						std::cout << "Rescheduling tasks\n";
 						return res;
 					} else {
 						state.current_group_prefetched = true;
@@ -1376,6 +1377,7 @@ AsyncResult ParquetReader::Scan(ClientContext &context, ParquetReaderScanState &
 				}
 			}
 		}
+		result.Reset();
 		return AsyncResult(SourceResultType::HAVE_MORE_OUTPUT);
 	}
 
