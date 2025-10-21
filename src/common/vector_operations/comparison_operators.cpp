@@ -16,10 +16,13 @@ namespace duckdb {
 
 template <class T>
 static bool EqualsFloat(T left, T right) {
+	if (left == right) {
+		return true;
+	}
 	if (DUCKDB_UNLIKELY(Value::IsNan(left) && Value::IsNan(right))) {
 		return true;
 	}
-	return left == right;
+	return false;
 }
 
 template <>
@@ -36,12 +39,12 @@ template <class T>
 static bool GreaterThanFloat(T left, T right) {
 	// handle nans
 	// nan is always bigger than everything else
-	bool left_is_nan = Value::IsNan(left);
 	bool right_is_nan = Value::IsNan(right);
 	// if right is nan, there is no number that is bigger than right
 	if (DUCKDB_UNLIKELY(right_is_nan)) {
 		return false;
 	}
+	bool left_is_nan = Value::IsNan(left);
 	// if left is nan, but right is not, left is always bigger
 	if (DUCKDB_UNLIKELY(left_is_nan)) {
 		return true;
@@ -63,8 +66,8 @@ template <class T>
 static bool GreaterThanEqualsFloat(T left, T right) {
 	// handle nans
 	// nan is always bigger than everything else
-	bool left_is_nan = Value::IsNan(left);
 	bool right_is_nan = Value::IsNan(right);
+	bool left_is_nan = Value::IsNan(left);
 	// if right is nan, there is no bigger number
 	// we only return true if left is also nan (in which case the numbers are equal)
 	if (DUCKDB_UNLIKELY(right_is_nan)) {
