@@ -33,6 +33,9 @@ public:
 		D_ASSERT((result_type == AsyncResultType::BLOCKED) != async_tasks.empty());
 		return !async_tasks.empty();
 	}
+	idx_t GetNumTasks() const {
+		return async_tasks.size();
+	}
 	AsyncResultType GetResultType() const {
 		D_ASSERT((result_type == AsyncResultType::BLOCKED) != async_tasks.empty());
 		return result_type;
