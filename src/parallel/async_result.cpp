@@ -79,6 +79,12 @@ AsyncResult &AsyncResult::operator=(AsyncResult &&other) noexcept {
 	return *this;
 }
 
+void AsyncResult::ExecuteSync() {
+	ExecuteTasksSynchronously();
+	// TODO: check why it's FINISHED vs HAVE_MORE_OUTPUT
+	result_type = AsyncResultType::FINISHED;
+}
+
 void AsyncResult::ScheduleTasks(InterruptState &interrupt_state, Executor &executor) {
 	if (result_type != AsyncResultType::BLOCKED) {
 		throw InternalException("AsyncResult::ScheduleTasks called on non BLOCKED AsyncResult");
