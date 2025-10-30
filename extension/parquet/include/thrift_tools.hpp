@@ -58,11 +58,11 @@ public:
 	explicit ReadIntoBufferAsyncTask(ReadHead &head, CachingFileHandle &handle) : read_head(head), file_handle(handle) {
 	}
 	void Execute() override {
-		//std::cout << "Start execute\n";
+		// std::cout << "Start execute\n";
 		read_head.buffer_handle = file_handle.Read(read_head.buffer_ptr, read_head.size, read_head.location);
 		D_ASSERT(read_head.buffer_handle.IsValid());
 		read_head.data_isset = true;
-		//std::cout << "End execute\n";
+		// std::cout << "End execute\n";
 	}
 	ReadHead &read_head;
 	CachingFileHandle &file_handle;
@@ -128,7 +128,7 @@ struct ReadAheadBuffer {
 
 	// Prefetch all read heads
 	AsyncResult Prefetch() {
-		//std::cout << "Prefetch()\t" << read_heads.size() << "\n";
+		// std::cout << "Prefetch()\t" << read_heads.size() << "\n";
 		vector<unique_ptr<AsyncTask>> tasks;
 		for (auto &read_head : read_heads) {
 			if (read_head.GetEnd() > file_handle.GetFileSize()) {
@@ -136,7 +136,7 @@ struct ReadAheadBuffer {
 			}
 			tasks.push_back(make_uniq<ReadIntoBufferAsyncTask>(read_head, file_handle));
 		}
-		
+
 		if (!tasks.empty()) {
 			return AsyncResult(std::move(tasks));
 		}
@@ -167,7 +167,8 @@ public:
 			D_ASSERT(prefetch_buffer->buffer_handle.IsValid());
 			memcpy(buf, prefetch_buffer->buffer_ptr + location - prefetch_buffer->location, len);
 		} else if (prefetch_mode && len < PREFETCH_FALLBACK_BUFFERSIZE && len > 0) {
-			auto res = Prefetch(location, MinValue<uint64_t>(PREFETCH_FALLBACK_BUFFERSIZE, file_handle.GetFileSize() - location));
+			auto res = Prefetch(location,
+			                    MinValue<uint64_t>(PREFETCH_FALLBACK_BUFFERSIZE, file_handle.GetFileSize() - location));
 			res.ExecuteSync();
 			auto prefetch_buffer_fallback = ra_buffer.GetReadHead(location);
 			D_ASSERT(location - prefetch_buffer_fallback->location + len <= prefetch_buffer_fallback->size);
