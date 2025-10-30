@@ -2,6 +2,8 @@
 # description: Test version pragma
 # group: [pragma]
 
+tags release
+
 statement ok
 PRAGMA version;
 
@@ -35,4 +37,14 @@ statement ok
 SET VARIABLE v_or_latest = (select CASE WHEN getvariable('v') ILIKE 'v%-dev%' THEN 'latest' WHEN getvariable('v') ILIKE 'v0.0.1' THEN 'latest' ELSE getvariable('v') END);
 
 statement ok
-ATTACH 'somefile.db' (STORAGE_VERSION getvariable('v_or_latest'));
+SET VARIABLE codename = (select CASE WHEN getvariable('v') ILIKE 'v%-dev%' THEN True WHEN getvariable('v') ILIKE 'v0.0.1' THEN True ELSE False END);
+
+query I
+select count(*) FROM (select codename == 'Development Version' as a, getvariable('codename') as b from pragma_version() WHERE a = b);
+----
+1
+
+query I
+select codename from pragma_version() WHERE codename == 'Unknown Version';
+----
+
