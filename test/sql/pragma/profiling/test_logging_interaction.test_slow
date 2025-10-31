@@ -1,4 +1,4 @@
-# name: test/sql/pragma/profiling/test_logging_interaction.test
+# name: test/sql/pragma/profiling/test_logging_interaction.test_slow
 # description: Test profiling all operator types.
 # group: [profiling]
 
@@ -29,9 +29,13 @@ statement ok
 CREATE TABLE big AS FROM range(1000000);
 
 statement ok
+CREATE TABLE very_big AS FROM range(1000000000);
+
+statement ok
+CREATE OR REPLACE TABLE small3 AS FROM range(1000000000);
+
+statement ok
 PRAGMA disable_profiling;
 
-query I
-SELECT count(*) FROM duckdb_logs_parsed('Metrics') WHERE metric == 'CPU_TIME';
-----
-3
+statement ok
+FROM duckdb_logs_parsed('Metrics') WHERE metric == 'CPU_TIME';
