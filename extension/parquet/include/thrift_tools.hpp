@@ -140,7 +140,7 @@ struct ReadAheadBuffer {
 		if (!tasks.empty()) {
 			return AsyncResult(std::move(tasks));
 		}
-		return AsyncResult(AsyncResultType::FINISHED);
+		return SourceResultType::FINISHED;
 	}
 };
 
