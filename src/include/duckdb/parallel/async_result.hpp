@@ -49,6 +49,7 @@ public:
 	// needs to be called with non-emopty async_tasks and from BLOCKED state, will empty the async_tasks and transform
 	// into HAVE_MORE_OUTPUT
 	void ExecuteTasksSynchronously();
+	void ExecuteSync();
 
 	static AsyncResultType GetAsyncResultType(SourceResultType s);
 
