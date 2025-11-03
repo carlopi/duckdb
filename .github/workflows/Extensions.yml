@@ -155,6 +155,7 @@ jobs:
       artifact_prefix: main-extensions
       override_ci_tools_repository: carlopi/extension-ci-tools
       ci_tools_version: e041baadaa2cb5fa7c8e394bf7f1728bf63567bd
+      extensions_test_selection: complete
       exclude_archs: ${{ needs.load-extension-configs.outputs.main_extensions_exclude_archs }}
       extension_config: ${{ needs.load-extension-configs.outputs.main_extensions_config }}
       override_tag: ${{ inputs.override_git_describe }}
@@ -172,6 +173,7 @@ jobs:
       exclude_archs: ${{ needs.load-extension-configs.outputs.rust_based_extensions_exclude_archs }}
       override_ci_tools_repository: carlopi/extension-ci-tools
       ci_tools_version: e041baadaa2cb5fa7c8e394bf7f1728bf63567bd
+      extensions_test_selection: complete
       artifact_prefix: rust-based-extensions
       extension_config: ${{ needs.load-extension-configs.outputs.rust_based_extensions_config }}
       extra_toolchains: 'rust'
@@ -191,6 +193,7 @@ jobs:
       artifact_prefix: external-extensions
       override_ci_tools_repository: carlopi/extension-ci-tools
       ci_tools_version: e041baadaa2cb5fa7c8e394bf7f1728bf63567bd
+      extensions_test_selection: complete
       extension_config: ${{ needs.load-extension-configs.outputs.external_extensions_config }}
       extra_toolchains: 'rust'
       override_tag: ${{ inputs.override_git_describe }}
