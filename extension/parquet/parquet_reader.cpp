@@ -1342,7 +1342,7 @@ AsyncResult ParquetReader::Scan(ClientContext &context, ParquetReaderScanState &
 				trans.FinalizeRegistration();
 
 				if (!lazy_fetch) {
-					std::cout << "PrefetchRegistered\n";
+					//std::cout << "PrefetchRegistered\n";
 					auto res = trans.PrefetchRegistered();
 					result.Reset();
 					return std::move(res);
