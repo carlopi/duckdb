@@ -63,6 +63,6 @@ jobs:
 
       skip_tests: ${{ inputs.skip_tests }}
       save_cache: ${{ inputs.save_cache }}
-      extensions_test_selection: complete
+      extensions_test_selection: 'complete'
       # The extension_config.cmake configuration that gets built
       extra_extension_config: ${{ inputs.extension_config }}
