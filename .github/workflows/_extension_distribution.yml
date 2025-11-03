@@ -36,7 +36,7 @@ on:
 jobs:
   build:
     name: Build
-    uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@main
+    uses: carlopi/extension-ci-tools/.github/workflows/_extension_distribution.yml@e041baadaa2cb5fa7c8e394bf7f1728bf63567bd
     with:
       # We piggy-back extension-template to build the extensions in extension_config, it's hacky, but it works ¯\_(ツ)_/¯
       override_repository: duckdb/extension-template
