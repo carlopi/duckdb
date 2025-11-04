@@ -1669,6 +1669,32 @@ bool StructType::IsUnnamed(const LogicalType &type) {
 }
 
 LogicalType LogicalType::STRUCT(child_list_t<LogicalType> children) {
+	static shared_ptr<StructTypeInfo> zero_struct {make_shared_ptr<StructTypeInfo>(child_list_t<LogicalType> {})};
+	static shared_ptr<StructTypeInfo> key_varchar_value_varchar_struct {make_shared_ptr<StructTypeInfo>(
+	    child_list_t<LogicalType> {{"key", LogicalType::VARCHAR}, {"value", LogicalType::VARCHAR}})};
+	static shared_ptr<StructTypeInfo> key_k_value_v_struct {make_shared_ptr<StructTypeInfo>(
+	    child_list_t<LogicalType> {{"key", LogicalType::TEMPLATE("K")}, {"value", LogicalType::TEMPLATE("V")}})};
+	static shared_ptr<StructTypeInfo> key_key_value_value_struct {make_shared_ptr<StructTypeInfo>(
+	    child_list_t<LogicalType> {{"key", LogicalType::TEMPLATE("key")}, {"value", LogicalType::TEMPLATE("value")}})};
+
+	if (children.size() == 0) {
+		return LogicalType(LogicalTypeId::STRUCT, zero_struct);
+	}
+	if (children.size() == 2 && children[0].first == "key" && children[0].second == LogicalType::VARCHAR &&
+	    children[1].first == "value" && children[1].second == LogicalType::VARCHAR) {
+		return LogicalType(LogicalTypeId::STRUCT, key_varchar_value_varchar_struct);
+	}
+	if (children.size() == 2 && children[0].first == "key" && children[0].second == LogicalType::TEMPLATE("K") &&
+	    children[1].first == "value" && children[1].second == LogicalType::TEMPLATE("V")) {
+		return LogicalType(LogicalTypeId::STRUCT, key_k_value_v_struct);
+	}
+	if (children.size() == 2 && children[0].first == "key" && children[0].second == LogicalType::TEMPLATE("key") &&
+	    children[1].first == "value" && children[1].second == LogicalType::TEMPLATE("value")) {
+		return LogicalType(LogicalTypeId::STRUCT, key_key_value_value_struct);
+	}
+	// std::cout << "STRUCT\t" << children.size() << "\t";
+	//	for (auto c : children) std::cout << c.first << "\t" << c.second.ToString() << "\t";
+	// std::cout << "\n";
 	auto info = make_shared_ptr<StructTypeInfo>(std::move(children));
 	return LogicalType(LogicalTypeId::STRUCT, std::move(info));
 }
@@ -1976,6 +2002,7 @@ bool IntegerLiteral::FitsInType(const LogicalType &type, const LogicalType &targ
 }
 
 LogicalType LogicalType::INTEGER_LITERAL(const Value &constant) { // NOLINT
+	// std::cout <<" INTEGER_LITERAL" << "\n";
 	if (!constant.type().IsIntegral()) {
 		throw InternalException("INTEGER_LITERAL can only be made from literals of integer types");
 	}
@@ -1987,7 +2014,26 @@ LogicalType LogicalType::INTEGER_LITERAL(const Value &constant) { // NOLINT
 // Template Type
 //===--------------------------------------------------------------------===//
 LogicalType LogicalType::TEMPLATE(const string &name) {
+	static shared_ptr<TemplateTypeInfo> k_template {make_shared_ptr<TemplateTypeInfo>("K")};
+	static shared_ptr<TemplateTypeInfo> key_template {make_shared_ptr<TemplateTypeInfo>("key")};
+	static shared_ptr<TemplateTypeInfo> v_template {make_shared_ptr<TemplateTypeInfo>("V")};
+	static shared_ptr<TemplateTypeInfo> value_template {make_shared_ptr<TemplateTypeInfo>("value")};
+	static shared_ptr<TemplateTypeInfo> t_template {make_shared_ptr<TemplateTypeInfo>("T")};
 	D_ASSERT(!name.empty());
+
+	if (name == "K") {
+		return LogicalType(LogicalTypeId::TEMPLATE, k_template);
+	} else if (name == "V") {
+		return LogicalType(LogicalTypeId::TEMPLATE, v_template);
+	} else if (name == "key") {
+		return LogicalType(LogicalTypeId::TEMPLATE, key_template);
+	} else if (name == "value") {
+		return LogicalType(LogicalTypeId::TEMPLATE, value_template);
+	} else if (name == "T") {
+		return LogicalType(LogicalTypeId::TEMPLATE, v_template);
+	}
+	// std::cout << "TEMPLATE\t" << name << "\n";
+
 	auto type_info = make_shared_ptr<TemplateTypeInfo>(name);
 	return LogicalType(LogicalTypeId::TEMPLATE, std::move(type_info));
 }
