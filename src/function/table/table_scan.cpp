@@ -175,8 +175,8 @@ public:
 
 				offset = l_state.batch_index * STANDARD_VECTOR_SIZE;
 				auto remaining = row_id_count - offset;
-				scan_count = remaining < STANDARD_VECTOR_SIZE ? remaining : STANDARD_VECTOR_SIZE;
-				finished = remaining < STANDARD_VECTOR_SIZE ? true : false;
+				scan_count = remaining <= STANDARD_VECTOR_SIZE ? remaining : STANDARD_VECTOR_SIZE;
+				finished = remaining <= STANDARD_VECTOR_SIZE ? true : false;
 			}
 		}
 
