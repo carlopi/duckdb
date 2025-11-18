@@ -54,6 +54,7 @@ struct IndexScanLocalState : public LocalTableFunctionState {
 	TableScanState scan_state;
 	//! The column IDs of the local storage scan.
 	vector<StorageIndex> column_ids;
+	bool should_i_finish {false};
 };
 
 static StorageIndex TransformStorageIndex(const ColumnIndex &column_id) {
@@ -180,9 +181,27 @@ public:
 				scan_count = remaining <= STANDARD_VECTOR_SIZE ? remaining : STANDARD_VECTOR_SIZE;
 				finished = remaining <= STANDARD_VECTOR_SIZE ? true : false;
 				status = 1;
-			} else if (!finished_last) {
+			} else if (!finished_last || l_state.should_i_finish) {
 				finished_last = true;
+				l_state.should_i_finish = true;
 				status = 2;
+
+				auto &local_storage = LocalStorage::Get(tx);
+				{
+					if (CanRemoveFilterColumns()) {
+						l_state.all_columns.Reset();
+						local_storage.Scan(l_state.scan_state.local_state, column_ids, l_state.all_columns);
+						output.ReferenceColumns(l_state.all_columns, projection_ids);
+					} else {
+						local_storage.Scan(l_state.scan_state.local_state, column_ids, output);
+					}
+				}
+				if (output.size() == 0) {
+					data_p.async_result = AsyncResultType::FINISHED;
+				} else {
+					data_p.async_result = AsyncResultType::HAVE_MORE_OUTPUT;
+				}
+				return;
 			}
 		}
 
@@ -198,36 +217,23 @@ public:
 				storage.Fetch(tx, output, column_ids, local_vector, scan_count, l_state.fetch_state);
 			}
 		} else if (status == 2) {
-			auto &local_storage = LocalStorage::Get(tx);
-			if (CanRemoveFilterColumns()) {
-				l_state.all_columns.Reset();
-				local_storage.Scan(l_state.scan_state.local_state, column_ids, l_state.all_columns);
-				output.ReferenceColumns(l_state.all_columns, projection_ids);
-			} else {
-				local_storage.Scan(l_state.scan_state.local_state, column_ids, output);
-			}
-			lock_guard<mutex> l(index_scan_lock);
-			if (output.size() > 0) {
-				finished_last = false;
-			}
 		} else {
 		}
-                       if (data_p.results_execution_mode == AsyncResultsExecutionMode::TASK_EXECUTOR) {
-                               // We can avoid looping, and just return as appropriate
-                               if (status ==0) {
-                                       data_p.async_result = AsyncResultType::FINISHED;
-                               } else if (status == 1) {
-                                       data_p.async_result = AsyncResultType::HAVE_MORE_OUTPUT;
-                               } else if (status == 2) {
-					if (finished_last) {
-                                       		data_p.async_result = AsyncResultType::FINISHED;
-					} else {
-                                       		data_p.async_result = AsyncResultType::HAVE_MORE_OUTPUT;
-					}
+		if (data_p.results_execution_mode == AsyncResultsExecutionMode::TASK_EXECUTOR) {
+			// We can avoid looping, and just return as appropriate
+			if (status == 0) {
+				data_p.async_result = AsyncResultType::FINISHED;
+			} else if (status == 1) {
+				data_p.async_result = AsyncResultType::HAVE_MORE_OUTPUT;
+			} else if (status == 2) {
+				if (finished_last) {
+					data_p.async_result = AsyncResultType::FINISHED;
+				} else {
+					data_p.async_result = AsyncResultType::HAVE_MORE_OUTPUT;
 				}
-                               return;
-                       }
-
+			}
+			return;
+		}
 	}
 
 	double TableScanProgress(ClientContext &context, const FunctionData *bind_data_p) const override {
