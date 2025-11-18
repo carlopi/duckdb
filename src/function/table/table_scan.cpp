@@ -114,7 +114,7 @@ class DuckIndexScanState : public TableScanGlobalState {
 public:
 	DuckIndexScanState(ClientContext &context, const FunctionData *bind_data_p)
 	    : TableScanGlobalState(context, bind_data_p), next_batch_index(0), arena(Allocator::Get(context)),
-	      row_ids(nullptr), row_id_count(0), finished(false) {
+	      row_ids(nullptr), row_id_count(0), finished(false), finished_last(false) {
 	}
 
 	//! The batch index of the next Sink.
@@ -130,6 +130,7 @@ public:
 	vector<StorageIndex> column_ids;
 	//! True, if no more row IDs must be scanned.
 	bool finished;
+	bool finished_last;
 	//! Synchronize changes to the global index scan state.
 	mutex index_scan_lock;
 
@@ -166,6 +167,7 @@ public:
 		idx_t scan_count = 0;
 		idx_t offset = 0;
 
+		int status = 0;
 		{
 			// Synchronize changes to the shared global state.
 			lock_guard<mutex> l(index_scan_lock);
@@ -177,10 +179,14 @@ public:
 				auto remaining = row_id_count - offset;
 				scan_count = remaining <= STANDARD_VECTOR_SIZE ? remaining : STANDARD_VECTOR_SIZE;
 				finished = remaining <= STANDARD_VECTOR_SIZE ? true : false;
+				status = 1;
+			} else if (!finished_last) {
+				finished_last = true;
+				status = 2;
 			}
 		}
 
-		if (scan_count != 0) {
+		if (status == 1) {
 			auto row_id_data = reinterpret_cast<data_ptr_t>(row_ids + offset);
 			Vector local_vector(LogicalType::ROW_TYPE, row_id_data);
 
@@ -191,9 +197,7 @@ public:
 			} else {
 				storage.Fetch(tx, output, column_ids, local_vector, scan_count, l_state.fetch_state);
 			}
-		}
-
-		if (output.size() == 0) {
+		} else if (status == 2) {
 			auto &local_storage = LocalStorage::Get(tx);
 			if (CanRemoveFilterColumns()) {
 				l_state.all_columns.Reset();
@@ -202,7 +206,28 @@ public:
 			} else {
 				local_storage.Scan(l_state.scan_state.local_state, column_ids, output);
 			}
+			lock_guard<mutex> l(index_scan_lock);
+			if (output.size() > 0) {
+				finished_last = false;
+			}
+		} else {
 		}
+                       if (data_p.results_execution_mode == AsyncResultsExecutionMode::TASK_EXECUTOR) {
+                               // We can avoid looping, and just return as appropriate
+                               if (status ==0) {
+                                       data_p.async_result = AsyncResultType::FINISHED;
+                               } else if (status == 1) {
+                                       data_p.async_result = AsyncResultType::HAVE_MORE_OUTPUT;
+                               } else if (status == 2) {
+					if (finished_last) {
+                                       		data_p.async_result = AsyncResultType::FINISHED;
+					} else {
+                                       		data_p.async_result = AsyncResultType::HAVE_MORE_OUTPUT;
+					}
+				}
+                               return;
+                       }
+
 	}
 
 	double TableScanProgress(ClientContext &context, const FunctionData *bind_data_p) const override {
@@ -372,6 +397,7 @@ unique_ptr<GlobalTableFunctionState> DuckIndexScanInitGlobal(ClientContext &cont
                                                              const TableScanBindData &bind_data, set<row_t> &row_ids) {
 	auto g_state = make_uniq<DuckIndexScanState>(context, input.bind_data.get());
 	g_state->finished = row_ids.empty() ? true : false;
+	g_state->finished_last = false;
 
 	if (!row_ids.empty()) {
 		auto row_id_ptr = g_state->arena.AllocateAligned(row_ids.size() * sizeof(row_t));
