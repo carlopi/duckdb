@@ -1033,9 +1033,9 @@ StringValueResult &StringValueScanner::ParseChunk() {
 	return result;
 }
 
-void StringValueScanner::Flush(DataChunk &insert_chunk) {
+AsyncResult StringValueScanner::Flush(DataChunk &insert_chunk) {
 	bool continue_processing;
-	do {
+	{
 		continue_processing = false;
 		auto &process_result = ParseChunk();
 		// First Get Parsed Chunk
@@ -1044,7 +1044,7 @@ void StringValueScanner::Flush(DataChunk &insert_chunk) {
 		// We have to check if we got to error
 		error_handler->ErrorIfNeeded();
 		if (parse_chunk.size() == 0) {
-			return;
+			return SourceResultType::FINISHED;
 		}
 		// convert the columns in the parsed chunk to the types of the table
 		insert_chunk.SetCardinality(parse_chunk);
@@ -1182,7 +1182,8 @@ void StringValueScanner::Flush(DataChunk &insert_chunk) {
 				continue_processing = true;
 			}
 		}
-	} while (continue_processing);
+	}
+	return SourceResultType::HAVE_MORE_OUTPUT;
 }
 
 void StringValueScanner::Initialize() {
