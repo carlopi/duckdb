@@ -200,6 +200,9 @@ public:
 			switch (phase_to_be_performed) {
 			case ExecutionPhase::NONE: {
 				// No work to be picked up
+				if (data_p.results_execution_mode == AsyncResultsExecutionMode::TASK_EXECUTOR) {
+					data_p.async_result = AsyncResultType::FINISHED;
+				}
 				return;
 			}
 			case ExecutionPhase::STORAGE: {
@@ -213,6 +216,10 @@ public:
 					output.ReferenceColumns(l_state.all_columns, projection_ids);
 				} else {
 					storage.Fetch(tx, output, column_ids, local_vector, scan_count, l_state.fetch_state);
+				}
+				if (data_p.results_execution_mode == AsyncResultsExecutionMode::TASK_EXECUTOR) {
+					data_p.async_result = AsyncResultType::HAVE_MORE_OUTPUT;
+					return;
 				}
 				if (output.size() == 0) {
 					// output is empty, loop back, since there might be results to be picked up from LOCAL_STORAGE phase
