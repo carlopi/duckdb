@@ -476,7 +476,11 @@ SourceResultType PhysicalMergeInto::GetDataInternal(ExecutionContext &context, D
 		auto &child_lstate = *lstate.local_states[lstate.index];
 		OperatorSourceInput source_input {child_gstate, child_lstate, input.interrupt_state};
 
-		auto result = action.op->GetData(context, lstate.scan_chunk, source_input);
+		auto result = SourceResultType::HAVE_MORE_OUTPUT;
+		lstate.scan_chunk.Reset();
+		while (result == SourceResultType::HAVE_MORE_OUTPUT && lstate.scan_chunk.size() == 0) {
+			result = action.op->GetData(context, lstate.scan_chunk, source_input);
+		}
 		if (lstate.scan_chunk.size() > 0) {
 			// construct the result chunk
 			for (idx_t c = 0; c < lstate.scan_chunk.ColumnCount(); c++) {
@@ -500,13 +504,10 @@ SourceResultType PhysicalMergeInto::GetDataInternal(ExecutionContext &context, D
 			Value merge_action(merge_action_name);
 			chunk.data.back().Reference(merge_action);
 			chunk.SetCardinality(lstate.scan_chunk.size());
-		}
-
-		if (result != SourceResultType::FINISHED) {
 			return result;
 		}
-		if (chunk.size() != 0) {
-			return SourceResultType::HAVE_MORE_OUTPUT;
+		if (result != SourceResultType::FINISHED) {
+			return result;
 		}
 	}
 	return SourceResultType::FINISHED;
