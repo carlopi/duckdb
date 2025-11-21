@@ -221,6 +221,10 @@ public:
 					data_p.async_result = AsyncResultType::HAVE_MORE_OUTPUT;
 					return;
 				}
+				if (data_p.results_execution_mode == AsyncResultsExecutionMode::TASK_EXECUTOR) {
+					data_p.async_result = AsyncResultType::HAVE_MORE_OUTPUT;
+					return;
+				}
 				if (output.size() == 0) {
 					// output is empty, loop back, since there might be results to be picked up from LOCAL_STORAGE phase
 					continue;
