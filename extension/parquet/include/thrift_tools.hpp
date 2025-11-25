@@ -58,11 +58,11 @@ public:
 	explicit ReadIntoBufferAsyncTask(ReadHead &head, CachingFileHandle &handle) : read_head(head), file_handle(handle) {
 	}
 	void Execute() override {
-		std::cout << "Start execute\n";
+		// std::cout << "Start execute\n";
 		read_head.buffer_handle = file_handle.Read(read_head.buffer_ptr, read_head.size, read_head.location);
 		D_ASSERT(read_head.buffer_handle.IsValid());
 		read_head.data_isset = true;
-		std::cout << "End execute\n";
+		// std::cout << "End execute\n";
 	}
 	ReadHead &read_head;
 	CachingFileHandle &file_handle;
@@ -128,7 +128,7 @@ struct ReadAheadBuffer {
 
 	// Prefetch all read heads
 	AsyncResult Prefetch() {
-		std::cout << "Prefetch()\t" << read_heads.size() << "\n";
+		// std::cout << "Prefetch()\t" << read_heads.size() << "\n";
 		vector<unique_ptr<AsyncTask>> tasks;
 		for (auto &read_head : read_heads) {
 			if (read_head.GetEnd() > file_handle.GetFileSize()) {
