@@ -257,7 +257,8 @@ unique_ptr<ProducerToken> TaskScheduler::CreateProducer() {
 }
         
 static void ThreadExecuteMe(TaskScheduler *vec, int task) {
-	lock_guard<mutex> mut(vec->mu);
+	std::cout << "Going to execute on a side\n";
+//	lock_guard<mutex> mut(vec->mu);
 	vec->io_threads[task].second->ExecuteTask(TaskExecutionMode::PROCESS_ALL);
 		//std::cout << "DONE\n";
 	--(vec->out_of_bound_threads);
@@ -270,22 +271,30 @@ static void ThreadExecuteMe(TaskScheduler *vec, int task) {
 void TaskScheduler::FindThreadOrScheduleTask(ProducerToken &token, unique_ptr<AsyncExecutionTask> task) {
 	lock_guard<mutex> mut(mu);
 //std::cout << io_threads.size() << "\n";
+	if (io_threads.size() == 0) {
+			io_threads.resize(1000);
+		}
+
 if (io_threads.size() < 1000) {
+
+	int x = -1;
+	for (int i= 0; i<1000; i++) if (!io_threads[i].second) {x = i; break;}
+	if (x >=0) {
 unique_ptr<thread> worker_thread;
 			try {
 ++out_of_bound_threads;
 			//io_threads.push_back(std::make_pair(std::move(worker_thread), std::move(task)));
-			io_threads.resize(io_threads.size() + 1);
-			io_threads.back().second = std::move(task);
+			io_threads[x].second = std::move(task);
 				worker_thread = make_uniq<thread>(ThreadExecuteMe, this, io_threads.size() - 1);
 			worker_thread->detach();
-				io_threads.back().first = std::move(worker_thread);
+				io_threads[x].first = std::move(worker_thread);
 				
 	//Signal(0);
 				return;
 			} catch (...) {
 			//std::cout << "Hi friend\n";
 			}
+	}
 }
 	// Enqueue a task for the given producer token and signal any sleeping threads
 	ScheduleTask(token, std::move(task));
