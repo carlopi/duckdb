@@ -617,6 +617,7 @@ public:
 					data_p.async_result = std::move(res);
 					return;
 				case AsyncResultsExecutionMode::SYNCHRONOUS:
+					std::cout << "AsyncResultsExecutionMode::SYNCHRONOUS\n";
 					res.ExecuteTasksSynchronously();
 					if (res.GetResultType() != AsyncResultType::HAVE_MORE_OUTPUT) {
 						throw InternalException("Unexpected behaviour from ExecuteTasksSynchronously");

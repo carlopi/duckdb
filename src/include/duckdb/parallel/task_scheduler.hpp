@@ -14,6 +14,7 @@
 #include "duckdb/common/vector.hpp"
 #include "duckdb/parallel/task.hpp"
 
+#include <thread>
 namespace duckdb {
 
 struct ConcurrentQueue;
@@ -21,6 +22,7 @@ struct QueueProducerToken;
 class ClientContext;
 class DatabaseInstance;
 class TaskScheduler;
+class AsyncExecutionTask;
 
 struct SchedulerThread;
 
@@ -47,6 +49,7 @@ public:
 
 	unique_ptr<ProducerToken> CreateProducer();
 	//! Schedule a task to be executed by the task scheduler
+	void FindThreadOrScheduleTask(ProducerToken &producer, unique_ptr<AsyncExecutionTask> task);
 	void ScheduleTask(ProducerToken &producer, shared_ptr<Task> task);
 	void ScheduleTasks(ProducerToken &producer, vector<shared_ptr<Task>> &tasks);
 	//! Fetches a task from a specific producer, returns true if successful or false if no tasks were available
@@ -100,6 +103,11 @@ private:
 	mutex thread_lock;
 	//! The active background threads of the task scheduler
 	vector<unique_ptr<SchedulerThread>> threads;
+public:
+	vector<std::pair<unique_ptr<std::thread>, unique_ptr<AsyncExecutionTask>>> io_threads;
+	atomic<int64_t> out_of_bound_threads;
+	mutex mu;
+private:
 	//! Markers used by the various threads, if the markers are set to "false" the thread execution is stopped
 	vector<unique_ptr<atomic<bool>>> markers;
 	//! The threshold after which to flush the allocator after completing a task

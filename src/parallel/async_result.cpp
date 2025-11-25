@@ -9,6 +9,8 @@
 #include "duckdb/parallel/sleep_async_task.hpp"
 #endif
 
+#include <iostream>
+
 namespace duckdb {
 
 struct Counter {
@@ -32,9 +34,13 @@ public:
 	      counter(std::move(counter)) {
 	}
 	TaskExecutionResult ExecuteTask(TaskExecutionMode mode) override {
+		std::cout << "Going to call Execute\n";
 		async_task->Execute();
+		std::cout << "Called Execute\n";
 		if (counter->IterateAndCheckCounter()) {
+			std::cout << "Call the callback\n";
 			interrupt_state.Callback();
+			std::cout << "Call the callback done\n";
 		}
 		return TaskExecutionResult::TASK_FINISHED;
 	}
@@ -86,6 +92,7 @@ void AsyncResult::ExecuteSync() {
 }
 
 void AsyncResult::ScheduleTasks(InterruptState &interrupt_state, Executor &executor) {
+	std::cout << "SCHEDULE TASKS\n";
 	if (result_type != AsyncResultType::BLOCKED) {
 		throw InternalException("AsyncResult::ScheduleTasks called on non BLOCKED AsyncResult");
 	}
@@ -98,11 +105,12 @@ void AsyncResult::ScheduleTasks(InterruptState &interrupt_state, Executor &execu
 
 	for (auto &async_task : async_tasks) {
 		auto task = make_uniq<AsyncExecutionTask>(executor, std::move(async_task), interrupt_state, counter);
-		TaskScheduler::GetScheduler(executor.context).ScheduleTask(executor.GetToken(), std::move(task));
+		TaskScheduler::GetScheduler(executor.context).FindThreadOrScheduleTask(executor.GetToken(), std::move(task));
 	}
 }
 
 void AsyncResult::ExecuteTasksSynchronously() {
+	std::cout << "ExecuteTasksSynchronously\n";
 	if (result_type != AsyncResultType::BLOCKED) {
 		throw InternalException("AsyncResult::ExecuteTasksSynchronously called on non BLOCKED AsyncResult");
 	}
