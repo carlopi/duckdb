@@ -113,7 +113,7 @@ bool ConcurrentQueue::Dequeue(shared_ptr<Task> &task) {
 }
 
 idx_t ConcurrentQueue::GetTasksInQueue() const {
-		std::cout << "GetTasksInQueue \n";
+		//std::cout << "GetTasksInQueue \n";
 	return tasks_in_queue;
 }
 idx_t ConcurrentQueue::GetApproxSize() const {
@@ -177,7 +177,7 @@ bool ConcurrentQueue::Dequeue(shared_ptr<Task> &task) {
 }
 
 idx_t ConcurrentQueue::GetTasksInQueue() const {
-		std::cout << "GetTasksInQueue \n";
+		//std::cout << "GetTasksInQueue \n";
 	lock_guard<mutex> lock(qlock);
 	idx_t task_count = 0;
 	for (auto &producer : q) {
@@ -228,7 +228,7 @@ ProducerToken::~ProducerToken() {
 TaskScheduler::TaskScheduler(DatabaseInstance &db)
     : db(db), queue(make_uniq<ConcurrentQueue>()),
       allocator_flush_threshold(db.config.options.allocator_flush_threshold),
-      allocator_background_threads(db.config.options.allocator_background_threads), requested_thread_count(0), out_of_bound_threads(0),
+      allocator_background_threads(db.config.options.allocator_background_threads), requested_thread_count(0), out_of_bound_threads(0),threads_running(0),
       current_thread_count(1) {
 	SetAllocatorBackgroundThreads(db.config.options.allocator_background_threads);
 }
@@ -257,17 +257,20 @@ unique_ptr<ProducerToken> TaskScheduler::CreateProducer() {
 }
         
 static void ThreadExecuteMe(TaskScheduler *vec, int task) {
+	lock_guard<mutex> mut(vec->mu);
 	vec->io_threads[task].second->ExecuteTask(TaskExecutionMode::PROCESS_ALL);
-		std::cout << "DONE\n";
+		//std::cout << "DONE\n";
 	--(vec->out_of_bound_threads);
 			//vec->Signal(1);
 	//vec->ScheduleTask(*token, nullptr);
+	//vec->io_threads[task].first.reset();
+	vec->io_threads[task].second.reset();
 }
 
 void TaskScheduler::FindThreadOrScheduleTask(ProducerToken &token, unique_ptr<AsyncExecutionTask> task) {
 	lock_guard<mutex> mut(mu);
-std::cout << io_threads.size() << "\n";
-if (io_threads.size() < 1000 && false) {
+//std::cout << io_threads.size() << "\n";
+if (io_threads.size() < 1000) {
 unique_ptr<thread> worker_thread;
 			try {
 ++out_of_bound_threads;
@@ -275,11 +278,13 @@ unique_ptr<thread> worker_thread;
 			io_threads.resize(io_threads.size() + 1);
 			io_threads.back().second = std::move(task);
 				worker_thread = make_uniq<thread>(ThreadExecuteMe, this, io_threads.size() - 1);
+			worker_thread->detach();
 				io_threads.back().first = std::move(worker_thread);
+				
 	//Signal(0);
 				return;
 			} catch (...) {
-			std::cout << "Hi friend\n";
+			//std::cout << "Hi friend\n";
 			}
 }
 	// Enqueue a task for the given producer token and signal any sleeping threads
@@ -308,8 +313,9 @@ void TaskScheduler::ExecuteForever(atomic<bool> *marker) {
 
 	shared_ptr<Task> task;
 	// loop until the marker is set to false
+threads_running++;
 	while (*marker) {
-	std::cout << " HI FROM ExecuteForever\n";
+	//std::cout << " HI FROM ExecuteForever\t----------------->>>>>>>>>>\t" << threads_running << "\t<<<<<<<<\n";
 
 		if (!block_allocator.SupportsFlush()) {
 			// allocator can't flush, just start an untimed wait
@@ -332,11 +338,12 @@ void TaskScheduler::ExecuteForever(atomic<bool> *marker) {
 				}
 			}
 		}
+	//std::cout << " HI FROM ExecuteForever\t----------------->>>>>>>>>>\t" << threads_running << "\t<<<<<<<<\n";
 if (queue->GetTasksInQueue() == 0 && !out_of_bound_threads) {
-		std::cout << "Loop back\n";
+		//std::cout << "Loop back\n";
 		//continue;
 	}
-		std::cout << queue->GetTasksInQueue() << "\t" << out_of_bound_threads << "\t-------------------------\n";
+		//std::cout << queue->GetTasksInQueue() << "\t" << out_of_bound_threads << "\t-------------------------\n";
 		if (queue->Dequeue(task)) {
 			auto process_mode = config.options.scheduler_process_partial ? TaskExecutionMode::PROCESS_PARTIAL
 			                                                             : TaskExecutionMode::PROCESS_ALL;
@@ -359,12 +366,13 @@ if (queue->GetTasksInQueue() == 0 && !out_of_bound_threads) {
 				break;
 			}
 		} else if (queue->GetTasksInQueue() > 0) {
-			queue->semaphore.signal(10);
+			queue->semaphore.signal(1);
 			// failed to dequeue but there are still tasks remaining - signal again to retry
 		}
-		std::cout << queue->GetTasksInQueue() << "\t" << out_of_bound_threads << "\t----------------------------------------\n";
+		//std::cout << queue->GetTasksInQueue() << "\t" << out_of_bound_threads << "\t----------------------------------------\n";
 	}
-	std::cout << "DONE xecuteForever\n";
+threads_running--;
+	//std::cout << "DONE xecuteForever\n";
 	// this thread will exit, flush all of its outstanding allocations
 	if (block_allocator.SupportsFlush()) {
 		block_allocator.ThreadFlush(allocator_background_threads, 0, NumericCast<idx_t>(requested_thread_count.load()));
@@ -380,11 +388,11 @@ idx_t TaskScheduler::ExecuteTasks(atomic<bool> *marker, idx_t max_tasks) {
 	idx_t completed_tasks = 0;
 	// loop until the marker is set to false
 	while (*marker && (completed_tasks < max_tasks)) {
-		std::cout << "ZZZZ\n";
-		std::cout << "ExecuteTasks \t" << completed_tasks << "\t" << max_tasks << "\n";
+		//std::cout << "ZZZZ\n";
+		//std::cout << "ExecuteTasks \t" << completed_tasks << "\t" << max_tasks << "\n";
 		shared_ptr<Task> task;
 		if (!queue->Dequeue(task)) {
-			std::cout << "Can't deque in ExecuteTasks(marker, max_tasks)\n";
+			//std::cout << "Can't deque in ExecuteTasks(marker, max_tasks)\n";
 			//if (out_of_bound_threads) {continue;}
 			return completed_tasks;
 		}
@@ -404,7 +412,7 @@ idx_t TaskScheduler::ExecuteTasks(atomic<bool> *marker, idx_t max_tasks) {
 			break;
 		}
 	}
-	std::cout << "DONE ExecuteTasks(,)\n";
+	//std::cout << "DONE ExecuteTasks(,)\n";
 	return completed_tasks;
 #else
 	throw NotImplementedException("DuckDB was compiled without threads! Background thread loop is not allowed.");
@@ -415,10 +423,10 @@ void TaskScheduler::ExecuteTasks(idx_t max_tasks) {
 #ifndef DUCKDB_NO_THREADS
 	shared_ptr<Task> task;
 	for (idx_t i = 0; i < max_tasks; i++) {
-		std::cout << "ASDASDA\n";
+		//std::cout << "ASDASDA\n";
 		queue->semaphore.wait(TASK_TIMEOUT_USECS);
 		if (!queue->Dequeue(task)) {
-			std::cout << "Can't deque in ExecuteTasks(max_tasks)\n";
+			//std::cout << "Can't deque in ExecuteTasks(max_tasks)\n";
 			//if (out_of_bound_threads) {i--; continue;}
 			return;
 		}
@@ -437,11 +445,11 @@ void TaskScheduler::ExecuteTasks(idx_t max_tasks) {
 				break;
 			}
 		} catch (...) {
-			std::cout << "HOOOOOOOOOOOO\n";
+			//std::cout << "HOOOOOOOOOOOO\n";
 			return;
 		}
 	}
-	std::cout << "DONE ExecuteTasks()\n";
+	//std::cout << "DONE ExecuteTasks()\n";
 #else
 	throw NotImplementedException("DuckDB was compiled without threads! Background thread loop is not allowed.");
 #endif

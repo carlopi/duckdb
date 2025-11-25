@@ -34,13 +34,13 @@ public:
 	      counter(std::move(counter)) {
 	}
 	TaskExecutionResult ExecuteTask(TaskExecutionMode mode) override {
-		std::cout << "Going to call Execute\n";
+		//std::cout << "Going to call Execute\n";
 		async_task->Execute();
-		std::cout << "Called Execute\n";
+		//std::cout << "Called Execute\n";
 		if (counter->IterateAndCheckCounter()) {
-			std::cout << "Call the callback\n";
+			//std::cout << "Call the callback\n";
 			interrupt_state.Callback();
-			std::cout << "Call the callback done\n";
+			//std::cout << "Call the callback done\n";
 		}
 		return TaskExecutionResult::TASK_FINISHED;
 	}
@@ -92,7 +92,7 @@ void AsyncResult::ExecuteSync() {
 }
 
 void AsyncResult::ScheduleTasks(InterruptState &interrupt_state, Executor &executor) {
-	std::cout << "SCHEDULE TASKS\n";
+	//std::cout << "SCHEDULE TASKS\n";
 	if (result_type != AsyncResultType::BLOCKED) {
 		throw InternalException("AsyncResult::ScheduleTasks called on non BLOCKED AsyncResult");
 	}
@@ -110,7 +110,7 @@ void AsyncResult::ScheduleTasks(InterruptState &interrupt_state, Executor &execu
 }
 
 void AsyncResult::ExecuteTasksSynchronously() {
-	std::cout << "ExecuteTasksSynchronously\n";
+	//std::cout << "ExecuteTasksSynchronously\n";
 	if (result_type != AsyncResultType::BLOCKED) {
 		throw InternalException("AsyncResult::ExecuteTasksSynchronously called on non BLOCKED AsyncResult");
 	}

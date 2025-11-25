@@ -107,6 +107,7 @@ public:
 	vector<std::pair<unique_ptr<std::thread>, unique_ptr<AsyncExecutionTask>>> io_threads;
 	atomic<int64_t> out_of_bound_threads;
 	mutex mu;
+	atomic<int64_t> threads_running;
 private:
 	//! Markers used by the various threads, if the markers are set to "false" the thread execution is stopped
 	vector<unique_ptr<atomic<bool>>> markers;

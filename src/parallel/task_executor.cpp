@@ -38,16 +38,19 @@ void TaskExecutor::FinishTask() {
 void TaskExecutor::WorkOnTasks() {
 	// repeatedly execute tasks until we are finished
 	shared_ptr<Task> task_from_producer;
+	//std::cout << "AAAAAA0\t" << completed_tasks << "\t" << total_tasks << "\t" << scheduler.out_of_bound_threads << "\n";
 	while (scheduler.GetTaskFromProducer(*token, task_from_producer)) {
 		auto res = task_from_producer->Execute(TaskExecutionMode::PROCESS_ALL);
 		(void)res;
 		D_ASSERT(res != TaskExecutionResult::TASK_BLOCKED);
 		task_from_producer.reset();
 	}
+	//std::cout << "AAAAAA1\t" << completed_tasks << "\t" << total_tasks << "\t" << scheduler.out_of_bound_threads << "\n";
 	// wait for all active tasks to finish
 	while (completed_tasks != total_tasks) {
 	}
 
+	//std::cout << "AAAAAA2\t" << completed_tasks << "\t" << total_tasks << "\t" << scheduler.out_of_bound_threads << "\n";
 	// check if we ran into any errors while checkpointing
 	if (HasError()) {
 		// throw the error

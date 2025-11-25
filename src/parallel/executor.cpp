@@ -460,7 +460,7 @@ void Executor::SignalTaskRescheduled(lock_guard<mutex> &) {
 }
 
 void Executor::WaitForTask() {
-	std::cout << "WaitForTask\n";
+	//std::cout << "WaitForTask\n";
 #ifndef DUCKDB_NO_THREADS
 	static constexpr std::chrono::microseconds WAIT_TIME_MS = std::chrono::microseconds(WAIT_TIME * 1000);
 	auto begin = std::chrono::high_resolution_clock::now();
