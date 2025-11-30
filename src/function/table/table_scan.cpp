@@ -327,6 +327,9 @@ public:
 				if (res.GetResultType() == AsyncResultType::HAVE_MORE_OUTPUT) {
 					data_p.async_result = AsyncResultType::HAVE_MORE_OUTPUT;
 					return;
+				} else if (res.GetResultType() == AsyncResultType::BLOCKED) {
+					data_p.async_result = std::move(res);
+					return;
 				}
 			} else if (output.size() > 0) {
 				return;

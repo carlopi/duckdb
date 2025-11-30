@@ -283,7 +283,11 @@ void SingleFileCheckpointReader::LoadFromStorage() {
 	if (block_manager.Prefetch()) {
 		auto metadata_blocks = metadata_manager.GetBlocks();
 		auto &buffer_manager = BufferManager::GetBufferManager(storage.GetDatabase());
-		buffer_manager.Prefetch(metadata_blocks);
+		auto v = buffer_manager.PrefetchT(metadata_blocks);
+		if (v.size() > 0) {
+			auto res = AsyncResult(std::move(v));
+			res.ExecuteTasksSynchronously();
+		}
 	}
 
 	// create the MetadataReader to read from the storage
