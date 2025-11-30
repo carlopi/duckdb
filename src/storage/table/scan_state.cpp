@@ -247,6 +247,39 @@ bool CollectionScanState::Scan(DuckTransaction &transaction, DataChunk &result) 
 	return false;
 }
 
+AsyncResult CollectionScanState::AScan(DuckTransaction &transaction, DataChunk &result) {
+	if (row_group) {
+		auto res = row_group->GetNode().AScan(transaction, *this, result);
+		//std::cout << EnumUtil::ToChars(res.GetResultType()) << "\n";
+		if (res.GetResultType() == AsyncResultType::HAVE_MORE_OUTPUT) {
+			return res;
+		}
+		if (max_row <= row_group->GetRowStart() + row_group->GetNode().count) {
+			row_group = nullptr;
+			return SourceResultType::FINISHED;
+		} else {
+			do {
+				row_group = GetNextRowGroup(*row_group).get();
+				if (row_group) {
+					if (row_group->GetRowStart() >= max_row) {
+						row_group = nullptr;
+						break;
+					}
+					bool scan_row_group = row_group->GetNode().InitializeScan(*this, *row_group);
+					if (scan_row_group) {
+						// scan this row group
+						break;
+					}
+				}
+			} while (row_group);
+			if (row_group) {
+				return SourceResultType::HAVE_MORE_OUTPUT;
+			}
+		}
+	}
+	return SourceResultType::FINISHED;
+}
+
 bool CollectionScanState::ScanCommitted(DataChunk &result, SegmentLock &l, TableScanType type) {
 	while (row_group) {
 		row_group->GetNode().ScanCommitted(*this, result, type);

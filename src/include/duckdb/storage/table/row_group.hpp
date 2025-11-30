@@ -22,6 +22,7 @@
 #include "duckdb/storage/checkpoint/checkpoint_options.hpp"
 
 namespace duckdb {
+class AsyncResult;
 class AttachedDatabase;
 class BlockManager;
 class ColumnData;
@@ -140,6 +141,7 @@ public:
 	//! Checks the given set of table filters against the per-segment statistics. Returns false if any segments were
 	//! skipped.
 	bool CheckZonemapSegments(CollectionScanState &state);
+	AsyncResult AScan(TransactionData transaction, CollectionScanState &state, DataChunk &result);
 	void Scan(TransactionData transaction, CollectionScanState &state, DataChunk &result);
 	void ScanCommitted(CollectionScanState &state, DataChunk &result, TableScanType type);
 
@@ -234,6 +236,8 @@ private:
 	void LoadRowIdColumnData() const;
 	void SetCount(idx_t count);
 
+	template <TableScanType TYPE>
+	AsyncResult ATemplatedScan(TransactionData transaction, CollectionScanState &state, DataChunk &result);
 	template <TableScanType TYPE>
 	void TemplatedScan(TransactionData transaction, CollectionScanState &state, DataChunk &result);
 
