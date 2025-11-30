@@ -271,6 +271,7 @@ void CollectionScanState::Initialize(const QueryContext &context, const vector<L
 }
 
 bool RowGroup::InitializeScanWithOffset(CollectionScanState &state, SegmentNode<RowGroup> &node, idx_t vector_offset) {
+	state.done_prefetch = 0;
 	auto &column_ids = state.GetColumnIds();
 	auto &filters = state.GetFilterInfo();
 	if (!CheckZonemap(filters)) {
@@ -300,6 +301,7 @@ bool RowGroup::InitializeScanWithOffset(CollectionScanState &state, SegmentNode<
 }
 
 bool RowGroup::InitializeScan(CollectionScanState &state, SegmentNode<RowGroup> &node) {
+	state.done_prefetch = 0;
 	auto &column_ids = state.GetColumnIds();
 	auto &filters = state.GetFilterInfo();
 	if (!CheckZonemap(filters)) {
@@ -453,6 +455,7 @@ void RowGroup::CommitDropColumn(const idx_t column_index) {
 
 void RowGroup::NextVector(CollectionScanState &state) {
 	state.vector_index++;
+	state.done_prefetch = 0;
 	const auto &column_ids = state.GetColumnIds();
 	for (idx_t i = 0; i < column_ids.size(); i++) {
 		const auto &column = column_ids[i];
@@ -606,7 +609,11 @@ void RowGroup::TemplatedScan(TransactionData transaction, CollectionScanState &s
 				GetColumn(column).InitializePrefetch(prefetch_state, state.column_scans[i], max_count);
 			}
 			auto &buffer_manager = block_manager.buffer_manager;
-			buffer_manager.Prefetch(prefetch_state.blocks);
+			auto v = std::move(buffer_manager.PrefetchT(prefetch_state.blocks));
+			if (v.size() > 0) {
+				auto res = AsyncResult(std::move(v));
+				res.ExecuteTasksSynchronously();
+			}
 		}
 
 		bool has_filters = filter_info.HasFilters();
@@ -712,11 +719,11 @@ void RowGroup::TemplatedScan(TransactionData transaction, CollectionScanState &s
 
 template <TableScanType TYPE>
 AsyncResult RowGroup::ATemplatedScan(TransactionData transaction, CollectionScanState &state, DataChunk &result) {
-	//std::cout << "RowGroup::ATemplatedScan\n";
 	const bool ALLOW_UPDATES = TYPE != TableScanType::TABLE_SCAN_COMMITTED_ROWS_DISALLOW_UPDATES &&
 	                           TYPE != TableScanType::TABLE_SCAN_COMMITTED_ROWS_OMIT_PERMANENTLY_DELETED;
 	const auto &column_ids = state.GetColumnIds();
 	auto &filter_info = state.GetFilterInfo();
+	
 	{
 		if (state.vector_index * STANDARD_VECTOR_SIZE >= state.max_row_group_row) {
 			// exceeded the amount of rows to scan
@@ -726,6 +733,7 @@ AsyncResult RowGroup::ATemplatedScan(TransactionData transaction, CollectionScan
 		auto max_count = MinValue<idx_t>(STANDARD_VECTOR_SIZE, state.max_row_group_row - current_row);
 
 		// check the sampling info if we have to sample this chunk
+		if (state.done_prefetch == 0)
 		if (state.GetSamplingInfo().do_system_sample &&
 		    state.random.NextRandom() > state.GetSamplingInfo().sample_rate) {
 			NextVector(state);
@@ -733,6 +741,7 @@ AsyncResult RowGroup::ATemplatedScan(TransactionData transaction, CollectionScan
 		}
 
 		//! first check the zonemap if we have to scan this partition
+		if (state.done_prefetch == 0)
 		if (!CheckZonemapSegments(state)) {
 			return SourceResultType::HAVE_MORE_OUTPUT;
 		}
@@ -740,9 +749,9 @@ AsyncResult RowGroup::ATemplatedScan(TransactionData transaction, CollectionScan
 
 		// second, scan the version chunk manager to figure out which tuples to load for this transaction
 		idx_t count;
+	//	if (state.done_prefetch == 0) {
 		if (TYPE == TableScanType::TABLE_SCAN_REGULAR) {
 			count = current_row_group.GetSelVector(transaction, state.vector_index, state.valid_sel, max_count);
-			//std::cout << count << "\n";
 			if (count == 0) {
 				// nothing to scan for this vector, skip the entire vector
 				NextVector(state);
@@ -759,15 +768,28 @@ AsyncResult RowGroup::ATemplatedScan(TransactionData transaction, CollectionScan
 		} else {
 			count = max_count;
 		}
+	//		state.stored_count = count;
+		///} else {
+	//	count = state.stored_count;
+	//	}
 		auto &block_manager = GetBlockManager();
-		if (block_manager.Prefetch()) {
+		if (state.done_prefetch == 0) {// && block_manager.Prefetch()) {
+			state.done_prefetch=1;
 			PrefetchState prefetch_state;
 			for (idx_t i = 0; i < column_ids.size(); i++) {
 				const auto &column = column_ids[i];
 				GetColumn(column).InitializePrefetch(prefetch_state, state.column_scans[i], max_count);
 			}
 			auto &buffer_manager = block_manager.buffer_manager;
-			buffer_manager.Prefetch(prefetch_state.blocks);
+			auto v = buffer_manager.PrefetchT(prefetch_state.blocks);
+			if (v.size() > 0) {
+				auto res = AsyncResult(std::move(v));
+				if (v.size() == 1) {
+					res.ExecuteTasksSynchronously();
+				} else {
+					return std::move(res);
+				}
+			}
 		}
 
 		bool has_filters = filter_info.HasFilters();
@@ -784,6 +806,7 @@ AsyncResult RowGroup::ATemplatedScan(TransactionData transaction, CollectionScan
 			}
 			result.SetCardinality(count);
 			state.vector_index++;
+		state.done_prefetch = 0;
 			return SourceResultType::HAVE_MORE_OUTPUT;
 		} else {
 			// partial scan: we have deletions or table filters
@@ -844,6 +867,7 @@ AsyncResult RowGroup::ATemplatedScan(TransactionData transaction, CollectionScan
 					col_data.Skip(state.column_scans[i]);
 				}
 				state.vector_index++;
+				state.done_prefetch = 0;
 				return SourceResultType::HAVE_MORE_OUTPUT;
 			}
 			//! Now we use the selection vector to fetch data for the other columns.
@@ -869,6 +893,7 @@ AsyncResult RowGroup::ATemplatedScan(TransactionData transaction, CollectionScan
 		}
 		result.SetCardinality(count);
 		state.vector_index++;
+		state.done_prefetch = 0;
 		return SourceResultType::HAVE_MORE_OUTPUT;
 	}
 	return SourceResultType::FINISHED;

@@ -254,6 +254,9 @@ AsyncResult CollectionScanState::AScan(DuckTransaction &transaction, DataChunk &
 		if (res.GetResultType() == AsyncResultType::HAVE_MORE_OUTPUT) {
 			return res;
 		}
+		if (res.GetResultType() == AsyncResultType::BLOCKED) {
+			return res;
+		}
 		if (max_row <= row_group->GetRowStart() + row_group->GetNode().count) {
 			row_group = nullptr;
 			return SourceResultType::FINISHED;

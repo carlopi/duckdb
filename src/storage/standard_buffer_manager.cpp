@@ -244,10 +244,37 @@ void StandardBufferManager::ReAllocate(shared_ptr<BlockHandle> &handle, idx_t bl
 	handle->ResizeBuffer(lock, block_size, memory_delta);
 }
 
-void StandardBufferManager::BatchRead(vector<shared_ptr<BlockHandle>> &handles, const map<block_id_t, idx_t> &load_map,
+
+class BatchReadAsyncTask : public AsyncTask {
+public:
+	explicit BatchReadAsyncTask(StandardBufferManager* ptr, vector<shared_ptr<BlockHandle>> &handles, const map<block_id_t, idx_t> load_map, block_id_t first_block, block_id_t last_block) : ptr(ptr), handles(handles), load_map(load_map), first_block(first_block), last_block(last_block) {
+	}
+	void Execute() override {
+	//std::cout << first_block << "\t" << last_block << "\tstart\n";
+		ptr->ExecuteBatchRead(handles, load_map, first_block, last_block);
+	//std::cout << first_block << "\t" << last_block << "\tdone\n";
+	}
+	StandardBufferManager *ptr;
+	vector<shared_ptr<BlockHandle>> handles;
+	map<block_id_t, idx_t> load_map;
+	block_id_t first_block;
+	block_id_t last_block;
+};
+
+unique_ptr<AsyncTask> StandardBufferManager::BatchRead(vector<shared_ptr<BlockHandle>> &handles, const map<block_id_t, idx_t> &load_map,
+                                      block_id_t first_block, block_id_t last_block) {
+	//std::cout << first_block << "\t" << last_block << "\n";
+//	ExecuteBatchRead(handles, load_map, first_block, last_block);
+//	return nullptr;
+	return make_uniq<BatchReadAsyncTask>(this, handles, load_map, first_block, last_block);
+}
+
+void StandardBufferManager::ExecuteBatchRead(vector<shared_ptr<BlockHandle>> &handles, const map<block_id_t, idx_t> &load_map,
                                       block_id_t first_block, block_id_t last_block) {
 	auto &block_manager = handles[0]->block_manager;
 	idx_t block_count = NumericCast<idx_t>(last_block - first_block + 1);
+
+/*
 	if (block_count == 1) {
 		if (DBConfig::GetSetting<StorageBlockPrefetchSetting>(db) != StorageBlockPrefetch::DEBUG_FORCE_ALWAYS) {
 			// prefetching with block_count == 1 has no performance impact since we can't batch reads
@@ -256,6 +283,7 @@ void StandardBufferManager::BatchRead(vector<shared_ptr<BlockHandle>> &handles, 
 			return;
 		}
 	}
+*/
 
 	// allocate a buffer to hold the data of all of the blocks
 	auto total_block_size = block_count * block_manager.GetBlockAllocSize();
@@ -296,7 +324,7 @@ void StandardBufferManager::BatchRead(vector<shared_ptr<BlockHandle>> &handles, 
 	}
 }
 
-void StandardBufferManager::Prefetch(vector<shared_ptr<BlockHandle>> &handles) {
+vector<unique_ptr<AsyncTask>> StandardBufferManager::PrefetchT(vector<shared_ptr<BlockHandle>> &handles) {
 	// figure out which set of blocks we should load
 	map<block_id_t, idx_t> to_be_loaded;
 	for (idx_t block_idx = 0; block_idx < handles.size(); block_idx++) {
@@ -306,9 +334,10 @@ void StandardBufferManager::Prefetch(vector<shared_ptr<BlockHandle>> &handles) {
 			to_be_loaded.insert(make_pair(handle->BlockId(), block_idx));
 		}
 	}
+	vector<unique_ptr<AsyncTask>> tasks;
 	if (to_be_loaded.empty()) {
 		// nothing to fetch
-		return;
+		return tasks;
 	}
 	// iterate over the blocks and perform bulk reads
 	block_id_t first_block = -1;
@@ -324,15 +353,16 @@ void StandardBufferManager::Prefetch(vector<shared_ptr<BlockHandle>> &handles) {
 		} else {
 			// this block is not adjacent to the previous block
 			// perform the batch read for the previous batch
-			BatchRead(handles, to_be_loaded, first_block, previous_block_id);
-
+			tasks.push_back(std::move(BatchRead(handles, to_be_loaded, first_block, previous_block_id)));
 			// set the first_block and previous_block_id to the current block
 			first_block = entry.first;
 			previous_block_id = entry.first;
 		}
 	}
 	// batch read the final batch
-	BatchRead(handles, to_be_loaded, first_block, previous_block_id);
+	tasks.push_back(std::move(BatchRead(handles, to_be_loaded, first_block, previous_block_id)));
+	//std::cout << tasks.size() << "\n";
+	return std::move(tasks);
 }
 
 BufferHandle StandardBufferManager::Pin(shared_ptr<BlockHandle> &handle) {
