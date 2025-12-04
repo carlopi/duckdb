@@ -285,7 +285,7 @@ void SingleFileCheckpointReader::LoadFromStorage() {
 		auto metadata_blocks = metadata_manager.GetBlocks();
 		auto &buffer_manager = BufferManager::GetBufferManager(storage.GetDatabase());
 		auto v = buffer_manager.Prefetch(metadata_blocks);
-		if (v.size() > 0) {
+		if (!v.empty()) {
 			auto res = AsyncResult(std::move(v));
 			res.ExecuteTasksSynchronously();
 		}
