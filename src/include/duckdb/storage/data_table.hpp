@@ -23,6 +23,7 @@
 
 namespace duckdb {
 
+class AsyncResult;
 class BoundForeignKeyConstraint;
 class ClientContext;
 class ColumnDataCollection;
@@ -92,7 +93,7 @@ public:
 	//! from offset and store them in result. Offset is incremented with how many
 	//! elements were returned.
 	//! Returns true if all pushed down filters were executed during data fetching
-	void Scan(DuckTransaction &transaction, DataChunk &result, TableScanState &state);
+	AsyncResult Scan(DuckTransaction &transaction, DataChunk &result, TableScanState &state);
 
 	//! Fetch data from the specific row identifiers from the base table
 	void Fetch(DuckTransaction &transaction, DataChunk &result, const vector<StorageIndex> &column_ids,

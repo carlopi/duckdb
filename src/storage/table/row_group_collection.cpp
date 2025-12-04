@@ -804,7 +804,16 @@ void RowGroupCollection::RemoveFromIndexes(const QueryContext &context, TableInd
 		// Fetch the current vector into fetch_chunk.
 		state.table_state.Initialize(context, GetTypes());
 		current_row_group.InitializeScanWithOffset(state.table_state, *row_group, row_group_vector_idx);
-		current_row_group.ScanCommitted(state.table_state, fetch_chunk, TableScanType::TABLE_SCAN_COMMITTED_ROWS);
+		AsyncResult async_res = SourceResultType::HAVE_MORE_OUTPUT;
+		do {
+			async_res = current_row_group.ScanCommitted(state.table_state, fetch_chunk,
+			                                            TableScanType::TABLE_SCAN_COMMITTED_ROWS);
+			if (async_res.GetResultType() == AsyncResultType::BLOCKED) {
+				async_res.ExecuteTasksSynchronously();
+				continue;
+			}
+		} while (false);
+
 		fetch_chunk.Verify();
 
 		// Check for any remaining row ids, if they also fall into this vector.
@@ -1034,12 +1043,16 @@ public:
 			while (true) {
 				scan_chunk.Reset();
 
-				current_row_group.ScanCommitted(scan_state.table_state, scan_chunk,
-				                                TableScanType::TABLE_SCAN_LATEST_COMMITTED_ROWS);
-				if (scan_chunk.size() == 0) {
-					break;
+				auto async_res = current_row_group.ScanCommitted(scan_state.table_state, scan_chunk,
+				                                                 TableScanType::TABLE_SCAN_LATEST_COMMITTED_ROWS);
+				if (async_res.GetResultType() == AsyncResultType::BLOCKED) {
+					async_res.ExecuteTasksSynchronously();
+					continue;
 				}
-				scan_chunk.Flatten();
+
+				if (scan_chunk.size() > 0) {
+					scan_chunk.Flatten();
+				}
 				idx_t remaining = scan_chunk.size();
 				while (remaining > 0) {
 					idx_t append_count = MinValue<idx_t>(remaining, row_group_size - append_counts[current_append_idx]);
@@ -1056,6 +1069,9 @@ public:
 						// slice chunk for the next append
 						scan_chunk.Slice(append_count, remaining);
 					}
+				}
+				if (async_res.GetResultType() == AsyncResultType::FINISHED) {
+					break;
 				}
 			}
 			// drop the row group after merging

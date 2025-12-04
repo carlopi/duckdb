@@ -221,7 +221,11 @@ optional_ptr<SegmentNode<RowGroup>> CollectionScanState::GetRootSegment() const 
 
 bool CollectionScanState::Scan(DuckTransaction &transaction, DataChunk &result) {
 	while (row_group) {
-		row_group->GetNode().Scan(transaction, *this, result);
+		auto async_res = row_group->GetNode().Scan(transaction, *this, result);
+		if (async_res.GetResultType() == AsyncResultType::BLOCKED) {
+			async_res.ExecuteTasksSynchronously();
+			continue;
+		}
 		if (result.size() > 0) {
 			return true;
 		} else if (max_row <= row_group->GetRowStart() + row_group->GetNode().count) {
@@ -247,9 +251,44 @@ bool CollectionScanState::Scan(DuckTransaction &transaction, DataChunk &result) 
 	return false;
 }
 
+AsyncResult CollectionScanState::AsyncScan(DuckTransaction &transaction, DataChunk &result) {
+	if (row_group) {
+		auto res = row_group->GetNode().Scan(transaction, *this, result);
+		if (res.GetResultType() == AsyncResultType::HAVE_MORE_OUTPUT) {
+			return res;
+		}
+		if (max_row <= row_group->GetRowStart() + row_group->GetNode().count) {
+			row_group = nullptr;
+			return SourceResultType::FINISHED;
+		} else {
+			do {
+				row_group = GetNextRowGroup(*row_group).get();
+				if (row_group) {
+					if (row_group->GetRowStart() >= max_row) {
+						row_group = nullptr;
+						break;
+					}
+					bool scan_row_group = row_group->GetNode().InitializeScan(*this, *row_group);
+					if (scan_row_group) {
+						// scan this row group
+						break;
+					}
+				}
+			} while (row_group);
+			if (row_group) {
+				return SourceResultType::HAVE_MORE_OUTPUT;
+			}
+		}
+	}
+	return SourceResultType::FINISHED;
+}
+
 bool CollectionScanState::ScanCommitted(DataChunk &result, SegmentLock &l, TableScanType type) {
 	while (row_group) {
-		row_group->GetNode().ScanCommitted(*this, result, type);
+		auto async_res = row_group->GetNode().ScanCommitted(*this, result, type);
+		if (async_res.GetResultType() == AsyncResultType::BLOCKED) {
+			async_res.ExecuteTasksSynchronously();
+		}
 		if (result.size() > 0) {
 			return true;
 		} else {
@@ -264,7 +303,10 @@ bool CollectionScanState::ScanCommitted(DataChunk &result, SegmentLock &l, Table
 
 bool CollectionScanState::ScanCommitted(DataChunk &result, TableScanType type) {
 	while (row_group) {
-		row_group->GetNode().ScanCommitted(*this, result, type);
+		auto async_res = row_group->GetNode().ScanCommitted(*this, result, type);
+		if (async_res.GetResultType() == AsyncResultType::BLOCKED) {
+			async_res.ExecuteTasksSynchronously();
+		}
 		if (result.size() > 0) {
 			return true;
 		}
