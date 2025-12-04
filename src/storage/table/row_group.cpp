@@ -606,7 +606,7 @@ AsyncResult RowGroup::TemplatedScan(TransactionData transaction, CollectionScanS
 			}
 			auto &buffer_manager = block_manager.buffer_manager;
 			auto v = std::move(buffer_manager.Prefetch(prefetch_state.blocks));
-			if (v.size() > 0) {
+			if (!v.empty()) {
 				auto res = AsyncResult(std::move(v));
 				res.ExecuteTasksSynchronously();
 			}
