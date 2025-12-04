@@ -354,12 +354,12 @@ vector<unique_ptr<AsyncTask>> StandardBufferManager::PrefetchT(vector<shared_ptr
 			// this block is not adjacent to the previous block
 			// perform the batch read for the previous batch
 			while (first_block < previous_block_id) {
-				if (first_block + 100 < previous_block_id) {
-					tasks.push_back(std::move(BatchRead(handles, to_be_loaded, first_block, first_block + 100)));
+				if (first_block + 64 < previous_block_id) {
+					tasks.push_back(std::move(BatchRead(handles, to_be_loaded, first_block, first_block + 64)));
 				} else {
 					tasks.push_back(std::move(BatchRead(handles, to_be_loaded, first_block, previous_block_id)));
 				}
-				first_block += 100;
+				first_block += 64;
 			}
 			// set the first_block and previous_block_id to the current block
 			first_block = entry.first;
@@ -368,12 +368,12 @@ vector<unique_ptr<AsyncTask>> StandardBufferManager::PrefetchT(vector<shared_ptr
 	}
 	// batch read the final batch
 	while (first_block < previous_block_id) {
-		if (first_block + 100 < previous_block_id) {
-			tasks.push_back(std::move(BatchRead(handles, to_be_loaded, first_block, first_block + 100)));
+		if (first_block + 64 < previous_block_id) {
+			tasks.push_back(std::move(BatchRead(handles, to_be_loaded, first_block, first_block + 64)));
 		} else {
 			tasks.push_back(std::move(BatchRead(handles, to_be_loaded, first_block, previous_block_id)));
 		}
-		first_block += 100;
+		first_block += 64;
 	}
 	//std::cout << tasks.size() << "\n";
 	return std::move(tasks);
