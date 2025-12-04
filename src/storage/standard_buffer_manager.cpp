@@ -247,7 +247,7 @@ void StandardBufferManager::ReAllocate(shared_ptr<BlockHandle> &handle, idx_t bl
 class BatchReadAsyncTask : public AsyncTask {
 public:
 	explicit BatchReadAsyncTask(StandardBufferManager *ptr, vector<shared_ptr<BlockHandle>> &handles,
-	                            const map<block_id_t, idx_t> load_map, block_id_t first_block, block_id_t last_block)
+	                            const map<block_id_t, idx_t> &load_map, block_id_t first_block, block_id_t last_block)
 	    : ptr(ptr), handles(handles), load_map(load_map), first_block(first_block), last_block(last_block) {
 	}
 	void Execute() override {
