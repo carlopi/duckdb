@@ -351,14 +351,28 @@ vector<unique_ptr<AsyncTask>> StandardBufferManager::Prefetch(vector<shared_ptr<
 		} else {
 			// this block is not adjacent to the previous block
 			// perform the batch read for the previous batch
-			tasks.push_back(std::move(BatchRead(handles, to_be_loaded, first_block, previous_block_id)));
+			while (first_block < previous_block_id) {
+				if (first_block + 64 < previous_block_id) {
+					tasks.push_back(std::move(BatchRead(handles, to_be_loaded, first_block, first_block + 64)));
+				} else {
+					tasks.push_back(std::move(BatchRead(handles, to_be_loaded, first_block, previous_block_id)));
+				}
+				first_block += 64;
+			}
 			// set the first_block and previous_block_id to the current block
 			first_block = entry.first;
 			previous_block_id = entry.first;
 		}
 	}
 	// batch read the final batch
-	tasks.push_back(std::move(BatchRead(handles, to_be_loaded, first_block, previous_block_id)));
+	while (first_block < previous_block_id) {
+		if (first_block + 64 < previous_block_id) {
+			tasks.push_back(std::move(BatchRead(handles, to_be_loaded, first_block, first_block + 64)));
+		} else {
+			tasks.push_back(std::move(BatchRead(handles, to_be_loaded, first_block, previous_block_id)));
+		}
+		first_block += 64;
+	}
 	return std::move(tasks);
 }
 
