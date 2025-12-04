@@ -812,7 +812,8 @@ void RowGroupCollection::RemoveFromIndexes(const QueryContext &context, TableInd
 				async_res.ExecuteTasksSynchronously();
 				continue;
 			}
-		} while (false);
+			break;
+		} while (true);
 
 		fetch_chunk.Verify();
 
