@@ -197,6 +197,8 @@ class CollectionScanState {
 public:
 	explicit CollectionScanState(TableScanState &parent_p);
 
+	int done_prefetch {0};
+	idx_t stored_count {};
 	//! The current row_group we are scanning
 	optional_ptr<SegmentNode<RowGroup>> row_group;
 	//! The vector index within the row_group

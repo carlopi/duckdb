@@ -88,7 +88,7 @@ public:
 	BufferHandle Pin(const QueryContext &context, shared_ptr<BlockHandle> &handle) override {
 		return buffer_manager.Pin(context, handle);
 	}
-	void Prefetch(vector<shared_ptr<BlockHandle>> &handles) override {
+	vector<unique_ptr<AsyncTask>> Prefetch(vector<shared_ptr<BlockHandle>> &handles) override {
 		return buffer_manager.Prefetch(handles);
 	}
 	void Unpin(shared_ptr<BlockHandle> &handle) override {

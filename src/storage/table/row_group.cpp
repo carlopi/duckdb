@@ -271,6 +271,7 @@ void CollectionScanState::Initialize(const QueryContext &context, const vector<L
 }
 
 bool RowGroup::InitializeScanWithOffset(CollectionScanState &state, SegmentNode<RowGroup> &node, idx_t vector_offset) {
+	state.done_prefetch = 0;
 	auto &column_ids = state.GetColumnIds();
 	auto &filters = state.GetFilterInfo();
 	if (!CheckZonemap(filters)) {
@@ -300,6 +301,7 @@ bool RowGroup::InitializeScanWithOffset(CollectionScanState &state, SegmentNode<
 }
 
 bool RowGroup::InitializeScan(CollectionScanState &state, SegmentNode<RowGroup> &node) {
+	state.done_prefetch = 0;
 	auto &column_ids = state.GetColumnIds();
 	auto &filters = state.GetFilterInfo();
 	if (!CheckZonemap(filters)) {
@@ -447,6 +449,7 @@ void RowGroup::CommitDropColumn(const idx_t column_index) {
 
 void RowGroup::NextVector(CollectionScanState &state) {
 	state.vector_index++;
+	state.done_prefetch = 0;
 	const auto &column_ids = state.GetColumnIds();
 	for (idx_t i = 0; i < column_ids.size(); i++) {
 		const auto &column = column_ids[i];
@@ -593,14 +596,20 @@ AsyncResult RowGroup::TemplatedScan(TransactionData transaction, CollectionScanS
 			count = max_count;
 		}
 		auto &block_manager = GetBlockManager();
-		if (block_manager.Prefetch()) {
+		// if (block_manager.Prefetch()) {
+		if (state.done_prefetch == 0) {
+			state.done_prefetch = 1;
 			PrefetchState prefetch_state;
 			for (idx_t i = 0; i < column_ids.size(); i++) {
 				const auto &column = column_ids[i];
 				GetColumn(column).InitializePrefetch(prefetch_state, state.column_scans[i], max_count);
 			}
 			auto &buffer_manager = block_manager.buffer_manager;
-			buffer_manager.Prefetch(prefetch_state.blocks);
+			auto v = std::move(buffer_manager.Prefetch(prefetch_state.blocks));
+			if (v.size() > 0) {
+				auto res = AsyncResult(std::move(v));
+				res.ExecuteTasksSynchronously();
+			}
 		}
 
 		bool has_filters = filter_info.HasFilters();
@@ -617,6 +626,7 @@ AsyncResult RowGroup::TemplatedScan(TransactionData transaction, CollectionScanS
 			}
 			result.SetCardinality(count);
 			state.vector_index++;
+			state.done_prefetch = 0;
 			return SourceResultType::HAVE_MORE_OUTPUT;
 		} else {
 			// partial scan: we have deletions or table filters
@@ -677,6 +687,7 @@ AsyncResult RowGroup::TemplatedScan(TransactionData transaction, CollectionScanS
 					col_data.Skip(state.column_scans[i]);
 				}
 				state.vector_index++;
+				state.done_prefetch = 0;
 				return SourceResultType::HAVE_MORE_OUTPUT;
 			}
 			//! Now we use the selection vector to fetch data for the other columns.
@@ -702,6 +713,7 @@ AsyncResult RowGroup::TemplatedScan(TransactionData transaction, CollectionScanS
 		}
 		result.SetCardinality(count);
 		state.vector_index++;
+		state.done_prefetch = 0;
 		return SourceResultType::HAVE_MORE_OUTPUT;
 	}
 	return SourceResultType::FINISHED;
