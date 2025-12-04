@@ -325,12 +325,19 @@ public:
 				res = storage.Scan(tx, output, l_state.scan_state);
 			}
 			if (data_p.results_execution_mode == AsyncResultsExecutionMode::TASK_EXECUTOR) {
-				if (res.GetResultType() == AsyncResultType::HAVE_MORE_OUTPUT) {
-					data_p.async_result = AsyncResultType::HAVE_MORE_OUTPUT;
+				switch (res.GetResultType()) {
+				case AsyncResultType::HAVE_MORE_OUTPUT:
+				case AsyncResultType::BLOCKED:
+					data_p.async_result = std::move(res);
 					return;
+				default:
+					break;
 				}
 			} else if (output.size() > 0) {
 				return;
+			} else if (res.GetResultType() == AsyncResultType::BLOCKED) {
+				res.ExecuteTasksSynchronously();
+				continue;
 			} else if (res.GetResultType() == AsyncResultType::HAVE_MORE_OUTPUT) {
 				continue;
 			}
