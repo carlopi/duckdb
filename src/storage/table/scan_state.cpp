@@ -254,7 +254,8 @@ bool CollectionScanState::Scan(DuckTransaction &transaction, DataChunk &result) 
 AsyncResult CollectionScanState::AsyncScan(DuckTransaction &transaction, DataChunk &result) {
 	if (row_group) {
 		auto res = row_group->GetNode().Scan(transaction, *this, result);
-		if (res.GetResultType() == AsyncResultType::HAVE_MORE_OUTPUT) {
+		if (res.GetResultType() == AsyncResultType::HAVE_MORE_OUTPUT ||
+		    res.GetResultType() == AsyncResultType::BLOCKED) {
 			return res;
 		}
 		if (max_row <= row_group->GetRowStart() + row_group->GetNode().count) {
