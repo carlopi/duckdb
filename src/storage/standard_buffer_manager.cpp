@@ -295,7 +295,7 @@ void StandardBufferManager::ExecuteBatchRead(vector<shared_ptr<BlockHandle>> &ha
 		}
 	}
 */
-	if (block_count == 1) {
+	if (false && block_count == 1) {
 		idx_t block_idx = 0;
 		block_id_t block_id = first_block + NumericCast<block_id_t>(block_idx);
 		auto entry = load_map.find(block_id);
@@ -303,7 +303,12 @@ void StandardBufferManager::ExecuteBatchRead(vector<shared_ptr<BlockHandle>> &ha
 		auto &handle = handles[entry->second];
 
 		auto lock = handle->GetLock();
-		handle->Load(QueryContext());
+		idx_t required_memory = handle->GetMemoryUsage();
+		unique_ptr<FileBuffer> reusable_buffer;
+		auto reservation = EvictBlocksOrThrow(handle->GetMemoryTag(), required_memory, &reusable_buffer,
+		                                      "failed to pin block of size %s%s",
+		                                      required_memory);
+		handle->Load(QueryContext(), std::move(reusable_buffer));
 		return;
 	}
 
