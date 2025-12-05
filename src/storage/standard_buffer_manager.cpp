@@ -302,6 +302,7 @@ void StandardBufferManager::ExecuteBatchRead(vector<shared_ptr<BlockHandle>> &ha
 		D_ASSERT(entry != load_map.end()); // if we allow gaps we might not return true here
 		auto &handle = handles[entry->second];
 
+		auto lock = handle->GetLock();
 		handle->Load(QueryContext());
 		return;
 	}
