@@ -120,62 +120,21 @@ void BlockHandle::ResizeBuffer(BlockLock &l, idx_t block_size, int64_t memory_de
 	D_ASSERT(memory_usage == buffer->AllocSize());
 }
 
-unique_ptr<Block> BlockHandle::Prepare(BlockLock &l, unique_ptr<FileBuffer> &&reusable_buffer) {
+BufferHandle BlockHandle::LoadFromBuffer(BlockLock &l, data_ptr_t data, unique_ptr<FileBuffer> reusable_buffer,
+                                         BufferPoolReservation reservation) {
 	VerifyMutex(l);
 
 	D_ASSERT(state != BlockState::BLOCK_LOADED);
 	D_ASSERT(readers == 0);
 	// copy over the data into the block from the file buffer
 	auto block = AllocateBlock(block_manager, std::move(reusable_buffer), block_id);
-	//memcpy(block->InternalBuffer(), data, block->AllocSize());
-	return std::move(block);
-}
-
-BufferHandle&& BlockHandle::Finalize(BlockLock &l, 
-                                         BufferPoolReservation &reservation, unique_ptr<Block> &buffer) {
-	VerifyMutex(l);
+	memcpy(block->InternalBuffer(), data, block->AllocSize());
+	buffer = std::move(block);
 	state = BlockState::BLOCK_LOADED;
 	readers = 1;
 	memory_charge = std::move(reservation);
-	auto &&x = BufferHandle(shared_from_this(), buffer.get());
-	return std::move(x);
+	return BufferHandle(shared_from_this(), buffer.get());
 }
-
-BufferHandle BlockHandle::LoadFromBuffer(BlockLock &l, data_ptr_t data, unique_ptr<FileBuffer> reusable_buffer,
-                                         BufferPoolReservation reservation) {
-     //   VerifyMutex(l);
-
-    //    D_ASSERT(state != BlockState::BLOCK_LOADED);
-  //      D_ASSERT(readers == 0);
-        // copy over the data into the block from the file buffer
-//        auto block = AllocateBlock(block_manager, std::move(reusable_buffer), block_id);
-	auto block = Prepare(l, std::move(reusable_buffer));
-       memcpy(block->InternalBuffer(), data, block->AllocSize());
-//       buffer = std::move(block);
-  //     state = BlockState::BLOCK_LOADED;
- //      readers = 1;
-   //     memory_charge = std::move(reservation);
-   //     return BufferHandle(shared_from_this(), buffer.get());
-
-//	memcpy(block->InternalBuffer(), data, block->AllocSize());
-	return Finalize(l, std::move(reservation), block);
-}
-/*
-        VerifyMutex(l);
-
-        D_ASSERT(state != BlockState::BLOCK_LOADED);
-        D_ASSERT(readers == 0);
-        // copy over the data into the block from the file buffer
-        auto block = AllocateBlock(block_manager, std::move(reusable_buffer), block_id);
-        memcpy(block->InternalBuffer(), data, block->AllocSize());
-        buffer = std::move(block);
-        state = BlockState::BLOCK_LOADED;
-        readers = 1;
-        memory_charge = std::move(reservation);
-        return BufferHandle(shared_from_this(), buffer.get());
-*/
-
-
 
 BufferHandle BlockHandle::Load(QueryContext context, unique_ptr<FileBuffer> reusable_buffer) {
 	if (state == BlockState::BLOCK_LOADED) {

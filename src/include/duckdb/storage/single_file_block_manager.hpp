@@ -150,9 +150,7 @@ private:
 	void ChecksumAndWrite(QueryContext context, FileBuffer &handle, uint64_t location,
 	                      bool skip_block_header = false) const;
 
-public:
 	idx_t GetBlockLocation(block_id_t block_id) const;
-private:
 
 	// Encrypt, Store, Decrypt the canary
 	static void StoreEncryptedCanary(AttachedDatabase &db, MainHeader &main_header, const string &key_id);
@@ -184,9 +182,7 @@ private:
 	//! The path where the file is stored
 	string path;
 	//! The file handle
-public:
 	unique_ptr<FileHandle> handle;
-private:
 	//! The buffer used to read/write to the headers
 	FileBuffer header_buffer;
 	//! The list of free blocks that can be written to currently

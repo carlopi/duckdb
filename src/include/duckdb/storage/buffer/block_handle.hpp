@@ -165,9 +165,6 @@ public:
 
 	BufferHandle Load(QueryContext context, unique_ptr<FileBuffer> buffer = nullptr);
 
-unique_ptr<Block> Prepare(BlockLock &l, unique_ptr<FileBuffer> &&reusable_buffer);
-BufferHandle&& Finalize(BlockLock &l, 
-                                         BufferPoolReservation &reservation, unique_ptr<Block> &buffer);
 	BufferHandle LoadFromBuffer(BlockLock &l, data_ptr_t data, unique_ptr<FileBuffer> reusable_buffer,
 	                            BufferPoolReservation reservation);
 	unique_ptr<FileBuffer> UnloadAndTakeBlock(BlockLock &);
