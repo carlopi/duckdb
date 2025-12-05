@@ -295,20 +295,51 @@ void StandardBufferManager::ExecuteBatchRead(vector<shared_ptr<BlockHandle>> &ha
 		}
 	}
 */
-	if (false && block_count == 1) {
+	if (block_count == 1 && false) {
 		idx_t block_idx = 0;
 		block_id_t block_id = first_block + NumericCast<block_id_t>(block_idx);
 		auto entry = load_map.find(block_id);
 		D_ASSERT(entry != load_map.end()); // if we allow gaps we might not return true here
 		auto &handle = handles[entry->second];
 
-		auto lock = handle->GetLock();
 		idx_t required_memory = handle->GetMemoryUsage();
 		unique_ptr<FileBuffer> reusable_buffer;
 		auto reservation = EvictBlocksOrThrow(handle->GetMemoryTag(), required_memory, &reusable_buffer,
 		                                      "failed to pin block of size %s%s",
 		                                      required_memory);
-		handle->Load(QueryContext(), std::move(reusable_buffer));
+
+
+		
+		BufferHandle buf;
+		{
+			auto lock = handle->GetLock();
+			if (handle->GetState() == BlockState::BLOCK_LOADED) {
+				// the block is loaded already by another thread - free up the reservation and continue
+				reservation.Resize(0);
+				return;
+			}
+		//	auto block_ptr =
+		//	    intermediate_buffer.GetFileBuffer().InternalBuffer() + block_idx * block_manager.GetBlockAllocSize();
+		//	buf = handle->LoadFromBuffer(lock, block_ptr, std::move(reusable_buffer), std::move(reservation));
+			
+			auto block = handle->Prepare(lock, std::move(reusable_buffer));
+			//memcpy(block->InternalBuffer(), data, block->AllocSize());
+			//block_manager.ReadBlocks(block->InternalBuffer(), first_block, 1);
+        //auto location = block_manager.GetBlockLocation(first_block);
+
+	auto location=  Storage::FILE_HEADER_SIZE * 3 + NumericCast<idx_t>(first_block) * block_manager.GetBlockAllocSize();
+       // BufferHandle(shared_from_this(), block.get())->Read(QueryContext(), *((SingleFileBlockManager&)block_manager).handle, location);
+
+	
+
+			//block->Read(QueryContext(),  *((SingleFileBlockManager&)block_manager).handle, location);
+
+//	((SingleFileBlockManager&)block_manager).ReadBlock(block->InternalBuffer(), first_block,1);
+
+			((SingleFileBlockManager&)block_manager).handle->Read(QueryContext(), block->InternalBuffer(), block_manager.GetBlockAllocSize(), location);
+
+			buf = handle->Finalize(lock, std::move(reservation),block);
+		}
 		return;
 	}
 
