@@ -295,6 +295,17 @@ void StandardBufferManager::ExecuteBatchRead(vector<shared_ptr<BlockHandle>> &ha
 		}
 	}
 */
+	if (block_count == 1) {
+		idx_t block_idx = 0;
+		block_id_t block_id = first_block + NumericCast<block_id_t>(block_idx);
+		auto entry = load_map.find(block_id);
+		D_ASSERT(entry != load_map.end()); // if we allow gaps we might not return true here
+		auto &handle = handles[entry->second];
+
+		handle->Load(QueryContext());
+		return;
+	}
+
 
 	// allocate a buffer to hold the data of all of the blocks
 	auto total_block_size = block_count * block_manager.GetBlockAllocSize();
