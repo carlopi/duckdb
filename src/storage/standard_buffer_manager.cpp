@@ -117,15 +117,26 @@ idx_t StandardBufferManager::GetQueryMaxMemory() const {
 	return GetBufferPool().GetQueryMaxMemory();
 }
 
-template <typename... ARGS>
 TempBufferPoolReservation StandardBufferManager::EvictBlocksOrThrow(MemoryTag tag, idx_t memory_delta,
-                                                                    unique_ptr<FileBuffer> *buffer, ARGS... args) {
+                                                                    unique_ptr<FileBuffer> *buffer, const char *message, const idx_t param1) {
 	auto r = buffer_pool.EvictBlocks(tag, memory_delta, buffer_pool.maximum_memory, buffer);
 	if (!r.success) {
 		string extra_text = StringUtil::Format(" (%s/%s used)", StringUtil::BytesToHumanReadableString(GetUsedMemory()),
 		                                       StringUtil::BytesToHumanReadableString(GetMaxMemory()));
 		extra_text += InMemoryWarning();
-		throw OutOfMemoryException(args..., extra_text);
+		throw OutOfMemoryException(message, StringUtil::BytesToHumanReadableString(param1), extra_text);
+	}
+	return std::move(r.reservation);
+}
+
+TempBufferPoolReservation StandardBufferManager::EvictBlocksOrThrow(MemoryTag tag, idx_t memory_delta,
+                                                                    unique_ptr<FileBuffer> *buffer, const char *message, const idx_t param1, const idx_t param2) {
+	auto r = buffer_pool.EvictBlocks(tag, memory_delta, buffer_pool.maximum_memory, buffer);
+	if (!r.success) {
+		string extra_text = StringUtil::Format(" (%s/%s used)", StringUtil::BytesToHumanReadableString(GetUsedMemory()),
+		                                       StringUtil::BytesToHumanReadableString(GetMaxMemory()));
+		extra_text += InMemoryWarning();
+		throw OutOfMemoryException(message, StringUtil::BytesToHumanReadableString(param1), StringUtil::BytesToHumanReadableString(param2), extra_text);
 	}
 	return std::move(r.reservation);
 }
@@ -147,7 +158,7 @@ shared_ptr<BlockHandle> StandardBufferManager::RegisterTransientMemory(const idx
 shared_ptr<BlockHandle> StandardBufferManager::RegisterSmallMemory(MemoryTag tag, const idx_t size) {
 	D_ASSERT(size < GetBlockSize());
 	auto reservation = EvictBlocksOrThrow(tag, size, nullptr, "could not allocate block of size %s%s",
-	                                      StringUtil::BytesToHumanReadableString(size));
+	                                      size);
 
 	auto buffer = ConstructManagedBuffer(size, DEFAULT_BLOCK_HEADER_STORAGE_SIZE, nullptr, FileBufferType::TINY_BUFFER);
 
@@ -168,7 +179,7 @@ shared_ptr<BlockHandle> StandardBufferManager::RegisterMemory(MemoryTag tag, idx
 	// Evict blocks until there is enough memory to store the buffer.
 	unique_ptr<FileBuffer> reusable_buffer;
 	auto res = EvictBlocksOrThrow(tag, alloc_size, &reusable_buffer, "could not allocate block of size %s%s",
-	                              StringUtil::BytesToHumanReadableString(alloc_size));
+	               alloc_size);
 
 	// Create a new buffer and a block to hold the buffer.
 	const auto file_buffer_type =
@@ -230,8 +241,8 @@ void StandardBufferManager::ReAllocate(shared_ptr<BlockHandle> &handle, idx_t bl
 		lock.unlock();
 		auto reservation = EvictBlocksOrThrow(handle->GetMemoryTag(), NumericCast<idx_t>(memory_delta), nullptr,
 		                                      "failed to resize block from %s to %s%s",
-		                                      StringUtil::BytesToHumanReadableString(handle_memory_usage),
-		                                      StringUtil::BytesToHumanReadableString(req.alloc_size));
+		                                      handle_memory_usage,
+		                                      req.alloc_size);
 		lock.lock();
 
 		// EvictBlocks decrements 'current_memory' for us.
@@ -305,7 +316,7 @@ void StandardBufferManager::ExecuteBatchRead(vector<shared_ptr<BlockHandle>> &ha
 		unique_ptr<FileBuffer> reusable_buffer;
 		auto reservation = EvictBlocksOrThrow(handle->GetMemoryTag(), required_memory, &reusable_buffer,
 		                                      "failed to pin block of size %s%s",
-		                                      StringUtil::BytesToHumanReadableString(required_memory));
+		                                      required_memory);
 		// now load the block from the buffer
 		// note that we discard the buffer handle - we do not keep it around
 		// the prefetching relies on the block handle being pinned again during the actual read before it is evicted
@@ -408,7 +419,7 @@ BufferHandle StandardBufferManager::Pin(const QueryContext &context, shared_ptr<
 		unique_ptr<FileBuffer> reusable_buffer;
 		auto reservation = EvictBlocksOrThrow(handle->GetMemoryTag(), required_memory, &reusable_buffer,
 		                                      "failed to pin block of size %s%s",
-		                                      StringUtil::BytesToHumanReadableString(required_memory));
+		                                      required_memory);
 
 		// lock the handle again and repeat the check (in case anybody loaded in the meantime)
 		auto lock = handle->GetLock();
@@ -744,7 +755,7 @@ void StandardBufferManager::ReserveMemory(idx_t size) {
 	}
 	auto reservation =
 	    EvictBlocksOrThrow(MemoryTag::EXTENSION, size, nullptr, "failed to reserve memory data of size %s%s",
-	                       StringUtil::BytesToHumanReadableString(size));
+	                       size);
 	reservation.size = 0;
 }
 
@@ -762,7 +773,7 @@ data_ptr_t StandardBufferManager::BufferAllocatorAllocate(PrivateAllocatorData *
 	auto &data = private_data->Cast<BufferAllocatorData>();
 	auto reservation =
 	    data.manager.EvictBlocksOrThrow(MemoryTag::ALLOCATOR, size, nullptr, "failed to allocate data of size %s%s",
-	                                    StringUtil::BytesToHumanReadableString(size));
+	                                    size);
 	// We rely on manual tracking of this one. :(
 	reservation.size = 0;
 	return Allocator::Get(data.manager.db).AllocateData(size);

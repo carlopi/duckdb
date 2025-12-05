@@ -112,9 +112,11 @@ public:
 
 protected:
 	//! Helper
-	template <typename... ARGS>
 	TempBufferPoolReservation EvictBlocksOrThrow(MemoryTag tag, idx_t memory_delta, unique_ptr<FileBuffer> *buffer,
-	                                             ARGS...);
+	                                             const char * message, const idx_t param1);
+	//! Helper
+	TempBufferPoolReservation EvictBlocksOrThrow(MemoryTag tag, idx_t memory_delta, unique_ptr<FileBuffer> *buffer,
+	                                             const char * message, const idx_t param1, const idx_t param2);
 
 	//! Register an in-memory buffer of arbitrary size, as long as it is >= BLOCK_SIZE. can_destroy signifies whether or
 	//! not the buffer can be destroyed instead of evicted,
