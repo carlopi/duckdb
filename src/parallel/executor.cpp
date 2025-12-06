@@ -580,7 +580,11 @@ void Executor::AddToBeRescheduled(shared_ptr<Task> &task_p) {
 	if (to_be_rescheduled_tasks[1].find(task_p.get()) != to_be_rescheduled_tasks[1].end()) {
 		return;
 	}
-	to_be_rescheduled_tasks[rand()%2][task_p.get()] = std::move(task_p);
+	auto x = rand() %2;
+	{
+		lock_guard<mutex> elock3(rescheduler_locks[x]);
+	to_be_rescheduled_tasks[x][task_p.get()] = std::move(task_p);
+	}
 }
 
 bool Executor::ExecutionIsFinished() {
