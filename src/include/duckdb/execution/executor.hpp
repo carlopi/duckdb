@@ -173,7 +173,7 @@ private:
 	//! The total amount of pipelines in the query
 	idx_t total_pipelines;
 	//! Whether or not execution is cancelled
-	bool cancelled;
+	atomic<bool> cancelled;
 
 	//! The last pending execution result (if any)
 	PendingExecutionResult execution_result;
@@ -181,7 +181,8 @@ private:
 	shared_ptr<Task> task;
 
 	//! Task that have been descheduled
-	unordered_map<Task *, shared_ptr<Task>> to_be_rescheduled_tasks;
+	unordered_map<Task *, shared_ptr<Task>> to_be_rescheduled_tasks [2];
+	mutex rescheduler_locks[2];
 	//! The semaphore to signal task rescheduling
 	std::condition_variable task_reschedule;
 

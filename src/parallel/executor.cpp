@@ -421,11 +421,11 @@ void Executor::InitializeInternal(PhysicalOperator &plan) {
 }
 
 void Executor::CancelTasks() {
+	cancelled = true;
 	task.reset();
 	{
 		lock_guard<mutex> elock(executor_lock);
 		// mark the query as cancelled so tasks will early-out
-		cancelled = true;
 		// destroy all pipelines, events and states
 		for (auto &rec_cte_ref : recursive_ctes) {
 			auto &rec_cte = rec_cte_ref.get().Cast<PhysicalRecursiveCTE>();
@@ -433,7 +433,14 @@ void Executor::CancelTasks() {
 		}
 		pipelines.clear();
 		root_pipelines.clear();
-		to_be_rescheduled_tasks.clear();
+		{	
+		lock_guard<mutex> elock(rescheduler_locks[0]);
+		to_be_rescheduled_tasks[0].clear();
+		}
+		{
+		lock_guard<mutex> elock(rescheduler_locks[1]);
+		to_be_rescheduled_tasks[1].clear();
+		}
 		events.clear();
 	}
 	// Take all pending tasks and execute them until they cancel
@@ -467,10 +474,14 @@ void Executor::WaitForTask() {
 	auto end = std::chrono::high_resolution_clock::now();
 	auto dur = end - begin;
 	auto ms = NumericCast<idx_t>(std::chrono::duration_cast<std::chrono::microseconds>(dur).count());
-	if (to_be_rescheduled_tasks.empty()) {
-		blocked_thread_time += ms;
-		return;
-	}
+		{
+		lock_guard<mutex> elock(rescheduler_locks[0]);
+		lock_guard<mutex> elock2(rescheduler_locks[1]);
+		if (to_be_rescheduled_tasks[0].empty() && to_be_rescheduled_tasks[1].empty()) {
+			blocked_thread_time += ms;
+			return;
+		}
+		}
 	if (ResultCollectorIsBlocked()) {
 		// If the result collector is blocked, it won't get unblocked until the connection calls Fetch
 		blocked_thread_time += ms;
@@ -484,18 +495,37 @@ void Executor::WaitForTask() {
 
 void Executor::RescheduleTask(shared_ptr<Task> &task_p) {
 	// This function will spin lock until the task provided is added to the to_be_rescheduled_tasks
+	if (cancelled) {
+		return;
+	}
 	while (true) {
-		lock_guard<mutex> l(executor_lock);
+		{
+		lock_guard<mutex> l(rescheduler_locks[0]);
 		if (cancelled) {
 			return;
 		}
-		auto entry = to_be_rescheduled_tasks.find(task_p.get());
-		if (entry != to_be_rescheduled_tasks.end()) {
+		auto entry = to_be_rescheduled_tasks[0].find(task_p.get());
+		if (entry != to_be_rescheduled_tasks[0].end()) {
 			auto &scheduler = TaskScheduler::GetScheduler(context);
-			to_be_rescheduled_tasks.erase(task_p.get());
+			to_be_rescheduled_tasks[0].erase(task_p.get());
 			scheduler.ScheduleTask(GetToken(), task_p);
 			SignalTaskRescheduled(l);
 			break;
+		}
+		}
+		{
+		lock_guard<mutex> l(rescheduler_locks[1]);
+		if (cancelled) {
+			return;
+		}
+		auto entry = to_be_rescheduled_tasks[1].find(task_p.get());
+		if (entry != to_be_rescheduled_tasks[1].end()) {
+			auto &scheduler = TaskScheduler::GetScheduler(context);
+			to_be_rescheduled_tasks[1].erase(task_p.get());
+			scheduler.ScheduleTask(GetToken(), task_p);
+			SignalTaskRescheduled(l);
+			break;
+		}
 		}
 	}
 }
@@ -507,11 +537,26 @@ bool Executor::ResultCollectorIsBlocked() {
 	if (completed_pipelines + 1 != total_pipelines) {
 		// The result collector is always in the last pipeline
 		return false;
+	}{
+		lock_guard<mutex> elock(rescheduler_locks[0]);
+		lock_guard<mutex> elock2(rescheduler_locks[1]);
+		if (to_be_rescheduled_tasks[0].empty() && to_be_rescheduled_tasks[1].empty()) {
+			return false;
+		}
 	}
-	if (to_be_rescheduled_tasks.empty()) {
-		return false;
+		lock_guard<mutex> elock1(rescheduler_locks[0]);
+		lock_guard<mutex> elock3(rescheduler_locks[1]);
+	for (auto &kv : to_be_rescheduled_tasks[0]) {
+		auto &task = kv.second;
+		if (task->TaskBlockedOnResult()) {
+			// At least one of the blocked tasks is connected to a result collector
+			// This task could be the only task that could unblock the other non-result-collector tasks
+			// To prevent a scenario where we halt indefinitely, we return here so it can be unblocked by a call to
+			// Fetch
+			return true;
+		}
 	}
-	for (auto &kv : to_be_rescheduled_tasks) {
+	for (auto &kv : to_be_rescheduled_tasks[1]) {
 		auto &task = kv.second;
 		if (task->TaskBlockedOnResult()) {
 			// At least one of the blocked tasks is connected to a result collector
@@ -529,10 +574,13 @@ void Executor::AddToBeRescheduled(shared_ptr<Task> &task_p) {
 	if (cancelled) {
 		return;
 	}
-	if (to_be_rescheduled_tasks.find(task_p.get()) != to_be_rescheduled_tasks.end()) {
+	if (to_be_rescheduled_tasks[0].find(task_p.get()) != to_be_rescheduled_tasks[0].end()) {
 		return;
 	}
-	to_be_rescheduled_tasks[task_p.get()] = std::move(task_p);
+	if (to_be_rescheduled_tasks[1].find(task_p.get()) != to_be_rescheduled_tasks[1].end()) {
+		return;
+	}
+	to_be_rescheduled_tasks[rand()%2][task_p.get()] = std::move(task_p);
 }
 
 bool Executor::ExecutionIsFinished() {
@@ -563,9 +611,13 @@ PendingExecutionResult Executor::ExecuteTask(bool dry_run) {
 		if (!current_task && !HasError()) {
 			// there are no tasks to be scheduled and there are tasks blocked
 			lock_guard<mutex> l(executor_lock);
-			if (to_be_rescheduled_tasks.empty()) {
+	{
+		lock_guard<mutex> elock(rescheduler_locks[0]);
+		lock_guard<mutex> elock2(rescheduler_locks[1]);
+		if (to_be_rescheduled_tasks[0].empty() && to_be_rescheduled_tasks[1].empty()) {
 				return PendingExecutionResult::NO_TASKS_AVAILABLE;
-			}
+		}
+	}
 			// At least one task is blocked
 			if (ResultCollectorIsBlocked()) {
 				return PendingExecutionResult::RESULT_READY;
@@ -624,7 +676,6 @@ PendingExecutionResult Executor::ExecuteTask(bool dry_run) {
 void Executor::Reset() {
 	lock_guard<mutex> elock(executor_lock);
 	physical_plan = nullptr;
-	cancelled = false;
 	root_executor.reset();
 	root_pipelines.clear();
 	root_pipeline_idx = 0;
@@ -633,7 +684,8 @@ void Executor::Reset() {
 	error_manager.Reset();
 	pipelines.clear();
 	events.clear();
-	to_be_rescheduled_tasks.clear();
+	to_be_rescheduled_tasks[0].clear();
+	to_be_rescheduled_tasks[1].clear();
 	execution_result = PendingExecutionResult::RESULT_NOT_READY;
 }
 
