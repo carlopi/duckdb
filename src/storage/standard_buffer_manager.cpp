@@ -412,7 +412,7 @@ vector<unique_ptr<AsyncTask>> StandardBufferManager::PrefetchT(vector<shared_ptr
 		} else {
 			// this block is not adjacent to the previous block
 			// perform the batch read for the previous batch
-		if (false)	while (first_block <= previous_block_id) {
+			while (first_block <= previous_block_id) {
 					tasks.push_back(std::move(BatchRead(handles, to_be_loaded, first_block, first_block)));
 					first_block++;
 			}
@@ -429,7 +429,7 @@ vector<unique_ptr<AsyncTask>> StandardBufferManager::PrefetchT(vector<shared_ptr
 			previous_block_id = entry.first;
 		}
 	}
-			if(false) while (first_block <= previous_block_id) {
+			while (first_block <= previous_block_id) {
 					tasks.push_back(std::move(BatchRead(handles, to_be_loaded, first_block, first_block)));
 					first_block++;
 			}
