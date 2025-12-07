@@ -131,14 +131,14 @@ unique_ptr<Block> BlockHandle::Prepare(BlockLock &l, unique_ptr<FileBuffer> &&re
 	return std::move(block);
 }
 
-BufferHandle&& BlockHandle::Finalize(BlockLock &l, 
-                                         BufferPoolReservation &reservation, unique_ptr<Block> &buffer) {
+BufferHandle BlockHandle::Finalize(BlockLock &l, 
+                                         BufferPoolReservation &reservation, unique_ptr<Block> block) {
 	VerifyMutex(l);
+        buffer = std::move(block);
 	state = BlockState::BLOCK_LOADED;
 	readers = 1;
 	memory_charge = std::move(reservation);
-	auto &&x = BufferHandle(shared_from_this(), buffer.get());
-	return std::move(x);
+	return BufferHandle(shared_from_this(), buffer.get());
 }
 
 BufferHandle BlockHandle::LoadFromBuffer(BlockLock &l, data_ptr_t data, unique_ptr<FileBuffer> reusable_buffer,
@@ -151,14 +151,14 @@ BufferHandle BlockHandle::LoadFromBuffer(BlockLock &l, data_ptr_t data, unique_p
 //        auto block = AllocateBlock(block_manager, std::move(reusable_buffer), block_id);
 	auto block = Prepare(l, std::move(reusable_buffer));
        memcpy(block->InternalBuffer(), data, block->AllocSize());
-//       buffer = std::move(block);
   //     state = BlockState::BLOCK_LOADED;
  //      readers = 1;
    //     memory_charge = std::move(reservation);
    //     return BufferHandle(shared_from_this(), buffer.get());
 
 //	memcpy(block->InternalBuffer(), data, block->AllocSize());
-	return Finalize(l, std::move(reservation), block);
+	//return std::move(Finalize(l, reservation,block.get()));
+	return std::move(Finalize(l, reservation, std::move(block)));
 }
 /*
         VerifyMutex(l);

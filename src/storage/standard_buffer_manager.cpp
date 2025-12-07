@@ -295,7 +295,7 @@ void StandardBufferManager::ExecuteBatchRead(vector<shared_ptr<BlockHandle>> &ha
 		}
 	}
 */
-	if (block_count == 1 && false) {
+	if (block_count == 1) {
 		idx_t block_idx = 0;
 		block_id_t block_id = first_block + NumericCast<block_id_t>(block_idx);
 		auto entry = load_map.find(block_id);
@@ -338,7 +338,7 @@ void StandardBufferManager::ExecuteBatchRead(vector<shared_ptr<BlockHandle>> &ha
 
 			((SingleFileBlockManager&)block_manager).handle->Read(QueryContext(), block->InternalBuffer(), block_manager.GetBlockAllocSize(), location);
 
-			buf = handle->Finalize(lock, std::move(reservation),block);
+			buf = handle->Finalize(lock, reservation,std::move(block));
 		}
 		return;
 	}
