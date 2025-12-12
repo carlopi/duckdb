@@ -879,11 +879,8 @@ SourceResultType PhysicalHashAggregate::GetDataInternal(ExecutionContext &contex
 		OperatorSourceInput source_input {*gstate.radix_states[radix_idx], *lstate.radix_states[radix_idx],
 		                                  input.interrupt_state};
 		auto res = radix_table.GetData(context, chunk, *grouping_gstate.table_state, source_input);
-		if (res == SourceResultType::BLOCKED) {
+		if (res != SourceResultType::FINISHED) {
 			return res;
-		}
-		if (chunk.size() != 0) {
-			return SourceResultType::HAVE_MORE_OUTPUT;
 		}
 
 		// move to the next table
@@ -894,10 +891,12 @@ SourceResultType PhysicalHashAggregate::GetDataInternal(ExecutionContext &contex
 			// move the global index forwards
 			gstate.state_index = lstate.radix_idx.GetIndex();
 		}
-		lstate.radix_idx = gstate.state_index.load();
+		if (lstate.radix_idx.GetIndex() < groupings.size()) {
+			return SourceResultType::HAVE_MORE_OUTPUT;
+		}
 	}
 
-	return chunk.size() == 0 ? SourceResultType::FINISHED : SourceResultType::HAVE_MORE_OUTPUT;
+	return SourceResultType::FINISHED;
 }
 
 ProgressData PhysicalHashAggregate::GetProgress(ClientContext &context, GlobalSourceState &gstate_p) const {
