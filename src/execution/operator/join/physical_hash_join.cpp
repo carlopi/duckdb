@@ -1528,7 +1528,7 @@ SourceResultType PhysicalHashJoin::GetDataInternal(ExecutionContext &context, Da
 
 	// Any call to GetData must produce tuples, otherwise the pipeline executor thinks that we're done
 	// Therefore, we loop until we've produced tuples, or until the operator is actually done
-	{
+	while (gstate.global_stage != HashJoinSourceStage::DONE && chunk.size() == 0) {
 		if (!lstate.TaskFinished() || gstate.AssignTask(sink, lstate)) {
 			lstate.ExecuteTask(sink, gstate, chunk);
 		} else {
@@ -1540,10 +1540,8 @@ SourceResultType PhysicalHashJoin::GetDataInternal(ExecutionContext &context, Da
 			}
 		}
 	}
-	if (gstate.global_stage != HashJoinSourceStage::DONE) {
-		return SourceResultType::HAVE_MORE_OUTPUT;
-	}
-	return SourceResultType::FINISHED;
+
+	return chunk.size() == 0 ? SourceResultType::FINISHED : SourceResultType::HAVE_MORE_OUTPUT;
 }
 
 ProgressData PhysicalHashJoin::GetProgress(ClientContext &context, GlobalSourceState &gstate_p) const {
