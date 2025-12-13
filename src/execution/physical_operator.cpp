@@ -125,7 +125,11 @@ unique_ptr<GlobalSourceState> PhysicalOperator::GetGlobalSourceState(ClientConte
 // LCOV_EXCL_START
 SourceResultType PhysicalOperator::GetData(ExecutionContext &context, DataChunk &chunk,
                                            OperatorSourceInput &input) const {
-	return GetDataInternal(context, chunk, input);
+	auto res = GetDataInternal(context, chunk, input);
+	if (res == SourceResultType::HAVE_MORE_OUTPUT && chunk.size() == 0) {
+		res = GetDataInternal(context, chunk, input);
+	}
+	return res;
 }
 
 SourceResultType PhysicalOperator::GetDataInternal(ExecutionContext &context, DataChunk &chunk,
