@@ -134,7 +134,7 @@ SourceResultType PhysicalRecursiveCTE::GetDataInternal(ExecutionContext &context
 		gstate.finished_scan = false;
 		gstate.initialized = true;
 	}
-	while (chunk.size() == 0) {
+	{
 		if (!gstate.finished_scan) {
 			if (!using_key) {
 				// scan any chunks we have collected so far
@@ -142,9 +142,8 @@ SourceResultType PhysicalRecursiveCTE::GetDataInternal(ExecutionContext &context
 			}
 			if (chunk.size() == 0) {
 				gstate.finished_scan = true;
-			} else {
-				break;
 			}
+			return SourceResultType::HAVE_MORE_OUTPUT;
 		} else {
 			// we have run out of chunks
 			// now we need to recurse
@@ -204,7 +203,11 @@ SourceResultType PhysicalRecursiveCTE::GetDataInternal(ExecutionContext &context
 					PopulateChunk(chunk, distinct_rows, distinct_idx, false);
 					PopulateChunk(chunk, payload_rows, payload_idx, false);
 				}
-				break;
+				if (chunk.size() == 0) {
+					return SourceResultType::FINISHED;
+				} else {
+					return SourceResultType::HAVE_MORE_OUTPUT;
+				}
 			}
 			if (!using_key) {
 				// set up the scan again
@@ -212,8 +215,7 @@ SourceResultType PhysicalRecursiveCTE::GetDataInternal(ExecutionContext &context
 			}
 		}
 	}
-
-	return chunk.size() == 0 ? SourceResultType::FINISHED : SourceResultType::HAVE_MORE_OUTPUT;
+	return SourceResultType::HAVE_MORE_OUTPUT;
 }
 
 void PhysicalRecursiveCTE::ExecuteRecursivePipelines(ExecutionContext &context) const {
