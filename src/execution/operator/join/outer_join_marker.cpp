@@ -77,10 +77,11 @@ void OuterJoinMarker::InitializeScan(OuterJoinGlobalScanState &gstate, OuterJoin
 	gstate.data->InitializeScanChunk(lstate.scan_chunk);
 }
 
-void OuterJoinMarker::Scan(OuterJoinGlobalScanState &gstate, OuterJoinLocalScanState &lstate, DataChunk &result) {
+bool OuterJoinMarker::Scan(OuterJoinGlobalScanState &gstate, OuterJoinLocalScanState &lstate, DataChunk &result) {
 	D_ASSERT(gstate.data);
 	// fill in NULL values for the LHS
-	while (gstate.data->Scan(gstate.global_scan, lstate.local_scan, lstate.scan_chunk)) {
+	result.SetCardinality(0);
+	if (gstate.data->Scan(gstate.global_scan, lstate.local_scan, lstate.scan_chunk)) {
 		idx_t result_count = 0;
 		// figure out which tuples didn't find a match in the RHS
 		for (idx_t i = 0; i < lstate.scan_chunk.size(); i++) {
@@ -100,8 +101,10 @@ void OuterJoinMarker::Scan(OuterJoinGlobalScanState &gstate, OuterJoinLocalScanS
 				                           result_count);
 			}
 			result.SetCardinality(result_count);
-			return;
 		}
+		return true;
+	} else {
+		return false;
 	}
 }
 

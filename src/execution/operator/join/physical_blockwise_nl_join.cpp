@@ -270,9 +270,11 @@ SourceResultType PhysicalBlockwiseNLJoin::GetDataInternal(ExecutionContext &cont
 	auto &lstate = input.local_state.Cast<BlockwiseNLJoinLocalScanState>();
 
 	// if the LHS is exhausted in a FULL/RIGHT OUTER JOIN, we scan chunks we still need to output
-	sink.right_outer.Scan(gstate.scan_state, lstate.scan_state, chunk);
-
-	return chunk.size() == 0 ? SourceResultType::FINISHED : SourceResultType::HAVE_MORE_OUTPUT;
+	if (sink.right_outer.Scan(gstate.scan_state, lstate.scan_state, chunk)) {
+		return SourceResultType::HAVE_MORE_OUTPUT;
+	} else {
+		return SourceResultType::FINISHED;
+	}
 }
 
 } // namespace duckdb

@@ -58,7 +58,7 @@ public:
 	void InitializeScan(OuterJoinGlobalScanState &gstate, OuterJoinLocalScanState &lstate);
 
 	//! Perform the scan
-	void Scan(OuterJoinGlobalScanState &gstate, OuterJoinLocalScanState &lstate, DataChunk &result);
+	bool Scan(OuterJoinGlobalScanState &gstate, OuterJoinLocalScanState &lstate, DataChunk &result);
 
 	//! Read-only matches vector
 	const bool *GetMatches() const {
