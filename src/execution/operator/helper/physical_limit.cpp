@@ -181,11 +181,11 @@ SourceResultType PhysicalLimit::GetDataInternal(ExecutionContext &context, DataC
 			return SourceResultType::FINISHED;
 		}
 		if (HandleOffset(chunk, state.current_offset, gstate.offset, gstate.limit)) {
-			break;
+			return SourceResultType::HAVE_MORE_OUTPUT;
 		}
 	}
 
-	return chunk.size() > 0 ? SourceResultType::HAVE_MORE_OUTPUT : SourceResultType::FINISHED;
+	return SourceResultType::FINISHED;
 }
 
 bool PhysicalLimit::HandleOffset(DataChunk &input, idx_t &current_offset, idx_t offset, idx_t limit) {
