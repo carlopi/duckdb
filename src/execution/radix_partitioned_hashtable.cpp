@@ -969,7 +969,7 @@ SourceResultType RadixPartitionedHashTable::GetData(ExecutionContext &context, D
 		return SourceResultType::FINISHED;
 	}
 
-	while (!gstate.finished && chunk.size() == 0) {
+	while (!gstate.finished) {
 		if (lstate.TaskFinished()) {
 			const auto res = gstate.AssignTask(sink, lstate, input.interrupt_state);
 			if (res != SourceResultType::HAVE_MORE_OUTPUT) {
@@ -978,6 +978,10 @@ SourceResultType RadixPartitionedHashTable::GetData(ExecutionContext &context, D
 			}
 		}
 		lstate.ExecuteTask(sink, gstate, chunk);
+		if (gstate.finished) {
+			return SourceResultType::FINISHED;
+		}
+		return SourceResultType::HAVE_MORE_OUTPUT;
 	}
 
 	if (chunk.size() != 0) {
