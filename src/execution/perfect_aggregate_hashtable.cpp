@@ -252,7 +252,7 @@ static void ReconstructGroupVector(uint32_t group_values[], Value &min, idx_t re
 	}
 }
 
-void PerfectAggregateHashTable::Scan(idx_t &scan_position, DataChunk &result) {
+SourceResultType PerfectAggregateHashTable::Scan(idx_t &scan_position, DataChunk &result) {
 	auto data_pointers = FlatVector::GetData<data_ptr_t>(addresses);
 	uint32_t group_values[STANDARD_VECTOR_SIZE];
 
@@ -272,7 +272,7 @@ void PerfectAggregateHashTable::Scan(idx_t &scan_position, DataChunk &result) {
 	}
 	if (entry_count == 0) {
 		// no entries found
-		return;
+		return SourceResultType::FINISHED;
 	}
 	// first reconstruct the groups from the group index
 	idx_t shift = total_required_bits;
@@ -284,6 +284,11 @@ void PerfectAggregateHashTable::Scan(idx_t &scan_position, DataChunk &result) {
 	result.SetCardinality(entry_count);
 	RowOperationsState row_state(*aggregate_allocator);
 	RowOperations::FinalizeStates(row_state, *layout_ptr, addresses, result, grouping_columns);
+
+	if (entry_count < STANDARD_VECTOR_SIZE) {
+		return SourceResultType::FINISHED;
+	}
+	return SourceResultType::HAVE_MORE_OUTPUT;
 }
 
 void PerfectAggregateHashTable::Destroy() {

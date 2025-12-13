@@ -28,7 +28,7 @@ public:
 	void Combine(PerfectAggregateHashTable &other);
 
 	//! Scan the HT starting from the scan_position
-	void Scan(idx_t &scan_position, DataChunk &result);
+	SourceResultType Scan(idx_t &scan_position, DataChunk &result);
 
 protected:
 	Vector addresses;

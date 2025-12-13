@@ -193,13 +193,7 @@ SourceResultType PhysicalPerfectHashAggregate::GetDataInternal(ExecutionContext 
 	auto &state = input.global_state.Cast<PerfectHashAggregateState>();
 	auto &gstate = sink_state->Cast<PerfectHashAggregateGlobalState>();
 
-	gstate.ht->Scan(state.ht_scan_position, chunk);
-
-	if (chunk.size() > 0) {
-		return SourceResultType::HAVE_MORE_OUTPUT;
-	} else {
-		return SourceResultType::FINISHED;
-	}
+	return gstate.ht->Scan(state.ht_scan_position, chunk);
 }
 
 InsertionOrderPreservingMap<string> PhysicalPerfectHashAggregate::ParamsToString() const {
