@@ -366,6 +366,8 @@ while (child_result == OperatorResultType::HAVE_MORE_OUTPUT && iter < 3) {
 		state.cached_chunk->Move(*data);
 		data->Reset();
 		break;
+	} else {
+		break;
 	}
 #endif
 }
