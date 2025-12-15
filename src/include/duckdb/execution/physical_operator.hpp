@@ -263,7 +263,7 @@ public:
 //! inherit their state class from the CachingOperatorState.
 class CachingPhysicalOperator : public PhysicalOperator {
 public:
-	static constexpr const idx_t CACHE_THRESHOLD = STANDARD_VECTOR_SIZE / 4;
+	static constexpr const idx_t CACHE_THRESHOLD = STANDARD_VECTOR_SIZE / 2;
 	CachingPhysicalOperator(PhysicalPlan &physical_plan, PhysicalOperatorType type, vector<LogicalType> types,
 	                        idx_t estimated_cardinality);
 
