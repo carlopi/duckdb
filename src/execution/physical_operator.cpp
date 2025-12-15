@@ -335,7 +335,7 @@ OperatorResultType CachingPhysicalOperator::Execute(ExecutionContext &context, D
 		return child_result;
 	}
 	// TODO chunk size of 0 should not result in a cache being created!
-	if (chunk.size() < CACHE_THRESHOLD) {
+	if (chunk.size() > 0 && chunk.size() <= CACHE_THRESHOLD) {
 		// we have filtered out a significant amount of tuples
 		// add this chunk to the cache and continue
 
@@ -346,7 +346,7 @@ OperatorResultType CachingPhysicalOperator::Execute(ExecutionContext &context, D
 
 		state.cached_chunk->Append(chunk);
 
-		if (state.cached_chunk->size() >= (STANDARD_VECTOR_SIZE - CACHE_THRESHOLD) ||
+		if (state.cached_chunk->size() > (STANDARD_VECTOR_SIZE - CACHE_THRESHOLD) ||
 		    child_result == OperatorResultType::FINISHED) {
 			// chunk cache full: return it
 			chunk.Move(*state.cached_chunk);
