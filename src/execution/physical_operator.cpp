@@ -322,6 +322,10 @@ OperatorResultType CachingPhysicalOperator::Execute(ExecutionContext &context, D
 	// Execute child operator
 	auto child_result = ExecuteInternal(context, input, chunk, gstate, state);
 
+	if (chunk.size() == 0 && child_result == OperatorResultType::HAVE_MORE_OUTPUT) {
+		child_result = ExecuteInternal(context, input, chunk, gstate, state);
+	}
+
 #if STANDARD_VECTOR_SIZE >= 128
 	if (!state.initialized) {
 		state.initialized = true;
@@ -330,6 +334,8 @@ OperatorResultType CachingPhysicalOperator::Execute(ExecutionContext &context, D
 	if (!state.can_cache_chunk) {
 		return child_result;
 	}
+
+
 	// TODO chunk size of 0 should not result in a cache being created!
 	if (chunk.size() > 0 && chunk.size() <= CACHE_THRESHOLD) {
 		// we have filtered out a significant amount of tuples
