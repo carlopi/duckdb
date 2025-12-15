@@ -359,12 +359,10 @@ while (child_result == OperatorResultType::HAVE_MORE_OUTPUT && iter < 3) {
 		auto data = make_uniq<DataChunk>();
 		data->Initialize(Allocator::Get(context.client), chunk.GetTypes());
 		data->Append(chunk);
-		chunk.Reset();
 		chunk.Initialize(Allocator::Get(context.client), data->GetTypes());
 		chunk.Move(*state.cached_chunk);
 		state.cached_chunk->Initialize(Allocator::Get(context.client), chunk.GetTypes());
 		state.cached_chunk->Move(*data);
-		data->Reset();
 		break;
 	} else {
 		break;
