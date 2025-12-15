@@ -319,11 +319,15 @@ OperatorResultType CachingPhysicalOperator::Execute(ExecutionContext &context, D
                                                     GlobalOperatorState &gstate, OperatorState &state_p) const {
 	auto &state = state_p.Cast<CachingOperatorState>();
 
+	auto child_result = OperatorResultType::HAVE_MORE_OUTPUT;
+int iter = 0;
+while (child_result == OperatorResultType::HAVE_MORE_OUTPUT && iter < 3) {
+	iter++;
 	// Execute child operator
-	auto child_result = ExecuteInternal(context, input, chunk, gstate, state);
-
-	if (chunk.size() == 0 && child_result == OperatorResultType::HAVE_MORE_OUTPUT) {
-		child_result = ExecuteInternal(context, input, chunk, gstate, state);
+	child_result = ExecuteInternal(context, input, chunk, gstate, state);
+	
+	if (chunk.size() == 0) {
+		continue;
 	}
 
 #if STANDARD_VECTOR_SIZE >= 128
@@ -337,7 +341,7 @@ OperatorResultType CachingPhysicalOperator::Execute(ExecutionContext &context, D
 
 
 	// TODO chunk size of 0 should not result in a cache being created!
-	if (chunk.size() > 0 && chunk.size() <= CACHE_THRESHOLD) {
+	if (chunk.size() > 0 && (!state.cached_chunk || chunk.size() + state.cached_chunk->size() <= STANDARD_VECTOR_SIZE)) {
 		// we have filtered out a significant amount of tuples
 		// add this chunk to the cache and continue
 
@@ -348,18 +352,23 @@ OperatorResultType CachingPhysicalOperator::Execute(ExecutionContext &context, D
 
 		state.cached_chunk->Append(chunk);
 
-		if (state.cached_chunk->size() > (STANDARD_VECTOR_SIZE - CACHE_THRESHOLD) ||
-		    child_result == OperatorResultType::FINISHED) {
-			// chunk cache full: return it
-			chunk.Move(*state.cached_chunk);
-			state.cached_chunk->Initialize(Allocator::Get(context.client), chunk.GetTypes());
-			return child_result;
-		} else {
-			// chunk cache not full return empty result
-			chunk.Reset();
-		}
+		chunk.Reset();
+
+		continue;
+	} else if (chunk.size() > 0 && state.cached_chunk && state.cached_chunk->size() > chunk.size()) {
+		auto data = make_uniq<DataChunk>();
+		data->Initialize(Allocator::Get(context.client), chunk.GetTypes());
+		data->Append(chunk);
+		chunk.Reset();
+		chunk.Initialize(Allocator::Get(context.client), data->GetTypes());
+		chunk.Move(*state.cached_chunk);
+		state.cached_chunk->Initialize(Allocator::Get(context.client), chunk.GetTypes());
+		state.cached_chunk->Move(*data);
+		data->Reset();
+		break;
 	}
 #endif
+}
 
 	return child_result;
 }
