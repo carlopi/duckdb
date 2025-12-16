@@ -254,6 +254,7 @@ public:
 	}
 
 	unique_ptr<DataChunk> cached_chunk;
+	int num_cached;
 	bool initialized = false;
 	//! Whether or not the chunk can be cached
 	bool can_cache_chunk = false;
