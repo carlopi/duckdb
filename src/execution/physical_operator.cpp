@@ -334,6 +334,7 @@ while (child_result == OperatorResultType::HAVE_MORE_OUTPUT && iter < 3) {
 	if (!state.initialized) {
 		state.initialized = true;
 		state.can_cache_chunk = caching_supported && PhysicalOperator::OperatorCachingAllowed(context);
+		state.num_cached = 0;
 	}
 	if (!state.can_cache_chunk) {
 		return child_result;
@@ -341,21 +342,23 @@ while (child_result == OperatorResultType::HAVE_MORE_OUTPUT && iter < 3) {
 
 
 	// TODO chunk size of 0 should not result in a cache being created!
-	if (chunk.size() > 0 && (!state.cached_chunk || chunk.size() + state.cached_chunk->size() <= STANDARD_VECTOR_SIZE)) {
+	if (chunk.size() > 0 && (!state.cached_chunk || chunk.size() + state.cached_chunk->size() <= STANDARD_VECTOR_SIZE) && state.num_cached < 10) {
 		// we have filtered out a significant amount of tuples
 		// add this chunk to the cache and continue
 
 		if (!state.cached_chunk) {
+			state.num_cached = 0;
 			state.cached_chunk = make_uniq<DataChunk>();
 			state.cached_chunk->Initialize(Allocator::Get(context.client), chunk.GetTypes());
 		}
 
 		state.cached_chunk->Append(chunk);
+		state.num_cached++;
 
 		chunk.Reset();
 
 		continue;
-	} else if (chunk.size() > 0 && state.cached_chunk && state.cached_chunk->size() > chunk.size()) {
+	} else if (chunk.size() > 0 && state.cached_chunk && (state.cached_chunk->size() > chunk.size() || state.num_cached >= 10)) {
 		auto data = make_uniq<DataChunk>();
 		data->Initialize(Allocator::Get(context.client), chunk.GetTypes());
 		data->Append(chunk);
@@ -365,6 +368,7 @@ while (child_result == OperatorResultType::HAVE_MORE_OUTPUT && iter < 3) {
 		state.cached_chunk->Destroy();
 		state.cached_chunk->Initialize(Allocator::Get(context.client), chunk.GetTypes());
 		state.cached_chunk->Move(*data);
+		state.num_cached = 1;
 		break;
 	} else {
 		break;
