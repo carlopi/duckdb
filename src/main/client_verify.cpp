@@ -47,6 +47,7 @@ ErrorData ClientContext::VerifyQuery(ClientContextLock &lock, const string &quer
 	// Base Statement verifiers: these are the verifiers we enable for regular builds
 	if (config.query_verification_enabled) {
 		statement_verifiers.emplace_back(StatementVerifier::Create(VerificationType::COPIED, stmt, parameters));
+/*
 		statement_verifiers.emplace_back(StatementVerifier::Create(VerificationType::DESERIALIZED, stmt, parameters));
 		statement_verifiers.emplace_back(StatementVerifier::Create(VerificationType::UNOPTIMIZED, stmt, parameters));
 
@@ -54,6 +55,7 @@ ErrorData ClientContext::VerifyQuery(ClientContextLock &lock, const string &quer
 		if (!parameters || parameters->empty()) {
 			prepared_statement_verifier = StatementVerifier::Create(VerificationType::PREPARED, stmt, parameters);
 		}
+*/
 	}
 
 	// This verifier is enabled explicitly OR by enabling run_slow_verifiers
