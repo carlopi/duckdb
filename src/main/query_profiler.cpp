@@ -29,6 +29,7 @@ QueryProfiler::QueryProfiler(ClientContext &context_p)
 }
 
 bool QueryProfiler::IsEnabled() const {
+	return true;
 	return is_explain_analyze || ClientConfig::GetConfig(context).enable_profiler;
 }
 

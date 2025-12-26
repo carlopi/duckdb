@@ -125,13 +125,14 @@ protected:
 		}
 		return Prompt::HandleSetting(state, component);
 	}
-
+/*
 	duckdb::Connection &GetConnection(ShellState &state) override {
 		if (!status_bar.connection) {
 			status_bar.connection = make_uniq<duckdb::Connection>(*state.db);
 		}
 		return *status_bar.connection;
 	}
+*/
 };
 
 ShellProgressBar::ShellProgressBar() {
