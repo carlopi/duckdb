@@ -66,7 +66,7 @@ void SetArrowFormat(DuckDBArrowSchemaHolder &root_holder, ArrowSchema &child, co
 void SetArrowStructFormat(DuckDBArrowSchemaHolder &root_holder, ArrowSchema &child, const LogicalType &type,
                           ClientProperties &options, ClientContext &context, bool map_is_parent = false) {
 	child.format = "+s";
-	auto &child_types = StructType::GetChildTypes(type);
+	auto child_types = StructType::GetChildTypes(type);
 	child.n_children = NumericCast<int64_t>(child_types.size());
 	root_holder.nested_children.emplace_back();
 	root_holder.nested_children.back().resize(child_types.size());
@@ -347,7 +347,7 @@ void SetArrowFormat(DuckDBArrowSchemaHolder &root_holder, ArrowSchema &child, co
 	case LogicalTypeId::UNION: {
 		std::string format = "+us:";
 
-		auto &child_types = UnionType::CopyMemberTypes(type);
+		auto child_types = UnionType::CopyMemberTypes(type);
 		child.n_children = NumericCast<int64_t>(child_types.size());
 		root_holder.nested_children.emplace_back();
 		root_holder.nested_children.back().resize(child_types.size());

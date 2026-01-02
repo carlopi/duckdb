@@ -57,7 +57,7 @@ void ArrowUnionData::Finalize(ArrowAppendData &append_data, const LogicalType &t
 	result->n_buffers = 1;
 	result->buffers[0] = append_data.GetMainBuffer().data();
 
-	auto &child_types = UnionType::CopyMemberTypes(type);
+	auto child_types = UnionType::CopyMemberTypes(type);
 	ArrowAppender::AddChildren(append_data, child_types.size());
 	result->children = append_data.child_pointers.data();
 	result->n_children = NumericCast<int64_t>(child_types.size());
