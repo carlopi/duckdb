@@ -93,7 +93,7 @@ bignum_t HugeintCastToBignum::Operation(uhugeint_t int_value, Vector &result) {
 template <>
 bignum_t HugeintCastToBignum::Operation(hugeint_t int_value, Vector &result) {
 	// Determine if the number is negative
-	bool is_negative = int_value.upper >> 63 & 1;
+	const bool is_negative = int_value.upper < 0;
 	if (is_negative) {
 		// We must check if it's -170141183460469231731687303715884105728, since it's not possible to negate it
 		// without overflowing
