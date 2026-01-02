@@ -38,7 +38,7 @@ SequenceCatalogEntry &BindSequence(Binder &binder, string &catalog, string &sche
 	return binder.EntryRetriever().GetEntry(catalog, schema, sequence_lookup)->Cast<SequenceCatalogEntry>();
 }
 
-SequenceCatalogEntry &BindSequenceFromContext(ClientContext &context, string &catalog, string &schema,
+SequenceCatalogEntry BindSequenceFromContext(ClientContext &context, string &catalog, string &schema,
                                               const string &name) {
 	Binder::BindSchemaOrCatalog(context, catalog, schema);
 	return Catalog::GetEntry<SequenceCatalogEntry>(context, catalog, schema, name);
@@ -123,7 +123,7 @@ unique_ptr<FunctionData> Deserialize(Deserializer &deserializer, ScalarFunction 
 	}
 	auto &seq_info = create_info->Cast<CreateSequenceInfo>();
 	auto &context = deserializer.Get<ClientContext &>();
-	auto &sequence = BindSequenceFromContext(context, seq_info.catalog, seq_info.schema, seq_info.name);
+	auto sequence = BindSequenceFromContext(context, seq_info.catalog, seq_info.schema, seq_info.name);
 	return make_uniq<NextvalBindData>(sequence);
 }
 
