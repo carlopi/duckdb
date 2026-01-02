@@ -13,7 +13,7 @@ PhysicalOperator &PhysicalPlanGenerator::CreatePlan(LogicalWindow &op) {
 	D_ASSERT(op.children.size() == 1);
 
 	op.estimated_cardinality = op.EstimateCardinality(context);
-	reference<PhysicalOperator> plan = CreatePlan(*op.children[0]);
+	PhysicalOperator& plan = CreatePlan(*op.children[0]);
 #ifdef DEBUG
 	for (auto &expr : op.expressions) {
 		D_ASSERT(expr->IsWindow());
