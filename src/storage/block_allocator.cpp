@@ -43,7 +43,10 @@ static void FreeVirtualMemory(const data_ptr_t pointer, const idx_t size) {
 	success = munmap(pointer, size) == 0;
 #endif
 	if (!success) {
-		throw InternalException("FreeVirtualMemory failed");
+		std::cout << "FreeVirtualMemory failed\n";
+		exit(1);
+	//	return;
+	//	throw InternalException("FreeVirtualMemory failed");
 	}
 }
 
