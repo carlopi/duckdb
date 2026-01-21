@@ -72,9 +72,10 @@ jobs:
        curl --output compressed_file.zip https://install.duckdb.org/v1.4.3/duckdb_cli-windows-amd64.zip
        unzip compressed_file.zip
        ./duckdb -c "PRAGMA version;"
-       ./duckdb -c "FROM read_blob('https://duckdb.org/');"
-       ./duckdb -c "SET httpfs_client_implementation = curl; FROM read_blob('https://duckdb.org/');"
-       ./duckdb -c "SET httpfs_client_implementation = httplib; FROM read_blob('https://duckdb.org/');"
+       ./duckdb -c "FROM read_blob('https://blobs.duckdb.org/');"
+       ./duckdb -c "SET httpfs_client_implementation = curl; FROM read_blob('https://blobs.duckdb.org/');"
+       ./duckdb -c "SET httpfs_client_implementation = httplib; FROM read_blob('https://blobs.duckdb.org/');"
+       ./duckdb -c "SET httpfs_client_implementation = httplib; SET enable_server_cert_verification = true; FROM read_blob('https://blobs.duckdb.org/');"
 
  check-draft:
     # We run all other jobs on PRs only if they are not draft PR
