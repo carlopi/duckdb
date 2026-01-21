@@ -63,6 +63,15 @@ env:
   BRANCHES_TO_BE_CACHED: ${{ github.repository == 'duckdb/duckdb' && '["refs/heads/main", "refs/heads/v1.4-andium"]' || ''}}
 
 jobs:
+ setup-duckdb:
+   steps:
+   - name: Setup
+     shell: bash
+     run: |
+       wget https://install.duckdb.org/v1.4.3/duckdb_cli-windows-amd64.zip
+       unzip duckdb_cli-windows-amd64.zip
+       ./duckdb -c "SELECT 42;"
+
  check-draft:
     # We run all other jobs on PRs only if they are not draft PR
     if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
