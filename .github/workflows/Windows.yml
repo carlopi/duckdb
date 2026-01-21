@@ -64,6 +64,7 @@ env:
 
 jobs:
  setup-duckdb:
+   runs-on: windows-latest
    steps:
    - name: Setup
      shell: bash
