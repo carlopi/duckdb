@@ -64,6 +64,7 @@ jobs:
       CRASH_ON_ASSERT: 1
       CMAKE_CXX_FLAGS: '-DDEBUG'
       FORCE_ASSERT: 1
+      CORE_EXTENSIONS: "json;parquet;icu;autocomplete"
 
     steps:
     - uses: actions/checkout@v4
