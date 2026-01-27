@@ -69,9 +69,11 @@ jobs:
    - name: Setup
      shell: bash
      run: |
-       curl --output compressed_file.zip https://install.duckdb.org/v1.4.3/duckdb_cli-windows-amd64.zip
+       curl --output compressed_file.zip https://install.duckdb.org/v1.4.4/duckdb_cli-windows-amd64.zip
        unzip compressed_file.zip
        ./duckdb -c "PRAGMA version;"
+       ./duckdb -c "FORCE INSTALL httpfs FROM core_nightly;"
+       ./duckdb -c "FROM duckdb_extensions();"
        ./duckdb -c "SET httpfs_client_implementation = httplib; SET enable_server_cert_verification = true; FROM read_blob('https://example.com/');"
        ./duckdb -c "FROM read_blob('https://example.com/');"
        ./duckdb -c "SET httpfs_client_implementation = curl; FROM read_blob('https://example.com/');"
