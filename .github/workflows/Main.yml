@@ -64,7 +64,7 @@ jobs:
       FORCE_DEBUG: 1
       FORCE_ASSERT: 1
       REDUCE_SYMBOLS: 1
-      CORE_EXTENSIONS: 'json;autocomplete;parquet;icu'
+      CORE_EXTENSIONS: 'autocomplete'
 
     steps:
     - uses: actions/checkout@v4
