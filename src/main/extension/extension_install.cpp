@@ -429,8 +429,8 @@ static unique_ptr<ExtensionInstallInfo> InstallFromHttpUrl(DatabaseInstance &db,
 
 	KeyValueSecretReader secret_reader(db, "http", input_url);
 
-	bool use_ssl_is_set;
-	bool use_ssl;
+	bool use_ssl_is_set = false;
+	bool use_ssl = false;
 	secret_reader.TryGetSecretKey<bool>("use_ssl_is_set", use_ssl_is_set);
 	secret_reader.TryGetSecretKey<bool>("use_ssl", use_ssl);
 
