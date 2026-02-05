@@ -5,6 +5,7 @@
 #include "duckdb/common/serializer/binary_serializer.hpp"
 #include "duckdb/common/string_util.hpp"
 #include "duckdb/common/types/uuid.hpp"
+#include "duckdb/common/file_opener.hpp"
 #include "duckdb/main/client_data.hpp"
 #include "duckdb/main/extension_helper.hpp"
 #include "duckdb/main/extension_install_info.hpp"
@@ -405,7 +406,7 @@ static unique_ptr<ExtensionInstallInfo> DirectInstallExtension(DatabaseInstance 
 }
 
 #ifndef DUCKDB_DISABLE_EXTENSION_LOAD
-static unique_ptr<ExtensionInstallInfo> InstallFromHttpUrl(DatabaseInstance &db, const string &url,
+static unique_ptr<ExtensionInstallInfo> InstallFromHttpUrl(DatabaseInstance &db, const string &input_url,
                                                            const string &extension_name, const string &temp_path,
                                                            const string &local_extension_path,
                                                            ExtensionInstallOptions &options,
@@ -424,6 +425,33 @@ static unique_ptr<ExtensionInstallInfo> InstallFromHttpUrl(DatabaseInstance &db,
 				}
 			}
 		}
+	}
+
+	KeyValueSecretReader secret_reader(db, "http", input_url);
+
+	bool use_ssl_is_set;
+	bool use_ssl;
+	secret_reader.TryGetSecretKey<bool>("use_ssl_is_set", use_ssl_is_set);
+	secret_reader.TryGetSecretKey<bool>("use_ssl", use_ssl);
+
+	string url = input_url;
+
+	if (use_ssl_is_set && use_ssl) {
+		if (!db.ExtensionIsLoaded("httpfs")) {
+			auto fs = FileSystem::CreateLocal();
+			try {
+				ExtensionHelper::LoadExternalExtension(db, *fs, "httpfs");
+			} catch (Exception &ex) {
+				ErrorData error_data(ex);
+				if (extension_name == "httpfs") {
+					throw IOException("Configuration (possibly due to a temporary or persistent secret) requires "
+					                  "'httpfs' extension to be already available locally.");
+				}
+				error_data.Throw("Configuration (possibly due to a temporary or persistent secret) requires 'httpfs' "
+				                 "extension to be already available locally.\n");
+			}
+		}
+		url = "https://" + input_url.substr(7);
 	}
 
 	HTTPHeaders headers(db);

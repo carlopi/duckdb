@@ -41,6 +41,8 @@ struct HTTPParams {
 	float retry_backoff = DEFAULT_RETRY_BACKOFF;
 	bool keep_alive = DEFAULT_KEEP_ALIVE;
 	bool follow_location = true;
+	bool use_ssl_is_set = false;
+	bool use_ssl = true;
 
 	string http_proxy;
 	idx_t http_proxy_port;
