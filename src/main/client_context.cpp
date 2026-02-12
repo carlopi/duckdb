@@ -162,6 +162,15 @@ struct DebugClientContextState : public ClientContextState {
 };
 #endif
 
+static void RegisterDefaultLogger(duckdb::DatabaseInstance &db_instance,
+                                  duckdb::shared_ptr<duckdb::LogStorage> storage_ptr) {
+	auto &log_manager = db_instance.GetLogManager();
+	log_manager.RegisterLogStorage("default_log_storage", storage_ptr);
+	log_manager.SetLogStorage(db_instance, "default_log_storage");
+	log_manager.SetEnableLogging(true);
+	log_manager.SetLogLevel(duckdb::LogLevel::LOG_WARNING);
+}
+
 ClientContext::ClientContext(shared_ptr<DatabaseInstance> database)
     : db(std::move(database)), interrupted(false), transaction(*this), connection_id(DConstants::INVALID_INDEX) {
 	registered_state = make_uniq<RegisteredStateManager>();
@@ -170,6 +179,11 @@ ClientContext::ClientContext(shared_ptr<DatabaseInstance> database)
 #endif
 	LoggingContext context(LogContextScope::CONNECTION);
 	logger = db->GetLogManager().CreateLogger(context, true);
+
+	auto default_logging_storage = duckdb::make_shared_ptr<InMemoryLogStorage>(*db);
+	duckdb::shared_ptr<duckdb::LogStorage> storage_ptr = default_logging_storage;
+
+	RegisterDefaultLogger(*db, default_logging_storage);
 	client_data = make_uniq<ClientData>(*this);
 
 #ifdef __APPLE__

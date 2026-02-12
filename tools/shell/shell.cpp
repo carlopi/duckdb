@@ -1162,7 +1162,7 @@ static void RegisterShellLogger(duckdb::DuckDB &db, duckdb::shared_ptr<duckdb::L
 	auto &log_manager = db_instance->GetLogManager();
 	log_manager.RegisterLogStorage("shell_log_storage", storage_ptr);
 	log_manager.SetLogStorage(*db_instance, "shell_log_storage");
-	log_manager.SetEnableLogging(db_instance);
+	log_manager.SetEnableLogging(true);
 	log_manager.SetLogLevel(duckdb::LogLevel::LOG_WARNING);
 }
 
