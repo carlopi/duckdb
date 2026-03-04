@@ -6,6 +6,7 @@
 #include "duckdb/main/config.hpp"
 #include "duckdb/main/connection.hpp"
 #include "duckdb/main/extension/extension_loader.hpp"
+#include "duckdb/main/shell_command_extension.hpp"
 #include "duckdb/parser/parsed_data/create_collation_info.hpp"
 #include "duckdb/planner/expression/bound_function_expression.hpp"
 #include "include/icu-current.hpp"
@@ -425,6 +426,89 @@ static void SetICUCalendar(ClientContext &context, SetScope scope, Value &parame
 	throw NotImplementedException("Unknown Calendar '%s'!\n%s", name, candidate_str);
 }
 
+static ShellCommandResult IcuShellCommand(DatabaseInstance &db, const vector<string> &args,
+                                          optional_ptr<ShellCommandExtensionInfo> info) {
+	// args[0] = "icu"
+	const idx_t nargs = args.size();
+
+	// .icu  or  .icu help
+	if (nargs == 1 || (nargs >= 2 && args[1] == "help")) {
+		fprintf(stdout, "Usage:\n"
+		                "  .icu calendar              Show the current calendar\n"
+		                "  .icu calendar list         List available calendars\n"
+		                "  .icu calendar set NAME     Set the active calendars\n"
+		                "  .icu version               Print icu library version\n"
+		);
+		return ShellCommandResult::SUCCESS;
+	}
+
+	if (args[1] == "calendar") {
+		if (nargs == 2) {
+			// .icu calendar — show current value
+			Connection con(db);
+			auto result = con.Query("SELECT value FROM duckdb_settings() WHERE name = 'Calendar'");
+			if (result->HasError()) {
+				fprintf(stderr, "Error: %s\n", result->GetError().c_str());
+				return ShellCommandResult::FAIL;
+			}
+			auto chunk = result->Fetch();
+			if (chunk && chunk->size() > 0) {
+				fprintf(stdout, "%s\n", chunk->GetValue(0, 0).ToString().c_str());
+			}
+			return ShellCommandResult::SUCCESS;
+		}
+
+		if (nargs >= 3 && args[2] == "list") {
+			// .icu calendar list — enumerate all supported calendars
+			Connection con(db);
+			auto result = con.Query("SELECT name FROM icu_calendar_names() ORDER BY name");
+			if (result->HasError()) {
+				fprintf(stderr, "Error: %s\n", result->GetError().c_str());
+				return ShellCommandResult::FAIL;
+			}
+			while (true) {
+				auto chunk = result->Fetch();
+				if (!chunk || chunk->size() == 0) {
+					break;
+				}
+				for (idx_t i = 0; i < chunk->size(); i++) {
+					fprintf(stdout, "%s\n", chunk->GetValue(0, i).ToString().c_str());
+				}
+			}
+			return ShellCommandResult::SUCCESS;
+		}
+
+		if (nargs >= 3 && args[2] == "set") {
+			if (nargs < 4) {
+				fprintf(stderr, "Usage: .icu calendar set NAME\n");
+				return ShellCommandResult::FAIL;
+			}
+			const string &name = args[3];
+			// SET GLOBAL propagates to all future connections; equivalent to SET Calendar = 'name'
+			string safe_name = StringUtil::Replace(name, "'", "''");
+			Connection con(db);
+			auto result = con.Query("SET GLOBAL Calendar = '" + safe_name + "'");
+			if (result->HasError()) {
+				fprintf(stderr, "Error: %s\n", result->GetError().c_str());
+				return ShellCommandResult::FAIL;
+			}
+			fprintf(stdout, "Calendar set to: %s\n", name.c_str());
+			return ShellCommandResult::SUCCESS;
+		}
+
+		fprintf(stderr, "Unknown subcommand: '%s'\n", args[2].c_str());
+		fprintf(stderr, "Run '.icu help' for usage.\n");
+		return ShellCommandResult::FAIL;
+	} else if (args[1] == "version") {
+		fprintf(stdout, "ICU database version is currently: 77-1\n");
+		return ShellCommandResult::SUCCESS;
+	}
+
+	fprintf(stderr, "Unknown subcommand: '%s'\n", args[1].c_str());
+	fprintf(stderr, "Run '.icu help' for usage.\n");
+	return ShellCommandResult::FAIL;
+}
+
 static void LoadInternal(ExtensionLoader &loader) {
 	// iterate over all the collations
 	int32_t count;
@@ -497,6 +581,14 @@ static void LoadInternal(ExtensionLoader &loader) {
 
 	TableFunction cal_names("icu_calendar_names", {}, ICUCalendarFunction, ICUCalendarBind, ICUCalendarInit);
 	loader.RegisterFunction(cal_names);
+
+	// Shell dot-command: .icu calendar [list|set NAME]
+	ShellCommandExtension icu_shell_cmd;
+	icu_shell_cmd.command = "icu";
+	icu_shell_cmd.usage = "calendar [list|set NAME]";
+	icu_shell_cmd.description = "ICU locale commands — manage the active calendar";
+	icu_shell_cmd.callback = IcuShellCommand;
+	loader.RegisterShellCommand(std::move(icu_shell_cmd));
 }
 
 void IcuExtension::Load(ExtensionLoader &loader) {
