@@ -235,13 +235,6 @@ OffsetPruningResult RowGroupReorderer::GetOffsetAfterPruning(const OrderByStatis
 		auto column_stats = partition_stats.partition_row_group->GetColumnStatistics(storage_index);
 		Value comparison_value = RetrieveStat(*column_stats, order_by, column_type);
 		if (comparison_value.IsNull()) {
-			if (null_order == OrderByNullType::NULLS_LAST) {
-				// With NULLS_LAST, null-stats row groups are scanned after all non-null row groups.
-				// They fall outside the offset range being pruned here, so skip them.
-				continue;
-			}
-			// With NULLS_FIRST, null-stats row groups come first and would need to be counted
-			// toward the offset before non-null groups. This case is not yet supported.
 			return {row_offset, 0};
 		}
 		auto entry = RowGroupOffsetEntry {partition_stats.count, std::move(column_stats)};
