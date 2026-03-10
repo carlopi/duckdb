@@ -278,6 +278,10 @@ optional_ptr<SegmentNode<RowGroup>> RowGroupReorderer::GetRootSegment(RowGroupSe
 	}
 
 	if (row_group_map.empty()) {
+
+		if (options.null_order == OrderByNullType::NULLS_FIRST) {
+			exit(2);
+		}
 		// All row groups have unknown/null stats - scan them all without reordering
 		for (auto &remaining_row_group : remaining_row_groups) {
 			ordered_row_groups.push_back(remaining_row_group);

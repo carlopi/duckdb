@@ -113,13 +113,6 @@ optional_ptr<LogicalOrder> RowGroupPruner::FindLogicalOrder(const LogicalLimit &
 	}
 
 	auto &logical_order = current_op.get().Cast<LogicalOrder>();
-	for (const auto &order : logical_order.orders) {
-		// FIXME: the logic to handle this has now been implemented in the row group reorderer,
-		// but we do not enable the optimization until more thorough testing
-		if (order.null_order == OrderByNullType::NULLS_FIRST) {
-			return nullptr;
-		}
-	}
 
 	auto order_column_type = logical_order.orders[0].expression->return_type;
 	if (!order_column_type.IsNumeric() && !order_column_type.IsTemporal() &&
