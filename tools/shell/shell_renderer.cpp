@@ -1665,11 +1665,13 @@ public:
 		if (budget_hit) {
 			idx_t next_offset = current_offset + shown;
 			string remaining = to_string(total - shown);
-			if (total - shown == total_upper_bound) {
-				remaining = "at least " + remaining;
+			if (total - shown >= total_upper_bound) {
+				remaining = "at least " + remaining + " more";
+			} else {
+				remaining = "exactly " + remaining + " more";
 			}
 			out.Print("(" + to_string(shown) + " rows, " + remaining +
-			          " more \xe2\x80\x94 OFFSET " + to_string(next_offset) + ")\n");
+			          " - paginate via OFFSET " + to_string(next_offset) + ")\n");
 		} else {
 			out.Print("(" + to_string(shown) + " rows)\n");
 		}
