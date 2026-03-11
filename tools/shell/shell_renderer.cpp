@@ -4,6 +4,10 @@
 #include "duckdb/common/box_renderer.hpp"
 #include "shell_highlight.hpp"
 #include "duckdb/logging/log_storage.hpp"
+#include "duckdb/parser/parser.hpp"
+#include "duckdb/parser/statement/select_statement.hpp"
+#include "duckdb/parser/result_modifier.hpp"
+#include "duckdb/parser/expression/constant_expression.hpp"
 #include <stdexcept>
 #include <cstring>
 
@@ -1558,6 +1562,161 @@ public:
 };
 
 //===--------------------------------------------------------------------===//
+// LLM Renderer
+//===--------------------------------------------------------------------===//
+class ModeLlmRenderer : public ShellRenderer {
+public:
+	explicit ModeLlmRenderer(ShellState &state) : ShellRenderer(state) {
+	}
+
+	bool RequireMaterializedResult() const override {
+		return false;
+	}
+
+	bool ShouldUsePager(RenderingQueryResult &, PagerMode) override {
+		return false;
+	}
+
+	SuccessState RenderQueryResult(PrintStream &out, ShellState &state, RenderingQueryResult &result) override {
+		const idx_t total_upper_bound = state.llm_bytes_budget;
+		idx_t total = 0;
+		idx_t budget = state.llm_bytes_budget;
+		idx_t trunc = state.llm_value_truncation;
+		auto &null_s = state.llm_null;
+		auto &cols = result.metadata.column_names;
+
+		// Detect existing top-level OFFSET so the footer computes the correct next offset
+		idx_t current_offset = ExtractTopLevelOffset(state.current_query);
+
+		// Header: pipe-separated column names, no padding
+		string header;
+		for (idx_t i = 0; i < cols.size(); i++) {
+			if (i > 0) {
+				header += " | ";
+			}
+			header += cols[i];
+		}
+		out.Print(header + "\n");
+
+		idx_t budget_used = header.size() + 1;
+		idx_t shown = 0;
+		bool budget_hit = false;
+		bool truncation_warned = false;
+
+		for (auto &row : result) {
+			total++;
+			if (total - shown >= total_upper_bound) {
+				break;
+			}
+			if (budget_hit) {
+				continue;
+			}
+			string line;
+			for (idx_t c = 0; c < row.data.size(); c++) {
+				if (c > 0) {
+					line += " | ";
+				}
+				if (row.is_null[c]) {
+					line += null_s;
+				} else {
+					string val(row.data[c].GetString());
+					if (trunc > 0 && val.size() > trunc) {
+						if (trunc == 1) {
+							// trunc=1 would leave zero chars before the ellipsis — show at
+							// least one character and warn once per query
+							if (!truncation_warned) {
+								state.PrintF(PrintOutput::STDERR,
+								             "Warning: mode_llm_value_truncation (1) is too small to show any "
+								             "content before the ellipsis. Raise .mode_llm_value_truncation.\n");
+								truncation_warned = true;
+							}
+							val = string(1, val[0]) + "\xe2\x80\xa6";
+						} else {
+							// truncate and append UTF-8 ellipsis (…)
+							val = val.substr(0, trunc - 1) + "\xe2\x80\xa6";
+						}
+					}
+					line += val;
+				}
+			}
+			// Reserve ~60 bytes for the footer line.
+			// Always print at least one row — a budget so small that even the
+			// first row doesn't fit is a misconfiguration, not a reason to emit
+			// zero data. Log a warning so the user knows to raise mode_llm_bytes_budget.
+			if (budget > 0 && budget_used + line.size() + 60 > budget) {
+				if (shown == 0) {
+					out.Print(line + "\n");
+					shown++;
+					state.PrintF(PrintOutput::STDERR,
+					             "Warning: mode_llm_bytes_budget (%llu bytes) is smaller than a single row "
+					             "(%llu bytes). Raise .mode_llm_bytes_budget to suppress this warning.\n",
+					             (unsigned long long)budget, (unsigned long long)(line.size() + 60));
+				}
+				budget_hit = true;
+				continue;
+			}
+			out.Print(line + "\n");
+			budget_used += line.size() + 1;
+			shown++;
+		}
+
+		// Footer
+		if (budget_hit) {
+			idx_t next_offset = current_offset + shown;
+			string remaining = to_string(total - shown);
+			if (total - shown >= total_upper_bound) {
+				remaining = "at least " + remaining + " more";
+			} else {
+				remaining = "exactly " + remaining + " more";
+			}
+			out.Print("(" + to_string(shown) + " rows, " + remaining + " - paginate via OFFSET " +
+			          to_string(next_offset) + ")\n");
+		} else {
+			out.Print("(" + to_string(shown) + " rows)\n");
+		}
+
+		return SuccessState::SUCCESS;
+	}
+
+private:
+	// Read LimitModifier::offset on the outermost QueryNode.
+	// Returns 0 if absent (nullptr) — the only reliable way to tell the user
+	// didn't write OFFSET is that the pointer was never set by the parser.
+	static idx_t ExtractTopLevelOffset(const string &sql) {
+		if (sql.empty()) {
+			return 0;
+		}
+		try {
+			duckdb::Parser parser;
+			parser.ParseQuery(sql);
+			if (parser.statements.empty()) {
+				return 0;
+			}
+			auto &stmt = *parser.statements[0];
+			if (stmt.type != duckdb::StatementType::SELECT_STATEMENT) {
+				return 0;
+			}
+			auto &node = stmt.Cast<duckdb::SelectStatement>().node;
+			for (auto &mod : node->modifiers) {
+				if (mod->type != duckdb::ResultModifierType::LIMIT_MODIFIER) {
+					continue;
+				}
+				auto &lm = mod->Cast<duckdb::LimitModifier>();
+				if (!lm.offset) {
+					// LIMIT present but no OFFSET written by the user
+					return 0;
+				}
+				if (lm.offset->type == duckdb::ExpressionType::VALUE_CONSTANT) {
+					return lm.offset->Cast<duckdb::ConstantExpression>().value.GetValue<idx_t>();
+				}
+			}
+		} catch (...) {
+		}
+		return 0;
+	}
+};
+
+//===--------------------------------------------------------------------===//
 // DuckBox Renderer
 //===--------------------------------------------------------------------===//
 class DuckBoxRenderer : public duckdb::BaseResultRenderer {
@@ -1835,6 +1994,8 @@ unique_ptr<ShellRenderer> ShellState::GetRenderer(RenderMode mode) {
 		return make_uniq<ModeLatexRenderer>(*this);
 	case RenderMode::DUCKBOX:
 		return make_uniq<ModeDuckBoxRenderer>(*this);
+	case RenderMode::LLM:
+		return make_uniq<ModeLlmRenderer>(*this);
 	case RenderMode::DESCRIBE:
 		return make_uniq<ModeDescribeRenderer>(*this);
 	case RenderMode::TRASH:
