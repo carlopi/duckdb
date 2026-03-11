@@ -1570,7 +1570,7 @@ public:
 	}
 
 	bool RequireMaterializedResult() const override {
-		return true;
+		return false;
 	}
 
 	bool ShouldUsePager(RenderingQueryResult &, PagerMode) override {
@@ -1578,8 +1578,8 @@ public:
 	}
 
 	SuccessState RenderQueryResult(PrintStream &out, ShellState &state, RenderingQueryResult &result) override {
-		auto &mat = result.result.Cast<duckdb::MaterializedQueryResult>();
-		idx_t total = mat.RowCount();
+		const idx_t total_upper_bound = state.llm_bytes_budget;
+		idx_t total = 0;
 		idx_t budget = state.llm_bytes_budget;
 		idx_t trunc = state.llm_value_truncation;
 		auto &null_s = state.llm_null;
@@ -1604,6 +1604,13 @@ public:
 		bool truncation_warned = false;
 
 		for (auto &row : result) {
+			total ++;
+			if (total - shown >= total_upper_bound) {
+				break;
+			}
+			if (budget_hit) {
+				continue;
+			}
 			string line;
 			for (idx_t c = 0; c < row.data.size(); c++) {
 				if (c > 0) {
@@ -1647,7 +1654,7 @@ public:
 					             (unsigned long long)(line.size() + 60));
 				}
 				budget_hit = true;
-				break;
+				continue;
 			}
 			out.Print(line + "\n");
 			budget_used += line.size() + 1;
@@ -1657,7 +1664,11 @@ public:
 		// Footer
 		if (budget_hit) {
 			idx_t next_offset = current_offset + shown;
-			out.Print("(" + to_string(shown) + " rows, " + to_string(total - shown) +
+			string remaining = to_string(total - shown);
+			if (total - shown == total_upper_bound) {
+				remaining = "at least " + remaining;
+			}
+			out.Print("(" + to_string(shown) + " rows, " + remaining +
 			          " more \xe2\x80\x94 OFFSET " + to_string(next_offset) + ")\n");
 		} else {
 			out.Print("(" + to_string(shown) + " rows)\n");
