@@ -1604,7 +1604,7 @@ public:
 		bool truncation_warned = false;
 
 		for (auto &row : result) {
-			total ++;
+			total++;
 			if (total - shown >= total_upper_bound) {
 				break;
 			}
@@ -1650,8 +1650,7 @@ public:
 					state.PrintF(PrintOutput::STDERR,
 					             "Warning: mode_llm_bytes_budget (%llu bytes) is smaller than a single row "
 					             "(%llu bytes). Raise .mode_llm_bytes_budget to suppress this warning.\n",
-					             (unsigned long long)budget,
-					             (unsigned long long)(line.size() + 60));
+					             (unsigned long long)budget, (unsigned long long)(line.size() + 60));
 				}
 				budget_hit = true;
 				continue;
@@ -1670,8 +1669,8 @@ public:
 			} else {
 				remaining = "exactly " + remaining + " more";
 			}
-			out.Print("(" + to_string(shown) + " rows, " + remaining +
-			          " - paginate via OFFSET " + to_string(next_offset) + ")\n");
+			out.Print("(" + to_string(shown) + " rows, " + remaining + " - paginate via OFFSET " +
+			          to_string(next_offset) + ")\n");
 		} else {
 			out.Print("(" + to_string(shown) + " rows)\n");
 		}
