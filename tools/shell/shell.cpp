@@ -87,8 +87,9 @@
 #include "shell_renderer.hpp"
 #include "shell_highlight.hpp"
 #include "shell_state.hpp"
-#include "duckdb/main/error_manager.hpp"
 #include "duckdb/main/client_config.hpp"
+#include "duckdb/planner/extension_callback.hpp"
+#include "duckdb/common/string_util.hpp"
 
 using namespace duckdb_shell;
 
@@ -397,12 +398,18 @@ static void shell_out_of_memory(void) {
 	exit(1);
 }
 
+class ShellErrorHints : public duckdb::ExtensionCallback {
+	void OnError(const duckdb::ClientContext &context, duckdb::ErrorData &error, const duckdb::string &query) override {
+		// Add shell-specific hint for unsigned extension errors
+		if (error.Type() == duckdb::ExceptionType::IO &&
+		    duckdb::StringUtil::Contains(error.RawMessage(), "unsigned extensions are disabled")) {
+			error.AddHint("Hint: Start the shell with -unsigned to allow this (e.g. duckdb -unsigned).");
+		}
+	}
+};
+
 ShellState::ShellState() : seenInterrupt(0), program_name("duckdb") {
-	config.error_manager->AddCustomError(
-	    duckdb::ErrorType::UNSIGNED_EXTENSION,
-	    "Extension \"%s\" could not be loaded because its signature is either missing or invalid and unsigned "
-	    "extensions are disabled by configuration.\nStart the shell with the -unsigned parameter to allow this "
-	    "(e.g. duckdb -unsigned).");
+	duckdb::ExtensionCallback::Register(config, duckdb::make_shared_ptr<ShellErrorHints>());
 	nullValue = "NULL";
 	strcpy(continuePrompt, "  ");
 	strcpy(continuePromptSelected, "  ");
