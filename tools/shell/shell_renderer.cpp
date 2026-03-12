@@ -1683,8 +1683,7 @@ void ModeDuckBoxRenderer::Analyze(RenderingQueryResult &result) {
 	auto &materialized = query_result.Cast<duckdb::MaterializedQueryResult>();
 	try {
 		render_context = duckdb::make_uniq<duckdb::ClientBoxRendererContext>(state.conn->GetContext());
-		render_state =
-		    renderer.Prepare(render_context, result.metadata.column_names, materialized.Collection());
+		render_state = renderer.Prepare(*render_context, result.metadata.column_names, materialized.Collection());
 	} catch (std::exception &ex) {
 		// store the error - throw on render
 		error_str = ex.what();

@@ -15,6 +15,7 @@ namespace duckdb_shell {
 using duckdb::make_uniq;
 using duckdb::string;
 using duckdb::unique_ptr;
+class ShellDBConfig;
 
 //! ShellDuckDB wraps a duckdb::DuckDB instance, exposing only the methods the shell needs.
 //! No virtual methods yet — polymorphism comes later when wire mode lands.
@@ -22,7 +23,7 @@ class ShellDuckDB {
 	unique_ptr<duckdb::DuckDB> db;
 
 public:
-	explicit ShellDuckDB(const char *path, duckdb::DBConfig *config);
+	explicit ShellDuckDB(const char *path, ShellDBConfig &config);
 	~ShellDuckDB();
 
 	//! Whether the database is open

@@ -20,6 +20,7 @@ set(SHELL_SOURCES
     ${SHELL_SOURCES}
     shell_command_line_option.cpp
     shell_connection.cpp
+    shell_db_config.cpp
     shell_duckdb.cpp
     shell_extension.cpp
     shell.cpp

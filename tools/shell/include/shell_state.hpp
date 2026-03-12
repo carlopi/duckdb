@@ -19,6 +19,7 @@
 #include "duckdb/main/query_result.hpp"
 #include "duckdb/common/atomic.hpp"
 #include "duckdb.hpp"
+#include "shell_db_config.hpp"
 
 namespace duckdb_shell {
 class ShellDuckDB;
@@ -160,7 +161,7 @@ struct ShellState {
 public:
 	unique_ptr<ShellDuckDB> db;               /* The database */
 	unique_ptr<ShellConnection> conn;         /* The primary connection to the database */
-	duckdb::DBConfig config;                  /* Config used for opening the database */
+	ShellDBConfig config;                     /* Config used for opening the database */
 	uint8_t doXdgOpen = 0;                    /* Invoke start/open/xdg-open in output_reset() */
 	int outCount = 0;                         /* Revert to stdout when reaching zero */
 	int lineno = 0;                           /* Line number of last line read from in */

@@ -1,8 +1,10 @@
 #include "shell_duckdb.hpp"
+#include "shell_db_config.hpp"
 
 namespace duckdb_shell {
 
-ShellDuckDB::ShellDuckDB(const char *path, duckdb::DBConfig *config) : db(make_uniq<duckdb::DuckDB>(path, config)) {
+ShellDuckDB::ShellDuckDB(const char *path, ShellDBConfig &config)
+    : db(make_uniq<duckdb::DuckDB>(path, &config.GetNative())) {
 }
 
 ShellDuckDB::~ShellDuckDB() {

@@ -400,7 +400,7 @@ static void shell_out_of_memory(void) {
 }
 
 ShellState::ShellState() : seenInterrupt(0), program_name("duckdb") {
-	config.error_manager->AddCustomError(
+	config.AddCustomError(
 	    duckdb::ErrorType::UNSIGNED_EXTENSION,
 	    "Extension \"%s\" could not be loaded because its signature is either missing or invalid and unsigned "
 	    "extensions are disabled by configuration.\nStart the shell with the -unsigned parameter to allow this "
@@ -1176,14 +1176,14 @@ void ShellState::OpenDB(ShellOpenFlags flags) {
 
 	if (!db) {
 		try {
-			db = make_uniq<ShellDuckDB>(zDbFilename.c_str(), &config);
+			db = make_uniq<ShellDuckDB>(zDbFilename.c_str(), config);
 			RegisterShellLogger(*db, storage_ptr);
 			conn = make_uniq<ShellConnection>(db->CreateConnection());
 		} catch (std::exception &ex) {
 			duckdb::ErrorData error(ex);
 			PrintDatabaseError(error.Message());
 			if (flags == ShellOpenFlags::KEEP_ALIVE_ON_FAILURE) {
-				db = make_uniq<ShellDuckDB>(":memory:", &config);
+				db = make_uniq<ShellDuckDB>(":memory:", config);
 				RegisterShellLogger(*db, storage_ptr);
 				conn = make_uniq<ShellConnection>(db->CreateConnection());
 			} else {
@@ -1830,13 +1830,13 @@ bool ShellState::OpenDatabase(const vector<string> &args) {
 	zDbFilename = string();
 	szMax = 0;
 	/* Check for command-line arguments */
-	config.options.access_mode = duckdb::AccessMode::READ_WRITE;
+	config.ResetAccessMode();
 	for (iName = 1; iName < args.size() && args[iName][0] == '-'; iName++) {
 		const char *z = args[iName].c_str();
 		if (optionMatch(z, "new")) {
 			newFlag = true;
 		} else if (optionMatch(z, "readonly")) {
-			config.options.access_mode = duckdb::AccessMode::READ_ONLY;
+			config.SetAccessMode(duckdb::AccessMode::READ_ONLY);
 		} else if (optionMatch(z, "nofollow")) {
 		} else if (optionMatch(z, "sql")) {
 			if (has_sql) {

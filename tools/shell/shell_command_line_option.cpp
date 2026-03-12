@@ -42,7 +42,7 @@ MetadataResult DisableBatch(ShellState &state, const vector<string> &args) {
 }
 
 MetadataResult SetReadOnlyMode(ShellState &state, const vector<string> &args) {
-	state.config.options.access_mode = duckdb::AccessMode::READ_ONLY;
+	state.config.SetAccessMode(duckdb::AccessMode::READ_ONLY);
 	return MetadataResult::SUCCESS;
 }
 
@@ -69,6 +69,7 @@ MetadataResult AllowUnredacted(ShellState &state, const vector<string> &args) {
 
 MetadataResult AllowUnsigned(ShellState &state, const vector<string> &args) {
 	state.config.SetOptionByName("allow_unsigned_extensions", true);
+
 	return MetadataResult::SUCCESS;
 }
 
@@ -102,8 +103,7 @@ MetadataResult SetNewlineSeparator(ShellState &state, const vector<string> &args
 MetadataResult SetStorageVersion(ShellState &state, const vector<string> &args) {
 	auto &storage_version = args[1];
 	try {
-		state.config.options.serialization_compatibility =
-		    duckdb::SerializationCompatibility::FromString(storage_version);
+		state.config.SetSerializationCompatibility(storage_version);
 	} catch (std::exception &ex) {
 		duckdb::ErrorData error(ex);
 		state.PrintF(PrintOutput::STDERR, "%s: Error: unknown argument (%s) for '-storage-version': %s\n",
