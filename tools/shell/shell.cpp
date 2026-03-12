@@ -860,7 +860,7 @@ SuccessState ShellState::RenderQuery(ShellRenderer &renderer, const string &quer
 		PrintDatabaseError(result->GetError());
 		return SuccessState::FAILURE;
 	}
-	return RenderQueryResult(renderer, result->GetResult(), pager_overwrite);
+	return RenderQueryResult(renderer, *result, pager_overwrite);
 }
 
 /*
@@ -981,10 +981,10 @@ SuccessState ShellState::ExecuteStatement(unique_ptr<duckdb::SQLStatement> state
 		// take ownership of the materialized result for last_result (the `_` replacement scan)
 		// but we still need to render it - so we render through last_result
 		last_result = make_uniq<ShellMaterializedQueryResult>(result->TakeMaterialized());
-		return RenderQueryResult(*renderer, last_result->GetResult());
+		return RenderQueryResult(*renderer, *last_result);
 	}
 	// analyze the query result so we know how long/wide the result will be
-	return RenderQueryResult(*renderer, result->GetResult());
+	return RenderQueryResult(*renderer, *result);
 }
 
 /*

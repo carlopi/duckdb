@@ -16,7 +16,7 @@ struct ShellState;
 struct RenderingResultIterator;
 
 struct ResultMetadata {
-	explicit ResultMetadata(duckdb::QueryResult &result);
+	explicit ResultMetadata(ShellQueryResult &result);
 
 	vector<string> column_names;
 	vector<duckdb::LogicalType> types;
@@ -34,9 +34,9 @@ struct RowData {
 };
 
 struct RenderingQueryResult {
-	RenderingQueryResult(duckdb::QueryResult &result, ShellRenderer &renderer);
+	RenderingQueryResult(ShellQueryResult &result, ShellRenderer &renderer);
 
-	duckdb::QueryResult &result;
+	ShellQueryResult &result;
 	ShellRenderer &renderer;
 	ResultMetadata metadata;
 	vector<unique_ptr<duckdb::DataChunk>> chunks;

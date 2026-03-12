@@ -21,7 +21,7 @@ using duckdb::unique_ptr;
 class ShellQueryResult {
 public:
 	explicit ShellQueryResult(duckdb::unique_ptr<duckdb::QueryResult> result);
-	~ShellQueryResult();
+	virtual ~ShellQueryResult();
 
 	//! Error handling
 	bool HasError() const;
@@ -47,7 +47,7 @@ public:
 		return result->end();
 	}
 
-	//! Engine access — needed by RenderingQueryResult and renderers
+	//! Engine access — needed by renderers that still need the raw type
 	duckdb::QueryResult &GetResult();
 
 	//! Extract the underlying MaterializedQueryResult, transferring ownership.
@@ -60,40 +60,15 @@ protected:
 };
 
 //! ShellMaterializedQueryResult wraps a duckdb::MaterializedQueryResult.
-class ShellMaterializedQueryResult {
+//! Inherits from ShellQueryResult so it can be used anywhere a ShellQueryResult is expected.
+class ShellMaterializedQueryResult : public ShellQueryResult {
 public:
 	explicit ShellMaterializedQueryResult(duckdb::unique_ptr<duckdb::MaterializedQueryResult> result);
-	~ShellMaterializedQueryResult();
-
-	//! Error handling
-	bool HasError() const;
-	const duckdb::string &GetError() const;
-
-	//! Properties
-	duckdb::StatementReturnType GetReturnType() const;
-
-	//! Column metadata
-	const duckdb::vector<duckdb::string> &Names() const;
-	const duckdb::vector<duckdb::LogicalType> &Types() const;
-	idx_t ColumnCount() const;
+	~ShellMaterializedQueryResult() override;
 
 	//! Materialized-specific
 	idx_t RowCount() const;
 	ShellColumnDataCollection Collection();
-
-	//! Row iteration
-	auto begin() -> decltype(std::declval<duckdb::MaterializedQueryResult>().begin()) {
-		return result->begin();
-	}
-	auto end() -> decltype(std::declval<duckdb::MaterializedQueryResult>().end()) {
-		return result->end();
-	}
-
-	//! Engine access
-	duckdb::MaterializedQueryResult &GetResult();
-
-private:
-	duckdb::unique_ptr<duckdb::MaterializedQueryResult> result;
 };
 
 } // namespace duckdb_shell

@@ -183,7 +183,7 @@ public:
 	}
 };
 
-RenderingQueryResult::RenderingQueryResult(duckdb::QueryResult &result, ShellRenderer &renderer)
+RenderingQueryResult::RenderingQueryResult(ShellQueryResult &result, ShellRenderer &renderer)
     : result(result), renderer(renderer), metadata(result) {
 }
 
@@ -195,7 +195,7 @@ RenderingResultIterator RenderingQueryResult::end() {
 	return RenderingResultIterator(nullptr);
 }
 
-SuccessState ShellState::RenderQueryResult(ShellRenderer &renderer, duckdb::QueryResult &query_result,
+SuccessState ShellState::RenderQueryResult(ShellRenderer &renderer, ShellQueryResult &query_result,
                                            PagerMode pager_overwrite) {
 	RenderingQueryResult render_result(query_result, renderer);
 	renderer.Analyze(render_result);
@@ -234,7 +234,7 @@ SuccessState ShellRenderer::RenderQueryResult(PrintStream &out, ShellState &stat
 //===--------------------------------------------------------------------===//
 // Result Metadata
 //===--------------------------------------------------------------------===//
-string GetTypeName(duckdb::LogicalType &type) {
+string GetTypeName(const duckdb::LogicalType &type) {
 	switch (type.id()) {
 	case duckdb::LogicalTypeId::BOOLEAN:
 		return "BOOLEAN";
@@ -277,15 +277,17 @@ string GetTypeName(duckdb::LogicalType &type) {
 	}
 }
 
-ResultMetadata::ResultMetadata(duckdb::QueryResult &result) {
+ResultMetadata::ResultMetadata(ShellQueryResult &result) {
 	// initialize the result and the column names
 	idx_t nCol = result.ColumnCount();
+	auto &names = result.Names();
+	auto &result_types = result.Types();
 	column_names.reserve(nCol);
 	types.reserve(nCol);
 	for (idx_t c = 0; c < nCol; c++) {
-		column_names.push_back(result.names[c]);
-		types.push_back(result.types[c]);
-		type_names.push_back(GetTypeName(result.types[c]));
+		column_names.push_back(names[c]);
+		types.push_back(result_types[c]);
+		type_names.push_back(GetTypeName(result_types[c]));
 	}
 }
 
@@ -1636,11 +1638,11 @@ void ModeDuckBoxRenderer::RemoveRenderLimits() {
 
 void ModeDuckBoxRenderer::Analyze(RenderingQueryResult &result) {
 	duckdb::BoxRenderer renderer(config);
-	auto &query_result = result.result;
-	auto &materialized = query_result.Cast<duckdb::MaterializedQueryResult>();
+	auto &materialized = static_cast<ShellMaterializedQueryResult &>(result.result);
 	try {
 		render_context = duckdb::make_uniq<duckdb::ClientBoxRendererContext>(state.conn->GetContext());
-		render_state = renderer.Prepare(*render_context, result.metadata.column_names, materialized.Collection());
+		render_state =
+		    renderer.Prepare(*render_context, result.metadata.column_names, materialized.Collection().GetCollection());
 	} catch (std::exception &ex) {
 		// store the error - throw on render
 		error_str = ex.what();
@@ -1663,7 +1665,7 @@ bool ModeDuckBoxRenderer::ShouldUsePager(RenderingQueryResult &result, PagerMode
 	// if this is larger than pager_min_rows - we actually check the row count of the result
 	if (config.max_rows >= state.pager_min_rows) {
 		// show the pager if the row count exceeds the min rows
-		if (result.result.Cast<duckdb::MaterializedQueryResult>().RowCount() >= state.pager_min_rows) {
+		if (static_cast<ShellMaterializedQueryResult &>(result.result).RowCount() >= state.pager_min_rows) {
 			return true;
 		}
 	}

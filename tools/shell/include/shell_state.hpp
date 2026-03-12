@@ -414,7 +414,7 @@ public:
 	//! Execute a SQL query and renders the result using the given renderer.
 	//! On fail - prints the error and returns FAILURE
 	SuccessState RenderQuery(ShellRenderer &renderer, const string &query, PagerMode pager_overwrite);
-	SuccessState RenderQueryResult(ShellRenderer &renderer, duckdb::QueryResult &result,
+	SuccessState RenderQueryResult(ShellRenderer &renderer, ShellQueryResult &result,
 	                               PagerMode pager_overwrite = PagerMode::PAGER_AUTOMATIC);
 	bool HighlightErrors() const;
 	bool HighlightResults() const;
