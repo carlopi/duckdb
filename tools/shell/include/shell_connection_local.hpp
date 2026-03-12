@@ -30,6 +30,7 @@ public:
 	unique_ptr<ShellPreparedStatement> Prepare(const string &sql) override;
 
 	//! Transaction control
+	bool IsAutoCommit() override;
 	void BeginTransaction() override;
 	void Commit() override;
 	void Rollback() override;

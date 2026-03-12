@@ -26,6 +26,7 @@ public:
 	vector<unique_ptr<duckdb::SQLStatement>> ExtractStatements(const string &sql) override;
 	unique_ptr<ShellPreparedStatement> Prepare(const string &sql) override;
 
+	bool IsAutoCommit() override;
 	void BeginTransaction() override;
 	void Commit() override;
 	void Rollback() override;

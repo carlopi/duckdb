@@ -218,8 +218,11 @@ vector<string> Prompt::GetSupportedSettings() {
 }
 
 string Prompt::HandleSetting(ShellState &state, const PromptComponent &component) {
+#ifdef DUCKDB_SHELL_WIRE_MODE
+	// TODO: wire mode needs a way to query these settings from the remote server
+	return string();
+#else
 	auto &con = GetConnection(state);
-	// FIXME: assumes Local — revisit when adding WiredConnection
 	auto &context = static_cast<ShellConnectionLocal &>(con).GetContext();
 	if (component.literal == "memory_limit") {
 		auto &config = duckdb::DBConfig::GetConfig(context);
@@ -267,6 +270,7 @@ string Prompt::HandleSetting(ShellState &state, const PromptComponent &component
 		}
 	}
 	throw InternalException("Unsupported setting %s", component.literal);
+#endif
 }
 
 string Prompt::HandleText(ShellState &state, const string &text, idx_t &length) {

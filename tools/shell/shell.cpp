@@ -1768,8 +1768,7 @@ bool ShellState::ImportData(const vector<string> &args) {
 	}
 	ClearInterrupt();
 	// check if the table exists
-	// FIXME: assumes Local — IsAutoCommit should be on ShellConnection base
-	auto needCommit = static_cast<ShellConnectionLocal &>(*conn).GetContext().transaction.IsAutoCommit();
+	auto needCommit = conn->IsAutoCommit();
 	if (needCommit) {
 		conn->BeginTransaction();
 	}

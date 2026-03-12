@@ -197,6 +197,11 @@ unique_ptr<ShellPreparedStatement> ShellConnectionWired::Prepare(const string &s
 	return make_uniq<ShellPreparedStatementWired>();
 }
 
+bool ShellConnectionWired::IsAutoCommit() {
+	// TODO: wire mode
+	return true;
+}
+
 void ShellConnectionWired::BeginTransaction() {
 	// TODO: wire mode
 }

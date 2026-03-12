@@ -35,6 +35,10 @@ unique_ptr<ShellPreparedStatement> ShellConnectionLocal::Prepare(const string &s
 	return make_uniq<ShellPreparedStatementLocal>(conn->Prepare(sql));
 }
 
+bool ShellConnectionLocal::IsAutoCommit() {
+	return conn->context->transaction.IsAutoCommit();
+}
+
 void ShellConnectionLocal::BeginTransaction() {
 	conn->BeginTransaction();
 }

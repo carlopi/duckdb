@@ -36,6 +36,7 @@ public:
 	virtual unique_ptr<ShellPreparedStatement> Prepare(const string &sql) = 0;
 
 	//! Transaction control
+	virtual bool IsAutoCommit() = 0;
 	virtual void BeginTransaction() = 0;
 	virtual void Commit() = 0;
 	virtual void Rollback() = 0;
