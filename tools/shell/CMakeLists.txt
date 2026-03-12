@@ -1,13 +1,9 @@
 include_directories(include)
 
-if(DUCKDB_EXTENSION_AUTOCOMPLETE_SHOULD_LINK)
-  include_directories(../../extension/autocomplete/include)
-  set(ALL_OBJECT_FILES ${ALL_OBJECT_FILES}
-                       ../../extension/autocomplete/autocomplete_extension.cpp)
-  add_definitions(-DSHELL_INLINE_AUTOCOMPLETE)
-endif()
-
+# linenoise sets SHELL_SOURCES in parent scope via $<TARGET_OBJECTS:duckdb_linenoise>
+set(SHELL_SOURCES "")
 add_subdirectory(linenoise)
+set(SHELL_LINENOISE_OBJECTS ${SHELL_SOURCES})
 add_definitions(-DHAVE_LINENOISE=1)
 include_directories(../../third_party/utf8proc/include)
 include_directories(linenoise/include)
@@ -16,16 +12,9 @@ add_definitions(-DUSE_DUCKDB_SHELL_WRAPPER)
 
 include_directories(../../third_party/utf8proc/include)
 
-set(SHELL_SOURCES
-    ${SHELL_SOURCES}
-    shell_column_data_collection.cpp
+# Sources shared by both local and wire mode
+set(SHELL_COMMON_SOURCES
     shell_command_line_option.cpp
-    shell_connection.cpp
-    shell_db_config.cpp
-    shell_prepared_statement.cpp
-    shell_duckdb.cpp
-    shell_extension.cpp
-    shell_query_result.cpp
     shell.cpp
     shell_helpers.cpp
     shell_metadata_command.cpp
@@ -34,22 +23,54 @@ set(SHELL_SOURCES
     shell_highlight.cpp
     shell_progress_bar.cpp
     shell_render_table_metadata.cpp
-    shell_wired.cpp
     shell_windows.cpp)
+
+# Sources that need the engine (Local implementations)
+set(SHELL_LOCAL_SOURCES
+    shell_column_data_collection.cpp
+    shell_connection.cpp
+    shell_db_config.cpp
+    shell_prepared_statement.cpp
+    shell_duckdb.cpp
+    shell_extension.cpp
+    shell_query_result.cpp
+    shell_wired.cpp)
+
+# Sources for wire mode (Wired implementations, no engine)
+set(SHELL_WIRED_SOURCES
+    shell_wired.cpp)
+
+if(DUCKDB_SHELL_WIRE_MODE)
+  message("Building shell in WIRE MODE (no duckdb_static)")
+  set(SHELL_SOURCES ${SHELL_LINENOISE_OBJECTS} ${SHELL_COMMON_SOURCES} ${SHELL_WIRED_SOURCES})
+else()
+  if(DUCKDB_EXTENSION_AUTOCOMPLETE_SHOULD_LINK)
+    include_directories(../../extension/autocomplete/include)
+    set(ALL_OBJECT_FILES ${ALL_OBJECT_FILES}
+                         ../../extension/autocomplete/autocomplete_extension.cpp)
+    add_definitions(-DSHELL_INLINE_AUTOCOMPLETE)
+  endif()
+  set(SHELL_SOURCES ${SHELL_LINENOISE_OBJECTS} ${SHELL_COMMON_SOURCES} ${SHELL_LOCAL_SOURCES})
+endif()
 
 add_executable(shell ${SHELL_SOURCES})
 
-target_link_libraries(shell duckdb_static ${DUCKDB_EXTRA_LINK_FLAGS})
+if(DUCKDB_SHELL_WIRE_MODE)
+  target_compile_definitions(shell PRIVATE DUCKDB_SHELL_WIRE_MODE)
+  # TODO: link against a minimal duckdb_client_types library instead
+  target_link_libraries(shell duckdb_static ${DUCKDB_EXTRA_LINK_FLAGS})
+else()
+  target_link_libraries(shell duckdb_static ${DUCKDB_EXTRA_LINK_FLAGS})
+  link_extension_libraries(shell "")
+  if(NOT AMALGAMATION_BUILD AND NOT WIN32)
+    target_link_libraries(shell duckdb_utf8proc)
+  endif()
+endif()
+
 link_threads(shell "")
 if(STATIC_LIBCPP)
   message("Statically linking CLI")
   target_link_libraries(shell -static-libstdc++ -static-libgcc)
-endif()
-
-link_extension_libraries(shell "")
-
-if(NOT AMALGAMATION_BUILD AND NOT WIN32)
-  target_link_libraries(shell duckdb_utf8proc)
 endif()
 
 function(ensure_variable_is_number INPUT_VERSION OUT_RESULT)
