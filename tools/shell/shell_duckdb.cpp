@@ -27,4 +27,8 @@ unique_ptr<ShellConnection> ShellDuckDBLocal::CreateConnection() {
 	return make_uniq<ShellConnectionLocal>(make_uniq<duckdb::Connection>(*db));
 }
 
+unique_ptr<ShellDuckDB> ShellDuckDB::Create(const char *path, ShellDBConfig &config) {
+	return make_uniq<ShellDuckDBLocal>(path, config);
+}
+
 } // namespace duckdb_shell

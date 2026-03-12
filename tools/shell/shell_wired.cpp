@@ -251,4 +251,10 @@ unique_ptr<ShellConnection> ShellDuckDBWired::CreateConnection() {
 	return make_uniq<ShellConnectionWired>();
 }
 
+#ifdef DUCKDB_SHELL_WIRE_MODE
+unique_ptr<ShellDuckDB> ShellDuckDB::Create(const char *path, ShellDBConfig &config) {
+	return make_uniq<ShellDuckDBWired>(path, config);
+}
+#endif
+
 } // namespace duckdb_shell

@@ -14,6 +14,7 @@
 namespace duckdb_shell {
 using duckdb::unique_ptr;
 class ShellConnection;
+class ShellDBConfig;
 
 //! ShellDuckDB is an abstract interface for a database instance.
 class ShellDuckDB {
@@ -27,6 +28,9 @@ public:
 
 	//! Create a new connection to the database (returns abstract base type)
 	virtual unique_ptr<ShellConnection> CreateConnection() = 0;
+
+	//! Factory: creates a ShellDuckDBLocal or ShellDuckDBWired depending on build mode
+	static unique_ptr<ShellDuckDB> Create(const char *path, ShellDBConfig &config);
 };
 
 } // namespace duckdb_shell

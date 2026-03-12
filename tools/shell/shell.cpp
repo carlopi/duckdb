@@ -984,9 +984,11 @@ SuccessState ShellState::ExecuteStatement(unique_ptr<duckdb::SQLStatement> state
 	if (result->GetResultType() == duckdb::QueryResultType::MATERIALIZED_RESULT) {
 		// take ownership of the materialized result for last_result (the `_` replacement scan)
 		// but we still need to render it - so we render through last_result
+#ifndef DUCKDB_SHELL_WIRE_MODE
 		// FIXME: assumes Local — revisit when adding WiredQueryResult
 		auto &result_local = static_cast<ShellQueryResultLocal &>(*result);
 		last_result = make_uniq<ShellMaterializedQueryResultLocal>(result_local.TakeMaterialized());
+#endif
 		return RenderQueryResult(*renderer, *last_result);
 	}
 	// analyze the query result so we know how long/wide the result will be
@@ -1167,6 +1169,8 @@ unique_ptr<duckdb::ProgressBarDisplay> CreateProgressBar() {
 	return make_uniq<ShellProgressBarDisplay>();
 }
 
+#ifndef DUCKDB_SHELL_WIRE_MODE
+// FIXME: wire mode needs a way to register/receive log messages from the remote server
 static void RegisterShellLogger(ShellDuckDBLocal &db, duckdb::shared_ptr<duckdb::LogStorage> storage_ptr) {
 	auto &db_instance = db.GetInstance();
 	auto &log_manager = db_instance.GetLogManager();
@@ -1175,6 +1179,7 @@ static void RegisterShellLogger(ShellDuckDBLocal &db, duckdb::shared_ptr<duckdb:
 	log_manager.SetEnableLogging(true);
 	log_manager.SetLogLevel(duckdb::LogLevel::LOG_WARNING);
 }
+#endif
 
 void ShellState::OpenDB(ShellOpenFlags flags) {
 	// log storage to stdout
@@ -1182,36 +1187,36 @@ void ShellState::OpenDB(ShellOpenFlags flags) {
 	duckdb::shared_ptr<duckdb::LogStorage> storage_ptr = std_out_log_storage;
 
 	if (!db) {
-		ShellDuckDBLocal *db_local = nullptr;
 		try {
-			auto new_db = make_uniq<ShellDuckDBLocal>(zDbFilename.c_str(), config);
-			db_local = new_db.get();
-			db = std::move(new_db);
-			RegisterShellLogger(*db_local, storage_ptr);
+			db = ShellDuckDB::Create(zDbFilename.c_str(), config);
+#ifndef DUCKDB_SHELL_WIRE_MODE
+			RegisterShellLogger(static_cast<ShellDuckDBLocal &>(*db), storage_ptr);
+#endif
 			conn = db->CreateConnection();
 		} catch (std::exception &ex) {
 			duckdb::ErrorData error(ex);
 			PrintDatabaseError(error.Message());
 			if (flags == ShellOpenFlags::KEEP_ALIVE_ON_FAILURE) {
-				auto new_db = make_uniq<ShellDuckDBLocal>(":memory:", config);
-				db_local = new_db.get();
-				db = std::move(new_db);
-				RegisterShellLogger(*db_local, storage_ptr);
+				db = ShellDuckDB::Create(":memory:", config);
+#ifndef DUCKDB_SHELL_WIRE_MODE
+				RegisterShellLogger(static_cast<ShellDuckDBLocal &>(*db), storage_ptr);
+#endif
 				conn = db->CreateConnection();
 			} else {
 				exit(1);
 			}
 		}
+#ifndef DUCKDB_SHELL_WIRE_MODE
+		auto &db_local = static_cast<ShellDuckDBLocal &>(*db);
 		// FIXME: assumes Local — revisit when adding WiredConnection
 		auto &conn_local = static_cast<ShellConnectionLocal &>(*conn);
 		auto &client_config = duckdb::ClientConfig::GetConfig(conn_local.GetContext());
 		client_config.display_create_func = CreateProgressBar;
 #ifdef SHELL_INLINE_AUTOCOMPLETE
-		db_local->LoadStaticExtension<duckdb::AutocompleteExtension>();
+		db_local.LoadStaticExtension<duckdb::AutocompleteExtension>();
 #endif
-#ifndef DUCKDB_SHELL_WIRE_MODE
 		// FIXME: wire mode needs an alternative way to register shell-specific functions (e.g. last_result scan)
-		db_local->LoadStaticExtension<duckdb::ShellExtension>();
+		db_local.LoadStaticExtension<duckdb::ShellExtension>();
 #endif
 		if (safe_mode) {
 			ExecuteQuery("SET enable_external_access=false");
@@ -1763,7 +1768,7 @@ bool ShellState::ImportData(const vector<string> &args) {
 	}
 	ClearInterrupt();
 	// check if the table exists
-	// FIXME: assumes Local — revisit when adding WiredConnection
+	// FIXME: assumes Local — IsAutoCommit should be on ShellConnection base
 	auto needCommit = static_cast<ShellConnectionLocal &>(*conn).GetContext().transaction.IsAutoCommit();
 	if (needCommit) {
 		conn->BeginTransaction();
