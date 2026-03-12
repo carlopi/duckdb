@@ -14,6 +14,7 @@ include_directories(../../third_party/utf8proc/include)
 
 # Sources shared by both local and wire mode
 set(SHELL_COMMON_SOURCES
+    shell_db_config.cpp
     shell_command_line_option.cpp
     shell.cpp
     shell_helpers.cpp
@@ -29,7 +30,6 @@ set(SHELL_COMMON_SOURCES
 set(SHELL_LOCAL_SOURCES
     shell_column_data_collection.cpp
     shell_connection.cpp
-    shell_db_config.cpp
     shell_prepared_statement.cpp
     shell_duckdb.cpp
     shell_extension.cpp
