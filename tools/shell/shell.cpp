@@ -57,7 +57,9 @@
 #ifdef SHELL_INLINE_AUTOCOMPLETE
 #include "autocomplete_extension.hpp"
 #endif
+#ifndef DUCKDB_SHELL_WIRE_MODE
 #include "shell_extension.hpp"
+#endif
 #include <ctype.h>
 
 #if !defined(_WIN32) && !defined(WIN32)
@@ -1207,7 +1209,10 @@ void ShellState::OpenDB(ShellOpenFlags flags) {
 #ifdef SHELL_INLINE_AUTOCOMPLETE
 		db_local->LoadStaticExtension<duckdb::AutocompleteExtension>();
 #endif
+#ifndef DUCKDB_SHELL_WIRE_MODE
+		// FIXME: wire mode needs an alternative way to register shell-specific functions (e.g. last_result scan)
 		db_local->LoadStaticExtension<duckdb::ShellExtension>();
+#endif
 		if (safe_mode) {
 			ExecuteQuery("SET enable_external_access=false");
 			ExecuteQuery("SET lock_configuration=true");
