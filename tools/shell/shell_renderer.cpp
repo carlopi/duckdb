@@ -1663,7 +1663,7 @@ bool ModeDuckBoxRenderer::ShouldUsePager(RenderingQueryResult &result, PagerMode
 	// if this is larger than pager_min_rows - we actually check the row count of the result
 	if (config.max_rows >= state.pager_min_rows) {
 		// show the pager if the row count exceeds the min rows
-		if (result.result.Cast<MaterializedQueryResult>().RowCount() >= state.pager_min_rows) {
+		if (result.result.Cast<duckdb::MaterializedQueryResult>().RowCount() >= state.pager_min_rows) {
 			return true;
 		}
 	}

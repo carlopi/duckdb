@@ -16,16 +16,15 @@
 #include "duckdb/common/unique_ptr.hpp"
 #include "duckdb/common/optional_ptr.hpp"
 #include "duckdb/parser/sql_statement.hpp"
-#include "duckdb/main/query_result.hpp"
 #include "duckdb/common/atomic.hpp"
 #include "duckdb.hpp"
 #include "shell_db_config.hpp"
+#include "shell_query_result.hpp"
 
 namespace duckdb_shell {
 class ShellDuckDB;
 class ShellConnection;
 using duckdb::make_uniq;
-using duckdb::MaterializedQueryResult;
 using duckdb::string;
 using duckdb::StringUtil;
 using duckdb::unique_ptr;
@@ -204,7 +203,7 @@ public:
 	idx_t total_changes = 0;
 	bool readStdin = true;
 	string initFile;
-	unique_ptr<duckdb::MaterializedQueryResult> last_result;
+	unique_ptr<ShellMaterializedQueryResult> last_result;
 	//! If the following flag is set, then command execution stops at an error
 	bool bail_on_error = false;
 	//! Table name when rendering a DESCRIBE statement

@@ -860,7 +860,7 @@ SuccessState ShellState::RenderQuery(ShellRenderer &renderer, const string &quer
 		PrintDatabaseError(result->GetError());
 		return SuccessState::FAILURE;
 	}
-	return RenderQueryResult(renderer, *result, pager_overwrite);
+	return RenderQueryResult(renderer, result->GetResult(), pager_overwrite);
 }
 
 /*
@@ -947,7 +947,7 @@ SuccessState ShellState::ExecuteStatement(unique_ptr<duckdb::SQLStatement> state
 		return SuccessState::FAILURE;
 	}
 	auto renderer = GetRenderer();
-	unique_ptr<duckdb::QueryResult> result;
+	unique_ptr<ShellQueryResult> result;
 	if (renderer->RequireMaterializedResult()) {
 		// we need to materialize the result prior to rendering
 		duckdb::QueryParameters parameters;
@@ -958,14 +958,12 @@ SuccessState ShellState::ExecuteStatement(unique_ptr<duckdb::SQLStatement> state
 		// for row-wise rendering we can use streaming results
 		result = conn->SendQuery(std::move(statement));
 	}
-	auto &res = *result;
-	if (res.HasError()) {
-		PrintDatabaseError(res.GetError());
+	if (result->HasError()) {
+		PrintDatabaseError(result->GetError());
 		return SuccessState::FAILURE;
 	}
-	auto &properties = res.properties;
-	if (properties.return_type == duckdb::StatementReturnType::CHANGED_ROWS) {
-		auto result_chunk = res.Fetch();
+	if (result->GetReturnType() == duckdb::StatementReturnType::CHANGED_ROWS) {
+		auto result_chunk = result->Fetch();
 		if (result_chunk && result_chunk->size() == 1) {
 			// update total changes
 			auto row_changes = result_chunk->GetValue(0, 0);
@@ -975,15 +973,18 @@ SuccessState ShellState::ExecuteStatement(unique_ptr<duckdb::SQLStatement> state
 			}
 		}
 	}
-	if (properties.return_type != duckdb::StatementReturnType::QUERY_RESULT) {
+	if (result->GetReturnType() != duckdb::StatementReturnType::QUERY_RESULT) {
 		// only SELECT statements return results that need to be rendered
 		return SuccessState::SUCCESS;
 	}
-	if (res.type == duckdb::QueryResultType::MATERIALIZED_RESULT) {
-		last_result = duckdb::unique_ptr_cast<duckdb::QueryResult, MaterializedQueryResult>(std::move(result));
+	if (result->GetResultType() == duckdb::QueryResultType::MATERIALIZED_RESULT) {
+		// take ownership of the materialized result for last_result (the `_` replacement scan)
+		// but we still need to render it - so we render through last_result
+		last_result = make_uniq<ShellMaterializedQueryResult>(result->TakeMaterialized());
+		return RenderQueryResult(*renderer, last_result->GetResult());
 	}
 	// analyze the query result so we know how long/wide the result will be
-	return RenderQueryResult(*renderer, res);
+	return RenderQueryResult(*renderer, result->GetResult());
 }
 
 /*
@@ -1791,11 +1792,11 @@ ExecuteSQLSingleValueResult ShellState::ExecuteSQLSingleValue(ShellConnection &c
 		result_value = result->GetError();
 		return ExecuteSQLSingleValueResult::EXECUTION_ERROR;
 	}
-	auto is_query = result->properties.return_type == duckdb::StatementReturnType::QUERY_RESULT;
+	auto is_query = result->GetReturnType() == duckdb::StatementReturnType::QUERY_RESULT;
 	if (!is_query) {
 		return ExecuteSQLSingleValueResult::EMPTY_RESULT;
 	}
-	auto &collection = result->Collection();
+	auto collection = result->Collection();
 	if (collection.Count() == 0) {
 		return ExecuteSQLSingleValueResult::EMPTY_RESULT;
 	}

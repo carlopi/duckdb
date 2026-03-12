@@ -8,21 +8,21 @@ ShellConnection::ShellConnection(unique_ptr<duckdb::Connection> conn_p) : conn(s
 ShellConnection::~ShellConnection() {
 }
 
-unique_ptr<duckdb::MaterializedQueryResult> ShellConnection::Query(const string &sql) {
-	return conn->Query(sql);
+unique_ptr<ShellMaterializedQueryResult> ShellConnection::Query(const string &sql) {
+	return make_uniq<ShellMaterializedQueryResult>(conn->Query(sql));
 }
 
-unique_ptr<duckdb::QueryResult> ShellConnection::SendQuery(const string &query) {
-	return conn->SendQuery(query);
+unique_ptr<ShellQueryResult> ShellConnection::SendQuery(const string &query) {
+	return make_uniq<ShellQueryResult>(conn->SendQuery(query));
 }
 
-unique_ptr<duckdb::QueryResult> ShellConnection::SendQuery(unique_ptr<duckdb::SQLStatement> statement,
-                                                           duckdb::QueryParameters parameters) {
-	return conn->SendQuery(std::move(statement), parameters);
+unique_ptr<ShellQueryResult> ShellConnection::SendQuery(unique_ptr<duckdb::SQLStatement> statement,
+                                                        duckdb::QueryParameters parameters) {
+	return make_uniq<ShellQueryResult>(conn->SendQuery(std::move(statement), parameters));
 }
 
-unique_ptr<duckdb::QueryResult> ShellConnection::SendQuery(unique_ptr<duckdb::SQLStatement> statement) {
-	return conn->SendQuery(std::move(statement));
+unique_ptr<ShellQueryResult> ShellConnection::SendQuery(unique_ptr<duckdb::SQLStatement> statement) {
+	return make_uniq<ShellQueryResult>(conn->SendQuery(std::move(statement)));
 }
 
 vector<unique_ptr<duckdb::SQLStatement>> ShellConnection::ExtractStatements(const string &sql) {

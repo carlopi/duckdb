@@ -44,7 +44,7 @@ unique_ptr<TableRef> ShellScanLastResult(ClientContext &context, ReplacementScan
 	if (!state.last_result) {
 		throw BinderException("Failed to query last result \"_\": no result available");
 	}
-	return make_uniq<ColumnDataRef>(state.last_result->Collection(), state.last_result->names);
+	return make_uniq<ColumnDataRef>(state.last_result->Collection().GetCollection(), state.last_result->Names());
 }
 
 void ShellExtension::Load(ExtensionLoader &loader) {

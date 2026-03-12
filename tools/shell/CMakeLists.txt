@@ -18,11 +18,13 @@ include_directories(../../third_party/utf8proc/include)
 
 set(SHELL_SOURCES
     ${SHELL_SOURCES}
+    shell_column_data_collection.cpp
     shell_command_line_option.cpp
     shell_connection.cpp
     shell_db_config.cpp
     shell_duckdb.cpp
     shell_extension.cpp
+    shell_query_result.cpp
     shell.cpp
     shell_helpers.cpp
     shell_metadata_command.cpp

@@ -12,6 +12,7 @@
 #include "duckdb/common/unique_ptr.hpp"
 #include "duckdb/main/prepared_statement.hpp"
 #include "duckdb/main/table_description.hpp"
+#include "shell_query_result.hpp"
 
 namespace duckdb_shell {
 using duckdb::make_uniq;
@@ -29,11 +30,11 @@ public:
 	~ShellConnection();
 
 	//! Query execution
-	unique_ptr<duckdb::MaterializedQueryResult> Query(const string &sql);
-	unique_ptr<duckdb::QueryResult> SendQuery(const string &query);
-	unique_ptr<duckdb::QueryResult> SendQuery(unique_ptr<duckdb::SQLStatement> statement,
-	                                          duckdb::QueryParameters parameters);
-	unique_ptr<duckdb::QueryResult> SendQuery(unique_ptr<duckdb::SQLStatement> statement);
+	unique_ptr<ShellMaterializedQueryResult> Query(const string &sql);
+	unique_ptr<ShellQueryResult> SendQuery(const string &query);
+	unique_ptr<ShellQueryResult> SendQuery(unique_ptr<duckdb::SQLStatement> statement,
+	                                       duckdb::QueryParameters parameters);
+	unique_ptr<ShellQueryResult> SendQuery(unique_ptr<duckdb::SQLStatement> statement);
 	vector<unique_ptr<duckdb::SQLStatement>> ExtractStatements(const string &sql);
 	unique_ptr<duckdb::PreparedStatement> Prepare(const string &sql);
 

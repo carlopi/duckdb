@@ -243,7 +243,7 @@ MetadataResult RenderLastResult(ShellState &state, const vector<string> &args) {
 	if (state.last_result) {
 		auto renderer = state.GetRenderer();
 		renderer->RemoveRenderLimits();
-		auto res = state.RenderQueryResult(*renderer, *state.last_result);
+		auto res = state.RenderQueryResult(*renderer, state.last_result->GetResult());
 		if (res == SuccessState::FAILURE) {
 			return MetadataResult::FAIL;
 		}
