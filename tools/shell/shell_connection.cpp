@@ -29,8 +29,8 @@ vector<unique_ptr<duckdb::SQLStatement>> ShellConnection::ExtractStatements(cons
 	return conn->ExtractStatements(sql);
 }
 
-unique_ptr<duckdb::PreparedStatement> ShellConnection::Prepare(const string &sql) {
-	return conn->Prepare(sql);
+unique_ptr<ShellPreparedStatement> ShellConnection::Prepare(const string &sql) {
+	return make_uniq<ShellPreparedStatement>(conn->Prepare(sql));
 }
 
 void ShellConnection::BeginTransaction() {

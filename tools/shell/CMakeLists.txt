@@ -22,6 +22,7 @@ set(SHELL_SOURCES
     shell_command_line_option.cpp
     shell_connection.cpp
     shell_db_config.cpp
+    shell_prepared_statement.cpp
     shell_duckdb.cpp
     shell_extension.cpp
     shell_query_result.cpp
