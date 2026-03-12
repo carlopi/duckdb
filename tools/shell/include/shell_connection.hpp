@@ -49,6 +49,11 @@ public:
 	//! Table info
 	unique_ptr<duckdb::TableDescription> TableInfo(const string &table_name);
 
+	//! Cast all columns in a DataChunk to VARCHAR.
+	//! If complex_objects_as_json is true, nested and floating-point types are cast through JSON
+	//! first to preserve structure (e.g. for JSON/JSONLINES output modes).
+	unique_ptr<duckdb::DataChunk> CastToVarchar(duckdb::DataChunk &chunk, bool complex_objects_as_json = false);
+
 	//! Context access (needed for rendering, config, Cast, etc.)
 	duckdb::ClientContext &GetContext();
 };
