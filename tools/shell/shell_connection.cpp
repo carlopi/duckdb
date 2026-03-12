@@ -70,37 +70,36 @@ static bool RequiresJSONCast(const duckdb::LogicalType &type) {
 
 unique_ptr<duckdb::DataChunk> ShellConnection::CastToVarchar(duckdb::DataChunk &chunk, bool complex_objects_as_json) {
 	auto &context = *conn->context;
+	auto col_count = chunk.ColumnCount();
 
-	// If complex_objects_as_json, first cast nested/floating types through JSON
+	// Step 1: set up the output chunk
+	auto varchar_chunk = make_uniq<duckdb::DataChunk>();
+	vector<duckdb::LogicalType> all_varchar(col_count, duckdb::LogicalType::VARCHAR);
+	varchar_chunk->Initialize(duckdb::Allocator::DefaultAllocator(), all_varchar);
+
+	// Step 2: if complex_objects_as_json, pre-cast nested/floating columns through JSON
+	duckdb::DataChunk json_chunk;
 	if (complex_objects_as_json) {
-		duckdb::DataChunk json_chunk;
-		vector<duckdb::LogicalType> target_types;
-		for (idx_t c = 0; c < chunk.ColumnCount(); c++) {
+		vector<duckdb::LogicalType> json_types;
+		for (idx_t c = 0; c < col_count; c++) {
 			if (RequiresJSONCast(chunk.data[c].GetType())) {
-				target_types.emplace_back(duckdb::LogicalType::JSON());
+				json_types.emplace_back(duckdb::LogicalType::JSON());
 			} else {
-				target_types.emplace_back(duckdb::LogicalType::VARCHAR);
+				json_types.emplace_back(chunk.data[c].GetType());
 			}
 		}
-		json_chunk.Initialize(duckdb::Allocator::DefaultAllocator(), target_types);
-		for (idx_t c = 0; c < chunk.ColumnCount(); c++) {
+		json_chunk.Initialize(duckdb::Allocator::DefaultAllocator(), json_types);
+		for (idx_t c = 0; c < col_count; c++) {
 			duckdb::VectorOperations::Cast(context, chunk.data[c], json_chunk.data[c], chunk.size());
 		}
 		json_chunk.SetCardinality(chunk.size());
 		json_chunk.Flatten();
-		// Now cast the JSON chunk to all-VARCHAR
-		return CastToVarchar(json_chunk, false);
 	}
 
-	// Cast all columns to VARCHAR
-	auto varchar_chunk = make_uniq<duckdb::DataChunk>();
-	vector<duckdb::LogicalType> all_varchar;
-	for (idx_t c = 0; c < chunk.ColumnCount(); c++) {
-		all_varchar.emplace_back(duckdb::LogicalType::VARCHAR);
-	}
-	varchar_chunk->Initialize(duckdb::Allocator::DefaultAllocator(), all_varchar);
-	for (idx_t c = 0; c < chunk.ColumnCount(); c++) {
-		duckdb::VectorOperations::Cast(context, chunk.data[c], varchar_chunk->data[c], chunk.size());
+	// Step 3: cast all columns to VARCHAR
+	auto &source = complex_objects_as_json ? json_chunk : chunk;
+	for (idx_t c = 0; c < col_count; c++) {
+		duckdb::VectorOperations::Cast(context, source.data[c], varchar_chunk->data[c], chunk.size());
 	}
 	varchar_chunk->SetCardinality(chunk.size());
 	varchar_chunk->Flatten();
