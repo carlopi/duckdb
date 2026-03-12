@@ -141,6 +141,46 @@ set(CLIENT_TYPES_SOURCES
     # FSST decompression
     ${CMAKE_SOURCE_DIR}/src/storage/compression/fsst.cpp
 
+    # Serialization codegen (remaining Serialize methods)
+    ${CMAKE_SOURCE_DIR}/src/storage/serialization/serialize_dependency.cpp
+    ${CMAKE_SOURCE_DIR}/src/storage/serialization/serialize_storage.cpp
+
+    # Serialization codegen (parser Serialize/Deserialize methods)
+    ${CMAKE_SOURCE_DIR}/src/storage/serialization/serialize_parsed_expression.cpp
+    ${CMAKE_SOURCE_DIR}/src/storage/serialization/serialize_constraint.cpp
+    ${CMAKE_SOURCE_DIR}/src/storage/serialization/serialize_create_info.cpp
+    ${CMAKE_SOURCE_DIR}/src/storage/serialization/serialize_parse_info.cpp
+    ${CMAKE_SOURCE_DIR}/src/storage/serialization/serialize_query_node.cpp
+    ${CMAKE_SOURCE_DIR}/src/storage/serialization/serialize_result_modifier.cpp
+    ${CMAKE_SOURCE_DIR}/src/storage/serialization/serialize_tableref.cpp
+    ${CMAKE_SOURCE_DIR}/src/storage/serialization/serialize_extra_drop_info.cpp
+    ${CMAKE_SOURCE_DIR}/src/storage/serialization/serialize_types.cpp
+    ${CMAKE_SOURCE_DIR}/src/storage/serialization/serialize_macro_function.cpp
+    ${CMAKE_SOURCE_DIR}/src/storage/serialization/serialize_expression.cpp
+    ${CMAKE_SOURCE_DIR}/src/storage/serialization/serialize_statement.cpp
+    ${CMAKE_SOURCE_DIR}/src/storage/serialization/serialize_nodes.cpp
+
+    # Geometry CRS
+    ${CMAKE_SOURCE_DIR}/src/common/types/geometry_crs.cpp
+
+    # Macro function
+    ${CMAKE_SOURCE_DIR}/src/function/macro_function.cpp
+
+    # strftime/strptime format
+    ${CMAKE_SOURCE_DIR}/src/function/scalar/strftime_format.cpp
+
+    # Expression type enums
+    ${CMAKE_SOURCE_DIR}/src/common/enums/expression_type.cpp
+
+    # Path
+    ${CMAKE_SOURCE_DIR}/src/common/path.cpp
+
+    # Planner expression (typeinfo only)
+    ${CMAKE_SOURCE_DIR}/src/planner/expression.cpp
+
+    # Storage info (serialization version)
+    ${CMAKE_SOURCE_DIR}/src/storage/storage_info.cpp
+
     # Version stubs (wire mode — real values come from server)
     ${CMAKE_SOURCE_DIR}/src/duckdb_client_types/version_stubs.cpp
 )
