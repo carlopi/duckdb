@@ -14,6 +14,7 @@
 #include <functional>
 
 namespace duckdb {
+class BaseClientContext;
 class CastFunctionSet;
 struct GetCastFunctionInput;
 

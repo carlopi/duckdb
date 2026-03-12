@@ -30,6 +30,7 @@
 #include "duckdb/planner/expression/bound_parameter_data.hpp"
 #include "duckdb/transaction/transaction_context.hpp"
 #include "duckdb/main/query_parameters.hpp"
+#include "duckdb/main/base_client_context.hpp"
 
 namespace duckdb {
 
@@ -64,7 +65,7 @@ struct PendingQueryParameters {
 
 //! The ClientContext holds information relevant to the current client session
 //! during execution
-class ClientContext : public enable_shared_from_this<ClientContext> {
+class ClientContext : public enable_shared_from_this<ClientContext>, public BaseClientContext {
 	friend class PendingQueryResult;  // LockContext
 	friend class BufferedData;        // ExecuteTaskInternal
 	friend class SimpleBufferedData;  // ExecuteTaskInternal
@@ -100,8 +101,10 @@ public:
 
 	//! Interrupt execution of a query
 	DUCKDB_API void Interrupt();
-	DUCKDB_API bool IsInterrupted() const;
+	DUCKDB_API bool IsInterrupted() const override;
 	DUCKDB_API void ClearInterrupt();
+	DUCKDB_API void Cast(Vector &source, Vector &result, idx_t count, bool strict = false) override;
+	DUCKDB_API Allocator &GetAllocator() override;
 	DUCKDB_API void CancelTransaction();
 
 	//! Check for interrupt or timeout, throws InterruptException if triggered

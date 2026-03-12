@@ -53,6 +53,7 @@
 #include "duckdb/logging/log_manager.hpp"
 #include "duckdb/main/settings.hpp"
 #include "duckdb/main/result_set_manager.hpp"
+#include "duckdb/common/vector_operations/vector_operations.hpp"
 
 #ifdef __APPLE__
 #include <sys/sysctl.h>
@@ -1177,6 +1178,14 @@ bool ClientContext::IsInterrupted() const {
 
 void ClientContext::ClearInterrupt() {
 	interrupted = false;
+}
+
+void ClientContext::Cast(Vector &source, Vector &result, idx_t count, bool strict) {
+	VectorOperations::TryCast(*this, source, result, count, nullptr, strict);
+}
+
+Allocator &ClientContext::GetAllocator() {
+	return Allocator::Get(*this);
 }
 
 void ClientContext::InterruptCheck() const {
