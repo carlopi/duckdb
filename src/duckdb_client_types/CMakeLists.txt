@@ -55,6 +55,14 @@ set(CLIENT_TYPES_SOURCES
     ${CMAKE_SOURCE_DIR}/src/common/operator/convert_to_string.cpp
     ${CMAKE_SOURCE_DIR}/src/common/operator/string_cast.cpp
 
+    # Arithmetic operators (TryAdd/Sub/Multiply template instantiations)
+    ${CMAKE_SOURCE_DIR}/src/function/scalar/operator/add.cpp
+    ${CMAKE_SOURCE_DIR}/src/function/scalar/operator/subtract.cpp
+    ${CMAKE_SOURCE_DIR}/src/function/scalar/operator/multiply.cpp
+
+    # Comparison operators (Equals/GreaterThan float/double specializations)
+    ${CMAKE_SOURCE_DIR}/src/common/vector_operations/comparison_operators.cpp
+
     # Variant support
     ${CMAKE_SOURCE_DIR}/src/common/types/variant/variant.cpp
     ${CMAKE_SOURCE_DIR}/src/common/types/variant/variant_value.cpp
