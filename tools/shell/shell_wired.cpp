@@ -233,6 +233,11 @@ unique_ptr<duckdb::DataChunk> ShellConnectionWired::CastToVarchar(duckdb::DataCh
 	return nullptr;
 }
 
+unique_ptr<duckdb::BoxRendererContext> ShellConnectionWired::CreateBoxRendererContext() {
+	// TODO: wire mode — server-side ClientContext needed for casting
+	return nullptr;
+}
+
 // ===== ShellDuckDBWired =====
 
 ShellDuckDBWired::ShellDuckDBWired(const char *path, ShellDBConfig &config) {

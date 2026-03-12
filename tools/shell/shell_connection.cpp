@@ -68,6 +68,10 @@ unique_ptr<duckdb::DataChunk> ShellConnectionLocal::CastToVarchar(duckdb::DataCh
 	return chunk.CastToVarchar(*conn->context, complex_objects_as_json);
 }
 
+unique_ptr<duckdb::BoxRendererContext> ShellConnectionLocal::CreateBoxRendererContext() {
+	return make_uniq<duckdb::ClientBoxRendererContext>(*conn->context);
+}
+
 duckdb::ClientContext &ShellConnectionLocal::GetContext() {
 	return *conn->context;
 }

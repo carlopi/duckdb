@@ -1,10 +1,9 @@
 #include "shell_renderer.hpp"
 
 #include "shell_state.hpp"
-#include "shell_connection_local.hpp"
-#include "shell_query_result_local.hpp"
+#include "shell_connection.hpp"
+#include "shell_query_result.hpp"
 #include "duckdb/common/box_renderer.hpp"
-#include "duckdb/common/box_renderer_context.hpp"
 #include "shell_highlight.hpp"
 #include "duckdb/logging/log_storage.hpp"
 #include <stdexcept>
@@ -1591,7 +1590,7 @@ public:
 
 private:
 	duckdb::BoxRendererConfig config;
-	unique_ptr<duckdb::ClientBoxRendererContext> render_context;
+	unique_ptr<duckdb::BoxRendererContext> render_context;
 	unique_ptr<duckdb::BoxRendererState> render_state;
 	string error_str;
 };
@@ -1638,22 +1637,16 @@ void ModeDuckBoxRenderer::RemoveRenderLimits() {
 }
 
 void ModeDuckBoxRenderer::Analyze(RenderingQueryResult &result) {
-#ifdef DUCKDB_SHELL_WIRE_MODE
-	// TODO: wire mode needs a BoxRendererContext that doesn't require ClientContext
-	error_str = "duckbox rendering not yet supported in wire mode";
-#else
 	duckdb::BoxRenderer renderer(config);
-	auto &materialized = static_cast<ShellMaterializedQueryResultLocal &>(result.result);
+	auto &materialized = static_cast<ShellMaterializedQueryResult &>(result.result);
 	try {
-		render_context = duckdb::make_uniq<duckdb::ClientBoxRendererContext>(
-		    static_cast<ShellConnectionLocal &>(*state.conn).GetContext());
+		render_context = state.conn->CreateBoxRendererContext();
 		render_state =
 		    renderer.Prepare(*render_context, result.metadata.column_names, materialized.Collection().GetCollection());
 	} catch (std::exception &ex) {
 		// store the error - throw on render
 		error_str = ex.what();
 	}
-#endif
 }
 
 bool ModeDuckBoxRenderer::ShouldUsePager(RenderingQueryResult &result, PagerMode global_mode) {

@@ -12,6 +12,7 @@
 #include "duckdb/parser/sql_statement.hpp"
 #include "duckdb/main/query_result.hpp"
 #include "duckdb/main/table_description.hpp"
+#include "duckdb/common/box_renderer_context.hpp"
 
 namespace duckdb_shell {
 using duckdb::string;
@@ -51,6 +52,9 @@ public:
 	//! Cast all columns in a DataChunk to VARCHAR.
 	virtual unique_ptr<duckdb::DataChunk> CastToVarchar(duckdb::DataChunk &chunk,
 	                                                    bool complex_objects_as_json = false) = 0;
+
+	//! Create a BoxRendererContext for use by the BoxRenderer.
+	virtual unique_ptr<duckdb::BoxRendererContext> CreateBoxRendererContext() = 0;
 };
 
 } // namespace duckdb_shell

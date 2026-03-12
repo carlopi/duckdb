@@ -36,6 +36,7 @@ public:
 
 	unique_ptr<duckdb::TableDescription> TableInfo(const string &table_name) override;
 	unique_ptr<duckdb::DataChunk> CastToVarchar(duckdb::DataChunk &chunk, bool complex_objects_as_json = false) override;
+	unique_ptr<duckdb::BoxRendererContext> CreateBoxRendererContext() override;
 };
 
 } // namespace duckdb_shell

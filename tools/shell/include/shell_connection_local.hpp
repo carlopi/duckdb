@@ -45,6 +45,9 @@ public:
 	//! Cast all columns in a DataChunk to VARCHAR.
 	unique_ptr<duckdb::DataChunk> CastToVarchar(duckdb::DataChunk &chunk, bool complex_objects_as_json = false) override;
 
+	//! Create a BoxRendererContext wrapping the underlying ClientContext.
+	unique_ptr<duckdb::BoxRendererContext> CreateBoxRendererContext() override;
+
 	//! Engine-only: context access (needed for rendering, config, Cast, etc.)
 	duckdb::ClientContext &GetContext();
 
