@@ -57,8 +57,9 @@ add_executable(shell ${SHELL_SOURCES})
 
 if(DUCKDB_SHELL_WIRE_MODE)
   target_compile_definitions(shell PRIVATE DUCKDB_SHELL_WIRE_MODE)
-  # TODO: link against a minimal duckdb_client_types library instead
-  target_link_libraries(shell duckdb_static ${DUCKDB_EXTRA_LINK_FLAGS})
+  add_subdirectory(${CMAKE_SOURCE_DIR}/src/duckdb_client_types
+                   ${CMAKE_BINARY_DIR}/duckdb_client_types)
+  target_link_libraries(shell duckdb_client_types ${DUCKDB_EXTRA_LINK_FLAGS})
 else()
   target_link_libraries(shell duckdb_static ${DUCKDB_EXTRA_LINK_FLAGS})
   link_extension_libraries(shell "")
