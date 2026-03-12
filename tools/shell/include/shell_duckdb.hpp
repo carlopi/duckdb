@@ -8,40 +8,25 @@
 
 #pragma once
 
-#include "duckdb.hpp"
 #include "duckdb/common/unique_ptr.hpp"
+#include "duckdb/common/types.hpp"
 
 namespace duckdb_shell {
-using duckdb::make_uniq;
-using duckdb::string;
 using duckdb::unique_ptr;
-class ShellDBConfig;
+class ShellConnection;
 
-//! ShellDuckDB wraps a duckdb::DuckDB instance, exposing only the methods the shell needs.
-//! No virtual methods yet — polymorphism comes later when wire mode lands.
+//! ShellDuckDB is an abstract interface for a database instance.
 class ShellDuckDB {
-	unique_ptr<duckdb::DuckDB> db;
-
 public:
-	explicit ShellDuckDB(const char *path, ShellDBConfig &config);
-	~ShellDuckDB();
+	virtual ~ShellDuckDB() = default;
 
 	//! Whether the database is open
-	bool IsOpen() const;
+	virtual bool IsOpen() const = 0;
 	//! Close the database
-	void Reset();
+	virtual void Reset() = 0;
 
-	//! Get the underlying database instance
-	duckdb::DatabaseInstance &GetInstance();
-
-	//! Create a new connection to the database
-	unique_ptr<duckdb::Connection> CreateConnection();
-
-	//! Load a statically-linked extension
-	template <class T>
-	void LoadStaticExtension() {
-		db->LoadStaticExtension<T>();
-	}
+	//! Create a new connection to the database (returns abstract base type)
+	virtual unique_ptr<ShellConnection> CreateConnection() = 0;
 };
 
 } // namespace duckdb_shell

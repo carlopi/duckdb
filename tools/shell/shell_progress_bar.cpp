@@ -3,6 +3,7 @@
 #include "shell_state.hpp"
 #include "shell_duckdb.hpp"
 #include "shell_connection.hpp"
+#include "shell_connection_local.hpp"
 
 namespace duckdb_shell {
 using duckdb::OutputStream;
@@ -130,7 +131,7 @@ protected:
 
 	ShellConnection &GetConnection(ShellState &state) override {
 		if (!status_bar.connection) {
-			status_bar.connection = make_uniq<ShellConnection>(state.db->CreateConnection());
+			status_bar.connection = state.db->CreateConnection();
 		}
 		return *status_bar.connection;
 	}

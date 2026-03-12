@@ -1,70 +1,124 @@
-#include "shell_query_result.hpp"
+#include "shell_query_result_local.hpp"
 
 namespace duckdb_shell {
 
-// ===== ShellQueryResult =====
+// ===== ShellQueryResultLocal =====
 
-ShellQueryResult::ShellQueryResult(duckdb::unique_ptr<duckdb::QueryResult> result) : result(std::move(result)) {
+ShellQueryResultLocal::ShellQueryResultLocal(duckdb::unique_ptr<duckdb::QueryResult> result)
+    : result(std::move(result)) {
 }
 
-ShellQueryResult::~ShellQueryResult() {
+ShellQueryResultLocal::~ShellQueryResultLocal() {
 }
 
-bool ShellQueryResult::HasError() const {
+bool ShellQueryResultLocal::HasError() const {
 	return result->HasError();
 }
 
-const duckdb::string &ShellQueryResult::GetError() const {
+const duckdb::string &ShellQueryResultLocal::GetError() const {
 	return result->GetError();
 }
 
-duckdb::StatementReturnType ShellQueryResult::GetReturnType() const {
+duckdb::StatementReturnType ShellQueryResultLocal::GetReturnType() const {
 	return result->properties.return_type;
 }
 
-duckdb::QueryResultType ShellQueryResult::GetResultType() const {
+duckdb::QueryResultType ShellQueryResultLocal::GetResultType() const {
 	return result->type;
 }
 
-idx_t ShellQueryResult::ColumnCount() const {
+idx_t ShellQueryResultLocal::ColumnCount() const {
 	return result->ColumnCount();
 }
 
-const duckdb::vector<duckdb::string> &ShellQueryResult::Names() const {
+const duckdb::vector<duckdb::string> &ShellQueryResultLocal::Names() const {
 	return result->names;
 }
 
-const duckdb::vector<duckdb::LogicalType> &ShellQueryResult::Types() const {
+const duckdb::vector<duckdb::LogicalType> &ShellQueryResultLocal::Types() const {
 	return result->types;
 }
 
-duckdb::unique_ptr<duckdb::DataChunk> ShellQueryResult::Fetch() {
+duckdb::unique_ptr<duckdb::DataChunk> ShellQueryResultLocal::Fetch() {
 	return result->Fetch();
 }
 
-duckdb::QueryResult &ShellQueryResult::GetResult() {
+ShellQueryResult::iterator ShellQueryResultLocal::begin() {
+	return result->begin();
+}
+
+ShellQueryResult::iterator ShellQueryResultLocal::end() {
+	return result->end();
+}
+
+duckdb::QueryResult &ShellQueryResultLocal::GetResult() {
 	return *result;
 }
 
-duckdb::unique_ptr<duckdb::MaterializedQueryResult> ShellQueryResult::TakeMaterialized() {
+duckdb::unique_ptr<duckdb::MaterializedQueryResult> ShellQueryResultLocal::TakeMaterialized() {
 	return duckdb::unique_ptr_cast<duckdb::QueryResult, duckdb::MaterializedQueryResult>(std::move(result));
 }
 
-// ===== ShellMaterializedQueryResult =====
+// ===== ShellMaterializedQueryResultLocal =====
 
-ShellMaterializedQueryResult::ShellMaterializedQueryResult(duckdb::unique_ptr<duckdb::MaterializedQueryResult> result)
-    : ShellQueryResult(std::move(result)) {
+ShellMaterializedQueryResultLocal::ShellMaterializedQueryResultLocal(
+    duckdb::unique_ptr<duckdb::MaterializedQueryResult> result)
+    : result(std::move(result)) {
 }
 
-ShellMaterializedQueryResult::~ShellMaterializedQueryResult() {
+ShellMaterializedQueryResultLocal::~ShellMaterializedQueryResultLocal() {
 }
 
-idx_t ShellMaterializedQueryResult::RowCount() const {
-	return result->Cast<duckdb::MaterializedQueryResult>().RowCount();
+bool ShellMaterializedQueryResultLocal::HasError() const {
+	return result->HasError();
 }
 
-ShellColumnDataCollection ShellMaterializedQueryResult::Collection() {
-	return ShellColumnDataCollection(result->Cast<duckdb::MaterializedQueryResult>().Collection());
+const duckdb::string &ShellMaterializedQueryResultLocal::GetError() const {
+	return result->GetError();
+}
+
+duckdb::StatementReturnType ShellMaterializedQueryResultLocal::GetReturnType() const {
+	return result->properties.return_type;
+}
+
+duckdb::QueryResultType ShellMaterializedQueryResultLocal::GetResultType() const {
+	return result->type;
+}
+
+idx_t ShellMaterializedQueryResultLocal::ColumnCount() const {
+	return result->ColumnCount();
+}
+
+const duckdb::vector<duckdb::string> &ShellMaterializedQueryResultLocal::Names() const {
+	return result->names;
+}
+
+const duckdb::vector<duckdb::LogicalType> &ShellMaterializedQueryResultLocal::Types() const {
+	return result->types;
+}
+
+duckdb::unique_ptr<duckdb::DataChunk> ShellMaterializedQueryResultLocal::Fetch() {
+	return result->Fetch();
+}
+
+ShellQueryResult::iterator ShellMaterializedQueryResultLocal::begin() {
+	return result->begin();
+}
+
+ShellQueryResult::iterator ShellMaterializedQueryResultLocal::end() {
+	return result->end();
+}
+
+idx_t ShellMaterializedQueryResultLocal::RowCount() const {
+	return result->RowCount();
+}
+
+ShellColumnDataCollection ShellMaterializedQueryResultLocal::Collection() {
+	return ShellColumnDataCollection(result->Collection());
+}
+
+duckdb::MaterializedQueryResult &ShellMaterializedQueryResultLocal::GetMaterializedResult() {
+	return *result;
 }
 
 } // namespace duckdb_shell

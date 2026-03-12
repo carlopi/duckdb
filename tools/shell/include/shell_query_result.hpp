@@ -10,65 +10,44 @@
 
 #include "duckdb/common/unique_ptr.hpp"
 #include "duckdb/main/query_result.hpp"
-#include "duckdb/main/materialized_query_result.hpp"
 #include "shell_column_data_collection.hpp"
 
 namespace duckdb_shell {
 using duckdb::idx_t;
 using duckdb::unique_ptr;
 
-//! ShellQueryResult wraps a duckdb::QueryResult (streaming or materialized).
+//! ShellQueryResult is an abstract interface for a query result (streaming or materialized).
 class ShellQueryResult {
 public:
-	explicit ShellQueryResult(duckdb::unique_ptr<duckdb::QueryResult> result);
-	virtual ~ShellQueryResult();
+	virtual ~ShellQueryResult() = default;
 
 	//! Error handling
-	bool HasError() const;
-	const duckdb::string &GetError() const;
+	virtual bool HasError() const = 0;
+	virtual const duckdb::string &GetError() const = 0;
 
 	//! Properties
-	duckdb::StatementReturnType GetReturnType() const;
-	duckdb::QueryResultType GetResultType() const;
-	idx_t ColumnCount() const;
+	virtual duckdb::StatementReturnType GetReturnType() const = 0;
+	virtual duckdb::QueryResultType GetResultType() const = 0;
+	virtual idx_t ColumnCount() const = 0;
 
 	//! Column metadata
-	const duckdb::vector<duckdb::string> &Names() const;
-	const duckdb::vector<duckdb::LogicalType> &Types() const;
+	virtual const duckdb::vector<duckdb::string> &Names() const = 0;
+	virtual const duckdb::vector<duckdb::LogicalType> &Types() const = 0;
 
 	//! Data access
-	duckdb::unique_ptr<duckdb::DataChunk> Fetch();
+	virtual duckdb::unique_ptr<duckdb::DataChunk> Fetch() = 0;
 
 	//! Row iteration — for `for (auto &row : *result)` patterns
-	auto begin() -> decltype(std::declval<duckdb::QueryResult>().begin()) {
-		return result->begin();
-	}
-	auto end() -> decltype(std::declval<duckdb::QueryResult>().end()) {
-		return result->end();
-	}
-
-	//! Engine access — needed by renderers that still need the raw type
-	duckdb::QueryResult &GetResult();
-
-	//! Extract the underlying MaterializedQueryResult, transferring ownership.
-	//! Only valid if GetResultType() == MATERIALIZED_RESULT.
-	//! After calling this, the ShellQueryResult is empty.
-	duckdb::unique_ptr<duckdb::MaterializedQueryResult> TakeMaterialized();
-
-protected:
-	duckdb::unique_ptr<duckdb::QueryResult> result;
+	using iterator = duckdb::QueryResult::iterator;
+	virtual iterator begin() = 0;
+	virtual iterator end() = 0;
 };
 
-//! ShellMaterializedQueryResult wraps a duckdb::MaterializedQueryResult.
-//! Inherits from ShellQueryResult so it can be used anywhere a ShellQueryResult is expected.
+//! ShellMaterializedQueryResult is an abstract interface for a materialized query result.
 class ShellMaterializedQueryResult : public ShellQueryResult {
 public:
-	explicit ShellMaterializedQueryResult(duckdb::unique_ptr<duckdb::MaterializedQueryResult> result);
-	~ShellMaterializedQueryResult() override;
-
-	//! Materialized-specific
-	idx_t RowCount() const;
-	ShellColumnDataCollection Collection();
+	virtual idx_t RowCount() const = 0;
+	virtual ShellColumnDataCollection Collection() = 0;
 };
 
 } // namespace duckdb_shell

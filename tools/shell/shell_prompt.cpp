@@ -1,5 +1,5 @@
 #include "shell_prompt.hpp"
-#include "shell_connection.hpp"
+#include "shell_connection_local.hpp"
 #include "duckdb/main/database_manager.hpp"
 #include "duckdb/main/client_data.hpp"
 #include "duckdb/catalog/catalog_search_path.hpp"
@@ -219,7 +219,7 @@ vector<string> Prompt::GetSupportedSettings() {
 
 string Prompt::HandleSetting(ShellState &state, const PromptComponent &component) {
 	auto &con = GetConnection(state);
-	auto &context = con.GetContext();
+	auto &context = static_cast<ShellConnectionLocal &>(con).GetContext();
 	if (component.literal == "memory_limit") {
 		auto &config = duckdb::DBConfig::GetConfig(context);
 		return StringUtil::BytesToHumanReadableString(config.options.maximum_memory, 1000);

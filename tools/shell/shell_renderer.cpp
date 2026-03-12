@@ -1,7 +1,8 @@
 #include "shell_renderer.hpp"
 
 #include "shell_state.hpp"
-#include "shell_connection.hpp"
+#include "shell_connection_local.hpp"
+#include "shell_query_result_local.hpp"
 #include "duckdb/common/box_renderer.hpp"
 #include "duckdb/common/box_renderer_context.hpp"
 #include "shell_highlight.hpp"
@@ -1638,9 +1639,10 @@ void ModeDuckBoxRenderer::RemoveRenderLimits() {
 
 void ModeDuckBoxRenderer::Analyze(RenderingQueryResult &result) {
 	duckdb::BoxRenderer renderer(config);
-	auto &materialized = static_cast<ShellMaterializedQueryResult &>(result.result);
+	auto &materialized = static_cast<ShellMaterializedQueryResultLocal &>(result.result);
 	try {
-		render_context = duckdb::make_uniq<duckdb::ClientBoxRendererContext>(state.conn->GetContext());
+		render_context = duckdb::make_uniq<duckdb::ClientBoxRendererContext>(
+		    static_cast<ShellConnectionLocal &>(*state.conn).GetContext());
 		render_state =
 		    renderer.Prepare(*render_context, result.metadata.column_names, materialized.Collection().GetCollection());
 	} catch (std::exception &ex) {
@@ -1665,7 +1667,7 @@ bool ModeDuckBoxRenderer::ShouldUsePager(RenderingQueryResult &result, PagerMode
 	// if this is larger than pager_min_rows - we actually check the row count of the result
 	if (config.max_rows >= state.pager_min_rows) {
 		// show the pager if the row count exceeds the min rows
-		if (static_cast<ShellMaterializedQueryResult &>(result.result).RowCount() >= state.pager_min_rows) {
+		if (static_cast<ShellMaterializedQueryResultLocal &>(result.result).RowCount() >= state.pager_min_rows) {
 			return true;
 		}
 	}

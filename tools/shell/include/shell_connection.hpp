@@ -8,54 +8,48 @@
 
 #pragma once
 
-#include "duckdb.hpp"
 #include "duckdb/common/unique_ptr.hpp"
+#include "duckdb/parser/sql_statement.hpp"
+#include "duckdb/main/query_result.hpp"
 #include "duckdb/main/table_description.hpp"
-#include "shell_prepared_statement.hpp"
 
 namespace duckdb_shell {
-using duckdb::make_uniq;
 using duckdb::string;
 using duckdb::unique_ptr;
 using duckdb::vector;
+class ShellQueryResult;
+class ShellMaterializedQueryResult;
+class ShellPreparedStatement;
 
-//! ShellConnection wraps a duckdb::Connection, exposing only the methods the shell needs.
-//! No virtual methods yet — polymorphism comes later when wire mode lands.
+//! ShellConnection is an abstract interface for a database connection.
 class ShellConnection {
-	unique_ptr<duckdb::Connection> conn;
-
 public:
-	explicit ShellConnection(unique_ptr<duckdb::Connection> conn);
-	~ShellConnection();
+	virtual ~ShellConnection() = default;
 
 	//! Query execution
-	unique_ptr<ShellMaterializedQueryResult> Query(const string &sql);
-	unique_ptr<ShellQueryResult> SendQuery(const string &query);
-	unique_ptr<ShellQueryResult> SendQuery(unique_ptr<duckdb::SQLStatement> statement,
-	                                       duckdb::QueryParameters parameters);
-	unique_ptr<ShellQueryResult> SendQuery(unique_ptr<duckdb::SQLStatement> statement);
-	vector<unique_ptr<duckdb::SQLStatement>> ExtractStatements(const string &sql);
-	unique_ptr<ShellPreparedStatement> Prepare(const string &sql);
+	virtual unique_ptr<ShellMaterializedQueryResult> Query(const string &sql) = 0;
+	virtual unique_ptr<ShellQueryResult> SendQuery(const string &query) = 0;
+	virtual unique_ptr<ShellQueryResult> SendQuery(unique_ptr<duckdb::SQLStatement> statement,
+	                                               duckdb::QueryParameters parameters) = 0;
+	virtual unique_ptr<ShellQueryResult> SendQuery(unique_ptr<duckdb::SQLStatement> statement) = 0;
+	virtual vector<unique_ptr<duckdb::SQLStatement>> ExtractStatements(const string &sql) = 0;
+	virtual unique_ptr<ShellPreparedStatement> Prepare(const string &sql) = 0;
 
 	//! Transaction control
-	void BeginTransaction();
-	void Commit();
-	void Rollback();
+	virtual void BeginTransaction() = 0;
+	virtual void Commit() = 0;
+	virtual void Rollback() = 0;
 
 	//! Interrupt
-	void Interrupt();
-	void ClearInterrupt();
+	virtual void Interrupt() = 0;
+	virtual void ClearInterrupt() = 0;
 
 	//! Table info
-	unique_ptr<duckdb::TableDescription> TableInfo(const string &table_name);
+	virtual unique_ptr<duckdb::TableDescription> TableInfo(const string &table_name) = 0;
 
 	//! Cast all columns in a DataChunk to VARCHAR.
-	//! If complex_objects_as_json is true, nested and floating-point types are cast through JSON
-	//! first to preserve structure (e.g. for JSON/JSONLINES output modes).
-	unique_ptr<duckdb::DataChunk> CastToVarchar(duckdb::DataChunk &chunk, bool complex_objects_as_json = false);
-
-	//! Context access (needed for rendering, config, Cast, etc.)
-	duckdb::ClientContext &GetContext();
+	virtual unique_ptr<duckdb::DataChunk> CastToVarchar(duckdb::DataChunk &chunk,
+	                                                    bool complex_objects_as_json = false) = 0;
 };
 
 } // namespace duckdb_shell

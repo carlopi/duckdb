@@ -1,29 +1,30 @@
-#include "shell_duckdb.hpp"
+#include "shell_duckdb_local.hpp"
 #include "shell_db_config.hpp"
+#include "shell_connection_local.hpp"
 
 namespace duckdb_shell {
 
-ShellDuckDB::ShellDuckDB(const char *path, ShellDBConfig &config)
+ShellDuckDBLocal::ShellDuckDBLocal(const char *path, ShellDBConfig &config)
     : db(make_uniq<duckdb::DuckDB>(path, &config.GetNative())) {
 }
 
-ShellDuckDB::~ShellDuckDB() {
+ShellDuckDBLocal::~ShellDuckDBLocal() {
 }
 
-bool ShellDuckDB::IsOpen() const {
+bool ShellDuckDBLocal::IsOpen() const {
 	return db != nullptr;
 }
 
-void ShellDuckDB::Reset() {
+void ShellDuckDBLocal::Reset() {
 	db.reset();
 }
 
-duckdb::DatabaseInstance &ShellDuckDB::GetInstance() {
+duckdb::DatabaseInstance &ShellDuckDBLocal::GetInstance() {
 	return *db->instance;
 }
 
-unique_ptr<duckdb::Connection> ShellDuckDB::CreateConnection() {
-	return make_uniq<duckdb::Connection>(*db);
+unique_ptr<ShellConnection> ShellDuckDBLocal::CreateConnection() {
+	return make_uniq<ShellConnectionLocal>(make_uniq<duckdb::Connection>(*db));
 }
 
 } // namespace duckdb_shell
