@@ -219,6 +219,7 @@ vector<string> Prompt::GetSupportedSettings() {
 
 string Prompt::HandleSetting(ShellState &state, const PromptComponent &component) {
 	auto &con = GetConnection(state);
+	// FIXME: assumes Local — revisit when adding WiredConnection
 	auto &context = static_cast<ShellConnectionLocal &>(con).GetContext();
 	if (component.literal == "memory_limit") {
 		auto &config = duckdb::DBConfig::GetConfig(context);

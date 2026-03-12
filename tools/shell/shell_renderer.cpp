@@ -1639,6 +1639,7 @@ void ModeDuckBoxRenderer::RemoveRenderLimits() {
 
 void ModeDuckBoxRenderer::Analyze(RenderingQueryResult &result) {
 	duckdb::BoxRenderer renderer(config);
+	// FIXME: assumes Local — revisit when adding WiredDuckDB
 	auto &materialized = static_cast<ShellMaterializedQueryResultLocal &>(result.result);
 	try {
 		render_context = duckdb::make_uniq<duckdb::ClientBoxRendererContext>(
@@ -1667,6 +1668,7 @@ bool ModeDuckBoxRenderer::ShouldUsePager(RenderingQueryResult &result, PagerMode
 	// if this is larger than pager_min_rows - we actually check the row count of the result
 	if (config.max_rows >= state.pager_min_rows) {
 		// show the pager if the row count exceeds the min rows
+		// FIXME: assumes Local — revisit when adding WiredDuckDB
 		if (static_cast<ShellMaterializedQueryResultLocal &>(result.result).RowCount() >= state.pager_min_rows) {
 			return true;
 		}

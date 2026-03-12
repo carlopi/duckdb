@@ -982,6 +982,7 @@ SuccessState ShellState::ExecuteStatement(unique_ptr<duckdb::SQLStatement> state
 	if (result->GetResultType() == duckdb::QueryResultType::MATERIALIZED_RESULT) {
 		// take ownership of the materialized result for last_result (the `_` replacement scan)
 		// but we still need to render it - so we render through last_result
+		// FIXME: assumes Local — revisit when adding WiredQueryResult
 		auto &result_local = static_cast<ShellQueryResultLocal &>(*result);
 		last_result = make_uniq<ShellMaterializedQueryResultLocal>(result_local.TakeMaterialized());
 		return RenderQueryResult(*renderer, *last_result);
@@ -1199,6 +1200,7 @@ void ShellState::OpenDB(ShellOpenFlags flags) {
 				exit(1);
 			}
 		}
+		// FIXME: assumes Local — revisit when adding WiredConnection
 		auto &conn_local = static_cast<ShellConnectionLocal &>(*conn);
 		auto &client_config = duckdb::ClientConfig::GetConfig(conn_local.GetContext());
 		client_config.display_create_func = CreateProgressBar;
@@ -1756,6 +1758,7 @@ bool ShellState::ImportData(const vector<string> &args) {
 	}
 	ClearInterrupt();
 	// check if the table exists
+	// FIXME: assumes Local — revisit when adding WiredConnection
 	auto needCommit = static_cast<ShellConnectionLocal &>(*conn).GetContext().transaction.IsAutoCommit();
 	if (needCommit) {
 		conn->BeginTransaction();
