@@ -1,4 +1,5 @@
 #include "shell_prompt.hpp"
+#include "shell_connection.hpp"
 #include "duckdb/main/database_manager.hpp"
 #include "duckdb/main/client_data.hpp"
 #include "duckdb/catalog/catalog_search_path.hpp"
@@ -206,7 +207,7 @@ void Prompt::ParsePrompt(const string &prompt) {
 	}
 }
 
-duckdb::Connection &Prompt::GetConnection(ShellState &state) {
+ShellConnection &Prompt::GetConnection(ShellState &state) {
 	return *state.conn;
 }
 
@@ -218,7 +219,7 @@ vector<string> Prompt::GetSupportedSettings() {
 
 string Prompt::HandleSetting(ShellState &state, const PromptComponent &component) {
 	auto &con = GetConnection(state);
-	auto &context = *con.context;
+	auto &context = con.GetContext();
 	if (component.literal == "memory_limit") {
 		auto &config = duckdb::DBConfig::GetConfig(context);
 		return StringUtil::BytesToHumanReadableString(config.options.maximum_memory, 1000);
@@ -250,7 +251,7 @@ string Prompt::HandleSetting(ShellState &state, const PromptComponent &component
 		return StringUtil::BytesToHumanReadableString(profiler->GetBytesWritten(), 1000);
 	}
 	auto &current_db = duckdb::DatabaseManager::GetDefaultDatabase(context);
-	auto &current_schema = duckdb::ClientData::Get(*con.context).catalog_search_path->GetDefault().schema;
+	auto &current_schema = duckdb::ClientData::Get(context).catalog_search_path->GetDefault().schema;
 	if (component.literal == "current_database") {
 		return current_db;
 	}

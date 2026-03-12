@@ -1,0 +1,64 @@
+#include "shell_connection.hpp"
+
+namespace duckdb_shell {
+
+ShellConnection::ShellConnection(unique_ptr<duckdb::Connection> conn_p) : conn(std::move(conn_p)) {
+}
+
+ShellConnection::~ShellConnection() {
+}
+
+unique_ptr<duckdb::MaterializedQueryResult> ShellConnection::Query(const string &sql) {
+	return conn->Query(sql);
+}
+
+unique_ptr<duckdb::QueryResult> ShellConnection::SendQuery(const string &query) {
+	return conn->SendQuery(query);
+}
+
+unique_ptr<duckdb::QueryResult> ShellConnection::SendQuery(unique_ptr<duckdb::SQLStatement> statement,
+                                                           duckdb::QueryParameters parameters) {
+	return conn->SendQuery(std::move(statement), parameters);
+}
+
+unique_ptr<duckdb::QueryResult> ShellConnection::SendQuery(unique_ptr<duckdb::SQLStatement> statement) {
+	return conn->SendQuery(std::move(statement));
+}
+
+vector<unique_ptr<duckdb::SQLStatement>> ShellConnection::ExtractStatements(const string &sql) {
+	return conn->ExtractStatements(sql);
+}
+
+unique_ptr<duckdb::PreparedStatement> ShellConnection::Prepare(const string &sql) {
+	return conn->Prepare(sql);
+}
+
+void ShellConnection::BeginTransaction() {
+	conn->BeginTransaction();
+}
+
+void ShellConnection::Commit() {
+	conn->Commit();
+}
+
+void ShellConnection::Rollback() {
+	conn->Rollback();
+}
+
+void ShellConnection::Interrupt() {
+	conn->Interrupt();
+}
+
+void ShellConnection::ClearInterrupt() {
+	conn->context->ClearInterrupt();
+}
+
+unique_ptr<duckdb::TableDescription> ShellConnection::TableInfo(const string &table_name) {
+	return conn->TableInfo(table_name);
+}
+
+duckdb::ClientContext &ShellConnection::GetContext() {
+	return *conn->context;
+}
+
+} // namespace duckdb_shell

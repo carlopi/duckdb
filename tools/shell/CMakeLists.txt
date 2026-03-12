@@ -19,6 +19,8 @@ include_directories(../../third_party/utf8proc/include)
 set(SHELL_SOURCES
     ${SHELL_SOURCES}
     shell_command_line_option.cpp
+    shell_connection.cpp
+    shell_duckdb.cpp
     shell_extension.cpp
     shell.cpp
     shell_helpers.cpp
