@@ -1,6 +1,7 @@
 #include "shell_renderer.hpp"
 
 #include "shell_state.hpp"
+#include "shell_connection.hpp"
 #include "duckdb/common/box_renderer.hpp"
 #include "shell_highlight.hpp"
 #include "duckdb/logging/log_storage.hpp"
@@ -303,7 +304,7 @@ unique_ptr<duckdb::DataChunk> ShellRenderer::ConvertChunk(duckdb::DataChunk &chu
 	varchar_chunk->Initialize(duckdb::Allocator::DefaultAllocator(), all_varchar);
 
 	for (idx_t c = 0; c < chunk.ColumnCount(); c++) {
-		duckdb::VectorOperations::Cast(*state.conn->context, chunk.data[c], varchar_chunk->data[c], chunk.size());
+		duckdb::VectorOperations::Cast(state.conn->GetContext(), chunk.data[c], varchar_chunk->data[c], chunk.size());
 	}
 	varchar_chunk->SetCardinality(chunk.size());
 	varchar_chunk->Flatten();
@@ -1315,7 +1316,7 @@ public:
 		json_chunk.Initialize(duckdb::Allocator::DefaultAllocator(), all_json);
 
 		for (idx_t c = 0; c < chunk.ColumnCount(); c++) {
-			duckdb::VectorOperations::Cast(*state.conn->context, chunk.data[c], json_chunk.data[c], chunk.size());
+			duckdb::VectorOperations::Cast(state.conn->GetContext(), chunk.data[c], json_chunk.data[c], chunk.size());
 		}
 		json_chunk.SetCardinality(chunk.size());
 		json_chunk.Flatten();
@@ -1678,9 +1679,9 @@ void ModeDuckBoxRenderer::Analyze(RenderingQueryResult &result) {
 	duckdb::BoxRenderer renderer(config);
 	auto &query_result = result.result;
 	auto &materialized = query_result.Cast<duckdb::MaterializedQueryResult>();
-	auto &con = *state.conn;
 	try {
-		render_state = renderer.Prepare(*con.context, result.metadata.column_names, materialized.Collection());
+		render_state =
+		    renderer.Prepare(state.conn->GetContext(), result.metadata.column_names, materialized.Collection());
 	} catch (std::exception &ex) {
 		// store the error - throw on render
 		error_str = ex.what();

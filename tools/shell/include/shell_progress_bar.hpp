@@ -32,7 +32,7 @@ private:
 	duckdb::ProgressBarDisplayInfo display_info;
 	int32_t percentage = 0;
 	double estimated_remaining_seconds = 0;
-	unique_ptr<duckdb::Connection> connection;
+	unique_ptr<ShellConnection> connection;
 };
 
 //! Displays a status bar alongside the progress bar

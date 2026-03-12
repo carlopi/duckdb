@@ -1,4 +1,5 @@
 #include "shell_state.hpp"
+#include "shell_connection.hpp"
 #include "shell_highlight.hpp"
 #include "shell_prompt.hpp"
 #include "shell_progress_bar.hpp"
@@ -141,6 +142,7 @@ MetadataResult DumpTable(ShellState &state, const vector<string> &args) {
 	                               "ORDER BY table_schema",
 	                               zLike);
 	auto result = state.conn->Query(zSql);
+
 	for (auto &row : *result) {
 		auto schema = row.GetValue<string>(0);
 		auto create_schema = StringUtil::Format("CREATE SCHEMA IF NOT EXISTS %s;", SQLIdentifier(schema));

@@ -21,6 +21,8 @@
 #include "duckdb.hpp"
 
 namespace duckdb_shell {
+class ShellDuckDB;
+class ShellConnection;
 using duckdb::make_uniq;
 using duckdb::MaterializedQueryResult;
 using duckdb::string;
@@ -156,8 +158,8 @@ struct ShellTableInfo {
 */
 struct ShellState {
 public:
-	unique_ptr<duckdb::DuckDB> db;            /* The database */
-	unique_ptr<duckdb::Connection> conn;      /* The primary connection to the database */
+	unique_ptr<ShellDuckDB> db;               /* The database */
+	unique_ptr<ShellConnection> conn;         /* The primary connection to the database */
 	duckdb::DBConfig config;                  /* Config used for opening the database */
 	uint8_t doXdgOpen = 0;                    /* Invoke start/open/xdg-open in output_reset() */
 	int outCount = 0;                         /* Revert to stdout when reaching zero */
@@ -408,7 +410,7 @@ public:
 	SuccessState ExecuteQuery(const string &query);
 	//! Execute a SQL query and extracts a single string value
 	ExecuteSQLSingleValueResult ExecuteSQLSingleValue(const string &sql, string &result);
-	ExecuteSQLSingleValueResult ExecuteSQLSingleValue(duckdb::Connection &con, const string &sql, string &result_value);
+	ExecuteSQLSingleValueResult ExecuteSQLSingleValue(ShellConnection &con, const string &sql, string &result_value);
 	//! Execute a SQL query and renders the result using the given renderer.
 	//! On fail - prints the error and returns FAILURE
 	SuccessState RenderQuery(ShellRenderer &renderer, const string &query, PagerMode pager_overwrite);

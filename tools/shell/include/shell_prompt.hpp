@@ -10,6 +10,7 @@
 
 #include "shell_state.hpp"
 #include "shell_highlight.hpp"
+#include "shell_connection.hpp"
 
 namespace duckdb_shell {
 
@@ -48,7 +49,7 @@ protected:
 	virtual vector<string> GetSupportedSettings();
 	string HandleText(ShellState &state, const string &text, idx_t &length);
 	string ExecuteSQL(ShellState &state, const string &query);
-	virtual duckdb::Connection &GetConnection(ShellState &state);
+	virtual ShellConnection &GetConnection(ShellState &state);
 };
 
 } // namespace duckdb_shell

@@ -87,6 +87,8 @@
 #include "shell_renderer.hpp"
 #include "shell_highlight.hpp"
 #include "shell_state.hpp"
+#include "shell_duckdb.hpp"
+#include "shell_connection.hpp"
 #include "duckdb/main/error_manager.hpp"
 #include "duckdb/main/client_config.hpp"
 
@@ -829,7 +831,7 @@ static BOOL WINAPI ConsoleCtrlHandler(DWORD dwCtrlType /* One of the CTRL_*_EVEN
 void ShellState::ClearInterrupt() {
 	seenInterrupt = 0;
 	if (conn) {
-		conn->context->ClearInterrupt();
+		conn->ClearInterrupt();
 	}
 }
 
@@ -853,8 +855,7 @@ void ShellState::SetTextMode() {
 }
 
 SuccessState ShellState::RenderQuery(ShellRenderer &renderer, const string &query, PagerMode pager_overwrite) {
-	auto &con = *conn;
-	auto result = con.SendQuery(query);
+	auto result = conn->SendQuery(query);
 	if (result->HasError()) {
 		PrintDatabaseError(result->GetError());
 		return SuccessState::FAILURE;
@@ -882,8 +883,7 @@ void ShellState::SetTableName(const char *zName) {
 ** won't consume the semicolon terminator.
 */
 void ShellState::RunTableDumpQuery(const string &zSelect) {
-	auto &con = *conn;
-	auto result = con.Query(zSelect);
+	auto result = conn->Query(zSelect);
 	if (result->HasError()) {
 		PrintF("/**** ERROR: %s *****/\n", result->GetError().c_str());
 		AddError();
@@ -946,7 +946,6 @@ SuccessState ShellState::ExecuteStatement(unique_ptr<duckdb::SQLStatement> state
 		                   "statement parameters, use PREPARE to prepare a statement, followed by EXECUTE");
 		return SuccessState::FAILURE;
 	}
-	auto &con = *conn;
 	auto renderer = GetRenderer();
 	unique_ptr<duckdb::QueryResult> result;
 	if (renderer->RequireMaterializedResult()) {
@@ -954,10 +953,10 @@ SuccessState ShellState::ExecuteStatement(unique_ptr<duckdb::SQLStatement> state
 		duckdb::QueryParameters parameters;
 		parameters.output_type = duckdb::QueryResultOutputType::FORCE_MATERIALIZED;
 		parameters.memory_type = duckdb::QueryResultMemoryType::BUFFER_MANAGED;
-		result = con.SendQuery(std::move(statement), parameters);
+		result = conn->SendQuery(std::move(statement), parameters);
 	} else {
 		// for row-wise rendering we can use streaming results
-		result = con.SendQuery(std::move(statement));
+		result = conn->SendQuery(std::move(statement));
 	}
 	auto &res = *result;
 	if (res.HasError()) {
@@ -993,9 +992,8 @@ SuccessState ShellState::ExecuteStatement(unique_ptr<duckdb::SQLStatement> state
 ** set via the supplied callback.
 */
 SuccessState ShellState::ExecuteSQL(const string &zSql) {
-	auto &con = *conn;
 	try {
-		auto statements = con.ExtractStatements(zSql);
+		auto statements = conn->ExtractStatements(zSql);
 		for (auto &statement : statements) {
 			idx_t start_pos = statement->stmt_location;
 			idx_t len = statement->stmt_length;
@@ -1048,8 +1046,7 @@ vector<string> ShellState::TableColumnList(const char *zTab) {
 	vector<string> result;
 
 	auto zSql = StringUtil::Format("PRAGMA table_info=%s", SQLString(zTab));
-	auto &con = *conn;
-	auto query_result = con.Query(zSql);
+	auto query_result = conn->Query(zSql);
 	if (query_result->HasError()) {
 		return result;
 	}
@@ -1062,7 +1059,7 @@ vector<string> ShellState::TableColumnList(const char *zTab) {
 /*
 ** Lookup the schema for a table using the information schema.
 */
-static string getTableSchema(duckdb::Connection &con, const char *zTable) {
+static string getTableSchema(ShellConnection &con, const char *zTable) {
 	string zSchema;
 	auto zSql = StringUtil::Format("SELECT table_schema FROM information_schema.tables "
 	                               "WHERE table_name = %s AND table_type='BASE TABLE' "
@@ -1097,8 +1094,7 @@ void ShellState::AddError() {
 ** "ORDER BY rowid DESC" to the end.
 */
 void ShellState::RunSchemaDumpQuery(const string &zQuery) {
-	auto &con = *conn;
-	auto result = con.Query(zQuery);
+	auto result = conn->Query(zQuery);
 	for (auto &row : *result) {
 		auto zTable = row.GetValue<string>(0);
 		auto zType = row.GetValue<string>(1);
@@ -1111,7 +1107,7 @@ void ShellState::RunSchemaDumpQuery(const string &zQuery) {
 			string sSelect;
 			string sTable;
 
-			auto zSchema = getTableSchema(con, zTable.c_str());
+			auto zSchema = getTableSchema(*conn, zTable.c_str());
 			auto zQualifiedName = buildQualifiedName(zSchema.c_str(), zTable.c_str());
 
 			auto table_columns = TableColumnList(zQualifiedName.c_str());
@@ -1152,8 +1148,7 @@ void ShellState::RunSchemaDumpQuery(const string &zQuery) {
 }
 
 SuccessState ShellState::ExecuteQuery(const string &query) {
-	auto &con = *conn;
-	auto res = con.Query(query);
+	auto res = conn->Query(query);
 	if (res->HasError()) {
 		PrintF(PrintOutput::STDERR, "Failed to execute query \"%s\": %s\n", query.c_str(), res->GetError().c_str());
 		return SuccessState::FAILURE;
@@ -1165,12 +1160,12 @@ unique_ptr<duckdb::ProgressBarDisplay> CreateProgressBar() {
 	return make_uniq<ShellProgressBarDisplay>();
 }
 
-static void RegisterShellLogger(duckdb::DuckDB &db, duckdb::shared_ptr<duckdb::LogStorage> storage_ptr) {
-	auto *db_instance = db.instance.get();
-	auto &log_manager = db_instance->GetLogManager();
+static void RegisterShellLogger(ShellDuckDB &db, duckdb::shared_ptr<duckdb::LogStorage> storage_ptr) {
+	auto &db_instance = db.GetInstance();
+	auto &log_manager = db_instance.GetLogManager();
 	log_manager.RegisterLogStorage("shell_log_storage", storage_ptr);
-	log_manager.SetLogStorage(*db_instance, "shell_log_storage");
-	log_manager.SetEnableLogging(db_instance);
+	log_manager.SetLogStorage(db_instance, "shell_log_storage");
+	log_manager.SetEnableLogging(true);
 	log_manager.SetLogLevel(duckdb::LogLevel::LOG_WARNING);
 }
 
@@ -1181,21 +1176,21 @@ void ShellState::OpenDB(ShellOpenFlags flags) {
 
 	if (!db) {
 		try {
-			db = make_uniq<duckdb::DuckDB>(zDbFilename.c_str(), &config);
+			db = make_uniq<ShellDuckDB>(zDbFilename.c_str(), &config);
 			RegisterShellLogger(*db, storage_ptr);
-			conn = make_uniq<duckdb::Connection>(*db);
+			conn = make_uniq<ShellConnection>(db->CreateConnection());
 		} catch (std::exception &ex) {
 			duckdb::ErrorData error(ex);
 			PrintDatabaseError(error.Message());
 			if (flags == ShellOpenFlags::KEEP_ALIVE_ON_FAILURE) {
-				db = make_uniq<duckdb::DuckDB>(":memory:", &config);
+				db = make_uniq<ShellDuckDB>(":memory:", &config);
 				RegisterShellLogger(*db, storage_ptr);
-				conn = make_uniq<duckdb::Connection>(*db);
+				conn = make_uniq<ShellConnection>(db->CreateConnection());
 			} else {
 				exit(1);
 			}
 		}
-		auto &client_config = duckdb::ClientConfig::GetConfig(*conn->context);
+		auto &client_config = duckdb::ClientConfig::GetConfig(conn->GetContext());
 		client_config.display_create_func = CreateProgressBar;
 #ifdef SHELL_INLINE_AUTOCOMPLETE
 		db->LoadStaticExtension<duckdb::AutocompleteExtension>();
@@ -1751,12 +1746,11 @@ bool ShellState::ImportData(const vector<string> &args) {
 	}
 	ClearInterrupt();
 	// check if the table exists
-	auto &con = *conn;
-	auto needCommit = con.context->transaction.IsAutoCommit();
+	auto needCommit = conn->GetContext().transaction.IsAutoCommit();
 	if (needCommit) {
-		con.BeginTransaction();
+		conn->BeginTransaction();
 	}
-	auto table_info = con.TableInfo(table_name);
+	auto table_info = conn->TableInfo(table_name);
 
 	string import_query;
 
@@ -1773,10 +1767,10 @@ bool ShellState::ImportData(const vector<string> &args) {
 		import_query += StringUtil::Format(", %s=%s", SQLIdentifier(entry.first), SQLString(entry.second));
 	}
 	import_query += ")";
-	auto result = con.Query(import_query);
+	auto result = conn->Query(import_query);
 	if (result->HasError()) {
 		if (needCommit) {
-			con.Rollback();
+			conn->Rollback();
 		}
 		string error = StringUtil::Format("Failed To Import Error: Failed to import from file '%s'\n", file_name);
 		PrintDatabaseError(error);
@@ -1784,12 +1778,12 @@ bool ShellState::ImportData(const vector<string> &args) {
 		return false;
 	}
 	if (needCommit) {
-		con.Commit();
+		conn->Commit();
 	}
 	return true;
 }
 
-ExecuteSQLSingleValueResult ShellState::ExecuteSQLSingleValue(duckdb::Connection &con, const string &sql,
+ExecuteSQLSingleValueResult ShellState::ExecuteSQLSingleValue(ShellConnection &con, const string &sql,
                                                               string &result_value) {
 	auto result = con.Query(sql);
 	if (result->HasError()) {
@@ -2177,8 +2171,7 @@ GROUP BY ALL;
 )",
 	                                schema_filter_str, name_filter);
 
-	auto &con = *conn;
-	auto query_result = con.Query(query);
+	auto query_result = conn->Query(query);
 	if (query_result->HasError()) {
 		PrintDatabaseError(query_result->GetError());
 		return MetadataResult::FAIL;
@@ -2283,8 +2276,7 @@ sqlite_schema
 WHERE type='index' AND tbl_name LIKE ?1)";
 	}
 
-	auto &con = *conn;
-	auto prepared = con.Prepare(s);
+	auto prepared = conn->Prepare(s);
 	if (prepared->HasError()) {
 		PrintDatabaseError(prepared->GetError());
 		return MetadataResult::FAIL;
@@ -2362,8 +2354,7 @@ SuccessState ShellState::ChangeDirectory(const string &path) {
 SuccessState ShellState::ShowDatabases() {
 	OpenDB();
 
-	auto &con = *conn;
-	auto query_result = con.Query("SELECT name, file FROM pragma_database_list");
+	auto query_result = conn->Query("SELECT name, file FROM pragma_database_list");
 	if (query_result->HasError()) {
 		PrintDatabaseError(query_result->GetError());
 		return SuccessState::FAILURE;
@@ -2958,8 +2949,7 @@ static void linenoise_completion(const char *zLine, linenoiseCompletions *lc) {
 		unique_ptr<duckdb::DuckDB> localDB;
 		unique_ptr<duckdb::Connection> localCon;
 
-		auto &con = *state.conn;
-		auto result = con.Query(zSql);
+		auto result = state.conn->Query(zSql);
 		if (result->HasError()) {
 			return;
 		}

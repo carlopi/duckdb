@@ -1,6 +1,8 @@
 #include "shell_progress_bar.hpp"
 #include "duckdb/common/printer.hpp"
 #include "shell_state.hpp"
+#include "shell_duckdb.hpp"
+#include "shell_connection.hpp"
 
 namespace duckdb_shell {
 using duckdb::OutputStream;
@@ -126,9 +128,9 @@ protected:
 		return Prompt::HandleSetting(state, component);
 	}
 
-	duckdb::Connection &GetConnection(ShellState &state) override {
+	ShellConnection &GetConnection(ShellState &state) override {
 		if (!status_bar.connection) {
-			status_bar.connection = make_uniq<duckdb::Connection>(*state.db);
+			status_bar.connection = make_uniq<ShellConnection>(state.db->CreateConnection());
 		}
 		return *status_bar.connection;
 	}
