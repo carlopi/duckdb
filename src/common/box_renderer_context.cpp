@@ -11,11 +11,11 @@ void BoxRendererContext::CastToVarchar(Vector &source, Vector &result, idx_t cou
 	source_chunk.SetCardinality(count);
 
 	DataChunk result_chunk;
-	result_chunk.InitializeEmpty({LogicalType::VARCHAR});
-	result_chunk.data[0].Reference(result);
-	result_chunk.SetCardinality(count);
+	result_chunk.Initialize(GetAllocator(), {LogicalType::VARCHAR});
 
 	CastToVarchar(source_chunk, result_chunk, count, as_json);
+
+	result.Reference(result_chunk.data[0]);
 }
 
 } // namespace duckdb
