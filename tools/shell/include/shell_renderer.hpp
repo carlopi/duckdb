@@ -10,6 +10,7 @@
 
 #include "shell_state.hpp"
 #include "shell_highlight.hpp"
+#include "shell_query_result.hpp"
 
 namespace duckdb_shell {
 struct ShellState;
@@ -19,8 +20,7 @@ struct ResultMetadata {
 	explicit ResultMetadata(ShellQueryResult &result);
 
 	vector<string> column_names;
-	vector<duckdb::LogicalType> types;
-	vector<string> type_names;
+	vector<LogicalTypeProperties> types;
 
 	idx_t ColumnCount() const {
 		return column_names.size();

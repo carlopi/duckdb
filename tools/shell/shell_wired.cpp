@@ -76,11 +76,7 @@ unique_ptr<ShellQueryResult> ShellPreparedStatementWired::Execute(vector<duckdb:
 // ===== ShellQueryResultWired =====
 
 ShellQueryResultWired::ShellQueryResultWired(WireResultMetadata metadata, TransportLayer *transport)
-    : metadata(std::move(metadata)), transport(transport) {
-	// Reconstruct LogicalTypes from type strings
-	for (auto &type_str : this->metadata.column_types) {
-		types.push_back(duckdb::LogicalType(duckdb::TransformStringToLogicalTypeId(type_str)));
-	}
+    : metadata(std::move(metadata)), transport(transport), types(this->metadata.column_types) {
 }
 
 ShellQueryResultWired::~ShellQueryResultWired() {
@@ -110,7 +106,7 @@ const duckdb::vector<duckdb::string> &ShellQueryResultWired::Names() const {
 	return metadata.column_names;
 }
 
-const duckdb::vector<duckdb::LogicalType> &ShellQueryResultWired::Types() const {
+const duckdb::vector<LogicalTypeProperties> &ShellQueryResultWired::Types() const {
 	return types;
 }
 
@@ -135,10 +131,7 @@ ShellQueryResult::iterator ShellQueryResultWired::end() {
 
 ShellMaterializedQueryResultWired::ShellMaterializedQueryResultWired(WireResultMetadata metadata,
                                                                      TransportLayer *transport)
-    : metadata(std::move(metadata)), transport(transport) {
-	for (auto &type_str : this->metadata.column_types) {
-		types.push_back(duckdb::LogicalType(duckdb::TransformStringToLogicalTypeId(type_str)));
-	}
+    : metadata(std::move(metadata)), transport(transport), types(this->metadata.column_types) {
 }
 
 ShellMaterializedQueryResultWired::~ShellMaterializedQueryResultWired() {
@@ -168,7 +161,7 @@ const duckdb::vector<duckdb::string> &ShellMaterializedQueryResultWired::Names()
 	return metadata.column_names;
 }
 
-const duckdb::vector<duckdb::LogicalType> &ShellMaterializedQueryResultWired::Types() const {
+const duckdb::vector<LogicalTypeProperties> &ShellMaterializedQueryResultWired::Types() const {
 	return types;
 }
 
@@ -194,12 +187,24 @@ void ShellMaterializedQueryResultWired::Materialize() {
 		return;
 	}
 	auto &allocator = duckdb::Allocator::DefaultAllocator();
-	collection = make_uniq<duckdb::ColumnDataCollection>(allocator, types);
+	// Fetch all chunks first, then create the collection using the types from the first chunk
+	vector<unique_ptr<duckdb::DataChunk>> chunks;
 	while (true) {
 		auto chunk = Fetch();
 		if (!chunk || chunk->size() == 0) {
 			break;
 		}
+		chunks.push_back(std::move(chunk));
+	}
+	if (chunks.empty()) {
+		// Create an empty collection with VARCHAR types as fallback
+		duckdb::vector<duckdb::LogicalType> varchar_types(ColumnCount(), duckdb::LogicalType::VARCHAR);
+		collection = make_uniq<duckdb::ColumnDataCollection>(allocator, varchar_types);
+		return;
+	}
+	// Use the types from the first deserialized chunk
+	collection = make_uniq<duckdb::ColumnDataCollection>(allocator, chunks[0]->GetTypes());
+	for (auto &chunk : chunks) {
 		collection->Append(*chunk);
 	}
 }

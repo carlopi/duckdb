@@ -35,8 +35,14 @@ const duckdb::vector<duckdb::string> &ShellQueryResultLocal::Names() const {
 	return result->names;
 }
 
-const duckdb::vector<duckdb::LogicalType> &ShellQueryResultLocal::Types() const {
-	return result->types;
+const duckdb::vector<LogicalTypeProperties> &ShellQueryResultLocal::Types() const {
+	if (cached_types.empty() && !result->types.empty()) {
+		for (auto &type : result->types) {
+			const_cast<ShellQueryResultLocal *>(this)->cached_types.push_back(
+			    LogicalTypeProperties::FromLogicalType(type));
+		}
+	}
+	return cached_types;
 }
 
 duckdb::unique_ptr<duckdb::DataChunk> ShellQueryResultLocal::Fetch() {
@@ -93,8 +99,14 @@ const duckdb::vector<duckdb::string> &ShellMaterializedQueryResultLocal::Names()
 	return result->names;
 }
 
-const duckdb::vector<duckdb::LogicalType> &ShellMaterializedQueryResultLocal::Types() const {
-	return result->types;
+const duckdb::vector<LogicalTypeProperties> &ShellMaterializedQueryResultLocal::Types() const {
+	if (cached_types.empty() && !result->types.empty()) {
+		for (auto &type : result->types) {
+			const_cast<ShellMaterializedQueryResultLocal *>(this)->cached_types.push_back(
+			    LogicalTypeProperties::FromLogicalType(type));
+		}
+	}
+	return cached_types;
 }
 
 duckdb::unique_ptr<duckdb::DataChunk> ShellMaterializedQueryResultLocal::Fetch() {

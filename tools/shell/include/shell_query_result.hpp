@@ -11,6 +11,7 @@
 #include "duckdb/common/unique_ptr.hpp"
 #include "duckdb/main/query_result.hpp"
 #include "shell_column_data_collection.hpp"
+#include "logical_type_properties.hpp"
 
 namespace duckdb_shell {
 using duckdb::idx_t;
@@ -32,7 +33,7 @@ public:
 
 	//! Column metadata
 	virtual const duckdb::vector<duckdb::string> &Names() const = 0;
-	virtual const duckdb::vector<duckdb::LogicalType> &Types() const = 0;
+	virtual const duckdb::vector<LogicalTypeProperties> &Types() const = 0;
 
 	//! Data access
 	virtual duckdb::unique_ptr<duckdb::DataChunk> Fetch() = 0;

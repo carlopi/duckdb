@@ -28,7 +28,7 @@ public:
 	duckdb::QueryResultType GetResultType() const override;
 	idx_t ColumnCount() const override;
 	const duckdb::vector<duckdb::string> &Names() const override;
-	const duckdb::vector<duckdb::LogicalType> &Types() const override;
+	const duckdb::vector<LogicalTypeProperties> &Types() const override;
 	duckdb::unique_ptr<duckdb::DataChunk> Fetch() override;
 	iterator begin() override;
 	iterator end() override;
@@ -39,7 +39,7 @@ public:
 private:
 	WireResultMetadata metadata;
 	TransportLayer *transport;
-	duckdb::vector<duckdb::LogicalType> types;
+	duckdb::vector<LogicalTypeProperties> types;
 };
 
 //! Wire-mode implementation of ShellMaterializedQueryResult.
@@ -54,7 +54,7 @@ public:
 	duckdb::QueryResultType GetResultType() const override;
 	idx_t ColumnCount() const override;
 	const duckdb::vector<duckdb::string> &Names() const override;
-	const duckdb::vector<duckdb::LogicalType> &Types() const override;
+	const duckdb::vector<LogicalTypeProperties> &Types() const override;
 	duckdb::unique_ptr<duckdb::DataChunk> Fetch() override;
 	iterator begin() override;
 	iterator end() override;
@@ -70,7 +70,7 @@ private:
 
 	WireResultMetadata metadata;
 	TransportLayer *transport;
-	duckdb::vector<duckdb::LogicalType> types;
+	duckdb::vector<LogicalTypeProperties> types;
 	duckdb::unique_ptr<duckdb::ColumnDataCollection> collection;
 };
 

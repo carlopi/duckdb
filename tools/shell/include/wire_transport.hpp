@@ -12,6 +12,7 @@
 #include "duckdb/common/string.hpp"
 #include "duckdb/common/vector.hpp"
 #include "duckdb/common/pair.hpp"
+#include "logical_type_properties.hpp"
 
 namespace duckdb_shell {
 using duckdb::idx_t;
@@ -27,7 +28,8 @@ struct WireResultMetadata {
 	bool has_error = false;
 	string error_message;
 	vector<string> column_names;
-	vector<string> column_types;
+	//! Per-column type info — name + rendering flags
+	vector<LogicalTypeProperties> column_types;
 	//! StatementReturnType as uint8_t
 	uint8_t statement_return_type = 0;
 	//! QueryResultType as uint8_t

@@ -54,7 +54,7 @@ WireResultMetadata MockTransportLayer::BuildMetadata(duckdb::QueryResult &result
 		meta.column_names.push_back(name);
 	}
 	for (auto &type : result.types) {
-		meta.column_types.push_back(type.ToString());
+		meta.column_types.push_back(LogicalTypeProperties::FromLogicalType(type));
 	}
 	meta.statement_return_type = static_cast<uint8_t>(result.properties.return_type);
 	meta.query_result_type = static_cast<uint8_t>(result.type);

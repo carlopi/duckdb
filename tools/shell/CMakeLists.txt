@@ -30,6 +30,7 @@ set(SHELL_COMMON_SOURCES
 
 # Sources that need the engine (Local implementations)
 set(SHELL_LOCAL_SOURCES
+    logical_type_properties.cpp
     shell_connection.cpp
     shell_prepared_statement.cpp
     shell_duckdb.cpp
@@ -42,14 +43,17 @@ set(SHELL_LOCAL_SOURCES
 set(SHELL_WIRED_SOURCES shell_wired.cpp)
 
 # Sources for wire test mode (Wired + MockTransportLayer backed by real engine)
-set(SHELL_WIRE_TEST_SOURCES shell_wired.cpp wire_transport_mock.cpp)
+set(SHELL_WIRE_TEST_SOURCES logical_type_properties.cpp shell_wired.cpp
+                            wire_transport_mock.cpp)
 
 if(DUCKDB_SHELL_WIRE_MODE)
   message("Building shell in WIRE MODE (no duckdb_static)")
   set(SHELL_SOURCES ${SHELL_LINENOISE_OBJECTS} ${SHELL_COMMON_SOURCES}
                     ${SHELL_WIRED_SOURCES})
 elseif(DUCKDB_SHELL_WIRE_TEST)
-  message("Building shell in WIRE TEST MODE (wired path + MockTransportLayer + duckdb_static)")
+  message(
+    "Building shell in WIRE TEST MODE (wired path + MockTransportLayer + duckdb_static)"
+  )
   set(SHELL_SOURCES ${SHELL_LINENOISE_OBJECTS} ${SHELL_COMMON_SOURCES}
                     ${SHELL_WIRE_TEST_SOURCES})
 else()

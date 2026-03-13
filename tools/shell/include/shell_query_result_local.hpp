@@ -27,7 +27,7 @@ public:
 	duckdb::QueryResultType GetResultType() const override;
 	idx_t ColumnCount() const override;
 	const duckdb::vector<duckdb::string> &Names() const override;
-	const duckdb::vector<duckdb::LogicalType> &Types() const override;
+	const duckdb::vector<LogicalTypeProperties> &Types() const override;
 	duckdb::unique_ptr<duckdb::DataChunk> Fetch() override;
 
 	//! Row iteration
@@ -44,6 +44,7 @@ public:
 
 private:
 	duckdb::unique_ptr<duckdb::QueryResult> result;
+	duckdb::vector<LogicalTypeProperties> cached_types;
 };
 
 //! ShellMaterializedQueryResultLocal wraps a duckdb::MaterializedQueryResult.
@@ -59,7 +60,7 @@ public:
 	duckdb::QueryResultType GetResultType() const override;
 	idx_t ColumnCount() const override;
 	const duckdb::vector<duckdb::string> &Names() const override;
-	const duckdb::vector<duckdb::LogicalType> &Types() const override;
+	const duckdb::vector<LogicalTypeProperties> &Types() const override;
 	duckdb::unique_ptr<duckdb::DataChunk> Fetch() override;
 
 	//! Row iteration
@@ -75,6 +76,7 @@ public:
 
 private:
 	duckdb::unique_ptr<duckdb::MaterializedQueryResult> result;
+	duckdb::vector<LogicalTypeProperties> cached_types;
 };
 
 } // namespace duckdb_shell

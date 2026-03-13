@@ -234,48 +234,8 @@ SuccessState ShellRenderer::RenderQueryResult(PrintStream &out, ShellState &stat
 //===--------------------------------------------------------------------===//
 // Result Metadata
 //===--------------------------------------------------------------------===//
-string GetTypeName(const duckdb::LogicalType &type) {
-	switch (type.id()) {
-	case duckdb::LogicalTypeId::BOOLEAN:
-		return "BOOLEAN";
-	case duckdb::LogicalTypeId::TINYINT:
-		return "TINYINT";
-	case duckdb::LogicalTypeId::SMALLINT:
-		return "SMALLINT";
-	case duckdb::LogicalTypeId::INTEGER:
-		return "INTEGER";
-	case duckdb::LogicalTypeId::BIGINT:
-		return "BIGINT";
-	case duckdb::LogicalTypeId::FLOAT:
-		return "FLOAT";
-	case duckdb::LogicalTypeId::DOUBLE:
-		return "DOUBLE";
-	case duckdb::LogicalTypeId::DECIMAL:
-		return "DECIMAL";
-	case duckdb::LogicalTypeId::DATE:
-		return "DATE";
-	case duckdb::LogicalTypeId::TIME:
-	case duckdb::LogicalTypeId::TIME_NS:
-		return "TIME";
-	case duckdb::LogicalTypeId::TIMESTAMP:
-	case duckdb::LogicalTypeId::TIMESTAMP_NS:
-	case duckdb::LogicalTypeId::TIMESTAMP_MS:
-	case duckdb::LogicalTypeId::TIMESTAMP_SEC:
-		return "TIMESTAMP";
-	case duckdb::LogicalTypeId::VARCHAR:
-		return "VARCHAR";
-	case duckdb::LogicalTypeId::LIST:
-		return "LIST";
-	case duckdb::LogicalTypeId::MAP:
-		return "MAP";
-	case duckdb::LogicalTypeId::STRUCT:
-		return "STRUCT";
-	case duckdb::LogicalTypeId::BLOB:
-		return "BLOB";
-	default:
-		return "NULL";
-	}
-}
+// GetTypeName is no longer needed — type names come from LogicalTypeProperties.name
+// string GetTypeName(const duckdb::LogicalType &type) { ... }
 
 ResultMetadata::ResultMetadata(ShellQueryResult &result) {
 	// initialize the result and the column names
@@ -287,7 +247,6 @@ ResultMetadata::ResultMetadata(ShellQueryResult &result) {
 	for (idx_t c = 0; c < nCol; c++) {
 		column_names.push_back(names[c]);
 		types.push_back(result_types[c]);
-		type_names.push_back(GetTypeName(result_types[c]));
 	}
 }
 
@@ -536,7 +495,7 @@ public:
 	}
 
 	void PrintMarkdownSeparator(PrintStream &out, idx_t nArg, const char *zSep,
-	                            const vector<duckdb::LogicalType> &colTypes, const vector<idx_t> &actualWidth) {
+	                            const vector<LogicalTypeProperties> &colTypes, const vector<idx_t> &actualWidth) {
 		if (nArg > 0) {
 			for (idx_t i = 0; i < nArg; i++) {
 				out.Print(zSep);
@@ -692,7 +651,7 @@ public:
 
 		out.Print("\\begin{tabular}{|");
 		for (idx_t i = 0; i < column_count; i++) {
-			if (state.ColumnTypeIsInteger(result.type_names[i].c_str())) {
+			if (state.ColumnTypeIsInteger(result.types[i].name.c_str())) {
 				out.Print("r");
 			} else {
 				out.Print("l");
@@ -1171,7 +1130,7 @@ public:
 			if (i > 0) {
 				out.Print(col_sep);
 			}
-			if (types[i].IsNumeric() || is_null[i] || types[i].id() == duckdb::LogicalTypeId::BOOLEAN) {
+			if (types[i].IsNumeric() || is_null[i] || types[i].IsBoolean()) {
 				out.Print(data[i]);
 			} else {
 				out.OutputQuotedString(data[i].GetString());
@@ -1198,19 +1157,16 @@ public:
 		out.Print("{");
 	}
 
-	bool RequiresQuotes(const duckdb::LogicalType &type) {
+	bool RequiresQuotes(const LogicalTypeProperties &type) {
 		if (!type.IsNumeric()) {
 			return true;
 		}
-		switch (type.id()) {
-		case duckdb::LogicalTypeId::UBIGINT:
-		case duckdb::LogicalTypeId::HUGEINT:
-		case duckdb::LogicalTypeId::UHUGEINT:
-		case duckdb::LogicalTypeId::DECIMAL:
+		// Large integer types and decimals require quotes in JSON
+		auto &name = type.name;
+		if (name == "UBIGINT" || name == "HUGEINT" || name == "UHUGEINT" || StringUtil::StartsWith(name, "DECIMAL")) {
 			return true;
-		default:
-			return false;
 		}
+		return false;
 	}
 
 	void RenderRow(PrintStream &out, ResultMetadata &result, RowData &row) override {
