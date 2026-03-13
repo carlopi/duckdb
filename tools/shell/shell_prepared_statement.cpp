@@ -1,6 +1,7 @@
 #include "shell_prepared_statement.hpp"
 
 namespace duckdb_shell {
+using duckdb::make_uniq;
 
 ShellPreparedStatement::ShellPreparedStatement(duckdb::unique_ptr<duckdb::PreparedStatement> statement)
     : statement(std::move(statement)) {
