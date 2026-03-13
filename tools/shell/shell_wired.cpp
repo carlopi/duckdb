@@ -11,6 +11,9 @@
 #include "duckdb/common/serializer/binary_serializer.hpp"
 #include "duckdb/common/serializer/binary_deserializer.hpp"
 #include "duckdb/common/serializer/memory_stream.hpp"
+#include "duckdb/common/box_renderer_context.hpp"
+#include "duckdb/common/types/data_chunk.hpp"
+#include "duckdb/common/vector_operations/vector_operations.hpp"
 #include "duckdb/parser/parser.hpp"
 
 namespace duckdb_shell {
@@ -186,14 +189,31 @@ ShellQueryResult::iterator ShellMaterializedQueryResultWired::end() {
 	return ShellQueryResult::iterator(nullptr);
 }
 
+void ShellMaterializedQueryResultWired::Materialize() {
+	if (collection) {
+		return;
+	}
+	auto &allocator = duckdb::Allocator::DefaultAllocator();
+	collection = make_uniq<duckdb::ColumnDataCollection>(allocator, types);
+	while (true) {
+		auto chunk = Fetch();
+		if (!chunk || chunk->size() == 0) {
+			break;
+		}
+		collection->Append(*chunk);
+	}
+}
+
 idx_t ShellMaterializedQueryResultWired::RowCount() const {
-	// TODO: wire mode — would need row count in metadata
+	if (collection) {
+		return collection->Count();
+	}
 	return 0;
 }
 
 ShellColumnDataCollection ShellMaterializedQueryResultWired::Collection() {
-	// TODO: wire mode — need to materialize all fetched chunks
-	throw duckdb::InternalException("ShellMaterializedQueryResultWired::Collection() not implemented");
+	Materialize();
+	return ShellColumnDataCollection(*collection);
 }
 
 // ===== ShellConnectionWired =====
@@ -222,7 +242,9 @@ unique_ptr<ShellQueryResult> ShellConnectionWired::SendQuery(const string &query
 
 unique_ptr<ShellQueryResult> ShellConnectionWired::SendQuery(unique_ptr<duckdb::SQLStatement> statement,
                                                              duckdb::QueryParameters parameters) {
-	// Over the wire: send the SQL string
+	if (parameters.output_type == duckdb::QueryResultOutputType::FORCE_MATERIALIZED) {
+		return Query(statement->query);
+	}
 	return SendQuery(statement->query);
 }
 
@@ -285,9 +307,28 @@ unique_ptr<duckdb::DataChunk> ShellConnectionWired::CastToVarchar(duckdb::DataCh
 	return DeserializeDataChunk(result_blob);
 }
 
+// ===== WiredBoxRendererContext =====
+
+class WiredBoxRendererContext : public duckdb::BoxRendererContext {
+public:
+	bool IsInterrupted() const override {
+		return false;
+	}
+	duckdb::Allocator &GetAllocator() override {
+		return duckdb::Allocator::DefaultAllocator();
+	}
+
+protected:
+	void CastToVarchar(duckdb::DataChunk &source, duckdb::DataChunk &result, duckdb::idx_t count,
+	                   bool as_json) override {
+		for (duckdb::idx_t c = 0; c < source.ColumnCount(); c++) {
+			duckdb::VectorOperations::DefaultCast(source.data[c], result.data[c], count);
+		}
+	}
+};
+
 unique_ptr<duckdb::BoxRendererContext> ShellConnectionWired::CreateBoxRendererContext() {
-	// TODO: wire mode — server-side ClientContext needed for casting
-	return nullptr;
+	return make_uniq<WiredBoxRendererContext>();
 }
 
 // ===== ShellDuckDBWired =====

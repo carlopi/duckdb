@@ -11,6 +11,7 @@
 #include "shell_query_result.hpp"
 #include "wire_transport.hpp"
 #include "duckdb/common/optional_idx.hpp"
+#include "duckdb/common/types/column/column_data_collection.hpp"
 
 namespace duckdb_shell {
 
@@ -65,9 +66,12 @@ public:
 	duckdb::optional_idx conn_id;
 
 private:
+	void Materialize();
+
 	WireResultMetadata metadata;
 	TransportLayer *transport;
 	duckdb::vector<duckdb::LogicalType> types;
+	duckdb::unique_ptr<duckdb::ColumnDataCollection> collection;
 };
 
 } // namespace duckdb_shell

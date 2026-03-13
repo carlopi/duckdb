@@ -420,8 +420,8 @@ ShellState::~ShellState() {
 }
 
 void ShellState::Destroy() {
-	db.reset();
 	conn.reset();
+	db.reset();
 	last_result.reset();
 }
 
@@ -988,8 +988,10 @@ SuccessState ShellState::ExecuteStatement(unique_ptr<duckdb::SQLStatement> state
 		// FIXME: assumes Local — revisit when adding WiredQueryResult
 		auto &result_local = static_cast<ShellQueryResultLocal &>(*result);
 		last_result = make_uniq<ShellMaterializedQueryResultLocal>(result_local.TakeMaterialized());
-#endif
 		return RenderQueryResult(*renderer, *last_result);
+#else
+		return RenderQueryResult(*renderer, *result);
+#endif
 	}
 	// analyze the query result so we know how long/wide the result will be
 	return RenderQueryResult(*renderer, *result);
@@ -1911,8 +1913,8 @@ bool ShellState::OpenDatabase(const vector<string> &args) {
 	}
 
 	/* Close the existing database */
-	db.reset();
 	conn.reset();
+	db.reset();
 
 	if (!zNewFilename.empty()) {
 		if (newFlag) {
@@ -3279,8 +3281,8 @@ int wmain(int argc, wchar_t **wargv) {
 	}
 	data.SetTableName(0);
 	data.last_result.reset();
-	data.db.reset();
 	data.conn.reset();
+	data.db.reset();
 	data.ResetOutput();
 	data.doXdgOpen = 0;
 	data.ClearTempFile();
