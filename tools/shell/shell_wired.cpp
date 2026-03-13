@@ -3,13 +3,46 @@
 #include "shell_connection_wired.hpp"
 #include "shell_duckdb_wired.hpp"
 #include "shell_db_config.hpp"
+#include "wire_transport.hpp"
+#ifndef DUCKDB_SHELL_WIRE_MODE
+#include "wire_transport_mock.hpp"
+#include "duckdb/main/config.hpp"
+#endif
+#include "duckdb/common/serializer/binary_serializer.hpp"
+#include "duckdb/common/serializer/binary_deserializer.hpp"
+#include "duckdb/common/serializer/memory_stream.hpp"
+#include "duckdb/parser/parser.hpp"
 
 namespace duckdb_shell {
+using duckdb::BinaryDeserializer;
+using duckdb::BinarySerializer;
 using duckdb::make_uniq;
+using duckdb::MemoryStream;
 
-static const duckdb::string WIRED_STUB_ERROR = "wire mode stub - not connected";
-static const duckdb::vector<duckdb::string> EMPTY_NAMES;
-static const duckdb::vector<duckdb::LogicalType> EMPTY_TYPES;
+// ===== Helper: deserialize a DataChunk from binary blob =====
+
+static duckdb::unique_ptr<duckdb::DataChunk> DeserializeDataChunk(const string &blob) {
+	if (blob.empty()) {
+		return nullptr;
+	}
+	MemoryStream stream(duckdb::data_ptr_cast(const_cast<char *>(blob.data())),
+	                    duckdb::NumericCast<duckdb::idx_t>(blob.size()));
+	BinaryDeserializer deserializer(stream);
+	auto chunk = make_uniq<duckdb::DataChunk>();
+	deserializer.Begin();
+	chunk->Deserialize(deserializer);
+	deserializer.End();
+	return chunk;
+}
+
+static string SerializeDataChunk(duckdb::DataChunk &chunk) {
+	MemoryStream stream;
+	BinarySerializer serializer(stream);
+	serializer.Begin();
+	chunk.Serialize(serializer);
+	serializer.End();
+	return string(duckdb::const_char_ptr_cast(stream.GetData()), stream.GetPosition());
+}
 
 // ===== ShellPreparedStatementWired =====
 
@@ -20,70 +53,74 @@ ShellPreparedStatementWired::~ShellPreparedStatementWired() {
 }
 
 bool ShellPreparedStatementWired::HasError() const {
-	// TODO: wire mode
+	// TODO: wire mode — prepared statements
 	return true;
 }
 
 const string &ShellPreparedStatementWired::GetError() const {
-	// TODO: wire mode
-	return WIRED_STUB_ERROR;
+	static const string err = "prepared statements not yet implemented in wire mode";
+	return err;
 }
 
 unique_ptr<ShellQueryResult> ShellPreparedStatementWired::Execute(vector<duckdb::Value> &values) {
-	// TODO: wire mode
-	return make_uniq<ShellQueryResultWired>();
+	// TODO: wire mode — prepared statements
+	WireResultMetadata meta;
+	meta.has_error = true;
+	meta.error_message = "not implemented";
+	return make_uniq<ShellQueryResultWired>(std::move(meta), nullptr);
 }
 
 // ===== ShellQueryResultWired =====
 
-ShellQueryResultWired::ShellQueryResultWired() {
+ShellQueryResultWired::ShellQueryResultWired(WireResultMetadata metadata, TransportLayer *transport)
+    : metadata(std::move(metadata)), transport(transport) {
+	// Reconstruct LogicalTypes from type strings
+	for (auto &type_str : this->metadata.column_types) {
+		types.push_back(duckdb::LogicalType(duckdb::TransformStringToLogicalTypeId(type_str)));
+	}
 }
 
 ShellQueryResultWired::~ShellQueryResultWired() {
 }
 
 bool ShellQueryResultWired::HasError() const {
-	// TODO: wire mode
-	return true;
+	return metadata.has_error;
 }
 
 const duckdb::string &ShellQueryResultWired::GetError() const {
-	// TODO: wire mode
-	return WIRED_STUB_ERROR;
+	return metadata.error_message;
 }
 
 duckdb::StatementReturnType ShellQueryResultWired::GetReturnType() const {
-	// TODO: wire mode
-	return duckdb::StatementReturnType::NOTHING;
+	return static_cast<duckdb::StatementReturnType>(metadata.statement_return_type);
 }
 
 duckdb::QueryResultType ShellQueryResultWired::GetResultType() const {
-	// TODO: wire mode
-	return duckdb::QueryResultType::MATERIALIZED_RESULT;
+	return static_cast<duckdb::QueryResultType>(metadata.query_result_type);
 }
 
 idx_t ShellQueryResultWired::ColumnCount() const {
-	// TODO: wire mode
-	return 0;
+	return metadata.column_names.size();
 }
 
 const duckdb::vector<duckdb::string> &ShellQueryResultWired::Names() const {
-	// TODO: wire mode
-	return EMPTY_NAMES;
+	return metadata.column_names;
 }
 
 const duckdb::vector<duckdb::LogicalType> &ShellQueryResultWired::Types() const {
-	// TODO: wire mode
-	return EMPTY_TYPES;
+	return types;
 }
 
 duckdb::unique_ptr<duckdb::DataChunk> ShellQueryResultWired::Fetch() {
-	// TODO: wire mode
-	return nullptr;
+	if (!transport || !conn_id.IsValid()) {
+		return nullptr;
+	}
+	auto blob = transport->Fetch(conn_id.GetIndex());
+	return DeserializeDataChunk(blob);
 }
 
 ShellQueryResult::iterator ShellQueryResultWired::begin() {
-	// TODO: wire mode
+	// TODO: wire mode — streaming iteration
 	return ShellQueryResult::iterator(nullptr);
 }
 
@@ -93,54 +130,55 @@ ShellQueryResult::iterator ShellQueryResultWired::end() {
 
 // ===== ShellMaterializedQueryResultWired =====
 
-ShellMaterializedQueryResultWired::ShellMaterializedQueryResultWired() {
+ShellMaterializedQueryResultWired::ShellMaterializedQueryResultWired(WireResultMetadata metadata,
+                                                                     TransportLayer *transport)
+    : metadata(std::move(metadata)), transport(transport) {
+	for (auto &type_str : this->metadata.column_types) {
+		types.push_back(duckdb::LogicalType(duckdb::TransformStringToLogicalTypeId(type_str)));
+	}
 }
 
 ShellMaterializedQueryResultWired::~ShellMaterializedQueryResultWired() {
 }
 
 bool ShellMaterializedQueryResultWired::HasError() const {
-	// TODO: wire mode
-	return true;
+	return metadata.has_error;
 }
 
 const duckdb::string &ShellMaterializedQueryResultWired::GetError() const {
-	// TODO: wire mode
-	return WIRED_STUB_ERROR;
+	return metadata.error_message;
 }
 
 duckdb::StatementReturnType ShellMaterializedQueryResultWired::GetReturnType() const {
-	// TODO: wire mode
-	return duckdb::StatementReturnType::NOTHING;
+	return static_cast<duckdb::StatementReturnType>(metadata.statement_return_type);
 }
 
 duckdb::QueryResultType ShellMaterializedQueryResultWired::GetResultType() const {
-	// TODO: wire mode
-	return duckdb::QueryResultType::MATERIALIZED_RESULT;
+	return static_cast<duckdb::QueryResultType>(metadata.query_result_type);
 }
 
 idx_t ShellMaterializedQueryResultWired::ColumnCount() const {
-	// TODO: wire mode
-	return 0;
+	return metadata.column_names.size();
 }
 
 const duckdb::vector<duckdb::string> &ShellMaterializedQueryResultWired::Names() const {
-	// TODO: wire mode
-	return EMPTY_NAMES;
+	return metadata.column_names;
 }
 
 const duckdb::vector<duckdb::LogicalType> &ShellMaterializedQueryResultWired::Types() const {
-	// TODO: wire mode
-	return EMPTY_TYPES;
+	return types;
 }
 
 duckdb::unique_ptr<duckdb::DataChunk> ShellMaterializedQueryResultWired::Fetch() {
-	// TODO: wire mode
-	return nullptr;
+	if (!transport || !conn_id.IsValid()) {
+		return nullptr;
+	}
+	auto blob = transport->Fetch(conn_id.GetIndex());
+	return DeserializeDataChunk(blob);
 }
 
 ShellQueryResult::iterator ShellMaterializedQueryResultWired::begin() {
-	// TODO: wire mode
+	// TODO: wire mode — streaming iteration
 	return ShellQueryResult::iterator(nullptr);
 }
 
@@ -149,88 +187,102 @@ ShellQueryResult::iterator ShellMaterializedQueryResultWired::end() {
 }
 
 idx_t ShellMaterializedQueryResultWired::RowCount() const {
-	// TODO: wire mode
+	// TODO: wire mode — would need row count in metadata
 	return 0;
 }
 
 ShellColumnDataCollection ShellMaterializedQueryResultWired::Collection() {
-	// TODO: wire mode — need a way to construct an empty ShellColumnDataCollection
+	// TODO: wire mode — need to materialize all fetched chunks
 	throw duckdb::InternalException("ShellMaterializedQueryResultWired::Collection() not implemented");
 }
 
 // ===== ShellConnectionWired =====
 
-ShellConnectionWired::ShellConnectionWired() {
+ShellConnectionWired::ShellConnectionWired(conn_id_t conn_id, TransportLayer &transport)
+    : conn_id(conn_id), transport(transport) {
 }
 
 ShellConnectionWired::~ShellConnectionWired() {
+	transport.CloseConnection(conn_id);
 }
 
 unique_ptr<ShellMaterializedQueryResult> ShellConnectionWired::Query(const string &sql) {
-	// TODO: wire mode
-	return make_uniq<ShellMaterializedQueryResultWired>();
+	auto meta = transport.Query(conn_id, sql);
+	auto result = make_uniq<ShellMaterializedQueryResultWired>(std::move(meta), &transport);
+	result->conn_id = conn_id;
+	return result;
 }
 
 unique_ptr<ShellQueryResult> ShellConnectionWired::SendQuery(const string &query) {
-	// TODO: wire mode
-	return make_uniq<ShellQueryResultWired>();
+	auto meta = transport.SendQuery(conn_id, query);
+	auto result = make_uniq<ShellQueryResultWired>(std::move(meta), &transport);
+	result->conn_id = conn_id;
+	return result;
 }
 
 unique_ptr<ShellQueryResult> ShellConnectionWired::SendQuery(unique_ptr<duckdb::SQLStatement> statement,
                                                              duckdb::QueryParameters parameters) {
-	// TODO: wire mode
-	return make_uniq<ShellQueryResultWired>();
+	// Over the wire: send the SQL string
+	return SendQuery(statement->query);
 }
 
 unique_ptr<ShellQueryResult> ShellConnectionWired::SendQuery(unique_ptr<duckdb::SQLStatement> statement) {
-	// TODO: wire mode
-	return make_uniq<ShellQueryResultWired>();
+	return SendQuery(statement->query);
 }
 
 vector<unique_ptr<duckdb::SQLStatement>> ShellConnectionWired::ExtractStatements(const string &sql) {
-	// TODO: wire mode
-	return {};
+	// Parse client-side — parser is available in client_types
+	duckdb::Parser parser;
+	parser.ParseQuery(sql);
+	return std::move(parser.statements);
 }
 
 unique_ptr<ShellPreparedStatement> ShellConnectionWired::Prepare(const string &sql) {
-	// TODO: wire mode
+	// TODO: wire mode — prepared statements
 	return make_uniq<ShellPreparedStatementWired>();
 }
 
 bool ShellConnectionWired::IsAutoCommit() {
-	// TODO: wire mode
-	return true;
+	return transport.IsAutoCommit(conn_id);
 }
 
 void ShellConnectionWired::BeginTransaction() {
-	// TODO: wire mode
+	transport.BeginTransaction(conn_id);
 }
 
 void ShellConnectionWired::Commit() {
-	// TODO: wire mode
+	transport.Commit(conn_id);
 }
 
 void ShellConnectionWired::Rollback() {
-	// TODO: wire mode
+	transport.Rollback(conn_id);
 }
 
 void ShellConnectionWired::Interrupt() {
-	// TODO: wire mode
+	transport.Interrupt(conn_id);
 }
 
 void ShellConnectionWired::ClearInterrupt() {
-	// TODO: wire mode
+	transport.ClearInterrupt(conn_id);
 }
 
 unique_ptr<duckdb::TableDescription> ShellConnectionWired::TableInfo(const string &table_name) {
-	// TODO: wire mode
-	return nullptr;
+	auto columns = transport.TableInfo(conn_id, table_name);
+	if (columns.empty()) {
+		return nullptr;
+	}
+	auto info = make_uniq<duckdb::TableDescription>("", "", table_name);
+	for (auto &col : columns) {
+		info->columns.emplace_back(col.first, duckdb::LogicalType(duckdb::TransformStringToLogicalTypeId(col.second)));
+	}
+	return info;
 }
 
 unique_ptr<duckdb::DataChunk> ShellConnectionWired::CastToVarchar(duckdb::DataChunk &chunk,
-                                                                   bool complex_objects_as_json) {
-	// TODO: wire mode
-	return nullptr;
+                                                                  bool complex_objects_as_json) {
+	auto blob = SerializeDataChunk(chunk);
+	auto result_blob = transport.CastToVarchar(conn_id, blob, complex_objects_as_json);
+	return DeserializeDataChunk(result_blob);
 }
 
 unique_ptr<duckdb::BoxRendererContext> ShellConnectionWired::CreateBoxRendererContext() {
@@ -241,24 +293,48 @@ unique_ptr<duckdb::BoxRendererContext> ShellConnectionWired::CreateBoxRendererCo
 // ===== ShellDuckDBWired =====
 
 ShellDuckDBWired::ShellDuckDBWired(const char *path, ShellDBConfig &config) {
-	// TODO: wire mode — establish connection to remote server
+#ifndef DUCKDB_SHELL_WIRE_MODE
+	// In local+wired test mode: use MockTransportLayer backed by real DuckDB
+	duckdb::DBConfig db_config;
+	db_config.options.access_mode = config.GetAccessMode();
+	for (auto &option : config.GetOptions()) {
+		db_config.SetOptionByName(option.first, option.second);
+	}
+	auto &compat = config.GetSerializationCompatibility();
+	if (!compat.empty()) {
+		db_config.SetSerializationCompatibility(compat);
+	}
+	for (auto &error : config.GetCustomErrors()) {
+		db_config.AddCustomError(error.type, error.message);
+	}
+	transport = make_uniq<MockTransportLayer>(path, db_config);
+#else
+	// TODO: real wire transport — connect to remote server
+	(void)path;
+	(void)config;
+#endif
+	is_open = true;
 }
 
 ShellDuckDBWired::~ShellDuckDBWired() {
 }
 
 bool ShellDuckDBWired::IsOpen() const {
-	// TODO: wire mode
-	return false;
+	return is_open;
 }
 
 void ShellDuckDBWired::Reset() {
-	// TODO: wire mode
+	transport.reset();
+	is_open = false;
+}
+
+TransportLayer &ShellDuckDBWired::GetTransport() {
+	return *transport;
 }
 
 unique_ptr<ShellConnection> ShellDuckDBWired::CreateConnection() {
-	// TODO: wire mode
-	return make_uniq<ShellConnectionWired>();
+	auto conn_id = transport->CreateConnection();
+	return make_uniq<ShellConnectionWired>(conn_id, *transport);
 }
 
 #ifdef DUCKDB_SHELL_WIRE_MODE

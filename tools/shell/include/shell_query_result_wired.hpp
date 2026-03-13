@@ -9,13 +9,16 @@
 #pragma once
 
 #include "shell_query_result.hpp"
+#include "wire_transport.hpp"
+#include "duckdb/common/optional_idx.hpp"
 
 namespace duckdb_shell {
 
-//! Wire-mode stub for ShellQueryResult.
+//! Wire-mode implementation of ShellQueryResult.
+//! Holds metadata from the transport layer and fetches data on demand.
 class ShellQueryResultWired : public ShellQueryResult {
 public:
-	ShellQueryResultWired();
+	ShellQueryResultWired(WireResultMetadata metadata, TransportLayer *transport);
 	~ShellQueryResultWired() override;
 
 	bool HasError() const override;
@@ -28,12 +31,20 @@ public:
 	duckdb::unique_ptr<duckdb::DataChunk> Fetch() override;
 	iterator begin() override;
 	iterator end() override;
+
+	//! Connection ID for Fetch() calls — set by ShellConnectionWired
+	duckdb::optional_idx conn_id;
+
+private:
+	WireResultMetadata metadata;
+	TransportLayer *transport;
+	duckdb::vector<duckdb::LogicalType> types;
 };
 
-//! Wire-mode stub for ShellMaterializedQueryResult.
+//! Wire-mode implementation of ShellMaterializedQueryResult.
 class ShellMaterializedQueryResultWired : public ShellMaterializedQueryResult {
 public:
-	ShellMaterializedQueryResultWired();
+	ShellMaterializedQueryResultWired(WireResultMetadata metadata, TransportLayer *transport);
 	~ShellMaterializedQueryResultWired() override;
 
 	bool HasError() const override;
@@ -49,6 +60,14 @@ public:
 
 	idx_t RowCount() const override;
 	ShellColumnDataCollection Collection() override;
+
+	//! Connection ID for Fetch() calls — set by ShellConnectionWired
+	duckdb::optional_idx conn_id;
+
+private:
+	WireResultMetadata metadata;
+	TransportLayer *transport;
+	duckdb::vector<duckdb::LogicalType> types;
 };
 
 } // namespace duckdb_shell

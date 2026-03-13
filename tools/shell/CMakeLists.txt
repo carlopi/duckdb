@@ -1,6 +1,7 @@
 include_directories(include)
 
-# linenoise sets SHELL_SOURCES in parent scope via $<TARGET_OBJECTS:duckdb_linenoise>
+# linenoise sets SHELL_SOURCES in parent scope via
+# $<TARGET_OBJECTS:duckdb_linenoise>
 set(SHELL_SOURCES "")
 add_subdirectory(linenoise)
 set(SHELL_LINENOISE_OBJECTS ${SHELL_SOURCES})
@@ -34,23 +35,26 @@ set(SHELL_LOCAL_SOURCES
     shell_duckdb.cpp
     shell_extension.cpp
     shell_query_result.cpp
-    shell_wired.cpp)
+    shell_wired.cpp
+    wire_transport_mock.cpp)
 
 # Sources for wire mode (Wired implementations, no engine)
-set(SHELL_WIRED_SOURCES
-    shell_wired.cpp)
+set(SHELL_WIRED_SOURCES shell_wired.cpp)
 
 if(DUCKDB_SHELL_WIRE_MODE)
   message("Building shell in WIRE MODE (no duckdb_static)")
-  set(SHELL_SOURCES ${SHELL_LINENOISE_OBJECTS} ${SHELL_COMMON_SOURCES} ${SHELL_WIRED_SOURCES})
+  set(SHELL_SOURCES ${SHELL_LINENOISE_OBJECTS} ${SHELL_COMMON_SOURCES}
+                    ${SHELL_WIRED_SOURCES})
 else()
   if(DUCKDB_EXTENSION_AUTOCOMPLETE_SHOULD_LINK)
     include_directories(../../extension/autocomplete/include)
-    set(ALL_OBJECT_FILES ${ALL_OBJECT_FILES}
-                         ../../extension/autocomplete/autocomplete_extension.cpp)
+    set(ALL_OBJECT_FILES
+        ${ALL_OBJECT_FILES}
+        ../../extension/autocomplete/autocomplete_extension.cpp)
     add_definitions(-DSHELL_INLINE_AUTOCOMPLETE)
   endif()
-  set(SHELL_SOURCES ${SHELL_LINENOISE_OBJECTS} ${SHELL_COMMON_SOURCES} ${SHELL_LOCAL_SOURCES})
+  set(SHELL_SOURCES ${SHELL_LINENOISE_OBJECTS} ${SHELL_COMMON_SOURCES}
+                    ${SHELL_LOCAL_SOURCES})
 endif()
 
 add_executable(shell ${SHELL_SOURCES})
