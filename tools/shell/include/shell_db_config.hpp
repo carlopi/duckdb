@@ -32,8 +32,8 @@ public:
 	}
 	void SetSerializationCompatibility(const string &) {
 	}
-	// void AddCustomError(duckdb::ErrorType, const string &) {
-	// }
+	void AddCustomError(duckdb::ErrorType, const string &) {
+	}
 	struct {
 		duckdb::AccessMode access_mode = duckdb::AccessMode::READ_WRITE;
 	} options;
@@ -58,25 +58,25 @@ public:
 	//! Set serialization compatibility
 	void SetSerializationCompatibility(const string &version);
 
-	// TODO: AddCustomError - DBConfig uses error_manager->AddCustomError(), needs interface alignment
-	// void AddCustomError(duckdb::ErrorType type, const string &message);
+	//! Add a custom error message
+	void AddCustomError(duckdb::ErrorType type, const string &message);
 
 	//! Accessors for stored config (used by ShellDuckDBLocal to build DBConfig)
 	const duckdb::case_insensitive_map_t<duckdb::Value> &GetOptions() const;
 	duckdb::AccessMode GetAccessMode() const;
 	const string &GetSerializationCompatibility() const;
 
-	// struct CustomError {
-	// 	duckdb::ErrorType type;
-	// 	string message;
-	// };
-	// const duckdb::vector<CustomError> &GetCustomErrors() const;
+	struct CustomError {
+		duckdb::ErrorType type;
+		string message;
+	};
+	const duckdb::vector<CustomError> &GetCustomErrors() const;
 
 private:
 	duckdb::case_insensitive_map_t<duckdb::Value> options;
 	duckdb::AccessMode access_mode = duckdb::AccessMode::READ_WRITE;
 	string serialization_compatibility;
-	// duckdb::vector<CustomError> custom_errors;
+	duckdb::vector<CustomError> custom_errors;
 
 #ifndef DUCKDB_SHELL_WIRE_MODE
 	unique_ptr<duckdb::DBConfig> validator;

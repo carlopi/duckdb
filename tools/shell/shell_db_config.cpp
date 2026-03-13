@@ -43,11 +43,10 @@ void ShellDBConfig::SetSerializationCompatibility(const string &version) {
 	serialization_compatibility = version;
 }
 
-// TODO: AddCustomError - DBConfig uses error_manager->AddCustomError(), needs interface alignment
-// void ShellDBConfig::AddCustomError(duckdb::ErrorType type, const string &message) {
-// 	validator->AddCustomError(type, message);
-// 	custom_errors.push_back({type, message});
-// }
+void ShellDBConfig::AddCustomError(duckdb::ErrorType type, const string &message) {
+	validator->AddCustomError(type, message);
+	custom_errors.push_back({type, message});
+}
 
 const duckdb::case_insensitive_map_t<duckdb::Value> &ShellDBConfig::GetOptions() const {
 	return options;
@@ -61,8 +60,8 @@ const string &ShellDBConfig::GetSerializationCompatibility() const {
 	return serialization_compatibility;
 }
 
-// const duckdb::vector<ShellDBConfig::CustomError> &ShellDBConfig::GetCustomErrors() const {
-// 	return custom_errors;
-// }
+const duckdb::vector<ShellDBConfig::CustomError> &ShellDBConfig::GetCustomErrors() const {
+	return custom_errors;
+}
 
 } // namespace duckdb_shell

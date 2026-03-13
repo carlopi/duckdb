@@ -15,10 +15,9 @@ ShellDuckDBLocal::ShellDuckDBLocal(const char *path, ShellDBConfig &config) {
 	if (!compat.empty()) {
 		db_config.SetSerializationCompatibility(compat);
 	}
-	// TODO: AddCustomError - needs interface alignment between DBConfig and MockDBConfig
-	// for (auto &error : config.GetCustomErrors()) {
-	// 	db_config.error_manager->AddCustomError(error.type, error.message);
-	// }
+	for (auto &error : config.GetCustomErrors()) {
+		db_config.AddCustomError(error.type, error.message);
+	}
 	db = make_uniq<duckdb::DuckDB>(path, &db_config);
 }
 
