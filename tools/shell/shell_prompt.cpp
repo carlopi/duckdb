@@ -218,7 +218,7 @@ vector<string> Prompt::GetSupportedSettings() {
 }
 
 string Prompt::HandleSetting(ShellState &state, const PromptComponent &component) {
-#ifdef DUCKDB_SHELL_WIRE_MODE
+#if defined(DUCKDB_SHELL_WIRE_MODE) || defined(DUCKDB_SHELL_WIRE_TEST)
 	// TODO: wire mode needs a way to query these settings from the remote server
 	return string();
 #else

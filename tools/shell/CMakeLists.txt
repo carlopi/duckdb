@@ -41,10 +41,17 @@ set(SHELL_LOCAL_SOURCES
 # Sources for wire mode (Wired implementations, no engine)
 set(SHELL_WIRED_SOURCES shell_wired.cpp)
 
+# Sources for wire test mode (Wired + MockTransportLayer backed by real engine)
+set(SHELL_WIRE_TEST_SOURCES shell_wired.cpp wire_transport_mock.cpp)
+
 if(DUCKDB_SHELL_WIRE_MODE)
   message("Building shell in WIRE MODE (no duckdb_static)")
   set(SHELL_SOURCES ${SHELL_LINENOISE_OBJECTS} ${SHELL_COMMON_SOURCES}
                     ${SHELL_WIRED_SOURCES})
+elseif(DUCKDB_SHELL_WIRE_TEST)
+  message("Building shell in WIRE TEST MODE (wired path + MockTransportLayer + duckdb_static)")
+  set(SHELL_SOURCES ${SHELL_LINENOISE_OBJECTS} ${SHELL_COMMON_SOURCES}
+                    ${SHELL_WIRE_TEST_SOURCES})
 else()
   if(DUCKDB_EXTENSION_AUTOCOMPLETE_SHOULD_LINK)
     include_directories(../../extension/autocomplete/include)
@@ -64,6 +71,13 @@ if(DUCKDB_SHELL_WIRE_MODE)
   add_subdirectory(${CMAKE_SOURCE_DIR}/src/duckdb_client_types
                    ${CMAKE_BINARY_DIR}/duckdb_client_types)
   target_link_libraries(shell duckdb_client_types ${DUCKDB_EXTRA_LINK_FLAGS})
+elseif(DUCKDB_SHELL_WIRE_TEST)
+  target_compile_definitions(shell PRIVATE DUCKDB_SHELL_WIRE_TEST)
+  target_link_libraries(shell duckdb_static ${DUCKDB_EXTRA_LINK_FLAGS})
+  link_extension_libraries(shell "")
+  if(NOT AMALGAMATION_BUILD AND NOT WIN32)
+    target_link_libraries(shell duckdb_utf8proc)
+  endif()
 else()
   target_link_libraries(shell duckdb_static ${DUCKDB_EXTRA_LINK_FLAGS})
   link_extension_libraries(shell "")

@@ -57,7 +57,7 @@
 #ifdef SHELL_INLINE_AUTOCOMPLETE
 #include "autocomplete_extension.hpp"
 #endif
-#ifndef DUCKDB_SHELL_WIRE_MODE
+#if !defined(DUCKDB_SHELL_WIRE_MODE) && !defined(DUCKDB_SHELL_WIRE_TEST)
 #include "shell_extension.hpp"
 #endif
 #include <ctype.h>
@@ -984,7 +984,7 @@ SuccessState ShellState::ExecuteStatement(unique_ptr<duckdb::SQLStatement> state
 	if (result->GetResultType() == duckdb::QueryResultType::MATERIALIZED_RESULT) {
 		// take ownership of the materialized result for last_result (the `_` replacement scan)
 		// but we still need to render it - so we render through last_result
-#ifndef DUCKDB_SHELL_WIRE_MODE
+#if !defined(DUCKDB_SHELL_WIRE_MODE) && !defined(DUCKDB_SHELL_WIRE_TEST)
 		// FIXME: assumes Local — revisit when adding WiredQueryResult
 		auto &result_local = static_cast<ShellQueryResultLocal &>(*result);
 		last_result = make_uniq<ShellMaterializedQueryResultLocal>(result_local.TakeMaterialized());
@@ -1169,7 +1169,7 @@ unique_ptr<duckdb::ProgressBarDisplay> CreateProgressBar() {
 	return make_uniq<ShellProgressBarDisplay>();
 }
 
-#ifndef DUCKDB_SHELL_WIRE_MODE
+#if !defined(DUCKDB_SHELL_WIRE_MODE) && !defined(DUCKDB_SHELL_WIRE_TEST)
 // FIXME: wire mode needs a way to register/receive log messages from the remote server
 static void RegisterShellLogger(ShellDuckDBLocal &db, duckdb::shared_ptr<duckdb::LogStorage> storage_ptr) {
 	auto &db_instance = db.GetInstance();
@@ -1189,7 +1189,7 @@ void ShellState::OpenDB(ShellOpenFlags flags) {
 	if (!db) {
 		try {
 			db = ShellDuckDB::Create(zDbFilename.c_str(), config);
-#ifndef DUCKDB_SHELL_WIRE_MODE
+#if !defined(DUCKDB_SHELL_WIRE_MODE) && !defined(DUCKDB_SHELL_WIRE_TEST)
 			RegisterShellLogger(static_cast<ShellDuckDBLocal &>(*db), storage_ptr);
 #endif
 			conn = db->CreateConnection();
@@ -1198,7 +1198,7 @@ void ShellState::OpenDB(ShellOpenFlags flags) {
 			PrintDatabaseError(error.Message());
 			if (flags == ShellOpenFlags::KEEP_ALIVE_ON_FAILURE) {
 				db = ShellDuckDB::Create(":memory:", config);
-#ifndef DUCKDB_SHELL_WIRE_MODE
+#if !defined(DUCKDB_SHELL_WIRE_MODE) && !defined(DUCKDB_SHELL_WIRE_TEST)
 				RegisterShellLogger(static_cast<ShellDuckDBLocal &>(*db), storage_ptr);
 #endif
 				conn = db->CreateConnection();
@@ -1206,7 +1206,7 @@ void ShellState::OpenDB(ShellOpenFlags flags) {
 				exit(1);
 			}
 		}
-#ifndef DUCKDB_SHELL_WIRE_MODE
+#if !defined(DUCKDB_SHELL_WIRE_MODE) && !defined(DUCKDB_SHELL_WIRE_TEST)
 		auto &db_local = static_cast<ShellDuckDBLocal &>(*db);
 		// FIXME: assumes Local — revisit when adding WiredConnection
 		auto &conn_local = static_cast<ShellConnectionLocal &>(*conn);

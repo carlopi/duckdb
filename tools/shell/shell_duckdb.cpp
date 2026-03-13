@@ -40,8 +40,10 @@ unique_ptr<ShellConnection> ShellDuckDBLocal::CreateConnection() {
 	return make_uniq<ShellConnectionLocal>(make_uniq<duckdb::Connection>(*db));
 }
 
+#if !defined(DUCKDB_SHELL_WIRE_MODE) && !defined(DUCKDB_SHELL_WIRE_TEST)
 unique_ptr<ShellDuckDB> ShellDuckDB::Create(const char *path, ShellDBConfig &config) {
 	return make_uniq<ShellDuckDBLocal>(path, config);
 }
+#endif
 
 } // namespace duckdb_shell

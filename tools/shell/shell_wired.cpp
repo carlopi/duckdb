@@ -4,7 +4,7 @@
 #include "shell_duckdb_wired.hpp"
 #include "shell_db_config.hpp"
 #include "wire_transport.hpp"
-#ifndef DUCKDB_SHELL_WIRE_MODE
+#ifdef DUCKDB_SHELL_WIRE_TEST
 #include "wire_transport_mock.hpp"
 #include "duckdb/main/config.hpp"
 #endif
@@ -293,8 +293,8 @@ unique_ptr<duckdb::BoxRendererContext> ShellConnectionWired::CreateBoxRendererCo
 // ===== ShellDuckDBWired =====
 
 ShellDuckDBWired::ShellDuckDBWired(const char *path, ShellDBConfig &config) {
-#ifndef DUCKDB_SHELL_WIRE_MODE
-	// In local+wired test mode: use MockTransportLayer backed by real DuckDB
+#ifdef DUCKDB_SHELL_WIRE_TEST
+	// Wire test mode: use MockTransportLayer backed by real DuckDB
 	duckdb::DBConfig db_config;
 	db_config.options.access_mode = config.GetAccessMode();
 	for (auto &option : config.GetOptions()) {
@@ -337,7 +337,7 @@ unique_ptr<ShellConnection> ShellDuckDBWired::CreateConnection() {
 	return make_uniq<ShellConnectionWired>(conn_id, *transport);
 }
 
-#ifdef DUCKDB_SHELL_WIRE_MODE
+#if defined(DUCKDB_SHELL_WIRE_MODE) || defined(DUCKDB_SHELL_WIRE_TEST)
 unique_ptr<ShellDuckDB> ShellDuckDB::Create(const char *path, ShellDBConfig &config) {
 	return make_uniq<ShellDuckDBWired>(path, config);
 }
