@@ -41,12 +41,22 @@
 
 namespace duckdb {
 
-static const char *WIRE_STUB = "not available in wire mode";
+#ifdef DUCKDB_WIRE_STUBS_UNREACHABLE
+// With LTO, marking stubs as unreachable lets the linker DCE entire
+// call chains that lead here — significantly reducing binary size.
+[[noreturn]] static void WireStub(const char *) {
+	__builtin_unreachable();
+}
+#else
+[[noreturn]] static void WireStub(const char *name) {
+	throw InternalException("%s: not available in wire mode", name);
+}
+#endif
 
 // ===== Catalog =====
 
 const string &Catalog::GetName() const {
-	throw InternalException("Catalog::GetName: %s", WIRE_STUB);
+	WireStub("Catalog::GetName");
 }
 
 bool Catalog::IsSystemCatalog() const {
@@ -55,21 +65,21 @@ bool Catalog::IsSystemCatalog() const {
 
 optional_ptr<CatalogEntry> Catalog::GetEntry(ClientContext &, CatalogType, const string &, const string &,
                                              OnEntryNotFound) {
-	throw InternalException("Catalog::GetEntry: %s", WIRE_STUB);
+	WireStub("Catalog::GetEntry");
 }
 
-optional_ptr<CatalogEntry> Catalog::GetEntry(ClientContext &, const string &, const string &,
-                                             const EntryLookupInfo &, OnEntryNotFound) {
-	throw InternalException("Catalog::GetEntry: %s", WIRE_STUB);
+optional_ptr<CatalogEntry> Catalog::GetEntry(ClientContext &, const string &, const string &, const EntryLookupInfo &,
+                                             OnEntryNotFound) {
+	WireStub("Catalog::GetEntry");
 }
 
 Catalog &Catalog::GetSystemCatalog(ClientContext &) {
-	throw InternalException("Catalog::GetSystemCatalog: %s", WIRE_STUB);
+	WireStub("Catalog::GetSystemCatalog");
 }
 
-optional_ptr<CatalogEntry> CatalogEntryRetriever::GetEntry(const string &, const string &,
-                                                            const EntryLookupInfo &, OnEntryNotFound) {
-	throw InternalException("CatalogEntryRetriever::GetEntry: %s", WIRE_STUB);
+optional_ptr<CatalogEntry> CatalogEntryRetriever::GetEntry(const string &, const string &, const EntryLookupInfo &,
+                                                           OnEntryNotFound) {
+	WireStub("CatalogEntryRetriever::GetEntry");
 }
 
 string CatalogTypeToString(CatalogType) {
@@ -77,41 +87,41 @@ string CatalogTypeToString(CatalogType) {
 }
 
 string TableCatalogEntry::ColumnNamesToSQL(const ColumnList &) {
-	throw InternalException("TableCatalogEntry: %s", WIRE_STUB);
+	WireStub("TableCatalogEntry::ColumnNamesToSQL");
 }
 
 string TableCatalogEntry::ColumnsToSQL(const ColumnList &, const vector<unique_ptr<Constraint>> &) {
-	throw InternalException("TableCatalogEntry: %s", WIRE_STUB);
+	WireStub("TableCatalogEntry::ColumnsToSQL");
 }
 
 // ===== DBConfig =====
 
 DBConfig &DBConfig::GetConfig(ClientContext &) {
-	throw InternalException("DBConfig::GetConfig: %s", WIRE_STUB);
+	WireStub("DBConfig::GetConfig");
 }
 
 const DBConfig &DBConfig::GetConfig(const ClientContext &) {
-	throw InternalException("DBConfig::GetConfig: %s", WIRE_STUB);
+	WireStub("DBConfig::GetConfig");
 }
 
 DBConfig &DBConfig::GetConfig(DatabaseInstance &) {
-	throw InternalException("DBConfig::GetConfig: %s", WIRE_STUB);
+	WireStub("DBConfig::GetConfig");
 }
 
 void DBConfig::SetOptionByName(const string &, const Value &) {
-	throw InternalException("DBConfig::SetOptionByName: %s", WIRE_STUB);
+	WireStub("DBConfig::SetOptionByName");
 }
 
 CastFunctionSet &DBConfig::GetCastFunctions() {
-	throw InternalException("DBConfig::GetCastFunctions: %s", WIRE_STUB);
+	WireStub("DBConfig::GetCastFunctions");
 }
 
 ExtensionCallbackManager &DBConfig::GetCallbackManager() {
-	throw InternalException("DBConfig::GetCallbackManager: %s", WIRE_STUB);
+	WireStub("DBConfig::GetCallbackManager");
 }
 
 const ExtensionCallbackManager &DBConfig::GetCallbackManager() const {
-	throw InternalException("DBConfig::GetCallbackManager: %s", WIRE_STUB);
+	WireStub("DBConfig::GetCallbackManager");
 }
 
 DuckDB::~DuckDB() {
@@ -121,11 +131,11 @@ Connection::~Connection() {
 }
 
 LogManager &DatabaseInstance::GetLogManager() const {
-	throw InternalException("DatabaseInstance::GetLogManager: %s", WIRE_STUB);
+	WireStub("DatabaseInstance::GetLogManager");
 }
 
 StorageManager &AttachedDatabase::GetStorageManager() {
-	throw InternalException("AttachedDatabase::GetStorageManager: %s", WIRE_STUB);
+	WireStub("AttachedDatabase::GetStorageManager");
 }
 
 // ===== CastFunctionSet =====
@@ -134,94 +144,93 @@ CastFunctionSet::CastFunctionSet() {
 }
 
 CastFunctionSet &CastFunctionSet::Get(ClientContext &) {
-	throw InternalException("CastFunctionSet::Get: %s", WIRE_STUB);
+	WireStub("CastFunctionSet::Get");
 }
 
 BoundCastInfo CastFunctionSet::GetCastFunction(const LogicalType &, const LogicalType &, GetCastFunctionInput &) {
-	throw InternalException("CastFunctionSet::GetCastFunction: %s", WIRE_STUB);
+	WireStub("CastFunctionSet::GetCastFunction");
 }
 
 int64_t CastFunctionSet::ImplicitCastCost(ClientContext &, const LogicalType &, const LogicalType &) {
-	throw InternalException("CastFunctionSet::ImplicitCastCost: %s", WIRE_STUB);
+	WireStub("CastFunctionSet::ImplicitCastCost");
 }
 
 // ===== TypeManager =====
 
 LogicalType TypeManager::ParseLogicalType(const string &, ClientContext &) const {
-	throw InternalException("TypeManager::ParseLogicalType: %s", WIRE_STUB);
+	WireStub("TypeManager::ParseLogicalType");
 }
 
 TypeManager &TypeManager::Get(ClientContext &) {
-	throw InternalException("TypeManager::Get: %s", WIRE_STUB);
+	WireStub("TypeManager::Get");
 }
 
 // ===== Binder / ExpressionBinder =====
 
 shared_ptr<Binder> Binder::CreateBinder(ClientContext &, optional_ptr<Binder>, BinderType) {
-	throw InternalException("Binder::CreateBinder: %s", WIRE_STUB);
+	WireStub("Binder::CreateBinder");
 }
 
 void Binder::BindCreateViewInfo(CreateViewInfo &) {
-	throw InternalException("Binder::BindCreateViewInfo: %s", WIRE_STUB);
+	WireStub("Binder::BindCreateViewInfo");
 }
 
-ExpressionBinder::ExpressionBinder(Binder &binder, ClientContext &context, bool)
-    : binder(binder), context(context) {
+ExpressionBinder::ExpressionBinder(Binder &binder, ClientContext &context, bool) : binder(binder), context(context) {
 }
 
 ExpressionBinder::~ExpressionBinder() {
 }
 
 BindResult ExpressionBinder::BindExpression(unique_ptr<ParsedExpression> &, idx_t, bool) {
-	throw InternalException("ExpressionBinder::BindExpression: %s", WIRE_STUB);
+	WireStub("ExpressionBinder::BindExpression");
 }
 
 BindResult ExpressionBinder::BindGroupingFunction(OperatorExpression &, idx_t) {
-	throw InternalException("ExpressionBinder::BindGroupingFunction: %s", WIRE_STUB);
+	WireStub("ExpressionBinder::BindGroupingFunction");
 }
 
 BindResult ExpressionBinder::BindFunction(FunctionExpression &, ScalarFunctionCatalogEntry &, idx_t) {
-	throw InternalException("ExpressionBinder::BindFunction: %s", WIRE_STUB);
+	WireStub("ExpressionBinder::BindFunction");
 }
 
 BindResult ExpressionBinder::BindLambdaFunction(FunctionExpression &, ScalarFunctionCatalogEntry &, idx_t) {
-	throw InternalException("ExpressionBinder::BindLambdaFunction: %s", WIRE_STUB);
+	WireStub("ExpressionBinder::BindLambdaFunction");
 }
 
 BindResult ExpressionBinder::BindAggregate(FunctionExpression &, AggregateFunctionCatalogEntry &, idx_t) {
-	throw InternalException("ExpressionBinder::BindAggregate: %s", WIRE_STUB);
+	WireStub("ExpressionBinder::BindAggregate");
 }
 
 BindResult ExpressionBinder::BindUnnest(FunctionExpression &, idx_t, bool) {
-	throw InternalException("ExpressionBinder::BindUnnest: %s", WIRE_STUB);
+	WireStub("ExpressionBinder::BindUnnest");
 }
 
 BindResult ExpressionBinder::BindMacro(FunctionExpression &, ScalarMacroCatalogEntry &, idx_t,
-                                        unique_ptr<ParsedExpression> &) {
-	throw InternalException("ExpressionBinder::BindMacro: %s", WIRE_STUB);
+                                       unique_ptr<ParsedExpression> &) {
+	WireStub("ExpressionBinder::BindMacro");
 }
 
 unique_ptr<ParsedExpression> ExpressionBinder::GetSQLValueFunction(const string &) {
-	throw InternalException("ExpressionBinder::GetSQLValueFunction: %s", WIRE_STUB);
+	WireStub("ExpressionBinder::GetSQLValueFunction");
 }
 
 string ExpressionBinder::UnsupportedAggregateMessage() {
-	throw InternalException("ExpressionBinder::UnsupportedAggregateMessage: %s", WIRE_STUB);
+	WireStub("ExpressionBinder::UnsupportedAggregateMessage");
 }
 
 string ExpressionBinder::UnsupportedUnnestMessage() {
-	throw InternalException("ExpressionBinder::UnsupportedUnnestMessage: %s", WIRE_STUB);
+	WireStub("ExpressionBinder::UnsupportedUnnestMessage");
 }
 
 void ExpressionBinder::ThrowIfUnnestInLambda(const ColumnBinding &) {
 }
 
 unique_ptr<ParsedExpression> ExpressionBinder::QualifyColumnName(ColumnRefExpression &, ErrorData &) {
-	throw InternalException("ExpressionBinder::QualifyColumnName: %s", WIRE_STUB);
+	WireStub("ExpressionBinder::QualifyColumnName");
 }
 
 bool Binding::HasMatchingBinding(const string &) {
-	throw InternalException("Binding::HasMatchingBinding: %s", WIRE_STUB);
+	WireStub("Binding::HasMatchingBinding");
 }
 
 // ===== DefaultTypeGenerator =====
@@ -230,37 +239,36 @@ LogicalTypeId DefaultTypeGenerator::GetDefaultType(const string &) {
 	return LogicalTypeId::INVALID;
 }
 
-LogicalType DefaultTypeGenerator::TryDefaultBind(const string &,
-                                                  const vector<pair<string, Value>> &) {
+LogicalType DefaultTypeGenerator::TryDefaultBind(const string &, const vector<pair<string, Value>> &) {
 	return LogicalType::INVALID;
 }
 
 // ===== HandleCastError =====
 
 void HandleCastError::AssignError(const string &, CastParameters &) {
-	throw InternalException("HandleCastError::AssignError: %s", WIRE_STUB);
+	WireStub("HandleCastError::AssignError");
 }
 
 void HandleCastError::AssignError(const string &, string *, optional_ptr<const Expression>, optional_idx) {
-	throw InternalException("HandleCastError::AssignError: %s", WIRE_STUB);
+	WireStub("HandleCastError::AssignError");
 }
 
 // ===== Reservoir / CSV =====
 
 void ReservoirChunk::Serialize(Serializer &) const {
-	throw InternalException("ReservoirChunk::Serialize: %s", WIRE_STUB);
+	WireStub("ReservoirChunk::Serialize");
 }
 
 unique_ptr<ReservoirChunk> ReservoirChunk::Deserialize(Deserializer &) {
-	throw InternalException("ReservoirChunk::Deserialize: %s", WIRE_STUB);
+	WireStub("ReservoirChunk::Deserialize");
 }
 
 CSVOption<char> CSVReaderOptions::GetSingleByteDelimiter() const {
-	throw InternalException("CSVReaderOptions::GetSingleByteDelimiter: %s", WIRE_STUB);
+	WireStub("CSVReaderOptions::GetSingleByteDelimiter");
 }
 
 CSVOption<string> CSVReaderOptions::GetMultiByteDelimiter() const {
-	throw InternalException("CSVReaderOptions::GetMultiByteDelimiter: %s", WIRE_STUB);
+	WireStub("CSVReaderOptions::GetMultiByteDelimiter");
 }
 
 SerializedCSVReaderOptions::SerializedCSVReaderOptions(CSVOption<char>, const CSVOption<string> &) {
@@ -273,15 +281,15 @@ shared_ptr<Logger> LogManager::GlobalLoggerReference() {
 }
 
 Logger &Logger::Get(const ClientContext &) {
-	throw InternalException("Logger::Get: %s", WIRE_STUB);
+	WireStub("Logger::Get");
 }
 
 Logger &Logger::Get(const DatabaseInstance &) {
-	throw InternalException("Logger::Get: %s", WIRE_STUB);
+	WireStub("Logger::Get");
 }
 
 Logger &Logger::Get(const shared_ptr<Logger> &) {
-	throw InternalException("Logger::Get: %s", WIRE_STUB);
+	WireStub("Logger::Get");
 }
 
 void Logger::WriteLog(const char *, LogLevel, const string &) {
@@ -298,7 +306,7 @@ string FileSystemLogType::ConstructLogMessage(const FileHandle &, const string &
 // ===== Various =====
 
 Allocator &Allocator::Get(ClientContext &) {
-	throw InternalException("Allocator::Get(ClientContext&): %s", WIRE_STUB);
+	WireStub("Allocator::Get");
 }
 
 optional_ptr<ClientContext> FileOpener::TryGetClientContext(optional_ptr<FileOpener>) {
@@ -306,7 +314,7 @@ optional_ptr<ClientContext> FileOpener::TryGetClientContext(optional_ptr<FileOpe
 }
 
 ClientData &ClientData::Get(ClientContext &) {
-	throw InternalException("ClientData::Get: %s", WIRE_STUB);
+	WireStub("ClientData::Get");
 }
 
 void QueryProfiler::AddToCounter(MetricType, idx_t) {
@@ -316,11 +324,11 @@ ManagedResultSet::ManagedResultSet() {
 }
 
 bool Settings::TryGetSettingInternal(const ClientContext &, idx_t, Value &) {
-	throw InternalException("Settings::TryGetSettingInternal: %s", WIRE_STUB);
+	WireStub("Settings::TryGetSettingInternal");
 }
 
 void ExpressionIterator::EnumerateChildren(const Expression &, const std::function<void(const Expression &)> &) {
-	throw InternalException("ExpressionIterator::EnumerateChildren: %s", WIRE_STUB);
+	WireStub("ExpressionIterator::EnumerateChildren");
 }
 
 BaseStatistics::~BaseStatistics() {
@@ -357,33 +365,32 @@ StorageIndex::StorageIndex() {
 }
 
 bool Glob(const char *, idx_t, const char *, idx_t, bool) {
-	throw InternalException("Glob: %s", WIRE_STUB);
+	WireStub("Glob");
 }
 
 string FSSTPrimitives::DecompressValue(void *, const char *, idx_t, vector<uint8_t> &) {
-	throw InternalException("FSSTPrimitives::DecompressValue: %s", WIRE_STUB);
+	WireStub("FSSTPrimitives::DecompressValue");
 }
 
 string Function::CallToString(const string &, const string &, const string &, const vector<LogicalType> &,
-                               const LogicalType &) {
+                              const LogicalType &) {
 	return "unknown_function()";
 }
 
 unique_ptr<Expression> Expression::Deserialize(Deserializer &) {
-	throw InternalException("Expression::Deserialize: %s", WIRE_STUB);
+	WireStub("Expression::Deserialize");
 }
 
-void HivePartitioning::ApplyFiltersToFileList(ClientContext &, vector<OpenFileInfo> &,
-                                               vector<unique_ptr<Expression>> &,
-                                               const HivePartitioningFilterInfo &, MultiFilePushdownInfo &) {
-	throw InternalException("HivePartitioning: %s", WIRE_STUB);
+void HivePartitioning::ApplyFiltersToFileList(ClientContext &, vector<OpenFileInfo> &, vector<unique_ptr<Expression>> &,
+                                              const HivePartitioningFilterInfo &, MultiFilePushdownInfo &) {
+	WireStub("HivePartitioning::ApplyFiltersToFileList");
 }
 
 HivePartitioningIndex::HivePartitioningIndex(string, idx_t) {
 }
 
 const vector<ColumnIndex> &LogicalGet::GetColumnIds() const {
-	throw InternalException("LogicalGet: %s", WIRE_STUB);
+	WireStub("LogicalGet::GetColumnIds");
 }
 
 StrpTimeFormat::StrpTimeFormat() {
@@ -397,33 +404,33 @@ StrpTimeFormat::StrpTimeFormat(const string &) {
 idx_t VectorOperations::Equals(Vector &, Vector &, optional_ptr<const SelectionVector>, idx_t,
                                optional_ptr<SelectionVector>, optional_ptr<SelectionVector>,
                                optional_ptr<ValidityMask>) {
-	throw InternalException("VectorOperations::Equals: %s", WIRE_STUB);
+	WireStub("VectorOperations::Equals");
 }
 
 idx_t VectorOperations::NotEquals(Vector &, Vector &, optional_ptr<const SelectionVector>, idx_t,
                                   optional_ptr<SelectionVector>, optional_ptr<SelectionVector>,
                                   optional_ptr<ValidityMask>) {
-	throw InternalException("VectorOperations::NotEquals: %s", WIRE_STUB);
+	WireStub("VectorOperations::NotEquals");
 }
 
 idx_t VectorOperations::GreaterThan(Vector &, Vector &, optional_ptr<const SelectionVector>, idx_t,
                                     optional_ptr<SelectionVector>, optional_ptr<SelectionVector>,
                                     optional_ptr<ValidityMask>) {
-	throw InternalException("VectorOperations::GreaterThan: %s", WIRE_STUB);
+	WireStub("VectorOperations::GreaterThan");
 }
 
 idx_t VectorOperations::GreaterThanEquals(Vector &, Vector &, optional_ptr<const SelectionVector>, idx_t,
                                           optional_ptr<SelectionVector>, optional_ptr<SelectionVector>,
                                           optional_ptr<ValidityMask>) {
-	throw InternalException("VectorOperations::GreaterThanEquals: %s", WIRE_STUB);
+	WireStub("VectorOperations::GreaterThanEquals");
 }
 
 void VariantUtils::UnshredVariantData(Vector &, Vector &, idx_t) {
-	throw InternalException("VariantUtils: %s", WIRE_STUB);
+	WireStub("VariantUtils::UnshredVariantData");
 }
 
 unique_ptr<TableFilter> TableFilter::Deserialize(Deserializer &) {
-	throw InternalException("TableFilter::Deserialize: %s", WIRE_STUB);
+	WireStub("TableFilter::Deserialize");
 }
 
 // ===== DummyBinding =====
@@ -435,11 +442,11 @@ Binding::Binding(BindingType binding_type, BindingAlias alias, vector<LogicalTyp
 }
 
 ErrorData Binding::ColumnNotFoundError(const string &) const {
-	throw InternalException("Binding::ColumnNotFoundError: %s", WIRE_STUB);
+	WireStub("Binding::ColumnNotFoundError");
 }
 
 BindResult Binding::Bind(ColumnRefExpression &, idx_t) {
-	throw InternalException("Binding::Bind: %s", WIRE_STUB);
+	WireStub("Binding::Bind");
 }
 
 optional_ptr<StandardEntry> Binding::GetStandardEntry() {
@@ -451,13 +458,14 @@ DummyBinding::DummyBinding(vector<LogicalType> types, vector<string> names, stri
 }
 
 BindResult DummyBinding::Bind(ColumnRefExpression &, idx_t) {
-	throw InternalException("DummyBinding::Bind: %s", WIRE_STUB);
+	WireStub("DummyBinding::Bind");
 }
 
 // ===== TableFilterSet =====
 
 TableFilterSet::ConstTableFilterIteratorEntry::ConstTableFilterIteratorEntry(
-    map<idx_t, unique_ptr<TableFilter>>::const_iterator it) : iterator(it) {
+    map<idx_t, unique_ptr<TableFilter>>::const_iterator it)
+    : iterator(it) {
 }
 
 idx_t TableFilterSet::ConstTableFilterIteratorEntry::ColumnIndex() const {
@@ -487,18 +495,18 @@ void ReservoirSample::Destroy() {
 }
 
 void ReservoirSample::AddToReservoir(DataChunk &) {
-	throw InternalException("ReservoirSample::AddToReservoir: %s", WIRE_STUB);
+	WireStub("ReservoirSample::AddToReservoir");
 }
 
 unique_ptr<BlockingSample> ReservoirSample::Copy() const {
-	throw InternalException("ReservoirSample::Copy: %s", WIRE_STUB);
+	WireStub("ReservoirSample::Copy");
 }
 
 void ReservoirSample::Finalize() {
 }
 
 unique_ptr<DataChunk> ReservoirSample::GetChunk() {
-	throw InternalException("ReservoirSample::GetChunk: %s", WIRE_STUB);
+	WireStub("ReservoirSample::GetChunk");
 }
 
 ReservoirSamplePercentage::ReservoirSamplePercentage(double percentage, int64_t seed)
@@ -506,25 +514,24 @@ ReservoirSamplePercentage::ReservoirSamplePercentage(double percentage, int64_t 
 }
 
 void ReservoirSamplePercentage::AddToReservoir(DataChunk &) {
-	throw InternalException("ReservoirSamplePercentage::AddToReservoir: %s", WIRE_STUB);
+	WireStub("ReservoirSamplePercentage::AddToReservoir");
 }
 
 unique_ptr<BlockingSample> ReservoirSamplePercentage::Copy() const {
-	throw InternalException("ReservoirSamplePercentage::Copy: %s", WIRE_STUB);
+	WireStub("ReservoirSamplePercentage::Copy");
 }
 
 void ReservoirSamplePercentage::Finalize() {
 }
 
 unique_ptr<DataChunk> ReservoirSamplePercentage::GetChunk() {
-	throw InternalException("ReservoirSamplePercentage::GetChunk: %s", WIRE_STUB);
+	WireStub("ReservoirSamplePercentage::GetChunk");
 }
-
 
 // ===== Expression =====
 
 void Expression::Serialize(Serializer &) const {
-	throw InternalException("Expression::Serialize: %s", WIRE_STUB);
+	WireStub("Expression::Serialize");
 }
 
 // ===== BoundColumnRefExpression =====
@@ -546,11 +553,11 @@ hash_t BoundColumnRefExpression::Hash() const {
 }
 
 unique_ptr<Expression> BoundColumnRefExpression::Copy() const {
-	throw InternalException("BoundColumnRefExpression::Copy: %s", WIRE_STUB);
+	WireStub("BoundColumnRefExpression::Copy");
 }
 
 void BoundColumnRefExpression::Serialize(Serializer &) const {
-	throw InternalException("BoundColumnRefExpression::Serialize: %s", WIRE_STUB);
+	WireStub("BoundColumnRefExpression::Serialize");
 }
 
 // ===== TableCatalogEntry =====
