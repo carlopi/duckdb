@@ -320,6 +320,10 @@ void DBConfig::SetOptionsByName(const case_insensitive_map_t<Value> &values) {
 	}
 }
 
+void DBConfig::SetSerializationCompatibility(const string &version) {
+	options.serialization_compatibility = SerializationCompatibility::FromString(version);
+}
+
 void DBConfig::SetOption(optional_ptr<DatabaseInstance> db, const ConfigurationOption &option, const Value &value) {
 	Value input = value.DefaultCastAs(ParseLogicalType(option.parameter_type));
 	if (option.default_value) {

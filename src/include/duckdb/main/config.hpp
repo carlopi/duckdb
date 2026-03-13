@@ -219,6 +219,7 @@ public:
 	DUCKDB_API void SetOption(idx_t setting_index, Value value);
 	DUCKDB_API void SetOptionByName(const string &name, const Value &value);
 	DUCKDB_API void SetOptionsByName(const case_insensitive_map_t<Value> &values);
+	DUCKDB_API void SetSerializationCompatibility(const string &version);
 	DUCKDB_API void ResetOption(optional_ptr<DatabaseInstance> db, const ConfigurationOption &option);
 	DUCKDB_API void ResetOption(const ExtensionOption &extension_option);
 	DUCKDB_API void ResetGenericOption(idx_t setting_index);

@@ -404,11 +404,12 @@ static void shell_out_of_memory(void) {
 }
 
 ShellState::ShellState() : seenInterrupt(0), program_name("duckdb") {
-	config.AddCustomError(
-	    duckdb::ErrorType::UNSIGNED_EXTENSION,
-	    "Extension \"%s\" could not be loaded because its signature is either missing or invalid and unsigned "
-	    "extensions are disabled by configuration.\nStart the shell with the -unsigned parameter to allow this "
-	    "(e.g. duckdb -unsigned).");
+	// TODO: AddCustomError - needs interface alignment between DBConfig and MockDBConfig
+	// config.AddCustomError(
+	//     duckdb::ErrorType::UNSIGNED_EXTENSION,
+	//     "Extension \"%s\" could not be loaded because its signature is either missing or invalid and unsigned "
+	//     "extensions are disabled by configuration.\nStart the shell with the -unsigned parameter to allow this "
+	//     "(e.g. duckdb -unsigned).");
 	nullValue = "NULL";
 	strcpy(continuePrompt, "  ");
 	strcpy(continuePromptSelected, "  ");
