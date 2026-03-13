@@ -34,10 +34,10 @@ public:
 	conn_id_t CreateConnection() override;
 	void CloseConnection(conn_id_t conn) override;
 
-	WireResultMetadata Query(conn_id_t conn, const string &sql) override;
-	WireResultMetadata SendQuery(conn_id_t conn, const string &sql) override;
-	WireResultMetadata Prepare(conn_id_t conn, const string &sql, prep_id_t &out_prep) override;
-	WireResultMetadata Execute(prep_id_t prep, const string &values_blob) override;
+	string Query(conn_id_t conn, const string &sql) override;
+	string SendQuery(conn_id_t conn, const string &sql) override;
+	string Prepare(conn_id_t conn, const string &sql, prep_id_t &out_prep) override;
+	string Execute(prep_id_t prep, const string &values_blob) override;
 
 	string Fetch(conn_id_t conn) override;
 	string CastToVarchar(conn_id_t conn, const string &chunk_blob, bool as_json) override;
@@ -50,7 +50,7 @@ public:
 	void Interrupt(conn_id_t conn) override;
 	void ClearInterrupt(conn_id_t conn) override;
 
-	vector<pair<string, string>> TableInfo(conn_id_t conn, const string &table_name) override;
+	string TableInfo(conn_id_t conn, const string &table_name) override;
 
 private:
 	struct ConnectionState {
@@ -61,7 +61,7 @@ private:
 
 	duckdb::Connection &GetConnection(conn_id_t conn);
 	ConnectionState &GetConnectionState(conn_id_t conn);
-	WireResultMetadata BuildMetadata(duckdb::QueryResult &result);
+	string SerializeMetadata(duckdb::QueryResult &result);
 	string SerializeDataChunk(duckdb::DataChunk &chunk);
 
 	unique_ptr<duckdb::DuckDB> db;

@@ -26,7 +26,8 @@ set(SHELL_COMMON_SOURCES
     shell_highlight.cpp
     shell_progress_bar.cpp
     shell_render_table_metadata.cpp
-    shell_windows.cpp)
+    shell_windows.cpp
+    wire_serialization.cpp)
 
 # Sources that need the engine (Local implementations)
 set(SHELL_LOCAL_SOURCES

@@ -4,6 +4,7 @@
 #include "shell_duckdb_wired.hpp"
 #include "shell_db_config.hpp"
 #include "wire_transport.hpp"
+#include "wire_serialization.hpp"
 #ifdef DUCKDB_SHELL_WIRE_TEST
 #include "wire_transport_mock.hpp"
 #include "duckdb/main/config.hpp"
@@ -232,14 +233,16 @@ ShellConnectionWired::~ShellConnectionWired() {
 }
 
 unique_ptr<ShellMaterializedQueryResult> ShellConnectionWired::Query(const string &sql) {
-	auto meta = transport.Query(conn_id, sql);
+	auto blob = transport.Query(conn_id, sql);
+	auto meta = WireSerializer::DeserializeResultMetadata(blob);
 	auto result = make_uniq<ShellMaterializedQueryResultWired>(std::move(meta), &transport);
 	result->conn_id = conn_id;
 	return result;
 }
 
 unique_ptr<ShellQueryResult> ShellConnectionWired::SendQuery(const string &query) {
-	auto meta = transport.SendQuery(conn_id, query);
+	auto blob = transport.SendQuery(conn_id, query);
+	auto meta = WireSerializer::DeserializeResultMetadata(blob);
 	auto result = make_uniq<ShellQueryResultWired>(std::move(meta), &transport);
 	result->conn_id = conn_id;
 	return result;
@@ -294,10 +297,11 @@ void ShellConnectionWired::ClearInterrupt() {
 }
 
 unique_ptr<duckdb::TableDescription> ShellConnectionWired::TableInfo(const string &table_name) {
-	auto columns = transport.TableInfo(conn_id, table_name);
-	if (columns.empty()) {
+	auto blob = transport.TableInfo(conn_id, table_name);
+	if (blob.empty()) {
 		return nullptr;
 	}
+	auto columns = WireSerializer::DeserializeTableInfo(blob);
 	auto info = make_uniq<duckdb::TableDescription>("", "", table_name);
 	for (auto &col : columns) {
 		info->columns.emplace_back(col.first, duckdb::LogicalType(duckdb::TransformStringToLogicalTypeId(col.second)));

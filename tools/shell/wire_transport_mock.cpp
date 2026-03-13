@@ -1,4 +1,5 @@
 #include "wire_transport_mock.hpp"
+#include "wire_serialization.hpp"
 #include "duckdb.hpp"
 #include "duckdb/main/config.hpp"
 #include "duckdb/common/types/data_chunk.hpp"
@@ -43,12 +44,12 @@ string MockTransportLayer::SerializeDataChunk(duckdb::DataChunk &chunk) {
 	return string(duckdb::const_char_ptr_cast(stream.GetData()), stream.GetPosition());
 }
 
-WireResultMetadata MockTransportLayer::BuildMetadata(duckdb::QueryResult &result) {
+string MockTransportLayer::SerializeMetadata(duckdb::QueryResult &result) {
 	WireResultMetadata meta;
 	meta.has_error = result.HasError();
 	if (meta.has_error) {
 		meta.error_message = result.GetError();
-		return meta;
+		return WireSerializer::Serialize(meta);
 	}
 	for (auto &name : result.names) {
 		meta.column_names.push_back(name);
@@ -58,7 +59,7 @@ WireResultMetadata MockTransportLayer::BuildMetadata(duckdb::QueryResult &result
 	}
 	meta.statement_return_type = static_cast<uint8_t>(result.properties.return_type);
 	meta.query_result_type = static_cast<uint8_t>(result.type);
-	return meta;
+	return WireSerializer::Serialize(meta);
 }
 
 // === Connection management ===
@@ -77,25 +78,25 @@ void MockTransportLayer::CloseConnection(conn_id_t conn) {
 
 // === Query execution ===
 
-WireResultMetadata MockTransportLayer::Query(conn_id_t conn, const string &sql) {
+string MockTransportLayer::Query(conn_id_t conn, const string &sql) {
 	auto &connection = GetConnection(conn);
 	auto result = connection.Query(sql);
-	auto meta = BuildMetadata(*result);
+	auto blob = SerializeMetadata(*result);
 	// Store the materialized result for Fetch() calls
 	GetConnectionState(conn).active_result = std::move(result);
-	return meta;
+	return blob;
 }
 
-WireResultMetadata MockTransportLayer::SendQuery(conn_id_t conn, const string &sql) {
+string MockTransportLayer::SendQuery(conn_id_t conn, const string &sql) {
 	auto &connection = GetConnection(conn);
 	auto result = connection.SendQuery(sql);
-	auto meta = BuildMetadata(*result);
+	auto blob = SerializeMetadata(*result);
 	// Store the streaming result for Fetch() calls
 	GetConnectionState(conn).active_result = std::move(result);
-	return meta;
+	return blob;
 }
 
-WireResultMetadata MockTransportLayer::Prepare(conn_id_t conn, const string &sql, prep_id_t &out_prep) {
+string MockTransportLayer::Prepare(conn_id_t conn, const string &sql, prep_id_t &out_prep) {
 	// TODO: implement prepared statement storage
 	(void)conn;
 	(void)sql;
@@ -103,17 +104,17 @@ WireResultMetadata MockTransportLayer::Prepare(conn_id_t conn, const string &sql
 	WireResultMetadata meta;
 	meta.has_error = true;
 	meta.error_message = "Prepare not yet implemented in MockTransportLayer";
-	return meta;
+	return WireSerializer::Serialize(meta);
 }
 
-WireResultMetadata MockTransportLayer::Execute(prep_id_t prep, const string &values_blob) {
+string MockTransportLayer::Execute(prep_id_t prep, const string &values_blob) {
 	// TODO: implement prepared statement execution
 	(void)prep;
 	(void)values_blob;
 	WireResultMetadata meta;
 	meta.has_error = true;
 	meta.error_message = "Execute not yet implemented in MockTransportLayer";
-	return meta;
+	return WireSerializer::Serialize(meta);
 }
 
 // === Data fetch ===
@@ -181,17 +182,17 @@ void MockTransportLayer::ClearInterrupt(conn_id_t conn) {
 
 // === Table info ===
 
-vector<pair<string, string>> MockTransportLayer::TableInfo(conn_id_t conn, const string &table_name) {
+string MockTransportLayer::TableInfo(conn_id_t conn, const string &table_name) {
 	auto &connection = GetConnection(conn);
 	auto info = connection.TableInfo(table_name);
 	if (!info) {
-		return {};
+		return "";
 	}
-	vector<pair<string, string>> result;
+	vector<pair<string, string>> columns;
 	for (auto &col : info->columns) {
-		result.push_back({col.Name(), col.Type().ToString()});
+		columns.push_back({col.Name(), col.Type().ToString()});
 	}
-	return result;
+	return WireSerializer::SerializeTableInfo(columns);
 }
 
 } // namespace duckdb_shell

@@ -37,7 +37,7 @@ struct WireResultMetadata {
 };
 
 //! TransportLayer is the abstract protocol boundary between the shell client and the server.
-//! All data crossing this interface uses only simple types: int, string, len+binary.
+//! All data crossing this interface is binary: scalars or serialized blobs.
 //! No engine types (DataChunk, LogicalType, etc.) appear in the interface.
 class TransportLayer {
 public:
@@ -48,14 +48,14 @@ public:
 	virtual void CloseConnection(conn_id_t conn) = 0;
 
 	// === Query execution ===
-	//! Execute a query and materialize the result
-	virtual WireResultMetadata Query(conn_id_t conn, const string &sql) = 0;
-	//! Execute a query in streaming mode
-	virtual WireResultMetadata SendQuery(conn_id_t conn, const string &sql) = 0;
-	//! Prepare a statement, returns metadata and sets out_prep
-	virtual WireResultMetadata Prepare(conn_id_t conn, const string &sql, prep_id_t &out_prep) = 0;
-	//! Execute a prepared statement with serialized parameter values
-	virtual WireResultMetadata Execute(prep_id_t prep, const string &values_blob) = 0;
+	//! Execute a query and materialize the result. Returns serialized WireResultMetadata.
+	virtual string Query(conn_id_t conn, const string &sql) = 0;
+	//! Execute a query in streaming mode. Returns serialized WireResultMetadata.
+	virtual string SendQuery(conn_id_t conn, const string &sql) = 0;
+	//! Prepare a statement. Returns serialized WireResultMetadata, sets out_prep.
+	virtual string Prepare(conn_id_t conn, const string &sql, prep_id_t &out_prep) = 0;
+	//! Execute a prepared statement with serialized parameter values. Returns serialized WireResultMetadata.
+	virtual string Execute(prep_id_t prep, const string &values_blob) = 0;
 
 	// === Data fetch ===
 	//! Fetch next chunk as serialized binary. Empty string = no more data.
@@ -76,8 +76,8 @@ public:
 	virtual void ClearInterrupt(conn_id_t conn) = 0;
 
 	// === Table info ===
-	//! Returns column (name, type_string) pairs. Empty vector if table not found.
-	virtual vector<pair<string, string>> TableInfo(conn_id_t conn, const string &table_name) = 0;
+	//! Returns serialized column (name, type_string) pairs. Empty string = table not found.
+	virtual string TableInfo(conn_id_t conn, const string &table_name) = 0;
 };
 
 } // namespace duckdb_shell
