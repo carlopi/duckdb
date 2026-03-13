@@ -96,6 +96,7 @@ set(CLIENT_TYPES_SOURCES
     # Column data
     ${CMAKE_SOURCE_DIR}/src/common/types/column/column_data_collection_segment.cpp
     ${CMAKE_SOURCE_DIR}/src/common/types/column/column_data_collection.cpp
+    ${CMAKE_SOURCE_DIR}/src/duckdb_client_types/column_data_allocator_stub.cpp
 
     # Storage (minimal — only what Vector/StringHeap need)
     ${CMAKE_SOURCE_DIR}/src/storage/buffer/buffer_handle.cpp
