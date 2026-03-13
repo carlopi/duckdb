@@ -16,6 +16,14 @@ using duckdb::BinarySerializer;
 using duckdb::make_uniq;
 using duckdb::MemoryStream;
 
+void MockTransportLayer::OnSend(const char *method, idx_t bytes) {
+	fprintf(stderr, "[wire] %-20s  >> %llu bytes\n", method, (unsigned long long)bytes);
+}
+
+void MockTransportLayer::OnReceive(const char *method, idx_t bytes) {
+	fprintf(stderr, "[wire] %-20s  << %llu bytes\n", method, (unsigned long long)bytes);
+}
+
 MockTransportLayer::MockTransportLayer(const char *path, duckdb::DBConfig &config) {
 	db = make_uniq<duckdb::DuckDB>(path, &config);
 }
@@ -64,7 +72,7 @@ string MockTransportLayer::SerializeMetadata(duckdb::QueryResult &result) {
 
 // === Connection management ===
 
-conn_id_t MockTransportLayer::CreateConnection() {
+conn_id_t MockTransportLayer::DoCreateConnection() {
 	auto id = next_conn_id++;
 	ConnectionState state;
 	state.connection = make_uniq<duckdb::Connection>(*db);
@@ -72,13 +80,13 @@ conn_id_t MockTransportLayer::CreateConnection() {
 	return id;
 }
 
-void MockTransportLayer::CloseConnection(conn_id_t conn) {
+void MockTransportLayer::DoCloseConnection(conn_id_t conn) {
 	connections.erase(conn);
 }
 
 // === Query execution ===
 
-string MockTransportLayer::Query(conn_id_t conn, const string &sql) {
+string MockTransportLayer::DoQuery(conn_id_t conn, const string &sql) {
 	auto &connection = GetConnection(conn);
 	auto result = connection.Query(sql);
 	auto blob = SerializeMetadata(*result);
@@ -87,7 +95,7 @@ string MockTransportLayer::Query(conn_id_t conn, const string &sql) {
 	return blob;
 }
 
-string MockTransportLayer::SendQuery(conn_id_t conn, const string &sql) {
+string MockTransportLayer::DoSendQuery(conn_id_t conn, const string &sql) {
 	auto &connection = GetConnection(conn);
 	auto result = connection.SendQuery(sql);
 	auto blob = SerializeMetadata(*result);
@@ -96,7 +104,7 @@ string MockTransportLayer::SendQuery(conn_id_t conn, const string &sql) {
 	return blob;
 }
 
-string MockTransportLayer::Prepare(conn_id_t conn, const string &sql, prep_id_t &out_prep) {
+string MockTransportLayer::DoPrepare(conn_id_t conn, const string &sql, prep_id_t &out_prep) {
 	// TODO: implement prepared statement storage
 	(void)conn;
 	(void)sql;
@@ -107,7 +115,7 @@ string MockTransportLayer::Prepare(conn_id_t conn, const string &sql, prep_id_t 
 	return WireSerializer::Serialize(meta);
 }
 
-string MockTransportLayer::Execute(prep_id_t prep, const string &values_blob) {
+string MockTransportLayer::DoExecute(prep_id_t prep, const string &values_blob) {
 	// TODO: implement prepared statement execution
 	(void)prep;
 	(void)values_blob;
@@ -119,7 +127,7 @@ string MockTransportLayer::Execute(prep_id_t prep, const string &values_blob) {
 
 // === Data fetch ===
 
-string MockTransportLayer::Fetch(conn_id_t conn) {
+string MockTransportLayer::DoFetch(conn_id_t conn) {
 	auto &state = GetConnectionState(conn);
 	if (!state.active_result) {
 		return "";
@@ -133,7 +141,7 @@ string MockTransportLayer::Fetch(conn_id_t conn) {
 
 // === CastToVarchar ===
 
-string MockTransportLayer::CastToVarchar(conn_id_t conn, const string &chunk_blob, bool as_json) {
+string MockTransportLayer::DoCastToVarchar(conn_id_t conn, const string &chunk_blob, bool as_json) {
 	// Deserialize the incoming DataChunk
 	MemoryStream read_stream(duckdb::data_ptr_cast(const_cast<char *>(chunk_blob.data())),
 	                         duckdb::NumericCast<duckdb::idx_t>(chunk_blob.size()));
@@ -153,36 +161,36 @@ string MockTransportLayer::CastToVarchar(conn_id_t conn, const string &chunk_blo
 
 // === Transaction control ===
 
-void MockTransportLayer::BeginTransaction(conn_id_t conn) {
+void MockTransportLayer::DoBeginTransaction(conn_id_t conn) {
 	GetConnection(conn).BeginTransaction();
 }
 
-void MockTransportLayer::Commit(conn_id_t conn) {
+void MockTransportLayer::DoCommit(conn_id_t conn) {
 	GetConnection(conn).Commit();
 }
 
-void MockTransportLayer::Rollback(conn_id_t conn) {
+void MockTransportLayer::DoRollback(conn_id_t conn) {
 	GetConnection(conn).Rollback();
 }
 
-bool MockTransportLayer::IsAutoCommit(conn_id_t conn) {
+bool MockTransportLayer::DoIsAutoCommit(conn_id_t conn) {
 	return GetConnection(conn).IsAutoCommit();
 }
 
 // === Interrupt ===
 
-void MockTransportLayer::Interrupt(conn_id_t conn) {
+void MockTransportLayer::DoInterrupt(conn_id_t conn) {
 	GetConnection(conn).Interrupt();
 }
 
-void MockTransportLayer::ClearInterrupt(conn_id_t conn) {
+void MockTransportLayer::DoClearInterrupt(conn_id_t conn) {
 	// TODO: ClearInterrupt is not on Connection, it's on ClientContext
 	(void)conn;
 }
 
 // === Table info ===
 
-string MockTransportLayer::TableInfo(conn_id_t conn, const string &table_name) {
+string MockTransportLayer::DoTableInfo(conn_id_t conn, const string &table_name) {
 	auto &connection = GetConnection(conn);
 	auto info = connection.TableInfo(table_name);
 	if (!info) {

@@ -39,45 +39,68 @@ struct WireResultMetadata {
 //! TransportLayer is the abstract protocol boundary between the shell client and the server.
 //! All data crossing this interface is binary: scalars or serialized blobs.
 //! No engine types (DataChunk, LogicalType, etc.) appear in the interface.
+//!
+//! Public methods are concrete — they call OnSend/OnReceive hooks around the
+//! virtual DoXxx implementation. Override OnSend/OnReceive for logging/tracing.
 class TransportLayer {
 public:
 	virtual ~TransportLayer() = default;
 
-	// === Connection management ===
-	virtual conn_id_t CreateConnection() = 0;
-	virtual void CloseConnection(conn_id_t conn) = 0;
+	// === Public API (non-virtual, calls hooks + DoXxx) ===
 
-	// === Query execution ===
-	//! Execute a query and materialize the result. Returns serialized WireResultMetadata.
-	virtual string Query(conn_id_t conn, const string &sql) = 0;
-	//! Execute a query in streaming mode. Returns serialized WireResultMetadata.
-	virtual string SendQuery(conn_id_t conn, const string &sql) = 0;
-	//! Prepare a statement. Returns serialized WireResultMetadata, sets out_prep.
-	virtual string Prepare(conn_id_t conn, const string &sql, prep_id_t &out_prep) = 0;
-	//! Execute a prepared statement with serialized parameter values. Returns serialized WireResultMetadata.
-	virtual string Execute(prep_id_t prep, const string &values_blob) = 0;
+	conn_id_t CreateConnection();
+	void CloseConnection(conn_id_t conn);
 
-	// === Data fetch ===
-	//! Fetch next chunk as serialized binary. Empty string = no more data.
-	virtual string Fetch(conn_id_t conn) = 0;
+	string Query(conn_id_t conn, const string &sql);
+	string SendQuery(conn_id_t conn, const string &sql);
+	string Prepare(conn_id_t conn, const string &sql, prep_id_t &out_prep);
+	string Execute(prep_id_t prep, const string &values_blob);
 
-	// === CastToVarchar ===
-	//! Cast a serialized DataChunk to VARCHAR columns. Returns serialized DataChunk.
-	virtual string CastToVarchar(conn_id_t conn, const string &chunk_blob, bool as_json) = 0;
+	string Fetch(conn_id_t conn);
+	string CastToVarchar(conn_id_t conn, const string &chunk_blob, bool as_json);
 
-	// === Transaction control ===
-	virtual void BeginTransaction(conn_id_t conn) = 0;
-	virtual void Commit(conn_id_t conn) = 0;
-	virtual void Rollback(conn_id_t conn) = 0;
-	virtual bool IsAutoCommit(conn_id_t conn) = 0;
+	void BeginTransaction(conn_id_t conn);
+	void Commit(conn_id_t conn);
+	void Rollback(conn_id_t conn);
+	bool IsAutoCommit(conn_id_t conn);
 
-	// === Interrupt ===
-	virtual void Interrupt(conn_id_t conn) = 0;
-	virtual void ClearInterrupt(conn_id_t conn) = 0;
+	void Interrupt(conn_id_t conn);
+	void ClearInterrupt(conn_id_t conn);
 
-	// === Table info ===
-	//! Returns serialized column (name, type_string) pairs. Empty string = table not found.
-	virtual string TableInfo(conn_id_t conn, const string &table_name) = 0;
+	string TableInfo(conn_id_t conn, const string &table_name);
+
+protected:
+	// === Hooks — override for logging/tracing. Default: NOP. ===
+	virtual void OnSend(const char *method, idx_t bytes) {
+		(void)method;
+		(void)bytes;
+	}
+	virtual void OnReceive(const char *method, idx_t bytes) {
+		(void)method;
+		(void)bytes;
+	}
+
+	// === Virtual implementation — subclasses implement these ===
+	virtual conn_id_t DoCreateConnection() = 0;
+	virtual void DoCloseConnection(conn_id_t conn) = 0;
+
+	virtual string DoQuery(conn_id_t conn, const string &sql) = 0;
+	virtual string DoSendQuery(conn_id_t conn, const string &sql) = 0;
+	virtual string DoPrepare(conn_id_t conn, const string &sql, prep_id_t &out_prep) = 0;
+	virtual string DoExecute(prep_id_t prep, const string &values_blob) = 0;
+
+	virtual string DoFetch(conn_id_t conn) = 0;
+	virtual string DoCastToVarchar(conn_id_t conn, const string &chunk_blob, bool as_json) = 0;
+
+	virtual void DoBeginTransaction(conn_id_t conn) = 0;
+	virtual void DoCommit(conn_id_t conn) = 0;
+	virtual void DoRollback(conn_id_t conn) = 0;
+	virtual bool DoIsAutoCommit(conn_id_t conn) = 0;
+
+	virtual void DoInterrupt(conn_id_t conn) = 0;
+	virtual void DoClearInterrupt(conn_id_t conn) = 0;
+
+	virtual string DoTableInfo(conn_id_t conn, const string &table_name) = 0;
 };
 
 } // namespace duckdb_shell

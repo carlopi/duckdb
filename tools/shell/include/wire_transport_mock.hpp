@@ -31,26 +31,30 @@ public:
 	MockTransportLayer(const char *path, duckdb::DBConfig &config);
 	~MockTransportLayer() override;
 
-	conn_id_t CreateConnection() override;
-	void CloseConnection(conn_id_t conn) override;
+protected:
+	void OnSend(const char *method, idx_t bytes) override;
+	void OnReceive(const char *method, idx_t bytes) override;
 
-	string Query(conn_id_t conn, const string &sql) override;
-	string SendQuery(conn_id_t conn, const string &sql) override;
-	string Prepare(conn_id_t conn, const string &sql, prep_id_t &out_prep) override;
-	string Execute(prep_id_t prep, const string &values_blob) override;
+	conn_id_t DoCreateConnection() override;
+	void DoCloseConnection(conn_id_t conn) override;
 
-	string Fetch(conn_id_t conn) override;
-	string CastToVarchar(conn_id_t conn, const string &chunk_blob, bool as_json) override;
+	string DoQuery(conn_id_t conn, const string &sql) override;
+	string DoSendQuery(conn_id_t conn, const string &sql) override;
+	string DoPrepare(conn_id_t conn, const string &sql, prep_id_t &out_prep) override;
+	string DoExecute(prep_id_t prep, const string &values_blob) override;
 
-	void BeginTransaction(conn_id_t conn) override;
-	void Commit(conn_id_t conn) override;
-	void Rollback(conn_id_t conn) override;
-	bool IsAutoCommit(conn_id_t conn) override;
+	string DoFetch(conn_id_t conn) override;
+	string DoCastToVarchar(conn_id_t conn, const string &chunk_blob, bool as_json) override;
 
-	void Interrupt(conn_id_t conn) override;
-	void ClearInterrupt(conn_id_t conn) override;
+	void DoBeginTransaction(conn_id_t conn) override;
+	void DoCommit(conn_id_t conn) override;
+	void DoRollback(conn_id_t conn) override;
+	bool DoIsAutoCommit(conn_id_t conn) override;
 
-	string TableInfo(conn_id_t conn, const string &table_name) override;
+	void DoInterrupt(conn_id_t conn) override;
+	void DoClearInterrupt(conn_id_t conn) override;
+
+	string DoTableInfo(conn_id_t conn, const string &table_name) override;
 
 private:
 	struct ConnectionState {
