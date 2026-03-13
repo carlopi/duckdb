@@ -183,6 +183,10 @@ ShellQueryResult::iterator ShellMaterializedQueryResultWired::end() {
 	return ShellQueryResult::iterator(nullptr);
 }
 
+// TODO: Materialize() builds a ColumnDataCollection client-side from deserialized chunks.
+// This requires LogicalType (from the chunks) and pulls in heavy engine dependencies.
+// Do we actually need ColumnDataCollection on the client? The shell iterates rows for
+// rendering — could we just keep a vector<DataChunk> instead?
 void ShellMaterializedQueryResultWired::Materialize() {
 	if (collection) {
 		return;
@@ -296,6 +300,9 @@ void ShellConnectionWired::ClearInterrupt() {
 	transport.ClearInterrupt(conn_id);
 }
 
+// TODO: TableInfo reconstructs LogicalType from type name strings using
+// TransformStringToLogicalTypeId — this loses extension types (e.g. VARIANT → INVALID).
+// Could return LogicalTypeProperties instead, or replace with a query.
 unique_ptr<duckdb::TableDescription> ShellConnectionWired::TableInfo(const string &table_name) {
 	auto blob = transport.TableInfo(conn_id, table_name);
 	if (blob.empty()) {

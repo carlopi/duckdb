@@ -51,12 +51,18 @@ public:
 	conn_id_t CreateConnection();
 	void CloseConnection(conn_id_t conn);
 
+	// TODO: Do we need both Query and SendQuery on the wire? Both return metadata + chunked
+	// Fetch. The materialized vs streaming distinction is a server-side detail — the client
+	// fetches chunks either way. Could unify into a single method with a flag.
 	string Query(conn_id_t conn, const string &sql);
 	string SendQuery(conn_id_t conn, const string &sql);
 	string Prepare(conn_id_t conn, const string &sql, prep_id_t &out_prep);
 	string Execute(prep_id_t prep, const string &values_blob);
 
 	string Fetch(conn_id_t conn);
+	// TODO: CastToVarchar sends a full DataChunk round-trip (serialize, send, cast server-side,
+	// serialize result, send back). Could the server cast to VARCHAR before sending chunks
+	// in Fetch(), avoiding the extra round-trip? Needs to know as_json flag upfront.
 	string CastToVarchar(conn_id_t conn, const string &chunk_blob, bool as_json);
 
 	void BeginTransaction(conn_id_t conn);
@@ -67,6 +73,9 @@ public:
 	void Interrupt(conn_id_t conn);
 	void ClearInterrupt(conn_id_t conn);
 
+	// TODO: TableInfo reconstructs LogicalType from type name strings on the client side
+	// (TransformStringToLogicalTypeId) — this loses extension types. Do we need TableInfo
+	// on the wire at all, or could the shell use a query instead?
 	string TableInfo(conn_id_t conn, const string &table_name);
 
 protected:

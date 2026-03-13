@@ -2,6 +2,18 @@
 # serialization, parsing, and rendering code needed to parse, deserialize, and
 # display query results — no catalog, planner, executor, optimizer, or storage
 # engine.
+#
+# TODO: Review what's still needed here now that LogicalType is no longer used
+# client-side (replaced by LogicalTypeProperties). In particular: - types.cpp /
+# extra_type_info.cpp — may no longer be needed if the client never constructs
+# LogicalType - cast_rules.cpp — was needed by types.cpp ImplicitCast -
+# Vector/DataChunk infrastructure — still needed for chunk deserialization, but
+# could we deserialize directly to strings instead? - box_renderer.cpp — the
+# engine's box renderer; shell has its own renderers. Only needed for the
+# highlight result renderer (ShellHighlightResultRenderer). -
+# ColumnDataCollection — used by Materialize(), but could we just keep
+# vector<DataChunk> instead? Shrinking this list reduces the stub surface in
+# engine_stubs.cpp.
 
 # ── Parser (full — parsing is client-side) ──────────────────────────
 file(GLOB_RECURSE PARSER_SOURCES ${CMAKE_SOURCE_DIR}/src/parser/*.cpp)
@@ -104,16 +116,16 @@ set(CLIENT_TYPES_SOURCES
     ${CMAKE_SOURCE_DIR}/src/common/local_file_system.cpp
     # Cast infrastructure — NOT included (would pull all cast implementations)
     # ${CMAKE_SOURCE_DIR}/src/function/cast/cast_function_set.cpp
-    # ${CMAKE_SOURCE_DIR}/src/function/cast/default_casts.cpp
-    # Cast rules (ImplicitCast needed by types.cpp)
+    # ${CMAKE_SOURCE_DIR}/src/function/cast/default_casts.cpp Cast rules
+    # (ImplicitCast needed by types.cpp)
     ${CMAKE_SOURCE_DIR}/src/function/cast_rules.cpp
     # Logging (stub — real log_storage pulls CSVWriter/BufferedFileWriter)
     ${CMAKE_SOURCE_DIR}/src/duckdb_client_types/log_storage_stub.cpp
     # Error manager
     ${CMAKE_SOURCE_DIR}/src/main/error_manager.cpp
     # Config — NOT included (pulls all Settings). Stubbed instead.
-    # ${CMAKE_SOURCE_DIR}/src/main/config.cpp
-    # Extension callback manager (parser needs it)
+    # ${CMAKE_SOURCE_DIR}/src/main/config.cpp Extension callback manager (parser
+    # needs it)
     ${CMAKE_SOURCE_DIR}/src/main/extension_callback_manager.cpp
     # Planner binding alias (referenced by parser)
     ${CMAKE_SOURCE_DIR}/src/planner/binding_alias.cpp
@@ -121,17 +133,16 @@ set(CLIENT_TYPES_SOURCES
     # stubbed)
     ${CMAKE_SOURCE_DIR}/src/common/multi_file/multi_file_list.cpp
     # Catalog — NOT included (pulls CatalogSearchPath, etc.). Stubbed instead.
-    # ${CMAKE_SOURCE_DIR}/src/catalog/catalog.cpp
-    # Dependency list (LogicalDependencyList needed by create_info)
+    # ${CMAKE_SOURCE_DIR}/src/catalog/catalog.cpp Dependency list
+    # (LogicalDependencyList needed by create_info)
     ${CMAKE_SOURCE_DIR}/src/catalog/dependency_list.cpp
     # Entry lookup info
     ${CMAKE_SOURCE_DIR}/src/catalog/entry_lookup_info.cpp
     # Stubs for DBConfig, Catalog, and other engine symbols
     ${CMAKE_SOURCE_DIR}/src/duckdb_client_types/engine_stubs.cpp
     # Type manager — NOT included (pulls Binder, Database). Stubbed instead.
-    # ${CMAKE_SOURCE_DIR}/src/common/types/type_manager.cpp
-    # Macro functions (ScalarMacroFunction, TableMacroFunction — parser needs
-    # them)
+    # ${CMAKE_SOURCE_DIR}/src/common/types/type_manager.cpp Macro functions
+    # (ScalarMacroFunction, TableMacroFunction — parser needs them)
     ${CMAKE_SOURCE_DIR}/src/function/scalar_macro_function.cpp
     ${CMAKE_SOURCE_DIR}/src/function/table_macro_function.cpp
     # Exception types (binder, catalog)
