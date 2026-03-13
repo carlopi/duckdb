@@ -673,7 +673,7 @@ void BoxRendererImplementation::FetchTopCollection(RenderDataCollection &top_col
 			auto &source_vector = fetch_result.data[c];
 			auto &target_vector = top_collection.Values(insert_result, c);
 			auto &render_lengths = top_collection.RenderLengths(insert_result, c);
-			context.Cast(source_vector, target_vector, insert_count);
+			context.CastToVarchar(source_vector, target_vector, insert_count);
 			ConvertRenderVector(target_vector, render_lengths, insert_count, source_vector.GetType(),
 			                    null_render_length);
 		}
@@ -791,7 +791,7 @@ void BoxRendererImplementation::FetchBottomCollection(RenderDataCollection &bott
 			auto &source_vector = chunk.data[c];
 			auto &target_vector = bottom_collection.Values(insert_result, c);
 			auto &render_lengths = bottom_collection.RenderLengths(insert_result, c);
-			context.Cast(source_vector, target_vector, insert_count);
+			context.CastToVarchar(source_vector, target_vector, insert_count);
 			ConvertRenderVector(target_vector, render_lengths, insert_count, source_vector.GetType(),
 			                    null_render_length);
 		}

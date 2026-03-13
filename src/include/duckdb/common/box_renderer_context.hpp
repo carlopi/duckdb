@@ -13,6 +13,7 @@
 namespace duckdb {
 class Allocator;
 class ClientContext;
+class DataChunk;
 class Vector;
 
 //! BoxRendererContext provides the minimal interface needed by the BoxRenderer
@@ -24,11 +25,15 @@ public:
 	//! Whether execution has been interrupted
 	virtual bool IsInterrupted() const = 0;
 
-	//! Cast source vector into result vector
-	virtual void Cast(Vector &source, Vector &result, idx_t count, bool strict = false) = 0;
-
 	//! Get the allocator for temporary data
 	virtual Allocator &GetAllocator() = 0;
+
+	//! Cast a single source vector to VARCHAR. Delegates to the chunk-level virtual.
+	void CastToVarchar(Vector &source, Vector &result, idx_t count, bool as_json = false);
+
+protected:
+	//! Cast source chunk columns to VARCHAR into result chunk. Derived classes implement this.
+	virtual void CastToVarchar(DataChunk &source, DataChunk &result, idx_t count, bool as_json = false) = 0;
 };
 
 //! ClientBoxRendererContext wraps a ClientContext to implement BoxRendererContext.
@@ -37,8 +42,10 @@ public:
 	explicit ClientBoxRendererContext(ClientContext &context);
 
 	bool IsInterrupted() const override;
-	void Cast(Vector &source, Vector &result, idx_t count, bool strict = false) override;
 	Allocator &GetAllocator() override;
+
+protected:
+	void CastToVarchar(DataChunk &source, DataChunk &result, idx_t count, bool as_json = false) override;
 
 private:
 	ClientContext &context;
