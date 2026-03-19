@@ -85,9 +85,10 @@ SELECT
   (SELECT __summarize_count_star FROM __summarize_agg) AS count,
   TRY_CAST(NULLIF(list_extract(vals, 9), '__SUMMARIZE_NULL__') AS DECIMAL(9, 2)) AS null_percentage
 FROM (
-  SELECT min(name) AS name, list(value ORDER BY rn) AS vals
+  SELECT min(name) AS name, list(value ORDER BY rn) AS vals, min(rn) AS col_order
   FROM __summarize_flat
   GROUP BY rn % (SELECT n FROM __summarize_ncols)
+  ORDER BY col_order
 )
 )";
 
