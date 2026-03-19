@@ -8,6 +8,20 @@
 
 namespace duckdb {
 
+static void VerifyStatsNotCorrupted(const BaseStatistics &stats) {
+	// Validate that the BaseStatistics type field contains a valid LogicalTypeId.
+	// If the object has been freed or corrupted (use-after-free), the type ID will be garbage.
+	// On x86_64, this manifests as SIGFPE (if garbage is used as a divisor) or SIGSEGV.
+	// On ARM64, division by zero is silent, so the corruption goes undetected.
+	auto type_id = static_cast<uint8_t>(stats.GetType().id());
+	if (type_id > static_cast<uint8_t>(LogicalTypeId::VARIANT)) {
+		throw InternalException(
+		    "NumericStats: corrupted BaseStatistics detected (type_id=%d). "
+		    "This likely indicates a use-after-free or dangling reference to a statistics object.",
+		    static_cast<int>(type_id));
+	}
+}
+
 BaseStatistics NumericStats::CreateUnknown(LogicalType type) {
 	BaseStatistics result(std::move(type));
 	result.InitializeUnknown();
@@ -376,11 +390,13 @@ Value NumericValueUnionToValue(const LogicalType &type, const NumericValueUnion 
 }
 
 bool NumericStats::HasMinMax(const BaseStatistics &stats) {
+	VerifyStatsNotCorrupted(stats);
 	return NumericStats::HasMin(stats) && NumericStats::HasMax(stats) &&
 	       NumericStats::Min(stats) <= NumericStats::Max(stats);
 }
 
 bool NumericStats::HasMin(const BaseStatistics &stats) {
+	VerifyStatsNotCorrupted(stats);
 	if (stats.GetType().id() == LogicalTypeId::SQLNULL) {
 		return false;
 	}
@@ -388,6 +404,7 @@ bool NumericStats::HasMin(const BaseStatistics &stats) {
 }
 
 bool NumericStats::HasMax(const BaseStatistics &stats) {
+	VerifyStatsNotCorrupted(stats);
 	if (stats.GetType().id() == LogicalTypeId::SQLNULL) {
 		return false;
 	}
