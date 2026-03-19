@@ -33,6 +33,10 @@ BoundStatement Binder::BindSummarize(ShowRef &ref) {
 	// and pushes all type-conditional logic into SQL.
 	// All quantiles are computed as DOUBLE for performance; integer types are cast back
 	// to BIGINT in the final reshape (which operates on N rows, not the full dataset).
+	// TODO: temporal types (TIMESTAMP, DATE, TIME, TIMETZ) produce NULL for avg/quantiles
+	// because TRY_CAST(COLUMNS(*) AS DOUBLE) fails for them. Fixing this requires
+	// epoch_us conversion before aggregation and type-conditional conversion back,
+	// which may show the limits of the pure-SQL COLUMNS(*) approach.
 	string summarize_sql = R"(
 WITH __summarize_src AS MATERIALIZED ()" +
 	                       source_sql + R"(),
