@@ -13,6 +13,8 @@
 #include "duckdb/parallel/pipeline_executor.hpp"
 #include "duckdb/parallel/task_scheduler.hpp"
 #include "duckdb/main/settings.hpp"
+#include "duckdb/execution/operator/helper/physical_fan_out.hpp"
+#include "duckdb/execution/physical_plan_generator.hpp"
 
 namespace duckdb {
 
@@ -169,8 +171,28 @@ bool Pipeline::IsOrderDependent() const {
 void Pipeline::Schedule(shared_ptr<Event> &event) {
 	D_ASSERT(ready);
 	D_ASSERT(sink);
+
+	// Before Reset(), check if we should wrap the source with FanOut
+	if (source && !source->ParallelSource() && sink->ParallelSink()) {
+		auto &scheduler = TaskScheduler::GetScheduler(executor.context);
+		if (scheduler.NumberOfThreads() > 1) {
+			// Wrap the sequential source with a FanOut adapter
+			original_source = source;
+			fan_out_plan = make_uniq<PhysicalPlan>(Allocator::DefaultAllocator());
+			auto &fan_out = fan_out_plan->Make<PhysicalFanOut>(*source, source->estimated_cardinality);
+			source = &fan_out;
+		}
+	}
+
 	Reset();
 	if (!ScheduleParallel(event)) {
+		// If we inserted a FanOut but still can't parallelize, revert
+		if (original_source) {
+			source = original_source;
+			fan_out_plan.reset();
+			original_source = nullptr;
+			ResetSource(true);
+		}
 		// could not parallelize this pipeline: push a sequential task instead
 		ScheduleSequentialTask(event);
 	}

@@ -21,6 +21,7 @@ namespace duckdb {
 
 class Executor;
 class MetaPipeline;
+class PhysicalPlan;
 class PipelineExecutor;
 class Pipeline;
 
@@ -132,6 +133,9 @@ private:
 	atomic<bool> initialized;
 	//! The source of this pipeline
 	optional_ptr<PhysicalOperator> source;
+	//! Optional fan-out adapter that wraps a sequential source for parallel execution
+	unique_ptr<PhysicalPlan> fan_out_plan;
+	optional_ptr<PhysicalOperator> original_source;
 	//! The chain of intermediate operators
 	vector<reference<PhysicalOperator>> operators;
 	//! The sink (i.e. destination) for data; this is e.g. a hash table to-be-built
