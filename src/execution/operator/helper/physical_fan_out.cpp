@@ -1,10 +1,10 @@
 #include "duckdb/execution/operator/helper/physical_fan_out.hpp"
 #include "duckdb/execution/execution_context.hpp"
 #include "duckdb/common/chrono.hpp"
+#include "duckdb/parallel/interrupt.hpp"
 #include "duckdb/parallel/pipeline.hpp"
 
 #include <thread>
-#include <condition_variable>
 
 namespace duckdb {
 
@@ -17,7 +17,7 @@ PhysicalFanOut::PhysicalFanOut(PhysicalPlan &plan, PhysicalOperator &child_sourc
 // State
 //===--------------------------------------------------------------------===//
 
-//! Number of GetData calls on one thread before opening up to parallel
+//! Number of GetData calls on one thread before fan-out decides whether to stay parallel
 //! Call 1: skip (initialization overhead), calls 2+3: measure source + downstream
 static constexpr idx_t WARMUP_CALLS = 3;
 //! First N calls are not timed (may include one-time initialization)
@@ -31,8 +31,8 @@ public:
 
 	//! Serializes access to the child source
 	mutex source_lock;
-	//! Condition variable for warmup gating
-	std::condition_variable warmup_cv;
+	//! Manages blocked tasks during warmup
+	StateWithBlockableTasks blocked_state;
 	//! Monotonically increasing batch index
 	idx_t next_batch = 0;
 	//! Whether the child source is exhausted
@@ -45,11 +45,8 @@ public:
 	bool child_local_initialized = false;
 
 	//! --- Warmup ---
-	//! The thread doing the warmup calls
 	std::thread::id warmup_thread;
-	//! Whether a warmup thread has been assigned
 	bool warmup_thread_set = false;
-	//! Whether warmup is complete
 	bool warmup_done = false;
 	//! After warmup: true if downstream is heavy enough to justify fan-out
 	bool fan_out_enabled = false;
@@ -102,10 +99,9 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 	auto &gstate = input.global_state.Cast<FanOutGlobalSourceState>();
 	auto &lstate = input.local_state.Cast<FanOutLocalSourceState>();
 
-	unique_lock<mutex> lock(gstate.source_lock);
+	lock_guard<mutex> lock(gstate.source_lock);
 
-	// --- Warmup gating ---
-	// During warmup, only one thread proceeds. Others wait.
+	// --- Warmup gating via BLOCKED ---
 	if (!gstate.warmup_done) {
 		auto this_thread = std::this_thread::get_id();
 		if (!gstate.warmup_thread_set) {
@@ -113,20 +109,15 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 			gstate.warmup_thread = this_thread;
 			gstate.warmup_thread_set = true;
 		} else if (gstate.warmup_thread != this_thread) {
-			// Not the warmup thread — wait until warmup completes
-			gstate.warmup_cv.wait(lock, [&] {
-				return gstate.warmup_done || gstate.exhausted;
-			});
-			if (gstate.exhausted) {
-				return SourceResultType::FINISHED;
-			}
+			// Not the warmup thread — return BLOCKED, will be woken up later
+			annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
+			return gstate.blocked_state.BlockSource(input.interrupt_state);
 		}
 	}
 
-	// --- After warmup: if fan-out not justified, only warmup thread continues ---
+	// --- After warmup: if fan-out not justified, other threads exit ---
 	if (gstate.warmup_done && !gstate.fan_out_enabled) {
 		if (std::this_thread::get_id() != gstate.warmup_thread) {
-			// Fan-out not worth it — this thread exits
 			return SourceResultType::FINISHED;
 		}
 	}
@@ -158,9 +149,12 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 
 	if (result == SourceResultType::FINISHED || chunk.size() == 0) {
 		gstate.exhausted = true;
-		// Wake up any threads waiting on warmup
-		gstate.warmup_done = true;
-		gstate.warmup_cv.notify_all();
+		if (!gstate.warmup_done) {
+			gstate.warmup_done = true;
+			// Wake up blocked threads so they see exhausted and exit
+			annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
+			gstate.blocked_state.UnblockTasks();
+		}
 		return SourceResultType::FINISHED;
 	}
 
@@ -176,12 +170,17 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 		double avg_downstream = gstate.downstream_samples > 0
 		                            ? gstate.total_downstream_time / static_cast<double>(gstate.downstream_samples)
 		                            : 0;
+
 		// Fan-out needs downstream to be significantly heavier than source
-		// to overcome lock contention overhead (roughly 10x threshold)
 		gstate.fan_out_enabled = avg_downstream > avg_get_data * 10;
 
-		// Wake up all waiting threads
-		gstate.warmup_cv.notify_all();
+		// Wake up blocked threads
+		annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
+		if (!gstate.fan_out_enabled) {
+			// Not worth it — prevent future blocking, threads will get FINISHED on re-entry
+			gstate.blocked_state.PreventBlocking();
+		}
+		gstate.blocked_state.UnblockTasks();
 	}
 
 	// Stamp batch index
