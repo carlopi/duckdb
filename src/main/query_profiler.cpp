@@ -14,6 +14,8 @@
 #include "duckdb/main/client_data.hpp"
 #include "duckdb/main/profiling_utils.hpp"
 #include "duckdb/main/profiling_info.hpp"
+#include "duckdb/logging/logger.hpp"
+#include "duckdb/logging/log_type.hpp"
 #include "duckdb/storage/buffer/buffer_pool.hpp"
 #include "yyjson.hpp"
 #include "yyjson_utils.hpp"
@@ -200,7 +202,23 @@ void QueryProfiler::StartExplainAnalyze() {
 
 void QueryProfiler::EndQuery() {
 	unique_lock<std::mutex> guard(lock);
-	if (!IsEnabled() || !running) {
+	if (!IsEnabled()) {
+		return;
+	}
+
+	// Always log root-level metrics if Metrics logging is enabled,
+	// even if the query didn't require detailed operator profiling.
+	bool log_root_metrics = !running && query_metrics.latency_timer;
+	if (log_root_metrics) {
+		// Stop the latency timer for queries that were skipped by the profiler
+		query_metrics.latency_timer->EndTimer();
+	}
+
+	if (!running) {
+		guard.unlock();
+		if (log_root_metrics) {
+			LogRootMetrics();
+		}
 		return;
 	}
 
@@ -777,6 +795,19 @@ void QueryProfiler::ToLog() const {
 	auto &settings = root->GetProfilingInfo();
 
 	settings.WriteMetricsToLog(context);
+}
+
+void QueryProfiler::LogRootMetrics() const {
+	auto &logger = Logger::Get(context);
+	if (!logger.ShouldLog(MetricsLogType::NAME, MetricsLogType::LEVEL)) {
+		return;
+	}
+
+	logger.WriteLog(MetricsLogType::NAME, MetricsLogType::LEVEL,
+	                MetricsLogType::ConstructLogMessage(MetricType::QUERY_NAME, Value(query_metrics.query_name)));
+	logger.WriteLog(MetricsLogType::NAME, MetricsLogType::LEVEL,
+	                MetricsLogType::ConstructLogMessage(MetricType::LATENCY,
+	                                                   Value::DOUBLE(query_metrics.GetMetricInSeconds(MetricType::LATENCY))));
 }
 
 string QueryProfiler::ToJSON() const {
