@@ -180,6 +180,9 @@ void Pipeline::Schedule(shared_ptr<Event> &event) {
 			original_source = source;
 			fan_out_plan = make_uniq<PhysicalPlan>(Allocator::DefaultAllocator());
 			auto &fan_out = fan_out_plan->Make<PhysicalFanOut>(*source, source->estimated_cardinality);
+			// Register FanOut in the profiler tree so EXPLAIN ANALYZE works
+			auto &profiler = QueryProfiler::Get(GetClientContext());
+			profiler.InsertOperatorIntoTree(fan_out, *source);
 			source = &fan_out;
 		}
 	}

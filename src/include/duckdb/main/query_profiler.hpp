@@ -188,6 +188,9 @@ public:
 		return tree_map.size();
 	}
 
+	//! Insert a dynamically created operator into the profiler tree as a parent of an existing operator
+	void InsertOperatorIntoTree(const PhysicalOperator &new_op, const PhysicalOperator &child_op);
+
 	void Finalize(ProfilingNode &node);
 
 	//! Return the root of the query tree.
