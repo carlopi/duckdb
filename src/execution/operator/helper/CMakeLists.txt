@@ -2,6 +2,7 @@ add_library_unity(
   duckdb_operator_helper
   OBJECT
   physical_batch_collector.cpp
+  physical_fan_out.cpp
   physical_buffered_collector.cpp
   physical_buffered_batch_collector.cpp
   physical_create_secret.cpp
