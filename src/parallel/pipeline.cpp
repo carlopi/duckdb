@@ -179,15 +179,13 @@ void Pipeline::Schedule(shared_ptr<Event> &event) {
 	// (e.g., STREAMING_WINDOW depends on seeing rows in scan order)
 	bool has_order_dependent_operator = false;
 	for (auto &op : operators) {
-		if (op.get().type == PhysicalOperatorType::STREAMING_WINDOW ||
-		    op.get().type == PhysicalOperatorType::WINDOW) {
+		if (op.get().type == PhysicalOperatorType::STREAMING_WINDOW || op.get().type == PhysicalOperatorType::WINDOW) {
 			has_order_dependent_operator = true;
 			break;
 		}
 	}
 	if (source && !source->ParallelSource() && sink->ParallelSink() &&
-	    source->type == PhysicalOperatorType::TABLE_SCAN && !operators.empty() &&
-	    !has_order_dependent_operator &&
+	    source->type == PhysicalOperatorType::TABLE_SCAN && !operators.empty() && !has_order_dependent_operator &&
 	    !Settings::Get<DisableFanOutSetting>(executor.context)) {
 		auto &scheduler = TaskScheduler::GetScheduler(executor.context);
 		if (scheduler.NumberOfThreads() > 1) {
