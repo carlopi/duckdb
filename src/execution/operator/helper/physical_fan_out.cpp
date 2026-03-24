@@ -17,13 +17,7 @@ PhysicalFanOut::PhysicalFanOut(PhysicalPlan &plan, PhysicalOperator &child_sourc
 static constexpr idx_t BATCH_SIZE = 128;
 static constexpr idx_t NUM_BUFFERS = 8;
 
-enum class BufferState : uint8_t {
-	NOT_INITIALIZED,
-	READY_TO_BE_FILLED,
-	FILLING,
-	READY_TO_BE_PROCESSED,
-	IN_PROCESSING
-};
+enum class BufferState : uint8_t { NOT_INITIALIZED, READY_TO_BE_FILLED, FILLING, READY_TO_BE_PROCESSED, IN_PROCESSING };
 
 struct ChunkBuffer {
 	DataChunk chunks[BATCH_SIZE];

@@ -176,8 +176,7 @@ void Pipeline::Schedule(shared_ptr<Event> &event) {
 	// Only for PhysicalTableScan sources with intermediate operators
 	// (source → operators → sink, not just source → sink)
 	if (source && !source->ParallelSource() && sink->ParallelSink() &&
-	    source->type == PhysicalOperatorType::TABLE_SCAN &&
-	    !operators.empty() &&
+	    source->type == PhysicalOperatorType::TABLE_SCAN && !operators.empty() &&
 	    !Settings::Get<DisableFanOutSetting>(executor.context)) {
 		auto &scheduler = TaskScheduler::GetScheduler(executor.context);
 		if (scheduler.NumberOfThreads() > 1) {
