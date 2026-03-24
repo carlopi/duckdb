@@ -75,7 +75,7 @@ public:
 
 	//! Blocked consumers
 	StateWithBlockableTasks blocked_state;
-	atomic<bool> has_blocked {false};
+	atomic<bool> has_blocked {false}; //! Set before blocking, cleared after wake
 
 	idx_t MaxThreads() override {
 		return NumericLimits<idx_t>::Maximum();
@@ -85,8 +85,6 @@ public:
 class FanOutLocalSourceState : public LocalSourceState {
 public:
 	idx_t current_batch = 0;
-	//! Deferred done: which buffer + whether we owe a done_count increment
-	ChunkBuffer *pending_done_buffer = nullptr;
 };
 
 //===--------------------------------------------------------------------===//
@@ -108,25 +106,7 @@ unique_ptr<LocalSourceState> PhysicalFanOut::GetLocalSourceState(ExecutionContex
 }
 
 //===--------------------------------------------------------------------===//
-// FlushDone — increment done_count for the buffer consumed in the PREVIOUS call
-// This ensures the sink has finished processing the Referenced data before
-// the buffer can be reused by the producer.
-//===--------------------------------------------------------------------===//
-static void FlushDone(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &lstate) {
-	if (!lstate.pending_done_buffer) {
-		return;
-	}
-	auto &buf = *lstate.pending_done_buffer;
-	lstate.pending_done_buffer = nullptr;
-	idx_t done = buf.done_count.fetch_add(1, std::memory_order_release) + 1;
-	if (done >= buf.count) {
-		buf.state.store(BufferState::READY_TO_BE_FILLED, std::memory_order_release);
-		gstate.consume_idx.fetch_add(1, std::memory_order_release);
-	}
-}
-
-//===--------------------------------------------------------------------===//
-// TryConsume — claim a slot, Reference chunk, defer done_count to next call
+// TryConsume — scan buffers for IN_PROCESSING, CAS to claim a slot
 //===--------------------------------------------------------------------===//
 static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &lstate, DataChunk &chunk) {
 	idx_t cidx = gstate.consume_idx.load(std::memory_order_acquire);
@@ -140,9 +120,13 @@ static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &
 	}
 	chunk.Reference(buf.chunks[my_slot]);
 	lstate.current_batch = buf.batch_indices[my_slot];
-	// Don't increment done_count yet — defer to next GetData call
-	// so the sink has time to process the Referenced data
-	lstate.pending_done_buffer = &buf;
+	idx_t done = buf.done_count.fetch_add(1, std::memory_order_release) + 1;
+
+	// Last consumer: transition buffer to READY_TO_BE_FILLED and advance consume_idx
+	if (done >= buf.count) {
+		buf.state.store(BufferState::READY_TO_BE_FILLED, std::memory_order_release);
+		gstate.consume_idx.fetch_add(1, std::memory_order_release);
+	}
 	return true;
 }
 
@@ -207,9 +191,6 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
                                                  OperatorSourceInput &input) const {
 	auto &gstate = input.global_state.Cast<FanOutGlobalSourceState>();
 	auto &lstate = input.local_state.Cast<FanOutLocalSourceState>();
-
-	// Flush deferred done from previous call — sink has finished processing
-	FlushDone(gstate, lstate);
 
 	if (TryConsume(gstate, lstate, chunk)) {
 		return SourceResultType::HAVE_MORE_OUTPUT;
