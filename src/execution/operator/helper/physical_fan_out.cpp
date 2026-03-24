@@ -39,13 +39,8 @@ struct ChunkBuffer {
 		state.store(BufferState::READY_TO_BE_FILLED, std::memory_order_release);
 	}
 
-	//! Re-initialize chunks that were Move'd away, reset counters
-	void PrepareForFill(const vector<LogicalType> &types) {
-		for (idx_t i = 0; i < count; i++) {
-			if (chunks[i].ColumnCount() == 0) {
-				chunks[i].Initialize(Allocator::DefaultAllocator(), types);
-			}
-		}
+	//! Reset counters for next fill cycle. No re-Initialize needed — Reference doesn't destroy chunks.
+	void PrepareForFill() {
 		count = 0;
 		next_claim.store(0, std::memory_order_relaxed);
 		done_count.store(0, std::memory_order_relaxed);
@@ -128,7 +123,7 @@ static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &
 	if (my_slot >= buf.count) {
 		return false;
 	}
-	chunk.Move(buf.chunks[my_slot]);
+	chunk.Reference(buf.chunks[my_slot]);
 	lstate.current_batch = buf.batch_indices[my_slot];
 	buf.done_count.fetch_add(1, std::memory_order_release);
 
@@ -162,7 +157,7 @@ static void Produce(FanOutGlobalSourceState &gstate, const PhysicalFanOut &op, E
 		auto &fill_buf = gstate.buffers[gstate.fill_idx];
 
 		// Re-initialize any Move'd chunks + reset counters
-		fill_buf.PrepareForFill(gstate.child_types);
+		fill_buf.PrepareForFill();
 
 		// Fill: Reset + GetData into pre-allocated chunks (no malloc)
 		for (idx_t i = 0; i < BATCH_SIZE; i++) {
