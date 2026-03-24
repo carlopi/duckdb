@@ -15,6 +15,7 @@ PhysicalFanOut::PhysicalFanOut(PhysicalPlan &plan, PhysicalOperator &child_sourc
 //===--------------------------------------------------------------------===//
 
 static constexpr idx_t BATCH_SIZE = 32;
+static constexpr idx_t NUM_BUFFERS = 4;
 
 enum class BufferState : uint8_t {
 	NOT_INITIALIZED,
@@ -27,9 +28,9 @@ enum class BufferState : uint8_t {
 struct ChunkBuffer {
 	DataChunk chunks[BATCH_SIZE];
 	idx_t batch_indices[BATCH_SIZE];
-	idx_t count = 0;               //! How many chunks were filled
-	atomic<idx_t> next_claim {0};   //! Consumer CAS to claim
-	atomic<idx_t> done_count {0};   //! Consumer increments after Move
+	idx_t count = 0;
+	atomic<idx_t> next_claim {0};
+	atomic<idx_t> done_count {0};
 	atomic<BufferState> state {BufferState::NOT_INITIALIZED};
 
 	void Initialize(const vector<LogicalType> &types) {
@@ -39,15 +40,10 @@ struct ChunkBuffer {
 		state.store(BufferState::READY_TO_BE_FILLED, std::memory_order_release);
 	}
 
-	//! Reset counters for next fill cycle. No re-Initialize needed — Reference doesn't destroy chunks.
 	void PrepareForFill() {
 		count = 0;
 		next_claim.store(0, std::memory_order_relaxed);
 		done_count.store(0, std::memory_order_relaxed);
-	}
-
-	bool AllDone() const {
-		return done_count.load(std::memory_order_acquire) >= count;
 	}
 };
 
@@ -56,8 +52,9 @@ public:
 	FanOutGlobalSourceState(ClientContext &context, const PhysicalFanOut &op)
 	    : child_types(op.child_source.get().types) {
 		child_global = op.child_source.get().GetGlobalSourceState(context);
-		buffers[0].Initialize(child_types);
-		buffers[1].Initialize(child_types);
+		for (idx_t i = 0; i < NUM_BUFFERS; i++) {
+			buffers[i].Initialize(child_types);
+		}
 	}
 
 	unique_ptr<GlobalSourceState> child_global;
@@ -66,15 +63,15 @@ public:
 	mutex init_lock;
 	const vector<LogicalType> &child_types;
 
-	//! Double buffer
-	ChunkBuffer buffers[2];
-	atomic<int> active_buffer {-1}; //! Which buffer consumers read from (-1 = none)
+	//! N buffers — producer fills in order, consumers read in order
+	ChunkBuffer buffers[NUM_BUFFERS];
+	atomic<idx_t> consume_idx {0}; //! Which buffer consumers should read from (in order)
 
 	//! Producer
 	atomic<bool> producing {false};
 	atomic<bool> exhausted {false};
 	idx_t next_batch = 0;
-	idx_t fill_idx = 0; //! Which buffer to fill next (only producer)
+	idx_t produce_idx = 0; //! Next buffer to fill (only producer, in order)
 
 	//! Blocked consumers
 	StateWithBlockableTasks blocked_state;
@@ -108,14 +105,11 @@ unique_ptr<LocalSourceState> PhysicalFanOut::GetLocalSourceState(ExecutionContex
 }
 
 //===--------------------------------------------------------------------===//
-// TryConsume — CAS on next_claim of active buffer, Move, increment done_count
+// TryConsume — scan buffers for IN_PROCESSING, CAS to claim a slot
 //===--------------------------------------------------------------------===//
 static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &lstate, DataChunk &chunk) {
-	int active = gstate.active_buffer.load(std::memory_order_acquire);
-	if (active < 0) {
-		return false;
-	}
-	auto &buf = gstate.buffers[active];
+	idx_t cidx = gstate.consume_idx.load(std::memory_order_acquire);
+	auto &buf = gstate.buffers[cidx % NUM_BUFFERS];
 	if (buf.state.load(std::memory_order_acquire) != BufferState::IN_PROCESSING) {
 		return false;
 	}
@@ -125,41 +119,32 @@ static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &
 	}
 	chunk.Reference(buf.chunks[my_slot]);
 	lstate.current_batch = buf.batch_indices[my_slot];
-	buf.done_count.fetch_add(1, std::memory_order_release);
+	idx_t done = buf.done_count.fetch_add(1, std::memory_order_release) + 1;
 
-	// If we were the last consumer, transition buffer back to READY_TO_BE_FILLED
-	if (buf.done_count.load(std::memory_order_acquire) >= buf.count) {
+	// Last consumer: transition buffer to READY_TO_BE_FILLED and advance consume_idx
+	if (done >= buf.count) {
 		buf.state.store(BufferState::READY_TO_BE_FILLED, std::memory_order_release);
+		gstate.consume_idx.fetch_add(1, std::memory_order_release);
 	}
 	return true;
 }
 
 //===--------------------------------------------------------------------===//
-// Produce — fill a buffer, publish it
+// Produce — fill READY_TO_BE_FILLED buffers, publish as IN_PROCESSING
 //===--------------------------------------------------------------------===//
 static void Produce(FanOutGlobalSourceState &gstate, const PhysicalFanOut &op, ExecutionContext &context,
                     InterruptState &interrupt_state) {
 	while (true) {
-		// Find a buffer that's READY_TO_BE_FILLED
-		auto &buf = gstate.buffers[gstate.fill_idx];
-		auto expected_state = BufferState::READY_TO_BE_FILLED;
-		if (!buf.state.compare_exchange_strong(expected_state, BufferState::FILLING, std::memory_order_acq_rel)) {
-			// Buffer not ready (still being processed) — try the other one
-			gstate.fill_idx = 1 - gstate.fill_idx;
-			auto &buf2 = gstate.buffers[gstate.fill_idx];
-			expected_state = BufferState::READY_TO_BE_FILLED;
-			if (!buf2.state.compare_exchange_strong(expected_state, BufferState::FILLING, std::memory_order_acq_rel)) {
-				// Both buffers busy — break, consumers need to drain
-				break;
-			}
+		// Find a READY_TO_BE_FILLED buffer (round-robin)
+		// Fill in order: try the next buffer in sequence
+		auto &fill_buf = gstate.buffers[gstate.produce_idx % NUM_BUFFERS];
+		auto expected = BufferState::READY_TO_BE_FILLED;
+		if (!fill_buf.state.compare_exchange_strong(expected, BufferState::FILLING, std::memory_order_acq_rel)) {
+			break; // next buffer not ready yet — consumers haven't drained it
 		}
-
-		auto &fill_buf = gstate.buffers[gstate.fill_idx];
-
-		// Re-initialize any Move'd chunks + reset counters
 		fill_buf.PrepareForFill();
 
-		// Fill: Reset + GetData into pre-allocated chunks (no malloc)
+		// Fill at full speed — Reset + GetData into pre-allocated chunks
 		for (idx_t i = 0; i < BATCH_SIZE; i++) {
 			fill_buf.chunks[i].Reset();
 
@@ -176,21 +161,10 @@ static void Produce(FanOutGlobalSourceState &gstate, const PhysicalFanOut &op, E
 		}
 
 		if (fill_buf.count > 0) {
-			// Wait for old active buffer to be fully processed before swapping
-			int old_active = gstate.active_buffer.load(std::memory_order_acquire);
-			if (old_active >= 0) {
-				auto &old_buf = gstate.buffers[old_active];
-				while (old_buf.state.load(std::memory_order_acquire) == BufferState::IN_PROCESSING) {
-					// spin — consumers finishing
-				}
-			}
-
-			// Publish: set state and swap active
+			// Publish and advance
 			fill_buf.state.store(BufferState::IN_PROCESSING, std::memory_order_release);
-			gstate.active_buffer.store(gstate.fill_idx, std::memory_order_release);
-			gstate.fill_idx = 1 - gstate.fill_idx;
+			gstate.produce_idx++;
 		} else {
-			// Nothing produced — reset state
 			fill_buf.state.store(BufferState::READY_TO_BE_FILLED, std::memory_order_release);
 		}
 
