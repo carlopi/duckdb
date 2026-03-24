@@ -40,7 +40,12 @@ struct ChunkBuffer {
 		state.store(BufferState::READY_TO_BE_FILLED, std::memory_order_release);
 	}
 
-	void PrepareForFill() {
+	void PrepareForFill(const vector<LogicalType> &types) {
+		for (idx_t i = 0; i < count; i++) {
+			if (chunks[i].ColumnCount() == 0) {
+				chunks[i].Initialize(Allocator::DefaultAllocator(), types);
+			}
+		}
 		count = 0;
 		next_claim.store(0, std::memory_order_relaxed);
 		done_count.store(0, std::memory_order_relaxed);
@@ -119,7 +124,7 @@ static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &
 	if (my_slot >= buf.count) {
 		return false;
 	}
-	chunk.Reference(buf.chunks[my_slot]);
+	chunk.Move(buf.chunks[my_slot]);
 	lstate.current_batch = buf.batch_indices[my_slot];
 	idx_t done = buf.done_count.fetch_add(1, std::memory_order_release) + 1;
 
@@ -143,7 +148,7 @@ static void Produce(FanOutGlobalSourceState &gstate, const PhysicalFanOut &op, E
 		}
 
 		auto &fill_buf = gstate.buffers[gstate.produce_idx.load(std::memory_order_relaxed) % NUM_BUFFERS];
-		fill_buf.PrepareForFill();
+		fill_buf.PrepareForFill(gstate.child_types);
 
 		// Fill at full speed — no atomics in this loop
 		for (idx_t i = 0; i < BATCH_SIZE; i++) {
