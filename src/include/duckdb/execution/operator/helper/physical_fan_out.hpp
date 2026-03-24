@@ -36,15 +36,15 @@ public:
 
 	unique_ptr<GlobalSourceState> GetGlobalSourceState(ClientContext &context) const override;
 	unique_ptr<LocalSourceState> GetLocalSourceState(ExecutionContext &context,
-	                                                  GlobalSourceState &gstate) const override;
+	                                                 GlobalSourceState &gstate) const override;
 	SourceResultType GetDataInternal(ExecutionContext &context, DataChunk &chunk,
 	                                 OperatorSourceInput &input) const override;
 
 	bool SupportsPartitioning(const OperatorPartitionInfo &partition_info) const override {
 		return true;
 	}
-	OperatorPartitionData GetPartitionData(ExecutionContext &context, DataChunk &chunk,
-	                                       GlobalSourceState &gstate, LocalSourceState &lstate,
+	OperatorPartitionData GetPartitionData(ExecutionContext &context, DataChunk &chunk, GlobalSourceState &gstate,
+	                                       LocalSourceState &lstate,
 	                                       const OperatorPartitionInfo &partition_info) const override;
 
 	bool IsSink() const override {

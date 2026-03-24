@@ -79,12 +79,11 @@ unique_ptr<GlobalSourceState> PhysicalFanOut::GetGlobalSourceState(ClientContext
 }
 
 unique_ptr<LocalSourceState> PhysicalFanOut::GetLocalSourceState(ExecutionContext &context,
-                                                                  GlobalSourceState &gstate) const {
+                                                                 GlobalSourceState &gstate) const {
 	auto &fan_gstate = gstate.Cast<FanOutGlobalSourceState>();
 	lock_guard<mutex> lock(fan_gstate.source_lock);
 	if (!fan_gstate.child_local_initialized) {
-		fan_gstate.child_local =
-		    child_source.get().GetLocalSourceState(context, *fan_gstate.child_global);
+		fan_gstate.child_local = child_source.get().GetLocalSourceState(context, *fan_gstate.child_global);
 		fan_gstate.child_local_initialized = true;
 	}
 	return make_uniq<FanOutLocalSourceState>();
@@ -94,7 +93,7 @@ unique_ptr<LocalSourceState> PhysicalFanOut::GetLocalSourceState(ExecutionContex
 // GetData
 //===--------------------------------------------------------------------===//
 SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, DataChunk &chunk,
-                                                  OperatorSourceInput &input) const {
+                                                 OperatorSourceInput &input) const {
 	auto &gstate = input.global_state.Cast<FanOutGlobalSourceState>();
 	auto &lstate = input.local_state.Cast<FanOutLocalSourceState>();
 
@@ -102,8 +101,8 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 
 	// Try to claim warmup (atomic compare-exchange, no lock)
 	const LocalSourceState *expected = nullptr;
-	bool is_warmup_task = gstate.warmup_task.compare_exchange_strong(expected, &lstate) ||
-	                      gstate.warmup_task.load() == &lstate;
+	bool is_warmup_task =
+	    gstate.warmup_task.compare_exchange_strong(expected, &lstate) || gstate.warmup_task.load() == &lstate;
 
 	if (!is_warmup_task) {
 		// Not the warmup task.
@@ -167,9 +166,7 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 	if (!gstate.warmup_done.load() && gstate.get_data_calls >= WARMUP_CALLS) {
 		// Decision: is downstream work heavy enough to justify fan-out?
 		idx_t measured_calls = gstate.get_data_calls - WARMUP_SKIP;
-		double avg_get_data = measured_calls > 0
-		                          ? gstate.total_get_data_time / static_cast<double>(measured_calls)
-		                          : 0;
+		double avg_get_data = measured_calls > 0 ? gstate.total_get_data_time / static_cast<double>(measured_calls) : 0;
 		double avg_downstream = gstate.downstream_samples > 0
 		                            ? gstate.total_downstream_time / static_cast<double>(gstate.downstream_samples)
 		                            : 0;
@@ -200,8 +197,8 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 // Partition data
 //===--------------------------------------------------------------------===//
 OperatorPartitionData PhysicalFanOut::GetPartitionData(ExecutionContext &context, DataChunk &chunk,
-                                                        GlobalSourceState &gstate, LocalSourceState &lstate,
-                                                        const OperatorPartitionInfo &partition_info) const {
+                                                       GlobalSourceState &gstate, LocalSourceState &lstate,
+                                                       const OperatorPartitionInfo &partition_info) const {
 	auto &fan_out_lstate = lstate.Cast<FanOutLocalSourceState>();
 	return OperatorPartitionData(fan_out_lstate.current_batch);
 }
