@@ -175,8 +175,19 @@ void Pipeline::Schedule(shared_ptr<Event> &event) {
 	// Before Reset(), check if we should wrap the source with FanOut
 	// Only for PhysicalTableScan sources with intermediate operators
 	// (source → operators → sink, not just source → sink)
+	// Skip FanOut if any intermediate operator requires a single ordered stream
+	// (e.g., STREAMING_WINDOW depends on seeing rows in scan order)
+	bool has_order_dependent_operator = false;
+	for (auto &op : operators) {
+		if (op.get().type == PhysicalOperatorType::STREAMING_WINDOW ||
+		    op.get().type == PhysicalOperatorType::WINDOW) {
+			has_order_dependent_operator = true;
+			break;
+		}
+	}
 	if (source && !source->ParallelSource() && sink->ParallelSink() &&
 	    source->type == PhysicalOperatorType::TABLE_SCAN && !operators.empty() &&
+	    !has_order_dependent_operator &&
 	    !Settings::Get<DisableFanOutSetting>(executor.context)) {
 		auto &scheduler = TaskScheduler::GetScheduler(executor.context);
 		if (scheduler.NumberOfThreads() > 1) {
