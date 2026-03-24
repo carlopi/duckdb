@@ -16,11 +16,53 @@ PhysicalFanOut::PhysicalFanOut(PhysicalPlan &plan, PhysicalOperator &child_sourc
 
 static constexpr idx_t BATCH_SIZE = 8;
 
+enum class BufferState : uint8_t {
+	NOT_INITIALIZED,
+	READY_TO_BE_FILLED,
+	FILLING,
+	READY_TO_BE_PROCESSED,
+	IN_PROCESSING
+};
+
+struct ChunkBuffer {
+	DataChunk chunks[BATCH_SIZE];
+	idx_t batch_indices[BATCH_SIZE];
+	idx_t count = 0;               //! How many chunks were filled
+	atomic<idx_t> next_claim {0};   //! Consumer CAS to claim
+	atomic<idx_t> done_count {0};   //! Consumer increments after Move
+	atomic<BufferState> state {BufferState::NOT_INITIALIZED};
+
+	void Initialize(const vector<LogicalType> &types) {
+		for (idx_t i = 0; i < BATCH_SIZE; i++) {
+			chunks[i].Initialize(Allocator::DefaultAllocator(), types);
+		}
+		state.store(BufferState::READY_TO_BE_FILLED, std::memory_order_release);
+	}
+
+	//! Re-initialize chunks that were Move'd away, reset counters
+	void PrepareForFill(const vector<LogicalType> &types) {
+		for (idx_t i = 0; i < count; i++) {
+			if (chunks[i].ColumnCount() == 0) {
+				chunks[i].Initialize(Allocator::DefaultAllocator(), types);
+			}
+		}
+		count = 0;
+		next_claim.store(0, std::memory_order_relaxed);
+		done_count.store(0, std::memory_order_relaxed);
+	}
+
+	bool AllDone() const {
+		return done_count.load(std::memory_order_acquire) >= count;
+	}
+};
+
 class FanOutGlobalSourceState : public GlobalSourceState {
 public:
 	FanOutGlobalSourceState(ClientContext &context, const PhysicalFanOut &op)
 	    : child_types(op.child_source.get().types) {
 		child_global = op.child_source.get().GetGlobalSourceState(context);
+		buffers[0].Initialize(child_types);
+		buffers[1].Initialize(child_types);
 	}
 
 	unique_ptr<GlobalSourceState> child_global;
@@ -29,15 +71,15 @@ public:
 	mutex init_lock;
 	const vector<LogicalType> &child_types;
 
-	//! Chunk map: batch_id → chunk. Producer inserts, consumer erases.
-	mutex map_lock;
-	unordered_map<idx_t, unique_ptr<DataChunk>> chunks;
-	idx_t next_read = 0;  //! Next batch_id to consume
-	idx_t next_write = 0; //! Next batch_id to produce (only producer touches)
+	//! Double buffer
+	ChunkBuffer buffers[2];
+	atomic<int> active_buffer {-1}; //! Which buffer consumers read from (-1 = none)
 
-	//! Producer coordination
+	//! Producer
 	atomic<bool> producing {false};
 	atomic<bool> exhausted {false};
+	idx_t next_batch = 0;
+	idx_t fill_idx = 0; //! Which buffer to fill next (only producer)
 
 	//! Blocked consumers
 	StateWithBlockableTasks blocked_state;
@@ -50,9 +92,6 @@ public:
 class FanOutLocalSourceState : public LocalSourceState {
 public:
 	idx_t current_batch = 0;
-	//! Local cache: chunks grabbed in bulk from the map
-	vector<pair<idx_t, unique_ptr<DataChunk>>> local_chunks;
-	idx_t local_pos = 0;
 };
 
 //===--------------------------------------------------------------------===//
@@ -74,102 +113,101 @@ unique_ptr<LocalSourceState> PhysicalFanOut::GetLocalSourceState(ExecutionContex
 }
 
 //===--------------------------------------------------------------------===//
-// TryConsume — brief lock to claim and take a chunk
+// TryConsume — CAS on next_claim of active buffer, Move, increment done_count
 //===--------------------------------------------------------------------===//
-static constexpr idx_t CONSUMER_BATCH = 4;
-
 static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &lstate, DataChunk &chunk) {
-	// 1. Serve from local cache (no lock)
-	if (lstate.local_pos < lstate.local_chunks.size()) {
-		auto &entry = lstate.local_chunks[lstate.local_pos];
-		chunk.Move(*entry.second);
-		lstate.current_batch = entry.first;
-		lstate.local_pos++;
-		// Clear cache when fully consumed
-		if (lstate.local_pos >= lstate.local_chunks.size()) {
-			lstate.local_chunks.clear();
-			lstate.local_pos = 0;
-		}
-		return true;
+	int active = gstate.active_buffer.load(std::memory_order_acquire);
+	if (active < 0) {
+		return false;
 	}
-
-	// 2. Bulk-grab from map (one lock for multiple chunks)
-	{
-		lock_guard<mutex> lock(gstate.map_lock);
-		for (idx_t i = 0; i < CONSUMER_BATCH; i++) {
-			auto it = gstate.chunks.find(gstate.next_read);
-			if (it == gstate.chunks.end()) {
-				break;
-			}
-			lstate.local_chunks.emplace_back(gstate.next_read, std::move(it->second));
-			gstate.chunks.erase(it);
-			gstate.next_read++;
-		}
+	auto &buf = gstate.buffers[active];
+	if (buf.state.load(std::memory_order_acquire) != BufferState::IN_PROCESSING) {
+		return false;
 	}
-
-	// 3. Serve first from freshly grabbed batch
-	if (!lstate.local_chunks.empty()) {
-		auto &entry = lstate.local_chunks[0];
-		chunk.Move(*entry.second);
-		lstate.current_batch = entry.first;
-		lstate.local_pos = 1;
-		if (lstate.local_pos >= lstate.local_chunks.size()) {
-			lstate.local_chunks.clear();
-			lstate.local_pos = 0;
-		}
-		return true;
+	idx_t my_slot = buf.next_claim.fetch_add(1, std::memory_order_acq_rel);
+	if (my_slot >= buf.count) {
+		return false;
 	}
+	chunk.Move(buf.chunks[my_slot]);
+	lstate.current_batch = buf.batch_indices[my_slot];
+	buf.done_count.fetch_add(1, std::memory_order_release);
 
-	return false;
+	// If we were the last consumer, transition buffer back to READY_TO_BE_FILLED
+	if (buf.done_count.load(std::memory_order_acquire) >= buf.count) {
+		buf.state.store(BufferState::READY_TO_BE_FILLED, std::memory_order_release);
+	}
+	return true;
 }
 
 //===--------------------------------------------------------------------===//
-// Produce — GetData without lock, brief lock to insert into map
+// Produce — fill a buffer, publish it
 //===--------------------------------------------------------------------===//
 static void Produce(FanOutGlobalSourceState &gstate, const PhysicalFanOut &op, ExecutionContext &context,
                     InterruptState &interrupt_state) {
-	// 1. Check how many slots are available (one lock)
-	idx_t available;
-	{
-		lock_guard<mutex> lock(gstate.map_lock);
-		available = BATCH_SIZE - gstate.chunks.size();
-	}
-	if (available == 0) {
-		gstate.producing.store(false, std::memory_order_release);
-		return;
-	}
+	while (true) {
+		// Find a buffer that's READY_TO_BE_FILLED
+		auto &buf = gstate.buffers[gstate.fill_idx];
+		auto expected_state = BufferState::READY_TO_BE_FILLED;
+		if (!buf.state.compare_exchange_strong(expected_state, BufferState::FILLING, std::memory_order_acq_rel)) {
+			// Buffer not ready (still being processed) — try the other one
+			gstate.fill_idx = 1 - gstate.fill_idx;
+			auto &buf2 = gstate.buffers[gstate.fill_idx];
+			expected_state = BufferState::READY_TO_BE_FILLED;
+			if (!buf2.state.compare_exchange_strong(expected_state, BufferState::FILLING, std::memory_order_acq_rel)) {
+				// Both buffers busy — break, consumers need to drain
+				break;
+			}
+		}
 
-	// 2. Fill a local batch — no locks, no waking, just GetData calls
-	unique_ptr<DataChunk> batch[BATCH_SIZE];
-	idx_t filled = 0;
-	for (idx_t i = 0; i < available; i++) {
-		batch[i] = make_uniq<DataChunk>();
-		batch[i]->Initialize(Allocator::DefaultAllocator(), gstate.child_types);
+		auto &fill_buf = gstate.buffers[gstate.fill_idx];
 
-		OperatorSourceInput child_input {*gstate.child_global, *gstate.child_local, interrupt_state};
-		auto result = op.child_source.get().GetData(context, *batch[i], child_input);
+		// Re-initialize any Move'd chunks + reset counters
+		fill_buf.PrepareForFill(gstate.child_types);
 
-		if (result == SourceResultType::FINISHED || batch[i]->size() == 0) {
-			batch[i].reset();
-			gstate.exhausted.store(true, std::memory_order_release);
+		// Fill: Reset + GetData into pre-allocated chunks (no malloc)
+		for (idx_t i = 0; i < BATCH_SIZE; i++) {
+			fill_buf.chunks[i].Reset();
+
+			OperatorSourceInput child_input {*gstate.child_global, *gstate.child_local, interrupt_state};
+			auto result = op.child_source.get().GetData(context, fill_buf.chunks[i], child_input);
+
+			if (result == SourceResultType::FINISHED || fill_buf.chunks[i].size() == 0) {
+				gstate.exhausted.store(true, std::memory_order_release);
+				break;
+			}
+
+			fill_buf.batch_indices[i] = gstate.next_batch++;
+			fill_buf.count++;
+		}
+
+		if (fill_buf.count > 0) {
+			// Wait for old active buffer to be fully processed before swapping
+			int old_active = gstate.active_buffer.load(std::memory_order_acquire);
+			if (old_active >= 0) {
+				auto &old_buf = gstate.buffers[old_active];
+				while (old_buf.state.load(std::memory_order_acquire) == BufferState::IN_PROCESSING) {
+					// spin — consumers finishing
+				}
+			}
+
+			// Publish: set state and swap active
+			fill_buf.state.store(BufferState::IN_PROCESSING, std::memory_order_release);
+			gstate.active_buffer.store(gstate.fill_idx, std::memory_order_release);
+			gstate.fill_idx = 1 - gstate.fill_idx;
+		} else {
+			// Nothing produced — reset state
+			fill_buf.state.store(BufferState::READY_TO_BE_FILLED, std::memory_order_release);
+		}
+
+		// Wake consumers
+		{
+			annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
+			gstate.blocked_state.UnblockTasks();
+		}
+
+		if (gstate.exhausted.load(std::memory_order_acquire)) {
 			break;
 		}
-		filled++;
-	}
-
-	// 3. One lock to insert entire batch into map
-	if (filled > 0) {
-		lock_guard<mutex> lock(gstate.map_lock);
-		for (idx_t i = 0; i < filled; i++) {
-			gstate.chunks[gstate.next_write] = std::move(batch[i]);
-			gstate.next_write++;
-		}
-	}
-
-	// 4. One lock to wake consumers
-	{
-		annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
-		gstate.blocked_state.UnblockTasks();
 	}
 
 	gstate.producing.store(false, std::memory_order_release);
