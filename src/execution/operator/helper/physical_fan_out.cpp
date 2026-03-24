@@ -77,25 +77,16 @@ public:
 	StateWithBlockableTasks blocked_state;
 	atomic<bool> has_blocked {false};
 
-	//! Thread ID assignment
-	atomic<idx_t> next_thread_id {0};
-
 	idx_t MaxThreads() override {
 		return NumericLimits<idx_t>::Maximum();
 	}
 };
 
-//! Minimum rounds before checking retirement
-static constexpr idx_t MIN_ROUNDS = 64;
-
 class FanOutLocalSourceState : public LocalSourceState {
 public:
 	idx_t current_batch = 0;
-	idx_t thread_id = 0;
-	bool id_assigned = false;
-	idx_t hits = 0;   //! Successful TryConsume
-	idx_t rounds = 0; //! Total GetData calls
-	bool retired = false;
+	//! Deferred done: which buffer + whether we owe a done_count increment
+	ChunkBuffer *pending_done_buffer = nullptr;
 };
 
 //===--------------------------------------------------------------------===//
@@ -117,7 +108,25 @@ unique_ptr<LocalSourceState> PhysicalFanOut::GetLocalSourceState(ExecutionContex
 }
 
 //===--------------------------------------------------------------------===//
-// TryConsume — scan buffers for IN_PROCESSING, CAS to claim a slot
+// FlushDone — increment done_count for the buffer consumed in the PREVIOUS call
+// This ensures the sink has finished processing the Referenced data before
+// the buffer can be reused by the producer.
+//===--------------------------------------------------------------------===//
+static void FlushDone(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &lstate) {
+	if (!lstate.pending_done_buffer) {
+		return;
+	}
+	auto &buf = *lstate.pending_done_buffer;
+	lstate.pending_done_buffer = nullptr;
+	idx_t done = buf.done_count.fetch_add(1, std::memory_order_release) + 1;
+	if (done >= buf.count) {
+		buf.state.store(BufferState::READY_TO_BE_FILLED, std::memory_order_release);
+		gstate.consume_idx.fetch_add(1, std::memory_order_release);
+	}
+}
+
+//===--------------------------------------------------------------------===//
+// TryConsume — claim a slot, Reference chunk, defer done_count to next call
 //===--------------------------------------------------------------------===//
 static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &lstate, DataChunk &chunk) {
 	idx_t cidx = gstate.consume_idx.load(std::memory_order_acquire);
@@ -131,13 +140,9 @@ static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &
 	}
 	chunk.Reference(buf.chunks[my_slot]);
 	lstate.current_batch = buf.batch_indices[my_slot];
-	idx_t done = buf.done_count.fetch_add(1, std::memory_order_release) + 1;
-
-	// Last consumer: transition buffer to READY_TO_BE_FILLED and advance consume_idx
-	if (done >= buf.count) {
-		buf.state.store(BufferState::READY_TO_BE_FILLED, std::memory_order_release);
-		gstate.consume_idx.fetch_add(1, std::memory_order_release);
-	}
+	// Don't increment done_count yet — defer to next GetData call
+	// so the sink has time to process the Referenced data
+	lstate.pending_done_buffer = &buf;
 	return true;
 }
 
@@ -203,39 +208,15 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 	auto &gstate = input.global_state.Cast<FanOutGlobalSourceState>();
 	auto &lstate = input.local_state.Cast<FanOutLocalSourceState>();
 
-	// Assign thread ID on first call
-	if (!lstate.id_assigned) {
-		lstate.thread_id = gstate.next_thread_id.fetch_add(1, std::memory_order_relaxed);
-		lstate.id_assigned = true;
-	}
+	// Flush deferred done from previous call — sink has finished processing
+	FlushDone(gstate, lstate);
 
-	// Retired threads exit
-	if (lstate.retired) {
-		return SourceResultType::FINISHED;
-	}
-
-	lstate.rounds++;
-
-	// Try to consume
 	if (TryConsume(gstate, lstate, chunk)) {
-		lstate.hits++;
 		return SourceResultType::HAVE_MORE_OUTPUT;
-	}
-
-	// Check retirement: after MIN_ROUNDS, is our hit ratio below our threshold?
-	// Thread 0: threshold 0 (never retires). Thread N: threshold N/(N+1).
-	if (lstate.thread_id > 0 && lstate.rounds >= MIN_ROUNDS) {
-		double ratio = static_cast<double>(lstate.hits) / static_cast<double>(lstate.rounds);
-		double threshold = static_cast<double>(lstate.thread_id) / static_cast<double>(lstate.thread_id + 1);
-		if (ratio < threshold) {
-			lstate.retired = true;
-			return SourceResultType::FINISHED;
-		}
 	}
 
 	if (gstate.exhausted.load(std::memory_order_acquire)) {
 		if (TryConsume(gstate, lstate, chunk)) {
-			lstate.hits++;
 			return SourceResultType::HAVE_MORE_OUTPUT;
 		}
 		return SourceResultType::FINISHED;
@@ -246,7 +227,6 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 		Produce(gstate, *this, context, input.interrupt_state);
 
 		if (TryConsume(gstate, lstate, chunk)) {
-			lstate.hits++;
 			return SourceResultType::HAVE_MORE_OUTPUT;
 		}
 		return gstate.exhausted.load(std::memory_order_acquire) ? SourceResultType::FINISHED
@@ -257,7 +237,6 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 	gstate.has_blocked.store(true, std::memory_order_release);
 	annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
 	if (TryConsume(gstate, lstate, chunk)) {
-		lstate.hits++;
 		return SourceResultType::HAVE_MORE_OUTPUT;
 	}
 	if (gstate.exhausted.load(std::memory_order_acquire)) {
