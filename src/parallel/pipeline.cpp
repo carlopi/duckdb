@@ -173,9 +173,11 @@ void Pipeline::Schedule(shared_ptr<Event> &event) {
 	D_ASSERT(sink);
 
 	// Before Reset(), check if we should wrap the source with FanOut
-	// Only for PhysicalTableScan sources — not pipeline breaker outputs (UNION, sort, etc.)
+	// Only for PhysicalTableScan sources with intermediate operators
+	// (source → operators → sink, not just source → sink)
 	if (source && !source->ParallelSource() && sink->ParallelSink() &&
 	    source->type == PhysicalOperatorType::TABLE_SCAN &&
+	    !operators.empty() &&
 	    !Settings::Get<DisableFanOutSetting>(executor.context)) {
 		auto &scheduler = TaskScheduler::GetScheduler(executor.context);
 		if (scheduler.NumberOfThreads() > 1) {
