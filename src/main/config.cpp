@@ -183,6 +183,7 @@ static const ConfigurationOption internal_options[] = {
     DUCKDB_SETTING(PreferRangeJoinsSetting),
     DUCKDB_SETTING(PreserveIdentifierCaseSetting),
     DUCKDB_SETTING(PreserveInsertionOrderSetting),
+    DUCKDB_SETTING(DisableFanOutSetting),
     DUCKDB_SETTING(ProduceArrowStringViewSetting),
     DUCKDB_LOCAL(ProfileOutputSetting),
     DUCKDB_LOCAL(ProfilingCoverageSetting),

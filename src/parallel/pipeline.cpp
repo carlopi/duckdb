@@ -173,7 +173,8 @@ void Pipeline::Schedule(shared_ptr<Event> &event) {
 	D_ASSERT(sink);
 
 	// Before Reset(), check if we should wrap the source with FanOut
-	if (source && !source->ParallelSource() && sink->ParallelSink()) {
+	if (source && !source->ParallelSource() && sink->ParallelSink() &&
+	    !Settings::Get<DisableFanOutSetting>(executor.context)) {
 		auto &scheduler = TaskScheduler::GetScheduler(executor.context);
 		if (scheduler.NumberOfThreads() > 1) {
 			// Wrap the sequential source with a FanOut adapter

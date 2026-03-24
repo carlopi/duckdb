@@ -1378,6 +1378,18 @@ struct PreserveInsertionOrderSetting {
 	static constexpr idx_t SettingIndex = NEXT_SETTING_INDEX();
 };
 
+struct DisableFanOutSetting {
+	using RETURN_TYPE = bool;
+	static constexpr const char *Name = "disable_fan_out";
+	static constexpr const char *Description =
+	    "Disable automatic fan-out injection for sequential sources. Fan-out enables parallel downstream "
+	    "processing for sequential table functions like range() and generate_series().";
+	static constexpr const char *InputType = "BOOLEAN";
+	static constexpr const char *DefaultValue = "false";
+	static constexpr SettingScopeTarget Scope = SettingScopeTarget::LOCAL_DEFAULT;
+	static constexpr idx_t SettingIndex = NEXT_SETTING_INDEX();
+};
+
 struct ProduceArrowStringViewSetting {
 	using RETURN_TYPE = bool;
 	static constexpr const char *Name = "produce_arrow_string_view";
