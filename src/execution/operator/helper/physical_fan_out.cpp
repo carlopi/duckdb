@@ -50,6 +50,9 @@ public:
 class FanOutLocalSourceState : public LocalSourceState {
 public:
 	idx_t current_batch = 0;
+	//! Local cache: chunks grabbed in bulk from the map
+	vector<pair<idx_t, unique_ptr<DataChunk>>> local_chunks;
+	idx_t local_pos = 0;
 };
 
 //===--------------------------------------------------------------------===//
@@ -73,17 +76,51 @@ unique_ptr<LocalSourceState> PhysicalFanOut::GetLocalSourceState(ExecutionContex
 //===--------------------------------------------------------------------===//
 // TryConsume — brief lock to claim and take a chunk
 //===--------------------------------------------------------------------===//
+static constexpr idx_t CONSUMER_BATCH = 4;
+
 static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &lstate, DataChunk &chunk) {
-	lock_guard<mutex> lock(gstate.map_lock);
-	auto it = gstate.chunks.find(gstate.next_read);
-	if (it == gstate.chunks.end()) {
-		return false;
+	// 1. Serve from local cache (no lock)
+	if (lstate.local_pos < lstate.local_chunks.size()) {
+		auto &entry = lstate.local_chunks[lstate.local_pos];
+		chunk.Move(*entry.second);
+		lstate.current_batch = entry.first;
+		lstate.local_pos++;
+		// Clear cache when fully consumed
+		if (lstate.local_pos >= lstate.local_chunks.size()) {
+			lstate.local_chunks.clear();
+			lstate.local_pos = 0;
+		}
+		return true;
 	}
-	chunk.Move(*it->second);
-	lstate.current_batch = gstate.next_read;
-	gstate.chunks.erase(it);
-	gstate.next_read++;
-	return true;
+
+	// 2. Bulk-grab from map (one lock for multiple chunks)
+	{
+		lock_guard<mutex> lock(gstate.map_lock);
+		for (idx_t i = 0; i < CONSUMER_BATCH; i++) {
+			auto it = gstate.chunks.find(gstate.next_read);
+			if (it == gstate.chunks.end()) {
+				break;
+			}
+			lstate.local_chunks.emplace_back(gstate.next_read, std::move(it->second));
+			gstate.chunks.erase(it);
+			gstate.next_read++;
+		}
+	}
+
+	// 3. Serve first from freshly grabbed batch
+	if (!lstate.local_chunks.empty()) {
+		auto &entry = lstate.local_chunks[0];
+		chunk.Move(*entry.second);
+		lstate.current_batch = entry.first;
+		lstate.local_pos = 1;
+		if (lstate.local_pos >= lstate.local_chunks.size()) {
+			lstate.local_chunks.clear();
+			lstate.local_pos = 0;
+		}
+		return true;
+	}
+
+	return false;
 }
 
 //===--------------------------------------------------------------------===//
