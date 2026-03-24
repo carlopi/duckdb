@@ -91,41 +91,48 @@ static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &
 //===--------------------------------------------------------------------===//
 static void Produce(FanOutGlobalSourceState &gstate, const PhysicalFanOut &op, ExecutionContext &context,
                     InterruptState &interrupt_state) {
-	for (idx_t i = 0; i < BATCH_SIZE; i++) {
-		// Check map size under lock
-		{
-			lock_guard<mutex> lock(gstate.map_lock);
-			if (gstate.chunks.size() >= BATCH_SIZE) {
-				break; // buffer full
-			}
-		}
+	// 1. Check how many slots are available (one lock)
+	idx_t available;
+	{
+		lock_guard<mutex> lock(gstate.map_lock);
+		available = BATCH_SIZE - gstate.chunks.size();
+	}
+	if (available == 0) {
+		gstate.producing.store(false, std::memory_order_release);
+		return;
+	}
 
-		// GetData without any lock — only one producer
-		auto temp = make_uniq<DataChunk>();
-		temp->Initialize(Allocator::DefaultAllocator(), gstate.child_types);
+	// 2. Fill a local batch — no locks, no waking, just GetData calls
+	unique_ptr<DataChunk> batch[BATCH_SIZE];
+	idx_t filled = 0;
+	for (idx_t i = 0; i < available; i++) {
+		batch[i] = make_uniq<DataChunk>();
+		batch[i]->Initialize(Allocator::DefaultAllocator(), gstate.child_types);
 
 		OperatorSourceInput child_input {*gstate.child_global, *gstate.child_local, interrupt_state};
-		auto result = op.child_source.get().GetData(context, *temp, child_input);
+		auto result = op.child_source.get().GetData(context, *batch[i], child_input);
 
-		if (result == SourceResultType::FINISHED || temp->size() == 0) {
+		if (result == SourceResultType::FINISHED || batch[i]->size() == 0) {
+			batch[i].reset();
 			gstate.exhausted.store(true, std::memory_order_release);
-			annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
-			gstate.blocked_state.UnblockTasks();
 			break;
 		}
+		filled++;
+	}
 
-		// Brief lock to insert
-		{
-			lock_guard<mutex> lock(gstate.map_lock);
-			gstate.chunks[gstate.next_write] = std::move(temp);
+	// 3. One lock to insert entire batch into map
+	if (filled > 0) {
+		lock_guard<mutex> lock(gstate.map_lock);
+		for (idx_t i = 0; i < filled; i++) {
+			gstate.chunks[gstate.next_write] = std::move(batch[i]);
 			gstate.next_write++;
 		}
+	}
 
-		// Wake consumers
-		{
-			annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
-			gstate.blocked_state.UnblockTasks();
-		}
+	// 4. One lock to wake consumers
+	{
+		annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
+		gstate.blocked_state.UnblockTasks();
 	}
 
 	gstate.producing.store(false, std::memory_order_release);
