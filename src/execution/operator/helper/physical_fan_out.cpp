@@ -79,18 +79,23 @@ unique_ptr<LocalSourceState> PhysicalFanOut::GetLocalSourceState(ExecutionContex
 // TryConsume — lock-free: atomic fetch_add on read_pos
 //===--------------------------------------------------------------------===//
 static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &lstate, DataChunk &chunk) {
-	idx_t my_pos = gstate.read_pos.fetch_add(1, std::memory_order_acq_rel);
-	if (my_pos >= gstate.write_pos.load(std::memory_order_acquire)) {
-		// Nothing available — undo
-		gstate.read_pos.fetch_sub(1, std::memory_order_relaxed);
-		return false;
+	idx_t cur_read = gstate.read_pos.load(std::memory_order_relaxed);
+	while (true) {
+		idx_t cur_write = gstate.write_pos.load(std::memory_order_acquire);
+		if (cur_read >= cur_write) {
+			return false; // nothing available
+		}
+		// Try to claim this position
+		if (gstate.read_pos.compare_exchange_weak(cur_read, cur_read + 1, std::memory_order_acq_rel)) {
+			auto &slot = gstate.slots[cur_read % BUFFER_CAPACITY];
+			D_ASSERT(slot.chunk);
+			chunk.Move(*slot.chunk);
+			slot.chunk.reset();
+			lstate.current_batch = slot.batch_index;
+			return true;
+		}
+		// CAS failed — cur_read updated, retry
 	}
-	auto &slot = gstate.slots[my_pos % BUFFER_CAPACITY];
-	D_ASSERT(slot.chunk);
-	chunk.Move(*slot.chunk);
-	slot.chunk.reset();
-	lstate.current_batch = slot.batch_index;
-	return true;
 }
 
 //===--------------------------------------------------------------------===//
