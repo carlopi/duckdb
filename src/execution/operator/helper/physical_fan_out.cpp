@@ -75,16 +75,27 @@ public:
 
 	//! Blocked consumers
 	StateWithBlockableTasks blocked_state;
-	atomic<bool> has_blocked {false}; //! Set before blocking, cleared after wake
+	atomic<bool> has_blocked {false};
+
+	//! Thread ID assignment
+	atomic<idx_t> next_thread_id {0};
 
 	idx_t MaxThreads() override {
 		return NumericLimits<idx_t>::Maximum();
 	}
 };
 
+//! Minimum rounds before checking retirement
+static constexpr idx_t MIN_ROUNDS = 64;
+
 class FanOutLocalSourceState : public LocalSourceState {
 public:
 	idx_t current_batch = 0;
+	idx_t thread_id = 0;
+	bool id_assigned = false;
+	idx_t hits = 0;   //! Successful TryConsume
+	idx_t rounds = 0; //! Total GetData calls
+	bool retired = false;
 };
 
 //===--------------------------------------------------------------------===//
@@ -192,12 +203,39 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 	auto &gstate = input.global_state.Cast<FanOutGlobalSourceState>();
 	auto &lstate = input.local_state.Cast<FanOutLocalSourceState>();
 
+	// Assign thread ID on first call
+	if (!lstate.id_assigned) {
+		lstate.thread_id = gstate.next_thread_id.fetch_add(1, std::memory_order_relaxed);
+		lstate.id_assigned = true;
+	}
+
+	// Retired threads exit
+	if (lstate.retired) {
+		return SourceResultType::FINISHED;
+	}
+
+	lstate.rounds++;
+
+	// Try to consume
 	if (TryConsume(gstate, lstate, chunk)) {
+		lstate.hits++;
 		return SourceResultType::HAVE_MORE_OUTPUT;
+	}
+
+	// Check retirement: after MIN_ROUNDS, is our hit ratio below our threshold?
+	// Thread 0: threshold 0 (never retires). Thread N: threshold N/(N+1).
+	if (lstate.thread_id > 0 && lstate.rounds >= MIN_ROUNDS) {
+		double ratio = static_cast<double>(lstate.hits) / static_cast<double>(lstate.rounds);
+		double threshold = static_cast<double>(lstate.thread_id) / static_cast<double>(lstate.thread_id + 1);
+		if (ratio < threshold) {
+			lstate.retired = true;
+			return SourceResultType::FINISHED;
+		}
 	}
 
 	if (gstate.exhausted.load(std::memory_order_acquire)) {
 		if (TryConsume(gstate, lstate, chunk)) {
+			lstate.hits++;
 			return SourceResultType::HAVE_MORE_OUTPUT;
 		}
 		return SourceResultType::FINISHED;
@@ -208,6 +246,7 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 		Produce(gstate, *this, context, input.interrupt_state);
 
 		if (TryConsume(gstate, lstate, chunk)) {
+			lstate.hits++;
 			return SourceResultType::HAVE_MORE_OUTPUT;
 		}
 		return gstate.exhausted.load(std::memory_order_acquire) ? SourceResultType::FINISHED
@@ -218,6 +257,7 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 	gstate.has_blocked.store(true, std::memory_order_release);
 	annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
 	if (TryConsume(gstate, lstate, chunk)) {
+		lstate.hits++;
 		return SourceResultType::HAVE_MORE_OUTPUT;
 	}
 	if (gstate.exhausted.load(std::memory_order_acquire)) {
