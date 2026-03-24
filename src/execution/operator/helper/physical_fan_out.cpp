@@ -43,11 +43,12 @@ public:
 	bool child_local_initialized = false;
 
 	//! --- Warmup ---
-	//! Pointer to the local state of the warmup task (stable across thread rescheduling)
-	const LocalSourceState *warmup_task = nullptr;
-	bool warmup_done = false;
+	//! Atomic pointer to the warmup task's local state (lock-free claim)
+	atomic<const LocalSourceState *> warmup_task {nullptr};
+	//! Whether warmup is complete (atomic — read outside source_lock)
+	atomic<bool> warmup_done {false};
 	//! After warmup: true if downstream is heavy enough to justify fan-out
-	bool fan_out_enabled = false;
+	atomic<bool> fan_out_enabled {false};
 
 	//! --- Timing stats (updated under source_lock) ---
 	double total_get_data_time = 0;
@@ -97,26 +98,34 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 	auto &gstate = input.global_state.Cast<FanOutGlobalSourceState>();
 	auto &lstate = input.local_state.Cast<FanOutLocalSourceState>();
 
-	lock_guard<mutex> lock(gstate.source_lock);
+	// === Lock-free fast path: non-warmup tasks never touch source_lock ===
 
-	// --- Warmup gating via BLOCKED ---
-	if (!gstate.warmup_done) {
-		if (!gstate.warmup_task) {
-			// First task in — becomes the warmup task
-			gstate.warmup_task = &lstate;
-		} else if (gstate.warmup_task != &lstate) {
-			// Not the warmup task — return BLOCKED, will be woken up later
+	// Try to claim warmup (atomic compare-exchange, no lock)
+	const LocalSourceState *expected = nullptr;
+	bool is_warmup_task = gstate.warmup_task.compare_exchange_strong(expected, &lstate) ||
+	                      gstate.warmup_task.load() == &lstate;
+
+	if (!is_warmup_task) {
+		// Not the warmup task.
+		if (!gstate.warmup_done.load()) {
+			// Warmup in progress — register as BLOCKED (only touches blocked_state.lock)
 			annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
-			return gstate.blocked_state.BlockSource(input.interrupt_state);
+			if (!gstate.warmup_done.load()) {
+				return gstate.blocked_state.BlockSource(input.interrupt_state);
+			}
+			// Warmup finished between our checks — fall through
 		}
-	}
-
-	// --- After warmup: if fan-out not justified, only warmup task continues ---
-	if (gstate.warmup_done && !gstate.fan_out_enabled) {
-		if (gstate.warmup_task != &lstate) {
+		// Warmup done. If fan-out disabled, exit immediately — zero lock contention.
+		if (!gstate.fan_out_enabled.load()) {
 			return SourceResultType::FINISHED;
 		}
+		// Fan-out enabled — fall through to source_lock for normal parallel path
 	}
+
+	// === Locked path: only warmup task enters here during warmup,
+	//     all tasks enter here after warmup if fan-out enabled ===
+
+	lock_guard<mutex> lock(gstate.source_lock);
 
 	// --- Measure downstream time (skip first call — initialization overhead) ---
 	bool should_measure = gstate.get_data_calls >= WARMUP_SKIP;
@@ -145,8 +154,9 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 
 	if (result == SourceResultType::FINISHED || chunk.size() == 0) {
 		gstate.exhausted = true;
-		if (!gstate.warmup_done) {
-			gstate.warmup_done = true;
+		if (!gstate.warmup_done.load()) {
+			// Source exhausted during warmup — wake blocked tasks
+			gstate.warmup_done.store(true);
 			annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
 			gstate.blocked_state.UnblockTasks();
 		}
@@ -154,9 +164,7 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 	}
 
 	// --- End warmup after WARMUP_CALLS ---
-	if (!gstate.warmup_done && gstate.get_data_calls >= WARMUP_CALLS) {
-		gstate.warmup_done = true;
-
+	if (!gstate.warmup_done.load() && gstate.get_data_calls >= WARMUP_CALLS) {
 		// Decision: is downstream work heavy enough to justify fan-out?
 		idx_t measured_calls = gstate.get_data_calls - WARMUP_SKIP;
 		double avg_get_data = measured_calls > 0
@@ -166,11 +174,13 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 		                            ? gstate.total_downstream_time / static_cast<double>(gstate.downstream_samples)
 		                            : 0;
 
-		gstate.fan_out_enabled = avg_downstream > avg_get_data * 10;
+		gstate.fan_out_enabled.store(avg_downstream > avg_get_data * 10);
 
-		// Wake blocked threads
+		// Set warmup_done and unblock under blocked_state.lock
+		// to avoid race with tasks calling BlockSource
 		annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
-		if (!gstate.fan_out_enabled) {
+		gstate.warmup_done.store(true);
+		if (!gstate.fan_out_enabled.load()) {
 			gstate.blocked_state.PreventBlocking();
 		}
 		gstate.blocked_state.UnblockTasks();
