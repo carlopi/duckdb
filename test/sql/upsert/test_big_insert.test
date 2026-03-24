@@ -9,6 +9,9 @@ statement ok
 SET preserve_insertion_order = false;
 
 statement ok
+SET disable_fan_out = true;
+
+statement ok
 CREATE TABLE integers(
 	i INT UNIQUE,
 	j INT DEFAULT 0,
