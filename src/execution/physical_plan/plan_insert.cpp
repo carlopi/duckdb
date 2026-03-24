@@ -6,6 +6,7 @@
 #include "duckdb/execution/operator/persistent/physical_batch_insert.hpp"
 #include "duckdb/execution/operator/projection/physical_projection.hpp"
 #include "duckdb/parallel/task_scheduler.hpp"
+#include "duckdb/main/settings.hpp"
 #include "duckdb/catalog/duck_catalog.hpp"
 #include "duckdb/planner/expression/bound_reference_expression.hpp"
 #include "duckdb/main/settings.hpp"
