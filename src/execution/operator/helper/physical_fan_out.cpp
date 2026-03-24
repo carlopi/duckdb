@@ -34,10 +34,11 @@ public:
 	mutex init_lock;
 	const vector<LogicalType> &child_types;
 
-	//! Ring buffer — consumers use atomic read_pos, producer uses atomic write_pos
+	//! Ring buffer
 	BufferSlot slots[BUFFER_CAPACITY];
-	atomic<idx_t> write_pos {0}; //! Published by producer after filling a batch
-	atomic<idx_t> read_pos {0};  //! Consumers fetch_add to claim
+	atomic<idx_t> write_pos {0}; //! Producer publishes after filling
+	atomic<idx_t> read_pos {0};  //! Consumers CAS to claim a slot
+	atomic<idx_t> done_pos {0};  //! Consumers increment AFTER Move complete — producer uses this for available
 
 	//! Producer
 	atomic<bool> producing {false};
@@ -88,10 +89,11 @@ static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &
 		// Try to claim this position
 		if (gstate.read_pos.compare_exchange_weak(cur_read, cur_read + 1, std::memory_order_acq_rel)) {
 			auto &slot = gstate.slots[cur_read % BUFFER_CAPACITY];
-			D_ASSERT(slot.chunk);
 			chunk.Move(*slot.chunk);
 			slot.chunk.reset();
 			lstate.current_batch = slot.batch_index;
+			// Signal: Move complete, producer can reuse this physical slot
+			gstate.done_pos.fetch_add(1, std::memory_order_release);
 			return true;
 		}
 		// CAS failed — cur_read updated, retry
@@ -105,9 +107,10 @@ static void Produce(FanOutGlobalSourceState &gstate, const PhysicalFanOut &op, E
                     InterruptState &interrupt_state) {
 	while (true) {
 		// 1. Snapshot positions (atomic reads, no lock)
+		//    Use done_pos (not read_pos) — a slot is only safe to reuse after Move completes
 		idx_t cur_write = gstate.write_pos.load(std::memory_order_relaxed);
-		idx_t cur_read = gstate.read_pos.load(std::memory_order_acquire);
-		idx_t available = BUFFER_CAPACITY - (cur_write - cur_read);
+		idx_t cur_done = gstate.done_pos.load(std::memory_order_acquire);
+		idx_t available = BUFFER_CAPACITY - (cur_write - cur_done);
 		if (available == 0) {
 			break;
 		}
