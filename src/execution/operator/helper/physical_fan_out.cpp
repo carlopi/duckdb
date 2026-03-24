@@ -83,14 +83,12 @@ public:
 	}
 };
 
-//! Threads below this ID yield, threads at or above block
-static constexpr idx_t YIELD_THREAD_LIMIT = 4;
-
 class FanOutLocalSourceState : public LocalSourceState {
 public:
 	idx_t current_batch = 0;
 	idx_t thread_id = 0;
 	bool id_assigned = false;
+	idx_t yield_count = 0;
 };
 
 //===--------------------------------------------------------------------===//
@@ -199,6 +197,7 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 	auto &lstate = input.local_state.Cast<FanOutLocalSourceState>();
 
 	if (TryConsume(gstate, lstate, chunk)) {
+		lstate.yield_count = 0;
 		return SourceResultType::HAVE_MORE_OUTPUT;
 	}
 
@@ -214,6 +213,7 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 		Produce(gstate, *this, context, input.interrupt_state);
 
 		if (TryConsume(gstate, lstate, chunk)) {
+			lstate.yield_count = 0;
 			return SourceResultType::HAVE_MORE_OUTPUT;
 		}
 		return gstate.exhausted.load(std::memory_order_acquire) ? SourceResultType::FINISHED
@@ -226,12 +226,15 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 		lstate.id_assigned = true;
 	}
 
-	// Low-ID threads: yield (cheap retry, stays responsive)
-	// High-ID threads: block (saves CPU for producer + low-ID threads)
-	if (lstate.thread_id < YIELD_THREAD_LIMIT) {
+	// Yield budget based on thread ID: thread 0 → 8, 1 → 4, 2 → 2, 3 → 1, >=4 → 0
+	idx_t max_yields = lstate.thread_id >= 4 ? 0 : (8 >> lstate.thread_id);
+	if (lstate.yield_count < max_yields) {
+		lstate.yield_count++;
 		return SourceResultType::HAVE_MORE_OUTPUT;
 	}
+	lstate.yield_count = 0;
 
+	// Yield budget exhausted — block
 	gstate.has_blocked.store(true, std::memory_order_release);
 	annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
 	if (TryConsume(gstate, lstate, chunk)) {
