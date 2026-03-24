@@ -89,6 +89,12 @@ static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &
 		// Try to claim this position
 		if (gstate.read_pos.compare_exchange_weak(cur_read, cur_read + 1, std::memory_order_acq_rel)) {
 			auto &slot = gstate.slots[cur_read % BUFFER_CAPACITY];
+			if (!slot.chunk) {
+				// Slot was consumed but producer hasn't refilled — shouldn't happen
+				// Producer uses done_pos to avoid this, but signal FINISHED as safety
+				gstate.done_pos.fetch_add(1, std::memory_order_release);
+				return false;
+			}
 			chunk.Move(*slot.chunk);
 			slot.chunk.reset();
 			lstate.current_batch = slot.batch_index;
