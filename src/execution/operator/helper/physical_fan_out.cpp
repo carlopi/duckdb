@@ -76,7 +76,6 @@ public:
 	//! Blocked consumers
 	StateWithBlockableTasks blocked_state;
 	atomic<bool> has_blocked {false};
-	atomic<idx_t> next_thread_id {0};
 
 	idx_t MaxThreads() override {
 		return NumericLimits<idx_t>::Maximum();
@@ -86,9 +85,6 @@ public:
 class FanOutLocalSourceState : public LocalSourceState {
 public:
 	idx_t current_batch = 0;
-	idx_t thread_id = 0;
-	bool id_assigned = false;
-	idx_t yield_count = 0;
 };
 
 //===--------------------------------------------------------------------===//
@@ -202,7 +198,6 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 	auto &lstate = input.local_state.Cast<FanOutLocalSourceState>();
 
 	if (TryConsume(gstate, lstate, chunk)) {
-		lstate.yield_count = 0;
 		return SourceResultType::HAVE_MORE_OUTPUT;
 	}
 
@@ -218,28 +213,13 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 		Produce(gstate, *this, context, input.interrupt_state);
 
 		if (TryConsume(gstate, lstate, chunk)) {
-			lstate.yield_count = 0;
 			return SourceResultType::HAVE_MORE_OUTPUT;
 		}
 		return gstate.exhausted.load(std::memory_order_acquire) ? SourceResultType::FINISHED
 		                                                        : SourceResultType::HAVE_MORE_OUTPUT;
 	}
 
-	// Assign thread ID on first miss
-	if (!lstate.id_assigned) {
-		lstate.thread_id = gstate.next_thread_id.fetch_add(1, std::memory_order_relaxed);
-		lstate.id_assigned = true;
-	}
-
-	// Yield budget based on thread ID: thread 0 → 8, 1 → 4, 2 → 2, 3 → 1, >=4 → 0
-	idx_t max_yields = lstate.thread_id >= 4 ? 0 : (8 >> lstate.thread_id);
-	if (lstate.yield_count < max_yields) {
-		lstate.yield_count++;
-		return SourceResultType::HAVE_MORE_OUTPUT;
-	}
-	lstate.yield_count = 0;
-
-	// Yield budget exhausted — block
+	// Block
 	gstate.has_blocked.store(true, std::memory_order_release);
 	annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
 	if (TryConsume(gstate, lstate, chunk)) {
