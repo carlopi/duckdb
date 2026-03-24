@@ -14,7 +14,7 @@ PhysicalFanOut::PhysicalFanOut(PhysicalPlan &plan, PhysicalOperator &child_sourc
 // State
 //===--------------------------------------------------------------------===//
 
-static constexpr idx_t BATCH_SIZE = 8;
+static constexpr idx_t BATCH_SIZE = 32;
 
 enum class BufferState : uint8_t {
 	NOT_INITIALIZED,
