@@ -392,6 +392,13 @@
         ]
     },
     {
+        "name": "disable_fan_out",
+        "description": "Disable automatic fan-out injection for sequential sources. Fan-out enables parallel downstream ",
+        "type": "BOOLEAN",
+        "default_scope": "local",
+        "default_value": "false"
+    },
+    {
         "name": "disable_timestamptz_casts",
         "description": "Disable casting from timestamp to timestamptz ",
         "type": "BOOLEAN",
