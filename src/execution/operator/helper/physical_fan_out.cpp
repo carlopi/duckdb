@@ -14,8 +14,8 @@ PhysicalFanOut::PhysicalFanOut(PhysicalPlan &plan, PhysicalOperator &child_sourc
 // State
 //===--------------------------------------------------------------------===//
 
-static constexpr idx_t BATCH_SIZE = 32;
-static constexpr idx_t NUM_BUFFERS = 4;
+static constexpr idx_t BATCH_SIZE = 128;
+static constexpr idx_t NUM_BUFFERS = 8;
 
 enum class BufferState : uint8_t {
 	NOT_INITIALIZED,
@@ -75,6 +75,7 @@ public:
 
 	//! Blocked consumers
 	StateWithBlockableTasks blocked_state;
+	atomic<bool> has_blocked {false}; //! Set before blocking, cleared after wake
 
 	idx_t MaxThreads() override {
 		return NumericLimits<idx_t>::Maximum();
@@ -168,10 +169,11 @@ static void Produce(FanOutGlobalSourceState &gstate, const PhysicalFanOut &op, E
 			fill_buf.state.store(BufferState::READY_TO_BE_FILLED, std::memory_order_release);
 		}
 
-		// Wake consumers
-		{
+		// Wake consumers only if any are blocked (skip lock otherwise)
+		if (gstate.has_blocked.load(std::memory_order_acquire)) {
 			annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
 			gstate.blocked_state.UnblockTasks();
+			gstate.has_blocked.store(false, std::memory_order_release);
 		}
 
 		if (gstate.exhausted.load(std::memory_order_acquire)) {
@@ -212,6 +214,8 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 		                                                        : SourceResultType::HAVE_MORE_OUTPUT;
 	}
 
+	// 4. Block via scheduler
+	gstate.has_blocked.store(true, std::memory_order_release);
 	annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
 	if (TryConsume(gstate, lstate, chunk)) {
 		return SourceResultType::HAVE_MORE_OUTPUT;
