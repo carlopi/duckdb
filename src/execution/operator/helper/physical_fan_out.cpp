@@ -167,19 +167,27 @@ static void Produce(FanOutGlobalSourceState &gstate, const PhysicalFanOut &op, E
 
 		if (fill_buf.count > 0) {
 			// Publish — single store makes buffer visible to consumers
-			gstate.produce_idx.store(gstate.produce_idx.load(std::memory_order_relaxed) + 1, std::memory_order_release);
-		}
+			idx_t new_pidx = gstate.produce_idx.load(std::memory_order_relaxed) + 1;
+			gstate.produce_idx.store(new_pidx, std::memory_order_release);
 
-		// Wake consumers only if any are blocked
-		if (gstate.has_blocked.load(std::memory_order_acquire)) {
-			annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
-			gstate.blocked_state.UnblockTasks();
-			gstate.has_blocked.store(false, std::memory_order_release);
+			// Wake every 4 buffers to let consumers start working
+			if (new_pidx % 4 == 0 && gstate.has_blocked.load(std::memory_order_relaxed)) {
+				annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
+				gstate.blocked_state.UnblockTasks();
+				gstate.has_blocked.store(false, std::memory_order_release);
+			}
 		}
 
 		if (gstate.exhausted.load(std::memory_order_relaxed)) {
 			break;
 		}
+	}
+
+	// Final wake after produce loop
+	if (gstate.has_blocked.load(std::memory_order_acquire)) {
+		annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
+		gstate.blocked_state.UnblockTasks();
+		gstate.has_blocked.store(false, std::memory_order_release);
 	}
 
 	gstate.producing.store(false, std::memory_order_release);
