@@ -214,7 +214,7 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 		                                                        : SourceResultType::HAVE_MORE_OUTPUT;
 	}
 
-	// 4. Block via scheduler
+	// Block via scheduler
 	gstate.has_blocked.store(true, std::memory_order_release);
 	annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
 	if (TryConsume(gstate, lstate, chunk)) {
