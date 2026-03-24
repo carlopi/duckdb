@@ -71,7 +71,7 @@ public:
 	atomic<bool> producing {false};
 	atomic<bool> exhausted {false};
 	idx_t next_batch = 0;
-	idx_t produce_idx = 0; //! Next buffer to fill (only producer, in order)
+	atomic<idx_t> produce_idx {0}; //! Next buffer to fill (producer writes, consumers read)
 
 	//! Blocked consumers
 	StateWithBlockableTasks blocked_state;
@@ -114,10 +114,11 @@ unique_ptr<LocalSourceState> PhysicalFanOut::GetLocalSourceState(ExecutionContex
 //===--------------------------------------------------------------------===//
 static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &lstate, DataChunk &chunk) {
 	idx_t cidx = gstate.consume_idx.load(std::memory_order_acquire);
-	auto &buf = gstate.buffers[cidx % NUM_BUFFERS];
-	if (buf.state.load(std::memory_order_acquire) != BufferState::IN_PROCESSING) {
-		return false;
+	idx_t pidx = gstate.produce_idx.load(std::memory_order_acquire);
+	if (cidx >= pidx) {
+		return false; // no filled buffers
 	}
+	auto &buf = gstate.buffers[cidx % NUM_BUFFERS];
 	idx_t my_slot = buf.next_claim.fetch_add(1, std::memory_order_acq_rel);
 	if (my_slot >= buf.count) {
 		return false;
@@ -126,9 +127,8 @@ static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &
 	lstate.current_batch = buf.batch_indices[my_slot];
 	idx_t done = buf.done_count.fetch_add(1, std::memory_order_release) + 1;
 
-	// Last consumer: transition buffer to READY_TO_BE_FILLED and advance consume_idx
+	// Last consumer advances consume_idx
 	if (done >= buf.count) {
-		buf.state.store(BufferState::READY_TO_BE_FILLED, std::memory_order_release);
 		gstate.consume_idx.fetch_add(1, std::memory_order_release);
 	}
 	return true;
@@ -140,16 +140,16 @@ static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &
 static void Produce(FanOutGlobalSourceState &gstate, const PhysicalFanOut &op, ExecutionContext &context,
                     InterruptState &interrupt_state) {
 	while (true) {
-		// Find a READY_TO_BE_FILLED buffer (round-robin)
-		// Fill in order: try the next buffer in sequence
-		auto &fill_buf = gstate.buffers[gstate.produce_idx % NUM_BUFFERS];
-		auto expected = BufferState::READY_TO_BE_FILLED;
-		if (!fill_buf.state.compare_exchange_strong(expected, BufferState::FILLING, std::memory_order_acq_rel)) {
-			break; // next buffer not ready yet — consumers haven't drained it
+		// Can we fill? Check counter gap — no CAS needed, producer is sole writer
+		idx_t cidx = gstate.consume_idx.load(std::memory_order_acquire);
+		if (gstate.produce_idx.load(std::memory_order_relaxed) - cidx >= NUM_BUFFERS) {
+			break; // all buffers full
 		}
+
+		auto &fill_buf = gstate.buffers[gstate.produce_idx.load(std::memory_order_relaxed) % NUM_BUFFERS];
 		fill_buf.PrepareForFill();
 
-		// Fill at full speed — Reset + GetData into pre-allocated chunks
+		// Fill at full speed — no atomics in this loop
 		for (idx_t i = 0; i < BATCH_SIZE; i++) {
 			fill_buf.chunks[i].Reset();
 
@@ -166,21 +166,18 @@ static void Produce(FanOutGlobalSourceState &gstate, const PhysicalFanOut &op, E
 		}
 
 		if (fill_buf.count > 0) {
-			// Publish and advance
-			fill_buf.state.store(BufferState::IN_PROCESSING, std::memory_order_release);
-			gstate.produce_idx++;
-		} else {
-			fill_buf.state.store(BufferState::READY_TO_BE_FILLED, std::memory_order_release);
+			// Publish — single store makes buffer visible to consumers
+			gstate.produce_idx.store(gstate.produce_idx.load(std::memory_order_relaxed) + 1, std::memory_order_release);
 		}
 
-		// Wake consumers only if any are blocked (skip lock otherwise)
+		// Wake consumers only if any are blocked
 		if (gstate.has_blocked.load(std::memory_order_acquire)) {
 			annotated_lock_guard<annotated_mutex> blocked_lock(gstate.blocked_state.lock);
 			gstate.blocked_state.UnblockTasks();
 			gstate.has_blocked.store(false, std::memory_order_release);
 		}
 
-		if (gstate.exhausted.load(std::memory_order_acquire)) {
+		if (gstate.exhausted.load(std::memory_order_relaxed)) {
 			break;
 		}
 	}
