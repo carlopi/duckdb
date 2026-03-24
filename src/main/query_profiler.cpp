@@ -122,6 +122,14 @@ void QueryProfiler::StartQuery(const string &query, bool is_explain_analyze_p, b
 		StartExplainAnalyze();
 	}
 	if (!IsEnabled()) {
+		// Even without the profiler, start a latency timer if Metrics logging is on.
+		if (Logger::Get(context).ShouldLog(MetricsLogType::NAME, MetricsLogType::LEVEL)) {
+			query_metrics.query_name = query;
+			// Destroy old timer first (its destructor writes elapsed time), then clear the metric.
+			query_metrics.latency_timer.reset();
+			query_metrics.ResetMetric(MetricType::LATENCY);
+			query_metrics.latency_timer = make_uniq<ActiveTimer>(query_metrics, MetricType::LATENCY, true);
+		}
 		return;
 	}
 	if (start_at_optimizer && !PrintOptimizerOutput()) {
@@ -202,7 +210,17 @@ void QueryProfiler::StartExplainAnalyze() {
 
 void QueryProfiler::EndQuery() {
 	unique_lock<std::mutex> guard(lock);
+
+	// Check if Metrics logging is enabled — this should work even without the profiler.
+	bool metrics_logging_enabled = Logger::Get(context).ShouldLog(MetricsLogType::NAME, MetricsLogType::LEVEL);
+
 	if (!IsEnabled()) {
+		// Even without the profiler, log root-level metrics if Metrics logging is on.
+		if (metrics_logging_enabled && query_metrics.latency_timer) {
+			query_metrics.latency_timer->EndTimer();
+			guard.unlock();
+			LogRootMetrics();
+		}
 		return;
 	}
 
