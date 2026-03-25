@@ -159,6 +159,8 @@ string PhysicalOperatorToString(PhysicalOperatorType type) {
 		return "RESULT_COLLECTOR";
 	case PhysicalOperatorType::EXTENSION:
 		return "EXTENSION";
+	case PhysicalOperatorType::FAN_OUT:
+		return "FAN_OUT";
 	case PhysicalOperatorType::PIVOT:
 		return "PIVOT";
 	case PhysicalOperatorType::COPY_DATABASE:

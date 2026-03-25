@@ -117,6 +117,7 @@ enum class PhysicalOperatorType : uint8_t {
 	RESULT_COLLECTOR,
 	RESET,
 	EXTENSION,
+	FAN_OUT,
 	VERIFY_VECTOR,
 	UPDATE_EXTENSIONS,
 

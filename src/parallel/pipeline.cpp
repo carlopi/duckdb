@@ -13,7 +13,6 @@
 #include "duckdb/parallel/pipeline_executor.hpp"
 #include "duckdb/parallel/task_scheduler.hpp"
 #include "duckdb/main/settings.hpp"
-#include "duckdb/execution/operator/helper/physical_fan_out.hpp"
 #include "duckdb/execution/physical_plan_generator.hpp"
 
 namespace duckdb {
@@ -172,43 +171,8 @@ void Pipeline::Schedule(shared_ptr<Event> &event) {
 	D_ASSERT(ready);
 	D_ASSERT(sink);
 
-	// Before Reset(), check if we should wrap the source with FanOut
-	// Only for PhysicalTableScan sources with intermediate operators
-	// (source → operators → sink, not just source → sink)
-	// Skip FanOut if any intermediate operator requires a single ordered stream
-	// (e.g., STREAMING_WINDOW depends on seeing rows in scan order)
-	bool has_order_dependent_operator = false;
-	for (auto &op : operators) {
-		if (op.get().type == PhysicalOperatorType::STREAMING_WINDOW || op.get().type == PhysicalOperatorType::WINDOW) {
-			has_order_dependent_operator = true;
-			break;
-		}
-	}
-	if (source && !source->ParallelSource() && sink->ParallelSink() &&
-	    source->type == PhysicalOperatorType::TABLE_SCAN && !operators.empty() && !has_order_dependent_operator &&
-	    !Settings::Get<DisableFanOutSetting>(executor.context)) {
-		auto &scheduler = TaskScheduler::GetScheduler(executor.context);
-		if (scheduler.NumberOfThreads() > 1) {
-			// Wrap the sequential source with a FanOut adapter
-			original_source = source;
-			fan_out_plan = make_uniq<PhysicalPlan>(Allocator::DefaultAllocator());
-			auto &fan_out = fan_out_plan->Make<PhysicalFanOut>(*source, source->estimated_cardinality);
-			// Register FanOut in the profiler tree so EXPLAIN ANALYZE works
-			auto &profiler = QueryProfiler::Get(GetClientContext());
-			profiler.InsertOperatorIntoTree(fan_out, *source);
-			source = &fan_out;
-		}
-	}
-
 	Reset();
 	if (!ScheduleParallel(event)) {
-		// If we inserted a FanOut but still can't parallelize, revert
-		if (original_source) {
-			source = original_source;
-			fan_out_plan.reset();
-			original_source = nullptr;
-			ResetSource(true);
-		}
 		// could not parallelize this pipeline: push a sequential task instead
 		ScheduleSequentialTask(event);
 	}

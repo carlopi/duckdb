@@ -18,7 +18,7 @@ namespace duckdb {
 //! so downstream operators (and the BatchCollector) can reconstruct original order.
 class PhysicalFanOut : public PhysicalOperator {
 public:
-	static constexpr const PhysicalOperatorType TYPE = PhysicalOperatorType::EXTENSION;
+	static constexpr const PhysicalOperatorType TYPE = PhysicalOperatorType::FAN_OUT;
 
 	PhysicalFanOut(PhysicalPlan &plan, PhysicalOperator &child_source, idx_t estimated_cardinality);
 

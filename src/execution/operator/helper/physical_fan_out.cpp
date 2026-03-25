@@ -6,7 +6,7 @@
 namespace duckdb {
 
 PhysicalFanOut::PhysicalFanOut(PhysicalPlan &plan, PhysicalOperator &child_source_p, idx_t estimated_cardinality)
-    : PhysicalOperator(plan, PhysicalOperatorType::EXTENSION, child_source_p.types, estimated_cardinality),
+    : PhysicalOperator(plan, PhysicalOperatorType::FAN_OUT, child_source_p.types, estimated_cardinality),
       child_source(child_source_p) {
 }
 
@@ -17,21 +17,17 @@ PhysicalFanOut::PhysicalFanOut(PhysicalPlan &plan, PhysicalOperator &child_sourc
 static constexpr idx_t BATCH_SIZE = 128;
 static constexpr idx_t NUM_BUFFERS = 8;
 
-enum class BufferState : uint8_t { NOT_INITIALIZED, READY_TO_BE_FILLED, FILLING, READY_TO_BE_PROCESSED, IN_PROCESSING };
-
 struct ChunkBuffer {
 	DataChunk chunks[BATCH_SIZE];
 	idx_t batch_indices[BATCH_SIZE];
 	idx_t count = 0;
 	atomic<idx_t> next_claim {0};
 	atomic<idx_t> done_count {0};
-	atomic<BufferState> state {BufferState::NOT_INITIALIZED};
 
 	void Initialize(const vector<LogicalType> &types) {
 		for (idx_t i = 0; i < BATCH_SIZE; i++) {
 			chunks[i].Initialize(Allocator::DefaultAllocator(), types);
 		}
-		state.store(BufferState::READY_TO_BE_FILLED, std::memory_order_release);
 	}
 
 	void PrepareForFill(const vector<LogicalType> &types) {
@@ -51,10 +47,17 @@ public:
 	FanOutGlobalSourceState(ClientContext &context, const PhysicalFanOut &op)
 	    : child_types(op.child_source.get().types) {
 		child_global = op.child_source.get().GetGlobalSourceState(context);
-		for (idx_t i = 0; i < NUM_BUFFERS; i++) {
-			buffers[i].Initialize(child_types);
+		// If the child source already supports multiple threads, passthrough
+		passthrough = child_global->MaxThreads() > 1;
+		if (!passthrough) {
+			for (idx_t i = 0; i < NUM_BUFFERS; i++) {
+				buffers[i].Initialize(child_types);
+			}
 		}
 	}
+
+	//! If true, delegate directly to the child source (it already parallelizes)
+	bool passthrough = false;
 
 	unique_ptr<GlobalSourceState> child_global;
 	unique_ptr<LocalSourceState> child_local;
@@ -64,25 +67,30 @@ public:
 
 	//! N buffers — producer fills in order, consumers read in order
 	ChunkBuffer buffers[NUM_BUFFERS];
-	atomic<idx_t> consume_idx {0}; //! Which buffer consumers should read from (in order)
+	atomic<idx_t> consume_idx {0};
 
 	//! Producer
 	atomic<bool> producing {false};
 	atomic<bool> exhausted {false};
 	idx_t next_batch = 0;
-	atomic<idx_t> produce_idx {0}; //! Next buffer to fill (producer writes, consumers read)
+	atomic<idx_t> produce_idx {0};
 
 	//! Blocked consumers
 	StateWithBlockableTasks blocked_state;
 	atomic<bool> has_blocked {false};
 
 	idx_t MaxThreads() override {
+		if (passthrough) {
+			return child_global->MaxThreads();
+		}
 		return NumericLimits<idx_t>::Maximum();
 	}
 };
 
 class FanOutLocalSourceState : public LocalSourceState {
 public:
+	//! In passthrough mode, this holds the child's local state
+	unique_ptr<LocalSourceState> child_local;
 	idx_t current_batch = 0;
 };
 
@@ -96,16 +104,21 @@ unique_ptr<GlobalSourceState> PhysicalFanOut::GetGlobalSourceState(ClientContext
 unique_ptr<LocalSourceState> PhysicalFanOut::GetLocalSourceState(ExecutionContext &context,
                                                                  GlobalSourceState &gstate) const {
 	auto &fan_gstate = gstate.Cast<FanOutGlobalSourceState>();
-	lock_guard<mutex> lock(fan_gstate.init_lock);
-	if (!fan_gstate.child_local_initialized) {
-		fan_gstate.child_local = child_source.get().GetLocalSourceState(context, *fan_gstate.child_global);
-		fan_gstate.child_local_initialized = true;
+	auto result = make_uniq<FanOutLocalSourceState>();
+	if (fan_gstate.passthrough) {
+		result->child_local = child_source.get().GetLocalSourceState(context, *fan_gstate.child_global);
+	} else {
+		lock_guard<mutex> lock(fan_gstate.init_lock);
+		if (!fan_gstate.child_local_initialized) {
+			fan_gstate.child_local = child_source.get().GetLocalSourceState(context, *fan_gstate.child_global);
+			fan_gstate.child_local_initialized = true;
+		}
 	}
-	return make_uniq<FanOutLocalSourceState>();
+	return std::move(result);
 }
 
 //===--------------------------------------------------------------------===//
-// TryConsume — scan buffers for IN_PROCESSING, CAS to claim a slot
+// TryConsume — claim a slot from the current consume buffer
 //===--------------------------------------------------------------------===//
 static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &lstate, DataChunk &chunk) {
 	idx_t cidx = gstate.consume_idx.load(std::memory_order_acquire);
@@ -130,7 +143,7 @@ static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &
 }
 
 //===--------------------------------------------------------------------===//
-// Produce — fill READY_TO_BE_FILLED buffers, publish as IN_PROCESSING
+// Produce — fill buffers from the child source
 //===--------------------------------------------------------------------===//
 static void Produce(FanOutGlobalSourceState &gstate, const PhysicalFanOut &op, ExecutionContext &context,
                     InterruptState &interrupt_state) {
@@ -196,6 +209,13 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 	auto &gstate = input.global_state.Cast<FanOutGlobalSourceState>();
 	auto &lstate = input.local_state.Cast<FanOutLocalSourceState>();
 
+	// Passthrough: child source already supports parallelism
+	if (gstate.passthrough) {
+		OperatorSourceInput child_input {*gstate.child_global, *lstate.child_local, input.interrupt_state};
+		return child_source.get().GetData(context, chunk, child_input);
+	}
+
+	// Fan-out mode: single-threaded child, multi-threaded consumers
 	if (TryConsume(gstate, lstate, chunk)) {
 		return SourceResultType::HAVE_MORE_OUTPUT;
 	}
@@ -234,9 +254,13 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 // Partition data
 //===--------------------------------------------------------------------===//
 OperatorPartitionData PhysicalFanOut::GetPartitionData(ExecutionContext &context, DataChunk &chunk,
-                                                       GlobalSourceState &gstate, LocalSourceState &lstate,
+                                                       GlobalSourceState &gstate_p, LocalSourceState &lstate_p,
                                                        const OperatorPartitionInfo &partition_info) const {
-	auto &fan_out_lstate = lstate.Cast<FanOutLocalSourceState>();
+	auto &gstate = gstate_p.Cast<FanOutGlobalSourceState>();
+	if (gstate.passthrough) {
+		return child_source.get().GetPartitionData(context, chunk, *gstate.child_global, *lstate_p.Cast<FanOutLocalSourceState>().child_local, partition_info);
+	}
+	auto &fan_out_lstate = lstate_p.Cast<FanOutLocalSourceState>();
 	return OperatorPartitionData(fan_out_lstate.current_batch);
 }
 
