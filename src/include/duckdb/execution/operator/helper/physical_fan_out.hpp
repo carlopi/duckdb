@@ -24,6 +24,9 @@ public:
 
 	//! The wrapped sequential source
 	reference<PhysicalOperator> child_source;
+	//! If true, FanOut always passes through (no buffering).
+	//! Set by post-pass when FanOut is a direct child of a sink (no intermediate operators).
+	bool force_passthrough = false;
 
 public:
 	// Source interface
