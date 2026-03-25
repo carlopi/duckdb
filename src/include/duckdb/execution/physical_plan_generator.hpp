@@ -94,6 +94,10 @@ public:
 	//! The order preservation type of the given operator decided by recursively looking at its children
 	static OrderPreservationType OrderPreservationRecursive(PhysicalOperator &op);
 
+	//! Wrap a source operator with FanOut if enabled.
+	//! Returns the FanOut wrapper, or the original operator if FanOut is disabled.
+	PhysicalOperator &WrapWithFanOut(PhysicalOperator &source);
+
 	//! Make a physical operator in the physical plan.
 	template <class T, class... ARGS>
 	PhysicalOperator &Make(ARGS &&... args) {

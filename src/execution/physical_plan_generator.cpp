@@ -27,17 +27,11 @@ unique_ptr<PhysicalPlan> PhysicalPlanGenerator::Plan(unique_ptr<LogicalOperator>
 	return std::move(physical_plan);
 }
 
-static void WrapSourcesWithFanOut(PhysicalOperator &op, PhysicalPlan &plan) {
-	for (auto &child_ref : op.children) {
-		auto &child = child_ref.get();
-		if (child.IsSource() && child.children.empty()) {
-			// Leaf source — wrap it with FanOut
-			auto &fan_out = plan.Make<PhysicalFanOut>(child, child.estimated_cardinality);
-			child_ref = reference<PhysicalOperator>(fan_out);
-		} else {
-			WrapSourcesWithFanOut(child, plan);
-		}
+PhysicalOperator &PhysicalPlanGenerator::WrapWithFanOut(PhysicalOperator &source) {
+	if (Settings::Get<DisableFanOutSetting>(context)) {
+		return source;
 	}
+	return Make<PhysicalFanOut>(source, source.estimated_cardinality);
 }
 
 PhysicalOperator &PhysicalPlanGenerator::ResolveAndPlan(unique_ptr<LogicalOperator> op) {
@@ -58,20 +52,6 @@ PhysicalOperator &PhysicalPlanGenerator::ResolveAndPlan(unique_ptr<LogicalOperat
 	profiler.StartPhase(MetricType::PHYSICAL_PLANNER_CREATE_PLAN);
 	physical_plan = PlanInternal(*op);
 	profiler.EndPhase();
-
-	// Wrap all source operators with FanOut for parallel execution.
-	// FanOut passes through if the source already supports parallelism (MaxThreads > 1),
-	// or if only a single thread is available at runtime.
-	if (!Settings::Get<DisableFanOutSetting>(context)) {
-		auto &root = physical_plan->Root();
-		if (root.IsSource() && root.children.empty()) {
-			// Root itself is a leaf source — wrap it and replace root
-			auto &fan_out = physical_plan->Make<PhysicalFanOut>(root, root.estimated_cardinality);
-			physical_plan->SetRoot(fan_out);
-		} else {
-			WrapSourcesWithFanOut(root, *physical_plan);
-		}
-	}
 
 	// Return a reference to the root of this plan.
 	return physical_plan->Root();
