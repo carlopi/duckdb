@@ -34,6 +34,18 @@ PhysicalOperator &PhysicalPlanGenerator::WrapWithFanOut(PhysicalOperator &source
 	return Make<PhysicalFanOut>(source, source.estimated_cardinality);
 }
 
+//! Post-pass: if a sink's direct child is FanOut (no intermediate operators),
+//! mark it as force-passthrough — there's no downstream work to parallelize.
+static void MarkDirectSinkFanOutPassthrough(PhysicalOperator &op) {
+	for (auto &child_ref : op.children) {
+		auto &child = child_ref.get();
+		if (op.IsSink() && child.type == PhysicalOperatorType::FAN_OUT) {
+			child.Cast<PhysicalFanOut>().force_passthrough = true;
+		}
+		MarkDirectSinkFanOutPassthrough(child);
+	}
+}
+
 PhysicalOperator &PhysicalPlanGenerator::ResolveAndPlan(unique_ptr<LogicalOperator> op) {
 	auto &profiler = QueryProfiler::Get(context);
 
@@ -52,6 +64,9 @@ PhysicalOperator &PhysicalPlanGenerator::ResolveAndPlan(unique_ptr<LogicalOperat
 	profiler.StartPhase(MetricType::PHYSICAL_PLANNER_CREATE_PLAN);
 	physical_plan = PlanInternal(*op);
 	profiler.EndPhase();
+
+	// Mark FanOut nodes that are direct children of sinks as force-passthrough
+	MarkDirectSinkFanOutPassthrough(physical_plan->Root());
 
 	// Return a reference to the root of this plan.
 	return physical_plan->Root();

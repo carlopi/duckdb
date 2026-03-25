@@ -47,8 +47,9 @@ public:
 	FanOutGlobalSourceState(ClientContext &context, const PhysicalFanOut &op)
 	    : child_types(op.child_source.get().types) {
 		child_global = op.child_source.get().GetGlobalSourceState(context);
-		// If the child source already supports multiple threads, passthrough
-		passthrough = child_global->MaxThreads() > 1;
+		// Passthrough if child already supports multiple threads, or forced by plan
+		force_passthrough = op.force_passthrough;
+		passthrough = force_passthrough || child_global->MaxThreads() > 1;
 		if (!passthrough) {
 			for (idx_t i = 0; i < NUM_BUFFERS; i++) {
 				buffers[i].Initialize(child_types);
@@ -56,14 +57,21 @@ public:
 		}
 	}
 
-	//! If true, delegate directly to the child source (it already parallelizes)
+	//! If true, delegate directly to the child source (no buffering)
 	bool passthrough = false;
+	//! If true, only one thread runs — the rest return FINISHED immediately
+	bool force_passthrough = false;
 
 	unique_ptr<GlobalSourceState> child_global;
 	unique_ptr<LocalSourceState> child_local;
 	bool child_local_initialized = false;
 	mutex init_lock;
 	const vector<LogicalType> &child_types;
+
+	//! Force-passthrough: first thread claims this, others see true and return FINISHED
+	atomic<bool> claimed {false};
+	//! Batch counter for force-passthrough mode
+	idx_t next_passthrough_batch = 0;
 
 	//! N buffers — producer fills in order, consumers read in order
 	ChunkBuffer buffers[NUM_BUFFERS];
@@ -80,6 +88,9 @@ public:
 	atomic<bool> has_blocked {false};
 
 	idx_t MaxThreads() override {
+		if (force_passthrough) {
+			return 1;
+		}
 		if (passthrough) {
 			return child_global->MaxThreads();
 		}
@@ -105,9 +116,11 @@ unique_ptr<LocalSourceState> PhysicalFanOut::GetLocalSourceState(ExecutionContex
                                                                  GlobalSourceState &gstate) const {
 	auto &fan_gstate = gstate.Cast<FanOutGlobalSourceState>();
 	auto result = make_uniq<FanOutLocalSourceState>();
-	if (fan_gstate.passthrough) {
+	if (fan_gstate.passthrough && !fan_gstate.force_passthrough) {
+		// Multi-thread passthrough: each thread gets its own child local state
 		result->child_local = child_source.get().GetLocalSourceState(context, *fan_gstate.child_global);
 	} else {
+		// Fan-out or force-passthrough: single shared child local state
 		lock_guard<mutex> lock(fan_gstate.init_lock);
 		if (!fan_gstate.child_local_initialized) {
 			fan_gstate.child_local = child_source.get().GetLocalSourceState(context, *fan_gstate.child_global);
@@ -209,6 +222,25 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 	auto &gstate = input.global_state.Cast<FanOutGlobalSourceState>();
 	auto &lstate = input.local_state.Cast<FanOutLocalSourceState>();
 
+	// Force-passthrough: source→sink with no intermediates, single thread only
+	if (gstate.force_passthrough) {
+		bool expected = false;
+		if (!gstate.claimed.compare_exchange_strong(expected, true, std::memory_order_acq_rel)) {
+			// Another thread already claimed — we're done
+			return SourceResultType::FINISHED;
+		}
+		// We're the sole thread — call child directly
+		OperatorSourceInput child_input {*gstate.child_global, *gstate.child_local, input.interrupt_state};
+		auto result = child_source.get().GetData(context, chunk, child_input);
+		lstate.current_batch = gstate.next_passthrough_batch++;
+		if (result == SourceResultType::FINISHED) {
+			return SourceResultType::FINISHED;
+		}
+		// Release claim so we can be called again
+		gstate.claimed.store(false, std::memory_order_release);
+		return SourceResultType::HAVE_MORE_OUTPUT;
+	}
+
 	// Passthrough: child source already supports parallelism
 	if (gstate.passthrough) {
 		OperatorSourceInput child_input {*gstate.child_global, *lstate.child_local, input.interrupt_state};
@@ -257,8 +289,9 @@ OperatorPartitionData PhysicalFanOut::GetPartitionData(ExecutionContext &context
                                                        GlobalSourceState &gstate_p, LocalSourceState &lstate_p,
                                                        const OperatorPartitionInfo &partition_info) const {
 	auto &gstate = gstate_p.Cast<FanOutGlobalSourceState>();
-	if (gstate.passthrough) {
-		return child_source.get().GetPartitionData(context, chunk, *gstate.child_global, *lstate_p.Cast<FanOutLocalSourceState>().child_local, partition_info);
+	if (gstate.passthrough && !gstate.force_passthrough) {
+		return child_source.get().GetPartitionData(
+		    context, chunk, *gstate.child_global, *lstate_p.Cast<FanOutLocalSourceState>().child_local, partition_info);
 	}
 	auto &fan_out_lstate = lstate_p.Cast<FanOutLocalSourceState>();
 	return OperatorPartitionData(fan_out_lstate.current_batch);

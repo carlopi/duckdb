@@ -1,3 +1,4 @@
+#include "duckdb/common/enums/physical_operator_type.hpp"
 #include "duckdb/execution/operator/persistent/physical_batch_copy_to_file.hpp"
 #include "duckdb/execution/operator/persistent/physical_copy_to_file.hpp"
 #include "duckdb/execution/physical_plan_generator.hpp"
@@ -8,7 +9,9 @@ namespace duckdb {
 PhysicalOperator &PhysicalPlanGenerator::CreatePlan(LogicalCopyToFile &op) {
 	auto &plan = CreatePlan(*op.children[0]);
 	bool preserve_insertion_order = PhysicalPlanGenerator::PreserveInsertionOrder(context, plan);
-	bool supports_batch_index = PhysicalPlanGenerator::UseBatchIndex(context, plan);
+	// Skip batch index if plan is just a FanOut source with no intermediate operators
+	bool supports_batch_index =
+	    plan.type == PhysicalOperatorType::FAN_OUT ? false : PhysicalPlanGenerator::UseBatchIndex(context, plan);
 
 	if (op.preserve_order == PreserveOrderType::PRESERVE_ORDER) {
 		preserve_insertion_order = true;

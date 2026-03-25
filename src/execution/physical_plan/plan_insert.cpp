@@ -100,7 +100,9 @@ PhysicalOperator &DuckCatalog::PlanInsert(ClientContext &context, PhysicalPlanGe
                                           optional_ptr<PhysicalOperator> plan) {
 	D_ASSERT(plan);
 	bool parallel_streaming_insert = !PhysicalPlanGenerator::PreserveInsertionOrder(context, *plan);
-	bool use_batch_index = PhysicalPlanGenerator::UseBatchIndex(context, *plan);
+	// Skip batch index if plan is just a FanOut source with no intermediate operators
+	bool use_batch_index =
+	    plan->type == PhysicalOperatorType::FAN_OUT ? false : PhysicalPlanGenerator::UseBatchIndex(context, *plan);
 	auto num_threads = TaskScheduler::GetScheduler(context).NumberOfThreads();
 	if (op.return_chunk) {
 		// not supported for RETURNING (yet?)

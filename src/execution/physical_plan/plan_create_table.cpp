@@ -2,6 +2,7 @@
 #include "duckdb/catalog/catalog_entry/schema_catalog_entry.hpp"
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
 #include "duckdb/catalog/duck_catalog.hpp"
+#include "duckdb/common/enums/physical_operator_type.hpp"
 #include "duckdb/execution/operator/persistent/physical_batch_insert.hpp"
 #include "duckdb/execution/operator/persistent/physical_insert.hpp"
 #include "duckdb/execution/operator/schema/physical_create_table.hpp"
@@ -18,7 +19,9 @@ namespace duckdb {
 PhysicalOperator &DuckCatalog::PlanCreateTableAs(ClientContext &context, PhysicalPlanGenerator &planner,
                                                  LogicalCreateTable &op, PhysicalOperator &plan) {
 	bool parallel_streaming_insert = !PhysicalPlanGenerator::PreserveInsertionOrder(context, plan);
-	bool use_batch_index = PhysicalPlanGenerator::UseBatchIndex(context, plan);
+	// Skip batch index if plan is just a FanOut source with no intermediate operators
+	bool use_batch_index =
+	    plan.type == PhysicalOperatorType::FAN_OUT ? false : PhysicalPlanGenerator::UseBatchIndex(context, plan);
 	auto num_threads = TaskScheduler::GetScheduler(context).NumberOfThreads();
 	if (!parallel_streaming_insert && use_batch_index) {
 		auto &insert = planner.Make<PhysicalBatchInsert>(op, op.schema, std::move(op.info), 0U);
