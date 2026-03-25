@@ -1,0 +1,15 @@
+# name: benchmark/micro/fan_out/select_light.benchmark
+# description: Light SELECT through FanOut: count(*) over range(50M)
+# group: [fan_out]
+
+name Fan Out Select Light
+group fan_out
+
+load
+SELECT 1
+
+run
+SELECT count(*) FROM range(50000000)
+
+result I
+50000000

@@ -1,0 +1,15 @@
+# name: benchmark/micro/fan_out/select_heavy.benchmark
+# description: Heavy SELECT through FanOut: count(DISTINCT md5()) over range(10M)
+# group: [fan_out]
+
+name Fan Out Select Heavy
+group fan_out
+
+load
+SELECT 1
+
+run
+SELECT count(DISTINCT md5(range::VARCHAR)) FROM range(10000000)
+
+result I
+10000000

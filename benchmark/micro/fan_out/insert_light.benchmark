@@ -1,0 +1,13 @@
+# name: benchmark/micro/fan_out/insert_light.benchmark
+# description: Light INSERT through FanOut: INSERT INTO FROM range(50M)
+# group: [fan_out]
+
+name Fan Out Insert Light
+group fan_out
+storage transient
+
+load
+CREATE TABLE t(range BIGINT)
+
+run
+INSERT INTO t FROM range(50000000)

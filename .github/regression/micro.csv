@@ -36,3 +36,12 @@ benchmark/micro/filter/choose_correct_filter_function.benchmark
 benchmark/micro/optimizer/topn_window_elimination.benchmark
 benchmark/micro/aggregate/group_two_string_dictionaries.benchmark
 benchmark/micro/functions/nested_macros.benchmark
+benchmark/micro/fan_out/select_light.benchmark
+benchmark/micro/fan_out/select_medium.benchmark
+benchmark/micro/fan_out/select_heavy.benchmark
+benchmark/micro/fan_out/ctas_light.benchmark
+benchmark/micro/fan_out/ctas_medium.benchmark
+benchmark/micro/fan_out/ctas_heavy.benchmark
+benchmark/micro/fan_out/insert_light.benchmark
+benchmark/micro/fan_out/insert_medium.benchmark
+benchmark/micro/fan_out/insert_heavy.benchmark

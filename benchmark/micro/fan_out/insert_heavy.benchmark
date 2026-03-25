@@ -1,0 +1,13 @@
+# name: benchmark/micro/fan_out/insert_heavy.benchmark
+# description: Heavy INSERT through FanOut: INSERT INTO SELECT md5() FROM range(5M)
+# group: [fan_out]
+
+name Fan Out Insert Heavy
+group fan_out
+storage transient
+
+load
+CREATE TABLE t(h1 VARCHAR, h2 VARCHAR)
+
+run
+INSERT INTO t SELECT md5(range::VARCHAR), md5(md5(range::VARCHAR)) FROM range(5000000)

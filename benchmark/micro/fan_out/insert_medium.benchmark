@@ -1,0 +1,13 @@
+# name: benchmark/micro/fan_out/insert_medium.benchmark
+# description: Medium INSERT through FanOut: INSERT INTO SELECT range::VARCHAR FROM range(20M)
+# group: [fan_out]
+
+name Fan Out Insert Medium
+group fan_out
+storage transient
+
+load
+CREATE TABLE t(v VARCHAR)
+
+run
+INSERT INTO t SELECT range::VARCHAR FROM range(20000000)

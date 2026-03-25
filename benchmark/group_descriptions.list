@@ -14,6 +14,10 @@ The benchmarks below run several micro-benchmarks involving aggregates using fou
 [Cast]
 The cast micro benchmark set contains several benchmarks that look at conversion speeds between different data types
 
+[fan_out]
+[Fan Out]
+The fan-out micro benchmark set measures the performance of FanOut parallel execution for sequential sources (e.g. range()) across SELECT, CREATE TABLE AS, and INSERT workloads at light, medium, and heavy expression complexity.
+
 [csv]
 [CSV]
 The CSV micro benchmark set contains several benchmarks that are aimed at measuring CSV reading and writing performance.

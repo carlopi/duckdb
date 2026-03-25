@@ -1,0 +1,13 @@
+# name: benchmark/micro/fan_out/ctas_medium.benchmark
+# description: Medium CTAS through FanOut: CREATE TABLE AS SELECT range::VARCHAR FROM range(20M)
+# group: [fan_out]
+
+name Fan Out CTAS Medium
+group fan_out
+storage transient
+
+load
+SELECT 1
+
+run
+CREATE OR REPLACE TABLE t AS SELECT range::VARCHAR AS v FROM range(20000000)

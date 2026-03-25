@@ -1,0 +1,13 @@
+# name: benchmark/micro/fan_out/ctas_light.benchmark
+# description: Light CTAS through FanOut: CREATE TABLE AS FROM range(50M)
+# group: [fan_out]
+
+name Fan Out CTAS Light
+group fan_out
+storage transient
+
+load
+SELECT 1
+
+run
+CREATE OR REPLACE TABLE t AS FROM range(50000000)

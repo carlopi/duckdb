@@ -1,0 +1,12 @@
+# name: benchmark/micro/fan_out/select_medium.benchmark
+# description: Medium SELECT through FanOut: sum + filter over range(100M)
+# group: [fan_out]
+
+name Fan Out Select Medium
+group fan_out
+
+load
+SELECT 1
+
+run
+SELECT sum(range), count(*) FROM range(100000000) WHERE range % 3 = 0

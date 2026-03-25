@@ -1,0 +1,13 @@
+# name: benchmark/micro/fan_out/ctas_heavy.benchmark
+# description: Heavy CTAS through FanOut: CREATE TABLE AS SELECT md5() FROM range(5M)
+# group: [fan_out]
+
+name Fan Out CTAS Heavy
+group fan_out
+storage transient
+
+load
+SELECT 1
+
+run
+CREATE OR REPLACE TABLE t AS SELECT md5(range::VARCHAR) AS h1, md5(md5(range::VARCHAR)) AS h2 FROM range(5000000)
