@@ -136,9 +136,9 @@ void SQLLogicTestRunner::LoadDatabase(string dbpath, bool load_extensions) {
 	loaded_databases.push_back(dbpath);
 
 	// restart the database with the specified db path
-	db.reset();
 	con.reset();
 	named_connection_map.clear();
+	db.reset();
 	// now re-open the current database
 
 	try {
