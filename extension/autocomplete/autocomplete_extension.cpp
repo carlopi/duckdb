@@ -881,7 +881,7 @@ public:
 
 static void EnablePEGParserFunction(ClientContext &context, TableFunctionInput &data_p, DataChunk &output) {
 	auto &db_config = DBConfig::GetConfig(context);
-	db_config.SetOptionByName("allow_parser_override_extension", Value("strict"));
+	db_config.SetOptionByName("allow_parser_override_extension", Value("fallback"));
 }
 
 static void DisablePEGParserFunction(ClientContext &context, TableFunctionInput &data_p, DataChunk &output) {

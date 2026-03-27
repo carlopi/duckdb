@@ -1,19 +1,19 @@
-SetStatement <- 'SET' (StandardAssignment / SetTimeZone)
+SetStatement <- 'SETZE' (StandardAssignment / SetTimeZone)
 
 StandardAssignment <- (SetVariable / SetSetting) SetAssignment
-SetTimeZone <- 'TIME' 'ZONE' Expression
+SetTimeZone <- 'ZIIT' 'ZONE' Expression
 SetSetting <- SettingScope? SettingName
 SetVariable <- VariableScope Identifier
 VariableScope <- 'VARIABLE'
 
 SettingScope <- LocalScope / SessionScope / GlobalScope
-LocalScope <- 'LOCAL'
-SessionScope <- 'SESSION'
+LocalScope <- 'LOKAL'
+SessionScope <- 'SITZIG'
 GlobalScope <- 'GLOBAL'
 
 SetAssignment <- VariableAssign VariableList
 
-VariableAssign <- '=' / 'TO'
+VariableAssign <- '=' / 'ZU'
 VariableList <- List(Expression)
 
-ResetStatement <- 'RESET' (SetVariable / SetSetting)
+ResetStatement <- 'ZRUGGSETZE' (SetVariable / SetSetting)

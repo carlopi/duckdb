@@ -1,3 +1,3 @@
-UseStatement <- 'USE' UseTarget
+UseStatement <- 'VERWAENDE' UseTarget
 
 UseTarget <- (CatalogName '.' ReservedSchemaName) / SchemaName / CatalogName

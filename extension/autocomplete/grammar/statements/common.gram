@@ -55,38 +55,38 @@ StringLiteral <- '\'' [^\']* '\''
 
 Type <- (TimeType / IntervalType / BitType / RowType / VariantType / MapType / GeometryType / UnionType / NumericType / SetofType / SimpleType) ArrayBounds*
 SimpleType <- (CharacterType / QualifiedTypeName) TypeModifiers?
-CharacterType <- ('CHARACTER' 'VARYING'?) /
-                 ('CHAR' 'VARYING'?) /
-                 ('NATIONAL' 'CHARACTER' 'VARYING'?) /
-                 ('NATIONAL' 'CHAR' 'VARYING'?) /
-                 ('NCHAR' 'VARYING'?) /
-                 'VARCHAR'
+CharacterType <- ('BUECHSTABE' 'VARIIEREND'?) /
+                 ('ZEICHE' 'VARIIEREND'?) /
+                 ('NATIONAL' 'BUECHSTABE' 'VARIIEREND'?) /
+                 ('NATIONAL' 'ZEICHE' 'VARIIEREND'?) /
+                 ('NZEICHE' 'VARIIEREND'?) /
+                 'ZEICHECHETTI'
 
 IntervalType <- IntervalInterval / IntervalNumber
-IntervalInterval <- 'INTERVAL' Interval?
-IntervalNumber <- 'INTERVAL' Parens(NumberLiteral)
+IntervalInterval <- 'INTERVALL' Interval?
+IntervalNumber <- 'INTERVALL' Parens(NumberLiteral)
 
-YearKeyword         <- 'YEAR' / 'YEARS'
-MonthKeyword        <- 'MONTH' / 'MONTHS'
-DayKeyword          <- 'DAY' / 'DAYS'
-HourKeyword         <- 'HOUR' / 'HOURS'
-MinuteKeyword       <- 'MINUTE' / 'MINUTES'
-SecondKeyword       <- 'SECOND' / 'SECONDS'
-MillisecondKeyword  <- 'MILLISECOND' / 'MILLISECONDS'
-MicrosecondKeyword  <- 'MICROSECOND' / 'MICROSECONDS'
-WeekKeyword         <- 'WEEK' / 'WEEKS'
-QuarterKeyword      <- 'QUARTER' / 'QUARTERS'
-DecadeKeyword       <- 'DECADE' / 'DECADES'
-CenturyKeyword      <- 'CENTURY' / 'CENTURIES'
-MillenniumKeyword   <- 'MILLENNIUM' / 'MILLENNIA'
+YearKeyword         <- 'JAHR' / 'JAHRI'
+MonthKeyword        <- 'MONET' / 'MOENET'
+DayKeyword          <- 'TAG' / 'TAEG'
+HourKeyword         <- 'STUND' / 'STUNDE'
+MinuteKeyword       <- 'MINUTE' / 'MINUTE_MZ'
+SecondKeyword       <- 'SEKUNDE' / 'SEKUNDE_MZ'
+MillisecondKeyword  <- 'MILLISEKUNDE' / 'MILLISEKUNDE_MZ'
+MicrosecondKeyword  <- 'MIKROSEKUNDE' / 'MIKROSEKUNDE_MZ'
+WeekKeyword         <- 'WUCHE' / 'WUCHE_MZ'
+QuarterKeyword      <- 'QUARTAL' / 'QUARTAEL'
+DecadeKeyword       <- 'JAHRZAEHNT' / 'JAHRZAEHNTE'
+CenturyKeyword      <- 'JAHRHUNDERT' / 'JAHRHUNDERTE'
+MillenniumKeyword   <- 'JAHRTUSIG' / 'JAHRTUSIGI'
 
-Interval <- (YearKeyword 'TO' MonthKeyword) /
-    (DayKeyword 'TO' HourKeyword) /
-    (DayKeyword 'TO' MinuteKeyword) /
-    (DayKeyword 'TO' SecondKeyword) /
-    (HourKeyword 'TO' MinuteKeyword) /
-    (HourKeyword 'TO' SecondKeyword) /
-    (MinuteKeyword 'TO' SecondKeyword) /
+Interval <- (YearKeyword 'ZU' MonthKeyword) /
+    (DayKeyword 'ZU' HourKeyword) /
+    (DayKeyword 'ZU' MinuteKeyword) /
+    (DayKeyword 'ZU' SecondKeyword) /
+    (HourKeyword 'ZU' MinuteKeyword) /
+    (HourKeyword 'ZU' SecondKeyword) /
+    (MinuteKeyword 'ZU' SecondKeyword) /
     YearKeyword /
     MonthKeyword /
     DayKeyword /
@@ -101,49 +101,49 @@ Interval <- (YearKeyword 'TO' MonthKeyword) /
     CenturyKeyword /
     MillenniumKeyword
 
-BitType <- 'BIT' 'VARYING'? Parens(List(Expression))?
-GeometryType <- 'GEOMETRY' Parens(Expression)?
-VariantType <- 'VARIANT'
+BitType <- 'BIT' 'VARIIEREND'? Parens(List(Expression))?
+GeometryType <- 'GEOMETRIE' Parens(Expression)?
+VariantType <- 'VARIANTE'
 
 NumericType <- SimpleNumericType / DecimalNumericType
 SimpleNumericType <- IntType / IntegerType / SmallintType /
                 BigintType / RealType / BooleanType / DoubleType
 DecimalNumericType <- FloatType / DecimalType / DecType / NumericModType
 
-IntType <- 'INT'
-IntegerType <- 'INTEGER'
-SmallintType <- 'SMALLINT'
-BigintType <- 'BIGINT'
-RealType <- 'REAL'
+IntType <- 'GANZ'
+IntegerType <- 'GANZZAHL'
+SmallintType <- 'CHLIIZAHL'
+BigintType <- 'GROSSZAHL'
+RealType <- 'REELL'
 BooleanType <- 'BOOLEAN'
-DoubleType <- ('DOUBLE' 'PRECISION')
+DoubleType <- ('DOPPELT' 'GNAUIGKEIT')
 
-FloatType <- 'FLOAT' Parens(NumberLiteral)?
-DecimalType <- 'DECIMAL' TypeModifiers?
-DecType <- 'DEC' TypeModifiers?
-NumericModType <- 'NUMERIC' TypeModifiers?
+FloatType <- 'FLIESSKOMMA' Parens(NumberLiteral)?
+DecimalType <- 'DEZIMAL' TypeModifiers?
+DecType <- 'DEZ' TypeModifiers?
+NumericModType <- 'NUMERISCH' TypeModifiers?
 
 QualifiedTypeName <- (Identifier '.')* TypeName
 TypeModifiers <- Parens(List(Expression)?)
 RowType <- RowOrStruct ColIdTypeList
-SetofType <- 'SETOF' Type
-UnionType <- 'UNION' ColIdTypeList
+SetofType <- 'MAENGEVO' Type
+UnionType <- 'VEREINIG' ColIdTypeList
 ColIdTypeList <- Parens(List(ColIdType))
-MapType <- 'MAP' Parens(List(Type))
+MapType <- 'CHARTE' Parens(List(Type))
 ColIdType <- ColId Type
-ArrayBounds <- SquareBracketsArray / 'ARRAY'
-ArrayKeyword <- 'ARRAY'
+ArrayBounds <- SquareBracketsArray / 'REIHE'
+ArrayKeyword <- 'REIHE'
 SquareBracketsArray <- '[' Expression? ']'
 TimeType <- TimeOrTimestamp TypeModifiers? TimeZone?
 TimeOrTimestamp <- TimeTypeId / TimestampTypeId
-TimeTypeId <- 'TIME'
-TimestampTypeId <- 'TIMESTAMP'
-TimeZone <- WithOrWithout 'TIME' 'ZONE'
+TimeTypeId <- 'ZIIT'
+TimestampTypeId <- 'ZIITSCHTAEMPFEL'
+TimeZone <- WithOrWithout 'ZIIT' 'ZONE'
 WithOrWithout <- WithRule / WithoutRule
-WithRule <- 'WITH'
-WithoutRule <- 'WITHOUT'
+WithRule <- 'MIT'
+WithoutRule <- 'OHNI'
 
-RowOrStruct <- 'ROW' / 'STRUCT'
+RowOrStruct <- 'ZIILE' / 'STRUKTUR'
 
 # internal definitions
 %whitespace <- [ \t\n\r]*

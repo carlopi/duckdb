@@ -1,9 +1,9 @@
-UpdateStatement <- WithClause? 'UPDATE' UpdateTarget UpdateSetClause FromClause? WhereClause? ReturningClause?
+UpdateStatement <- WithClause? 'AKTUALISIERE' UpdateTarget UpdateSetClause FromClause? WhereClause? ReturningClause?
 
 UpdateTarget <- BaseTableSet / BaseTableAliasSet
-BaseTableSet <- BaseTableName 'SET'
-BaseTableAliasSet <- BaseTableName UpdateAlias? 'SET'
-UpdateAlias <- 'AS'? ColId
+BaseTableSet <- BaseTableName 'SETZE'
+BaseTableAliasSet <- BaseTableName UpdateAlias? 'SETZE'
+UpdateAlias <- 'ALS'? ColId
 UpdateSetClause <- UpdateSetElementList / UpdateSetTuple
 UpdateSetTuple <- Parens(List(ColumnName)) '=' Expression
 UpdateSetElementList <- List(UpdateSetElement)

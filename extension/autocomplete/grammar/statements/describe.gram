@@ -1,13 +1,13 @@
 DescribeStatement <- ShowTables / ShowSelect / ShowAllTables / ShowQualifiedName
 
 ShowSelect <- ShowOrDescribeOrSummarize SelectStatementInternal
-ShowAllTables <- ShowOrDescribe 'ALL' 'TABLES'
+ShowAllTables <- ShowOrDescribe 'ALLI' 'TABAELLENE'
 ShowQualifiedName <- ShowOrDescribeOrSummarize (BaseTableName / StringLiteral)?
-ShowTables <- ShowOrDescribe 'TABLES' 'FROM' QualifiedName
+ShowTables <- ShowOrDescribe 'TABAELLENE' 'VO' QualifiedName
 
 ShowOrDescribeOrSummarize <- ShowOrDescribe / Summarize
 Summarize <- SummarizeRule
-SummarizeRule <- 'SUMMARIZE'
+SummarizeRule <- 'ZAEMEFASSE'
 ShowOrDescribe <- ShowRule / DescribeRule
-ShowRule <- 'SHOW'
-DescribeRule <- 'DESCRIBE' / 'DESC'
+ShowRule <- 'ZEIG'
+DescribeRule <- 'BESCHRIIBE' / 'ABAE'

@@ -1,18 +1,18 @@
-CommentStatement <- 'COMMENT' 'ON' CommentOnType DottedIdentifier 'IS' CommentValue
+CommentStatement <- 'KOMMENTAR' 'UF' CommentOnType DottedIdentifier 'ISCH' CommentValue
 
 CommentOnType <-    CommentTable / CommentSequence / CommentFunction / CommentMacroTable / CommentMacro /
                     CommentView / CommentDatabase / CommentIndex / CommentSchema / CommentType / CommentColumn
 
-CommentTable <- 'TABLE'
-CommentSequence <- 'SEQUENCE'
-CommentFunction <- 'FUNCTION'
-CommentMacroTable <- 'MACRO' 'TABLE'
-CommentMacro <- 'MACRO'
-CommentView <- 'VIEW'
-CommentDatabase <- 'DATABASE'
-CommentIndex <- 'INDEX'
+CommentTable <- 'TABAELLE'
+CommentSequence <- 'FOLG'
+CommentFunction <- 'FUNKTION'
+CommentMacroTable <- 'MAKRO' 'TABAELLE'
+CommentMacro <- 'MAKRO'
+CommentView <- 'AASICHT'
+CommentDatabase <- 'DATEBANK'
+CommentIndex <- 'VERZEICHNIS'
 CommentSchema <- 'SCHEMA'
-CommentType <- 'TYPE'
-CommentColumn <- 'COLUMN'
+CommentType <- 'TYP'
+CommentColumn <- 'SPALTE'
 
-CommentValue <- 'NULL' / StringLiteral
+CommentValue <- 'NUET' / StringLiteral

@@ -1,15 +1,15 @@
-CreateIndexStmt <- Unique? 'INDEX' IfNotExists? IndexName? 'ON' BaseTableName InsertColumnList? IndexType? Parens(List(IndexElement))? WithList? WhereClause?
+CreateIndexStmt <- Unique? 'VERZEICHNIS' IfNotExists? IndexName? 'UF' BaseTableName InsertColumnList? IndexType? Parens(List(IndexElement))? WithList? WhereClause?
 
-WithList <- 'WITH' RelOptionOrOids
+WithList <- 'MIT' RelOptionOrOids
 RelOptionOrOids <- RelOptionList / Oids
 RelOptionList <- Parens(List(RelOption))
-Oids <- ('WITH' / 'WITHOUT') 'OIDS'
+Oids <- ('MIT' / 'OHNI') 'OIDS'
 IndexElement <- Expression DescOrAsc? NullsFirstOrLast?
-Unique <- 'UNIQUE'
-IndexType <- 'USING' Identifier
+Unique <- 'EINZIGARTIG'
+IndexType <- 'BRUUCHE' Identifier
 RelOption <- RelOptionName RelOptionArgumentOpt?
 RelOptionName <- DottedIdentifier / StringLiteral
 RelOptionArgumentOpt <- '=' DefArg
 DefArg <- NullLiteral / ReservedKeyword / StringLiteral / NumberLiteral / NoneLiteral / Expression
 ReservedKeywordValue <- ReservedKeyword
-NoneLiteral <- 'NONE'
+NoneLiteral <- 'KEINS'

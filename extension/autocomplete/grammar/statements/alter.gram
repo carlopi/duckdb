@@ -1,48 +1,48 @@
-AlterStatement <- 'ALTER' AlterOptions
+AlterStatement <- 'AENDERE' AlterOptions
 
 AlterOptions <- AlterTableStmt / AlterViewStmt / AlterSequenceStmt / AlterDatabaseStmt / AlterSchemaStmt
 
-AlterTableStmt <- 'TABLE' IfExists? BaseTableName AlterTableOptions
+AlterTableStmt <- 'TABAELLE' IfExists? BaseTableName AlterTableOptions
 AlterSchemaStmt <- 'SCHEMA' IfExists? QualifiedName RenameAlter
 
 AlterTableOptions <- AddColumn / DropColumn / AlterColumn / AddConstraint / ChangeNullability /
         RenameColumn / RenameAlter / SetPartitionedBy / ResetPartitionedBy / SetSortedBy / ResetSortedBy / SetOptions / ResetOptions
 
-AddConstraint <- 'ADD' TopLevelConstraint
-AddColumn <- 'ADD' 'COLUMN'? IfNotExists? AddColumnEntry
+AddConstraint <- 'DEZUETUAE' TopLevelConstraint
+AddColumn <- 'DEZUETUAE' 'SPALTE'? IfNotExists? AddColumnEntry
 AddColumnEntry <- DottedIdentifier Type? GeneratedColumn? ColumnConstraint*
-DropColumn <- 'DROP' 'COLUMN'? IfExists? NestedColumnName DropBehavior?
-AlterColumn <- 'ALTER' 'COLUMN'? NestedColumnName AlterColumnEntry
-RenameColumn <- 'RENAME' 'COLUMN'? NestedColumnName 'TO' Identifier
+DropColumn <- 'ABESCHMISSE' 'SPALTE'? IfExists? NestedColumnName DropBehavior?
+AlterColumn <- 'AENDERE' 'SPALTE'? NestedColumnName AlterColumnEntry
+RenameColumn <- 'UMBENAENNE' 'SPALTE'? NestedColumnName 'ZU' Identifier
 NestedColumnName <- (Identifier '.')* ColumnName
-RenameAlter <- 'RENAME' 'TO' Identifier
-SetPartitionedBy <- 'SET' 'PARTITIONED' 'BY' Parens(List(Expression))
-ResetPartitionedBy <- 'RESET' 'PARTITIONED' 'BY'
-SetSortedBy <- 'SET' 'SORTED' 'BY' Parens(OrderByExpressions)
-ResetSortedBy <- 'RESET' 'SORTED' 'BY'
-SetOptions <- 'SET' RelOptionList
-ResetOptions <- 'RESET' RelOptionList
+RenameAlter <- 'UMBENAENNE' 'ZU' Identifier
+SetPartitionedBy <- 'SETZE' 'UFTEILT' 'NACH' Parens(List(Expression))
+ResetPartitionedBy <- 'ZRUGGSETZE' 'UFTEILT' 'NACH'
+SetSortedBy <- 'SETZE' 'SORTIERT' 'NACH' Parens(OrderByExpressions)
+ResetSortedBy <- 'ZRUGGSETZE' 'SORTIERT' 'NACH'
+SetOptions <- 'SETZE' RelOptionList
+ResetOptions <- 'ZRUGGSETZE' RelOptionList
 
 AlterColumnEntry <- AddOrDropDefault / ChangeNullability / AlterType
 
 AddOrDropDefault <- AddDefault / DropDefault
-AddDefault <- 'SET' 'DEFAULT' Expression
-DropDefault <- 'DROP' 'DEFAULT'
+AddDefault <- 'SETZE' 'STANDARD' Expression
+DropDefault <- 'ABESCHMISSE' 'STANDARD'
 
-ChangeNullability <- DropOrSet 'NOT' 'NULL'
-DropOrSet <- 'DROP' / 'SET'
+ChangeNullability <- DropOrSet 'NID' 'NUET'
+DropOrSet <- 'ABESCHMISSE' / 'SETZE'
 
-AlterType <- SetData? 'TYPE' Type? UsingExpression?
-SetData <- 'SET' 'DATA'?
-UsingExpression <- 'USING' Expression
+AlterType <- SetData? 'TYP' Type? UsingExpression?
+SetData <- 'SETZE' 'DATE'?
+UsingExpression <- 'BRUUCHE' Expression
 
-AlterViewStmt <- 'VIEW' IfExists? BaseTableName RenameAlter
+AlterViewStmt <- 'AASICHT' IfExists? BaseTableName RenameAlter
 
-AlterSequenceStmt <- 'SEQUENCE' IfExists? QualifiedSequenceName AlterSequenceOptions
+AlterSequenceStmt <- 'FOLG' IfExists? QualifiedSequenceName AlterSequenceOptions
 
 QualifiedSequenceName <- CatalogQualification? SchemaQualification? SequenceName
 
 AlterSequenceOptions <- RenameAlter / SetSequenceOption
 SetSequenceOption <- List(SequenceOption)
 
-AlterDatabaseStmt <- 'DATABASE' IfExists? Identifier 'SET' 'ALIAS' 'TO' Identifier
+AlterDatabaseStmt <- 'DATEBANK' IfExists? Identifier 'SETZE' 'ALIAS' 'ZU' Identifier

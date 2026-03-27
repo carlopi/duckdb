@@ -1,1 +1,1 @@
-CheckpointStatement <- 'FORCE'? 'CHECKPOINT' CatalogName?
+CheckpointStatement <- 'ZWINGE'? 'SICHERIGSPUNKT' CatalogName?

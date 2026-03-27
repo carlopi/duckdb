@@ -1,24 +1,24 @@
-MergeIntoStatement <- WithClause? 'MERGE' 'INTO' TargetOptAlias MergeIntoUsingClause JoinQualifier MergeMatch+ ReturningClause?
-MergeIntoUsingClause <- 'USING' TableRef
+MergeIntoStatement <- WithClause? 'VERSCHMELZE' 'INE' TargetOptAlias MergeIntoUsingClause JoinQualifier MergeMatch+ ReturningClause?
+MergeIntoUsingClause <- 'BRUUCHE' TableRef
 MergeMatch <- MatchedClause / NotMatchedClause
-MatchedClause <- 'WHEN' 'MATCHED' AndExpression? 'THEN' MatchedClauseAction
+MatchedClause <- 'WAENN' 'PASST' AndExpression? 'DENN' MatchedClauseAction
 MatchedClauseAction <- UpdateMatchClause / DeleteMatchClause / InsertMatchClause / DoNothingMatchClause / ErrorMatchClause
-UpdateMatchClause <- 'UPDATE' UpdateMatchInfo?
+UpdateMatchClause <- 'AKTUALISIERE' UpdateMatchInfo?
 UpdateMatchInfo <- UpdateMatchSetClause / ByNameOrPosition
-DeleteMatchClause <- 'DELETE'
-InsertMatchClause <- 'INSERT' InsertMatchInfo?
+DeleteMatchClause <- 'LOESCHE'
+InsertMatchClause <- 'INESETZE' InsertMatchInfo?
 InsertMatchInfo <- InsertValuesList / InsertDefaultValues / InsertByNameOrPosition
-InsertDefaultValues <- 'DEFAULT' 'VALUES'
+InsertDefaultValues <- 'STANDARD' 'WAERT'
 InsertByNameOrPosition <- ByNameOrPosition? '*'?
-InsertValuesList <- InsertColumnList? 'VALUES' Parens(List(Expression))
-DoNothingMatchClause <- 'DO' 'NOTHING'
-ErrorMatchClause <- 'ERROR' Expression?
-UpdateMatchSetClause <- 'SET' (UpdateSetClause / '*')
-AndExpression <- 'AND' Expression
-NotMatchedClause <- 'WHEN' 'NOT' 'MATCHED' BySourceOrTarget? AndExpression? 'THEN' MatchedClauseAction
+InsertValuesList <- InsertColumnList? 'WAERT' Parens(List(Expression))
+DoNothingMatchClause <- 'MACH' 'NUEUET'
+ErrorMatchClause <- 'FAEHLER' Expression?
+UpdateMatchSetClause <- 'SETZE' (UpdateSetClause / '*')
+AndExpression <- 'UND' Expression
+NotMatchedClause <- 'WAENN' 'NID' 'PASST' BySourceOrTarget? AndExpression? 'DENN' MatchedClauseAction
 BySourceOrTarget <- BySource / ByTarget
-BySource <- 'BY' 'SOURCE'
-ByTarget <- 'BY' 'TARGET'
+BySource <- 'NACH' 'QUAELLE'
+ByTarget <- 'NACH' 'ZIIL'
 
 
 

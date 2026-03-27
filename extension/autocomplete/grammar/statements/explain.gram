@@ -1,4 +1,4 @@
-ExplainStatement <- 'EXPLAIN' 'ANALYZE'? GenericCopyOptionList? ExplainableStatements
+ExplainStatement <- 'ERCHLAERE' 'ANALYSIERE'? GenericCopyOptionList? ExplainableStatements
 
 ExplainableStatements <-
     AlterStatement /

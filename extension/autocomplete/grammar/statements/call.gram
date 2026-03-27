@@ -1,1 +1,1 @@
-CallStatement <- 'CALL' QualifiedTableFunction TableFunctionArguments
+CallStatement <- 'AALUETE' QualifiedTableFunction TableFunctionArguments

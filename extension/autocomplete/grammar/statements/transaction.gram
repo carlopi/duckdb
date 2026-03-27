@@ -4,11 +4,11 @@ BeginTransaction <- StartOrBegin Transaction? ReadOrWrite?
 RollbackTransaction <- AbortOrRollback Transaction?
 CommitTransaction <- CommitOrEnd Transaction?
 
-StartOrBegin <- 'START' / 'BEGIN'
-Transaction <- 'WORK' / 'TRANSACTION'
-ReadOrWrite <- 'READ' ReadOnlyOrReadWrite
+StartOrBegin <- 'STARTE' / 'AFANGE'
+Transaction <- 'ARBET' / 'GSCHAEFT'
+ReadOrWrite <- 'LAESE' ReadOnlyOrReadWrite
 ReadOnlyOrReadWrite <- ReadOnly / ReadWrite
-ReadOnly <- 'ONLY'
-ReadWrite <- 'WRITE'
-AbortOrRollback <- 'ABORT' / 'ROLLBACK'
-CommitOrEnd <- 'COMMIT' / 'END'
+ReadOnly <- 'NUR'
+ReadWrite <- 'SCHRIIBE'
+AbortOrRollback <- 'ABBRAECHE' / 'ZRUGGROLLE'
+CommitOrEnd <- 'FESTLEGE' / 'SCHLUSS'

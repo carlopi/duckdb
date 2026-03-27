@@ -1,24 +1,24 @@
 PivotStatement <- PivotKeyword TableRef PivotOn? PivotUsing? PivotGroupByList?
 
-PivotOn <- 'ON' PivotColumnList
-PivotUsing <- 'USING' TargetList
+PivotOn <- 'UF' PivotColumnList
+PivotUsing <- 'BRUUCHE' TargetList
 PivotColumnList <- List(PivotColumnEntry)
 PivotColumnEntry <- PivotColumnSubquery / PivotValueList / PivotColumnEntryInternal
 PivotColumnEntryInternal <- Expression
-PivotColumnSubquery <- BaseExpression 'IN' Parens(SelectStatementInternal)
+PivotColumnSubquery <- BaseExpression 'I' Parens(SelectStatementInternal)
 
-PivotKeyword <- 'PIVOT' / 'PIVOT_WIDER'
-UnpivotKeyword <- 'UNPIVOT' / 'PIVOT_LONGER'
+PivotKeyword <- 'SCHWENKE' / 'SCHWENKE_BREITER'
+UnpivotKeyword <- 'ENTSCHWENKE' / 'SCHWENKE_LAENGER'
 
-UnpivotStatement <- UnpivotKeyword TableRef 'ON' TargetList IntoNameValues?
+UnpivotStatement <- UnpivotKeyword TableRef 'UF' TargetList IntoNameValues?
 
-IntoNameValues <- 'INTO' 'NAME' ColIdOrString ValueOrValues List(Identifier)
+IntoNameValues <- 'INE' 'NAME' ColIdOrString ValueOrValues List(Identifier)
 
-ValueOrValues <- 'VALUE' / 'VALUES'
+ValueOrValues <- 'WAERT' / 'WAERT'
 
 IncludeOrExcludeNulls <- IncludeNulls / ExcludeNulls
-IncludeNulls <- 'INCLUDE' 'NULLS'
-ExcludeNulls <- 'EXCLUDE' 'NULLS'
+IncludeNulls <- 'IISCHLIESSE' 'NUETWAERT'
+ExcludeNulls <- 'USSCHLIESSE' 'NUETWAERT'
 UnpivotHeader <- UnpivotHeaderSingle / UnpivotHeaderList
 UnpivotHeaderSingle <- ColIdOrString
 UnpivotHeaderList <- Parens(List(ColIdOrString))
