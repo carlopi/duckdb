@@ -39,8 +39,8 @@ PhysicalOperator &PhysicalPlanGenerator::WrapWithFanOut(PhysicalOperator &source
 
 //! Post-pass: mark FanOut as force-passthrough when there's no downstream work to parallelize.
 //! Covers: (1) FanOut is the plan root, (2) FanOut is a direct child of a sink.
-static void MarkDirectSinkFanOutPassthrough(PhysicalOperator &op) {
-	if (op.type == PhysicalOperatorType::FAN_OUT) {
+static void MarkDirectSinkFanOutPassthrough(PhysicalOperator &op, bool is_root = false) {
+	if (is_root && op.type == PhysicalOperatorType::FAN_OUT) {
 		// FanOut is the root of the plan — no operators above it
 		op.Cast<PhysicalFanOut>().force_passthrough = true;
 	}
@@ -73,7 +73,7 @@ PhysicalOperator &PhysicalPlanGenerator::ResolveAndPlan(unique_ptr<LogicalOperat
 	profiler.EndPhase();
 
 	// Mark FanOut nodes that are direct children of sinks (or plan root) as force-passthrough
-	MarkDirectSinkFanOutPassthrough(physical_plan->Root());
+	MarkDirectSinkFanOutPassthrough(physical_plan->Root(), /*is_root=*/true);
 
 	// Return a reference to the root of this plan.
 	return physical_plan->Root();

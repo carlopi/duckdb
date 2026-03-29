@@ -61,6 +61,7 @@ public:
 	InsertionOrderPreservingMap<string> ParamsToString() const override {
 		InsertionOrderPreservingMap<string> result;
 		result["Source"] = child_source.get().GetName();
+		result["Mode"] = force_passthrough ? "Passthrough" : "Active";
 		for (auto &entry : child_source.get().ParamsToString()) {
 			result[entry.first] = entry.second;
 		}
