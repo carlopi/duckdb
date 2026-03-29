@@ -494,6 +494,8 @@ public:
 	bool sampling_pushdown;
 	//! Whether or not the table function supports late materialization
 	bool late_materialization;
+	//! Whether this sequential source supports being wrapped by FanOut for parallel consumption
+	bool supports_fan_out = false;
 	//! Additional function info, passed to the bind
 	shared_ptr<TableFunctionInfo> function_info;
 	//! The order preservation type of the table function

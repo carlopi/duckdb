@@ -385,6 +385,7 @@ void RangeTableFunction::RegisterFunction(BuiltinFunctions &set) {
 	                             RangeFunctionLocalInit);
 	range_function.in_out_function = RangeFunction<false>;
 	range_function.cardinality = RangeCardinality;
+	range_function.supports_fan_out = true;
 
 	// single argument range: (end) - implicit start = 0 and increment = 1
 	range.AddFunction(range_function);

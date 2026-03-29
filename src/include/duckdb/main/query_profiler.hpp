@@ -164,6 +164,8 @@ public:
 	DUCKDB_API void EndPhase();
 
 	DUCKDB_API void Initialize(const PhysicalOperator &root);
+	//! Register a FanOut operator that wraps a child in the profiler tree
+	void InsertOperatorIntoTree(const PhysicalOperator &new_op, const PhysicalOperator &child_op);
 
 	DUCKDB_API string QueryTreeToString() const;
 	DUCKDB_API void QueryTreeToStream(std::ostream &str) const;
