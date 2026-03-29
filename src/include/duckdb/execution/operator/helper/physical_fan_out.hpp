@@ -44,7 +44,7 @@ public:
 	                                 OperatorSourceInput &input) const override;
 
 	bool SupportsPartitioning(const OperatorPartitionInfo &partition_info) const override {
-		return true;
+		return child_source.get().SupportsPartitioning(partition_info);
 	}
 	OperatorPartitionData GetPartitionData(ExecutionContext &context, DataChunk &chunk, GlobalSourceState &gstate,
 	                                       LocalSourceState &lstate,
