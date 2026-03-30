@@ -27,6 +27,21 @@
 //!
 //! Expected impact: eliminates per-chunk lock overhead (48K→0 locks in hot path).
 //! The 0.67s regression on SELECT * WHERE with batch collector would drop to ~0.1s.
+//!
+//! Alternative: reuse FanOut's FanIn buffer as the batch collector.
+//! The batch collector is fundamentally a FanIn: M threads push chunks with batch
+//! indices, ordered output is consumed by Scan. FanOut's buffer (with the accessing
+//! counter + completed tracking) already handles concurrent writers lock-free.
+//! The batch collector would become a FanIn — same buffer, same protocol, chunks
+//! flow in from multiple threads, Scan drains in batch order.
+//! This unifies the architecture: FanOut for source→parallel, FanIn for
+//! parallel→ordered-output. Same buffer, both directions.
+//!
+//! Simplest approach: place FanIn in front of the batch collector as a pipeline-
+//! transparent buffer. Multiple threads push to FanIn lock-free. A single drain
+//! thread feeds the batch collector sequentially — eliminating all lock contention
+//! in the collector without changing its code. The collector sees a single-threaded
+//! stream of ordered chunks.
 
 #include "duckdb/execution/operator/helper/physical_result_collector.hpp"
 #include "duckdb/common/queue.hpp"
