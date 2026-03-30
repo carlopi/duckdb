@@ -21,12 +21,20 @@ struct ChunkBuffer {
 	idx_t batch_indices[BATCH_SIZE];
 	idx_t count = 0;
 	atomic<idx_t> next_claim {0};
-	atomic<idx_t> done_count {0};
+	atomic<idx_t> completed {0};
+	atomic<idx_t> accessing {0};
 
 	void Initialize(const vector<LogicalType> &types) {
 		for (idx_t i = 0; i < BATCH_SIZE; i++) {
 			chunks[i].Initialize(Allocator::DefaultAllocator(), types);
 		}
+	}
+
+	//! Returns true if all slots have been consumed and no thread is mid-access
+	bool IsFullyCompleted() const {
+		return count > 0 &&
+		       completed.load(std::memory_order_acquire) >= count &&
+		       accessing.load(std::memory_order_acquire) == 0;
 	}
 
 	void PrepareForFill(const vector<LogicalType> &types) {
@@ -37,7 +45,7 @@ struct ChunkBuffer {
 		}
 		count = 0;
 		next_claim.store(0, std::memory_order_relaxed);
-		done_count.store(0, std::memory_order_relaxed);
+		completed.store(0, std::memory_order_relaxed);
 	}
 };
 
@@ -138,21 +146,38 @@ static bool TryConsume(FanOutGlobalSourceState &gstate, FanOutLocalSourceState &
 		return false; // no filled buffers
 	}
 	auto &buf = gstate.buffers[cidx % NUM_BUFFERS];
-	idx_t my_slot = buf.next_claim.fetch_add(1, std::memory_order_acq_rel);
-	if (my_slot >= buf.count) {
+
+	// Register intent to access this buffer before checking anything
+	buf.accessing.fetch_add(1, std::memory_order_acq_rel);
+
+	// Verify consume_idx hasn't moved — if it has, the buffer may be recycled
+	if (gstate.consume_idx.load(std::memory_order_acquire) != cidx) {
+		buf.accessing.fetch_sub(1, std::memory_order_release);
 		return false;
 	}
+
+	idx_t my_slot = buf.next_claim.fetch_add(1, std::memory_order_acq_rel);
+	if (my_slot >= buf.count) {
+		buf.accessing.fetch_sub(1, std::memory_order_release);
+		return false;
+	}
+
 	D_ASSERT(my_slot < BATCH_SIZE);
 	chunk.Append(buf.chunks[my_slot]);
 	buf.chunks[my_slot].Reset();
 	D_ASSERT(chunk.size() > 0);
 	lstate.current_batch = buf.batch_indices[my_slot];
-	idx_t done = buf.done_count.fetch_add(1, std::memory_order_release) + 1;
+	idx_t done = buf.completed.fetch_add(1, std::memory_order_release) + 1;
 
-	// Last consumer advances consume_idx
+	// Last consumer advances consume_idx BEFORE releasing accessing.
+	// This ensures new consumers see the advanced consume_idx and won't
+	// enter this buffer after the producer sees accessing==0.
 	if (done >= buf.count) {
 		gstate.consume_idx.fetch_add(1, std::memory_order_release);
 	}
+
+	// Release our access — producer can now recycle if accessing reaches 0
+	buf.accessing.fetch_sub(1, std::memory_order_release);
 	return true;
 }
 
@@ -166,13 +191,14 @@ static void Produce(FanOutGlobalSourceState &gstate, const PhysicalFanOut &op, E
 		if (gstate.exhausted.load(std::memory_order_acquire)) {
 			break;
 		}
-		// Can we fill? Check counter gap — no CAS needed, producer is sole writer
-		idx_t cidx = gstate.consume_idx.load(std::memory_order_acquire);
-		if (gstate.produce_idx.load(std::memory_order_relaxed) - cidx >= NUM_BUFFERS) {
-			break; // all buffers full
+		// Can we fill? Check that the target buffer is fully completed
+		auto pidx = gstate.produce_idx.load(std::memory_order_relaxed);
+		auto &fill_buf = gstate.buffers[pidx % NUM_BUFFERS];
+		// For the first fill (count==0) the buffer is unused. For subsequent fills,
+		// wait until all consumers have completed reading from it.
+		if (fill_buf.count > 0 && !fill_buf.IsFullyCompleted()) {
+			break; // buffer still in use by consumers
 		}
-
-		auto &fill_buf = gstate.buffers[gstate.produce_idx.load(std::memory_order_relaxed) % NUM_BUFFERS];
 		fill_buf.PrepareForFill(gstate.child_types);
 
 		// Initialize temp chunk on first use
