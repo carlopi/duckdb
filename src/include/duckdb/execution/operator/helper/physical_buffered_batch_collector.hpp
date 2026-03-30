@@ -8,6 +8,26 @@
 
 #pragma once
 
+//! --- Future: Lazy Batch Sink Protocol ---
+//! Current bottleneck: sink->NextBatch is called per batch index change (48K times
+//! for 100M rows / 2048 per chunk). Each call takes locks in the batch collector
+//! (CompleteBatch + UpdateMinBatchIndex) and pipeline executor (UpdateBatchIndex).
+//!
+//! Proposed lazy protocol:
+//!   Sink: append-only, receives chunks with batch indices, no completion tracking.
+//!         Just stores chunks indexed by batch — lock-free or one lock per N chunks.
+//!   NextBatch: no-op or updates local partition_info only (no locks).
+//!   Scan (consumer-driven): when the client pulls data, compute which batches are
+//!         complete by comparing batch indices against the pipeline's min_batch_index.
+//!         Move completed batches to read_queue at scan time.
+//!
+//! This inverts control: producer pushes data without synchronization overhead,
+//! consumer resolves ordering at read time. The sink becomes a simple concurrent
+//! append buffer. Ordering is deferred to when it's actually needed.
+//!
+//! Expected impact: eliminates per-chunk lock overhead (48K→0 locks in hot path).
+//! The 0.67s regression on SELECT * WHERE with batch collector would drop to ~0.1s.
+
 #include "duckdb/execution/operator/helper/physical_result_collector.hpp"
 #include "duckdb/common/queue.hpp"
 
