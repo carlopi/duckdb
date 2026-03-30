@@ -72,7 +72,7 @@ PhysicalOperator &PhysicalPlanGenerator::ResolveAndPlan(unique_ptr<LogicalOperat
 	physical_plan = PlanInternal(*op);
 	profiler.EndPhase();
 
-	// Mark FanOut nodes that are direct children of sinks (or plan root) as force-passthrough
+	// Mark FanOut as force-passthrough when it's a direct child of a sink or plan root
 	MarkDirectSinkFanOutPassthrough(physical_plan->Root(), /*is_root=*/true);
 
 	// Return a reference to the root of this plan.

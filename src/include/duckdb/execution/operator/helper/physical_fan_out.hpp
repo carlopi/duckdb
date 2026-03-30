@@ -44,13 +44,6 @@ public:
 	                                 OperatorSourceInput &input) const override;
 
 	bool SupportsPartitioning(const OperatorPartitionInfo &partition_info) const override {
-		if (force_passthrough) {
-			return false;
-		}
-		if (partition_info.batch_index) {
-			// FanOut always provides batch indices in active mode
-			return true;
-		}
 		return child_source.get().SupportsPartitioning(partition_info);
 	}
 	OperatorPartitionData GetPartitionData(ExecutionContext &context, DataChunk &chunk, GlobalSourceState &gstate,
@@ -68,7 +61,8 @@ public:
 	InsertionOrderPreservingMap<string> ParamsToString() const override {
 		InsertionOrderPreservingMap<string> result;
 		result["Source"] = child_source.get().GetName();
-		result["Mode"] = force_passthrough ? "Passthrough" : "Active";
+		// force_passthrough currently disabled — always active
+		result["Mode"] = "Active";
 		for (auto &entry : child_source.get().ParamsToString()) {
 			result[entry.first] = entry.second;
 		}
