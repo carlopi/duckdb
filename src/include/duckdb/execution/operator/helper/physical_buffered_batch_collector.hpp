@@ -19,6 +19,11 @@ public:
 
 public:
 	idx_t current_batch = 0;
+	//! Locally accumulated chunks + batch completions, flushed in bulk
+	vector<pair<idx_t, unique_ptr<DataChunk>>> pending_chunks;
+	vector<idx_t> pending_completions;
+	idx_t pending_count = 0;
+	static constexpr idx_t FLUSH_THRESHOLD = 64;
 };
 
 class PhysicalBufferedBatchCollector : public PhysicalResultCollector {

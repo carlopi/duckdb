@@ -174,6 +174,23 @@ void BatchedBufferedData::CompleteBatch(idx_t batch) {
 	in_progress_batch.completed = true;
 }
 
+void BatchedBufferedData::CompleteBatchesAndUpdateMin(const vector<idx_t> &batches, idx_t min_batch_index) {
+	lock_guard<mutex> lock(glock);
+	// Complete all batches
+	for (auto batch : batches) {
+		auto it = buffer.find(batch);
+		if (it != buffer.end()) {
+			it->second.completed = true;
+		}
+	}
+	// Update min batch index and move completed batches to read queue
+	auto new_min_batch = MaxValue(min_batch, min_batch_index);
+	if (new_min_batch != min_batch) {
+		min_batch = new_min_batch;
+		MoveCompletedBatches(lock);
+	}
+}
+
 unique_ptr<DataChunk> BatchedBufferedData::Scan() {
 	unique_ptr<DataChunk> chunk;
 	lock_guard<mutex> lock(glock);
@@ -189,6 +206,42 @@ unique_ptr<DataChunk> BatchedBufferedData::Scan() {
 		return nullptr;
 	}
 	return chunk;
+}
+
+void BatchedBufferedData::AppendAndCompleteBatches(vector<pair<idx_t, unique_ptr<DataChunk>>> &chunks,
+                                                    const vector<idx_t> &completed_batches,
+                                                    idx_t min_batch_index) {
+	lock_guard<mutex> lock(glock);
+	// Append all chunks
+	for (auto &entry : chunks) {
+		auto batch = entry.first;
+		auto &chunk = entry.second;
+		auto allocation_size = chunk->GetAllocationSize();
+		D_ASSERT(batch >= min_batch);
+		if (IsMinimumBatchIndex(lock, batch)) {
+			read_queue.push_back(std::move(chunk));
+			read_queue_byte_count += allocation_size;
+		} else {
+			auto &in_progress_batch = buffer[batch];
+			in_progress_batch.completed = false;
+			buffer_byte_count += allocation_size;
+			in_progress_batch.chunks.push_back(std::move(chunk));
+		}
+	}
+	chunks.clear();
+	// Complete batches
+	for (auto batch : completed_batches) {
+		auto it = buffer.find(batch);
+		if (it != buffer.end()) {
+			it->second.completed = true;
+		}
+	}
+	// Update min
+	auto new_min_batch = MaxValue(min_batch, min_batch_index);
+	if (new_min_batch != min_batch) {
+		min_batch = new_min_batch;
+		MoveCompletedBatches(lock);
+	}
 }
 
 void BatchedBufferedData::Append(const DataChunk &to_append, idx_t batch) {

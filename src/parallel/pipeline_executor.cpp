@@ -172,16 +172,29 @@ SinkNextBatchType PipelineExecutor::NextBatch(DataChunk &source_chunk, const boo
 	auto current_batch = partition_info.batch_index.GetIndex();
 	partition_info.batch_index = next_data.batch_index;
 	partition_info.partition_data = std::move(next_data.partition_data);
+
+	// Always notify the sink (it needs to know about batch changes)
 	OperatorSinkNextBatchInput next_batch_input {*pipeline.sink->sink_state, *local_sink_state, interrupt_state};
-	// call NextBatch before updating min_batch_index to provide the opportunity to flush the previous batch
 	auto next_batch_result = pipeline.sink->NextBatch(context, next_batch_input);
 
 	if (next_batch_result == SinkNextBatchType::BLOCKED) {
-		partition_info.batch_index = current_batch; // set batch_index back to what it was before
+		partition_info.batch_index = current_batch;
 		return SinkNextBatchType::BLOCKED;
 	}
 
-	partition_info.min_batch_index = pipeline.UpdateBatchIndex(current_batch, next_data.batch_index);
+	// Defer global batch index update — only sync every N changes
+	if (!next_batch_has_pending) {
+		next_batch_first_pending = current_batch;
+		next_batch_has_pending = true;
+	}
+	next_batch_deferred_count++;
+
+	if (next_batch_deferred_count >= NEXT_BATCH_SYNC_INTERVAL || !have_more_output) {
+		next_batch_deferred_count = 0;
+		next_batch_has_pending = false;
+		partition_info.min_batch_index =
+		    pipeline.UpdateBatchIndex(next_batch_first_pending, next_data.batch_index);
+	}
 
 	return SinkNextBatchType::READY;
 }

@@ -44,6 +44,11 @@ public:
 	void UpdateMinBatchIndex(idx_t min_batch_index);
 	bool IsMinimumBatchIndex(lock_guard<mutex> &lock, idx_t batch);
 	void CompleteBatch(idx_t batch);
+	//! Complete multiple batches and update min in one locked operation
+	void CompleteBatchesAndUpdateMin(const vector<idx_t> &batches, idx_t min_batch_index);
+	//! Append chunks + complete batches + update min in one locked operation
+	void AppendAndCompleteBatches(vector<pair<idx_t, unique_ptr<DataChunk>>> &chunks,
+	                              const vector<idx_t> &completed_batches, idx_t min_batch_index);
 	bool BufferIsEmpty();
 	void UnblockSinks() override;
 
