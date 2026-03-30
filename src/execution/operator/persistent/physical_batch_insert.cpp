@@ -571,9 +571,11 @@ SinkNextBatchType PhysicalBatchInsert::NextBatch(ExecutionContext &context, Oper
 	}
 	lstate.current_index = batch_index;
 
-	// unblock any blocked tasks
-	const annotated_lock_guard<annotated_mutex> guard {memory_manager.lock};
-	memory_manager.UnblockTasks();
+	// Only unblock tasks when we actually flushed to global (otherwise nothing changed)
+	if (lstate.pending_collections.empty()) {
+		const annotated_lock_guard<annotated_mutex> guard {memory_manager.lock};
+		memory_manager.UnblockTasks();
+	}
 
 	return SinkNextBatchType::READY;
 }
@@ -598,6 +600,20 @@ SinkResultType PhysicalBatchInsert::Sink(ExecutionContext &context, DataChunk &i
 		// we are not processing the current min batch index
 		// check if we have exceeded the maximum number of unflushed rows
 		if (memory_manager.OutOfMemory(batch_index)) {
+			// If we have pending local collections, flush them first — they consume
+			// memory invisible to the manager and may unblock other threads
+			if (!lstate.pending_collections.empty()) {
+				std::sort(lstate.pending_collections.begin(), lstate.pending_collections.end(),
+				          [](const PendingBatchEntry &a, const PendingBatchEntry &b) {
+					          return a.batch_index < b.batch_index;
+				          });
+				auto min_pending = lstate.pending_collections.front().batch_index;
+				gstate.AddCollections(context.client, lstate.pending_collections, min_pending,
+				                      lstate.optimistic_writer);
+				lstate.pending_collections.clear();
+				lstate.pending_total_rows = 0;
+			}
+
 			// out-of-memory
 			// execute tasks while we wait (if any are available)
 			ExecuteTasks(context.client, gstate, lstate);
@@ -612,7 +628,6 @@ SinkResultType PhysicalBatchInsert::Sink(ExecutionContext &context, DataChunk &i
 	}
 	if (!lstate.collection_index.IsValid()) {
 		annotated_lock_guard<annotated_mutex> l(gstate.lock);
-		// no collection yet: create a new one
 		lstate.CreateNewCollection(context.client, table, insert_types);
 	}
 
