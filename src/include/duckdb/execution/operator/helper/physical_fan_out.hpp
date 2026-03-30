@@ -47,6 +47,10 @@ public:
 		if (force_passthrough) {
 			return false;
 		}
+		if (partition_info.batch_index) {
+			// FanOut always provides batch indices in active mode
+			return true;
+		}
 		return child_source.get().SupportsPartitioning(partition_info);
 	}
 	OperatorPartitionData GetPartitionData(ExecutionContext &context, DataChunk &chunk, GlobalSourceState &gstate,
