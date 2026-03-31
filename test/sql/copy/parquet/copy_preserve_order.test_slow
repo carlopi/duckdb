@@ -7,13 +7,13 @@ require parquet
 load __TEST_DIR__/insert_order_preserving.db
 
 # test the PRESERVE_ORDER option
-statement ok
-SET preserve_insertion_order=false
-
 query I
 CREATE TABLE integers AS SELECT * FROM range(10000000) tbl(i);
 ----
 10000000
+
+statement ok
+SET preserve_insertion_order=false
 
 query I
 COPY integers TO '__TEST_DIR__/force_order_preserve.parquet' (PRESERVE_ORDER);
