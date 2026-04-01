@@ -3705,6 +3705,25 @@ OutputStream EnumUtil::FromString<OutputStream>(const char *value) {
 	return static_cast<OutputStream>(StringUtil::StringToEnum(GetOutputStreamValues(), 2, "OutputStream", value));
 }
 
+const StringUtil::EnumStringLiteral *GetParallelizeSequentialSourceValues() {
+	static constexpr StringUtil::EnumStringLiteral values[] {
+		{ static_cast<uint32_t>(ParallelizeSequentialSource::AUTOMATIC), "AUTOMATIC" },
+		{ static_cast<uint32_t>(ParallelizeSequentialSource::ENABLED), "ENABLED" },
+		{ static_cast<uint32_t>(ParallelizeSequentialSource::DISABLED), "DISABLED" }
+	};
+	return values;
+}
+
+template<>
+const char* EnumUtil::ToChars<ParallelizeSequentialSource>(ParallelizeSequentialSource value) {
+	return StringUtil::EnumToString(GetParallelizeSequentialSourceValues(), 3, "ParallelizeSequentialSource", static_cast<uint32_t>(value));
+}
+
+template<>
+ParallelizeSequentialSource EnumUtil::FromString<ParallelizeSequentialSource>(const char *value) {
+	return static_cast<ParallelizeSequentialSource>(StringUtil::StringToEnum(GetParallelizeSequentialSourceValues(), 3, "ParallelizeSequentialSource", value));
+}
+
 const StringUtil::EnumStringLiteral *GetParseInfoTypeValues() {
 	static constexpr StringUtil::EnumStringLiteral values[] {
 		{ static_cast<uint32_t>(ParseInfoType::ALTER_INFO), "ALTER_INFO" },
@@ -3899,19 +3918,20 @@ const StringUtil::EnumStringLiteral *GetPhysicalOperatorTypeValues() {
 		{ static_cast<uint32_t>(PhysicalOperatorType::EXTENSION), "EXTENSION" },
 		{ static_cast<uint32_t>(PhysicalOperatorType::VERIFY_VECTOR), "VERIFY_VECTOR" },
 		{ static_cast<uint32_t>(PhysicalOperatorType::UPDATE_EXTENSIONS), "UPDATE_EXTENSIONS" },
-		{ static_cast<uint32_t>(PhysicalOperatorType::CREATE_SECRET), "CREATE_SECRET" }
+		{ static_cast<uint32_t>(PhysicalOperatorType::CREATE_SECRET), "CREATE_SECRET" },
+		{ static_cast<uint32_t>(PhysicalOperatorType::FAN_OUT), "FAN_OUT" }
 	};
 	return values;
 }
 
 template<>
 const char* EnumUtil::ToChars<PhysicalOperatorType>(PhysicalOperatorType value) {
-	return StringUtil::EnumToString(GetPhysicalOperatorTypeValues(), 82, "PhysicalOperatorType", static_cast<uint32_t>(value));
+	return StringUtil::EnumToString(GetPhysicalOperatorTypeValues(), 83, "PhysicalOperatorType", static_cast<uint32_t>(value));
 }
 
 template<>
 PhysicalOperatorType EnumUtil::FromString<PhysicalOperatorType>(const char *value) {
-	return static_cast<PhysicalOperatorType>(StringUtil::StringToEnum(GetPhysicalOperatorTypeValues(), 82, "PhysicalOperatorType", value));
+	return static_cast<PhysicalOperatorType>(StringUtil::StringToEnum(GetPhysicalOperatorTypeValues(), 83, "PhysicalOperatorType", value));
 }
 
 const StringUtil::EnumStringLiteral *GetPhysicalTableScanExecutionStrategyValues() {
