@@ -340,6 +340,7 @@ void ArrowTableFunction::RegisterFunction(BuiltinFunctions &set) {
 	arrow.filter_prune = true;
 	arrow.supports_pushdown_type = ArrowPushdownType;
 	arrow.single_threaded_source = true;
+	arrow.parallelize_sequential_source = ParallelizeSequentialSource::ENABLED;
 	set.AddFunction(arrow);
 
 	TableFunction arrow_dumb("arrow_scan_dumb", {LogicalType::POINTER, LogicalType::POINTER, LogicalType::POINTER},
@@ -350,6 +351,7 @@ void ArrowTableFunction::RegisterFunction(BuiltinFunctions &set) {
 	arrow_dumb.filter_pushdown = false;
 	arrow_dumb.filter_prune = false;
 	arrow_dumb.single_threaded_source = true;
+	arrow_dumb.parallelize_sequential_source = ParallelizeSequentialSource::ENABLED;
 	set.AddFunction(arrow_dumb);
 }
 
