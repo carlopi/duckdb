@@ -408,7 +408,7 @@ bool PhysicalTableScan::ParallelSource() const {
 	return true;
 }
 
-bool PhysicalTableScan::SourceSupportsParallelFanOut() const {
+ParallelizeSequentialSource PhysicalTableScan::SourceSupportsParallelFanOut() const {
 	return function.parallelize_sequential_source;
 }
 
