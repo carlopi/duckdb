@@ -326,6 +326,8 @@ enum class OrdinalityType : uint8_t;
 
 enum class OutputStream : uint8_t;
 
+enum class ParallelizeSequentialSource : uint8_t;
+
 enum class ParseInfoType : uint8_t;
 
 enum class ParserExtensionResultType : uint8_t;
@@ -945,6 +947,9 @@ const char* EnumUtil::ToChars<OrdinalityType>(OrdinalityType value);
 
 template<>
 const char* EnumUtil::ToChars<OutputStream>(OutputStream value);
+
+template<>
+const char* EnumUtil::ToChars<ParallelizeSequentialSource>(ParallelizeSequentialSource value);
 
 template<>
 const char* EnumUtil::ToChars<ParseInfoType>(ParseInfoType value);
@@ -1654,6 +1659,9 @@ OrdinalityType EnumUtil::FromString<OrdinalityType>(const char *value);
 
 template<>
 OutputStream EnumUtil::FromString<OutputStream>(const char *value);
+
+template<>
+ParallelizeSequentialSource EnumUtil::FromString<ParallelizeSequentialSource>(const char *value);
 
 template<>
 ParseInfoType EnumUtil::FromString<ParseInfoType>(const char *value);
