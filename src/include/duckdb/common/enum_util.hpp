@@ -452,6 +452,8 @@ enum class TableColumnType : uint8_t;
 
 enum class TableFilterType : uint8_t;
 
+enum class TableFunctionParallelism : uint8_t;
+
 enum class TablePartitionInfo : uint8_t;
 
 enum class TableReferenceType : uint8_t;
@@ -1148,6 +1150,9 @@ const char* EnumUtil::ToChars<TableColumnType>(TableColumnType value);
 
 template<>
 const char* EnumUtil::ToChars<TableFilterType>(TableFilterType value);
+
+template<>
+const char* EnumUtil::ToChars<TableFunctionParallelism>(TableFunctionParallelism value);
 
 template<>
 const char* EnumUtil::ToChars<TablePartitionInfo>(TablePartitionInfo value);
@@ -1878,6 +1883,9 @@ TableColumnType EnumUtil::FromString<TableColumnType>(const char *value);
 
 template<>
 TableFilterType EnumUtil::FromString<TableFilterType>(const char *value);
+
+template<>
+TableFunctionParallelism EnumUtil::FromString<TableFunctionParallelism>(const char *value);
 
 template<>
 TablePartitionInfo EnumUtil::FromString<TablePartitionInfo>(const char *value);
