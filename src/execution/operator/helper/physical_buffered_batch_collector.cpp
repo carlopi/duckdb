@@ -32,21 +32,27 @@ SinkResultType PhysicalBufferedBatchCollector::Sink(ExecutionContext &context, D
 
 	lstate.current_batch = lstate.partition_info.batch_index.GetIndex();
 	auto batch = lstate.partition_info.batch_index.GetIndex();
-	auto min_batch_index = lstate.partition_info.min_batch_index.GetIndex();
 
 	auto &buffered_data = gstate.buffered_data->Cast<BatchedBufferedData>();
-	buffered_data.UpdateMinBatchIndex(min_batch_index);
 
 	if (buffered_data.ShouldBlockBatch(batch)) {
+		// Flush pending before blocking
+		if (!lstate.pending_chunks.empty()) {
+			auto min_batch_index = lstate.partition_info.min_batch_index.GetIndex();
+			buffered_data.AppendAndCompleteBatches(lstate.pending_chunks, lstate.pending_completions, min_batch_index);
+			lstate.pending_completions.clear();
+			lstate.pending_count = 0;
+		}
 		auto callback_state = input.interrupt_state;
 		buffered_data.BlockSink(callback_state, batch);
 		return SinkResultType::BLOCKED;
 	}
 
-	// FIXME: if we want to make this more accurate, we should grab a reservation on the buffer space
-	// while we're unlocked some other thread could also append, causing us to potentially cross our buffer size
-
-	buffered_data.Append(chunk, batch);
+	// Accumulate locally — no lock
+	auto pending_chunk = make_uniq<DataChunk>();
+	pending_chunk->Initialize(Allocator::DefaultAllocator(), chunk.GetTypes());
+	chunk.Copy(*pending_chunk, 0);
+	lstate.pending_chunks.emplace_back(batch, std::move(pending_chunk));
 
 	return SinkResultType::NEED_MORE_INPUT;
 }
@@ -56,17 +62,22 @@ SinkNextBatchType PhysicalBufferedBatchCollector::NextBatch(ExecutionContext &co
 	auto &gstate = input.global_state.Cast<BufferedBatchCollectorGlobalState>();
 	auto &lstate = input.local_state.Cast<BufferedBatchCollectorLocalState>();
 
-	auto batch = lstate.current_batch;
-	auto min_batch_index = lstate.partition_info.min_batch_index.GetIndex();
 	auto new_index = lstate.partition_info.batch_index.GetIndex();
 
-	auto &buffered_data = gstate.buffered_data->Cast<BatchedBufferedData>();
-	buffered_data.CompleteBatch(batch);
+	// Accumulate batch completion locally
+	lstate.pending_completions.push_back(lstate.current_batch);
+	lstate.pending_count++;
 	lstate.current_batch = new_index;
-	// FIXME: this can move from the buffer to the read queue, increasing the 'read_queue_byte_count'
-	// We might want to block here if 'read_queue_byte_count' has already reached the ReadQueueCapacity()
-	// So we don't completely disregard the 'streaming_buffer_size' that was set
-	buffered_data.UpdateMinBatchIndex(min_batch_index);
+
+	// Flush in bulk when threshold reached — one lock for all appends + completions
+	if (lstate.pending_count >= BufferedBatchCollectorLocalState::FLUSH_THRESHOLD) {
+		auto &buffered_data = gstate.buffered_data->Cast<BatchedBufferedData>();
+		auto min_batch_index = lstate.partition_info.min_batch_index.GetIndex();
+		buffered_data.AppendAndCompleteBatches(lstate.pending_chunks, lstate.pending_completions, min_batch_index);
+		lstate.pending_completions.clear();
+		lstate.pending_count = 0;
+	}
+
 	return SinkNextBatchType::READY;
 }
 
@@ -75,13 +86,15 @@ SinkCombineResultType PhysicalBufferedBatchCollector::Combine(ExecutionContext &
 	auto &gstate = input.global_state.Cast<BufferedBatchCollectorGlobalState>();
 	auto &lstate = input.local_state.Cast<BufferedBatchCollectorLocalState>();
 
-	auto min_batch_index = lstate.partition_info.min_batch_index.GetIndex();
 	auto &buffered_data = gstate.buffered_data->Cast<BatchedBufferedData>();
 
-	// FIXME: this can move from the buffer to the read queue, increasing the 'read_queue_byte_count'
-	// We might want to block here if 'read_queue_byte_count' has already reached the ReadQueueCapacity()
-	// So we don't completely disregard the 'streaming_buffer_size' that was set
-	buffered_data.UpdateMinBatchIndex(min_batch_index);
+	// Flush remaining pending chunks + completions
+	if (!lstate.pending_chunks.empty() || !lstate.pending_completions.empty()) {
+		auto min_batch_index = lstate.partition_info.min_batch_index.GetIndex();
+		buffered_data.AppendAndCompleteBatches(lstate.pending_chunks, lstate.pending_completions, min_batch_index);
+		lstate.pending_completions.clear();
+		lstate.pending_count = 0;
+	}
 	return SinkCombineResultType::FINISHED;
 }
 

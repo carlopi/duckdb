@@ -906,6 +906,26 @@ Use 'PRAGMA enable_profiling;' to enable profiling!`"]
 	}
 }
 
+void QueryProfiler::InsertOperatorIntoTree(const PhysicalOperator &new_op, const PhysicalOperator &child_op) {
+	lock_guard<std::mutex> guard(lock);
+	if (!IsEnabled() || !running) {
+		return;
+	}
+	auto child_entry = tree_map.find(child_op);
+	if (child_entry == tree_map.end()) {
+		return;
+	}
+	// Reuse the child's profiling node for the new operator
+	auto &child_node = child_entry->second.get();
+	auto &info = child_node.GetProfilingInfo();
+	if (info.Enabled(info.settings, MetricType::EXTRA_INFO)) {
+		auto extra = info.GetMetricValue<InsertionOrderPreservingMap<string>>(MetricType::EXTRA_INFO);
+		extra["Parallel"] = "FAN_OUT";
+		info.metrics[MetricType::EXTRA_INFO] = Value::MAP(extra);
+	}
+	tree_map.insert(make_pair(reference<const PhysicalOperator>(new_op), child_entry->second));
+}
+
 void QueryProfiler::Initialize(const PhysicalOperator &root_op) {
 	lock_guard<std::mutex> guard(lock);
 	if (!IsEnabled() || !running) {

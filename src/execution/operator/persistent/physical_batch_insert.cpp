@@ -145,6 +145,15 @@ public:
 	                     LocalSinkState &lstate_p) = 0;
 };
 
+struct PendingBatchEntry {
+	PendingBatchEntry(idx_t batch_index, PhysicalIndex collection_index, idx_t row_count)
+	    : batch_index(batch_index), collection_index(collection_index), row_count(row_count) {
+	}
+	idx_t batch_index;
+	PhysicalIndex collection_index;
+	idx_t row_count;
+};
+
 class BatchInsertGlobalState : public GlobalSinkState {
 public:
 	BatchInsertGlobalState(ClientContext &context, DuckTableEntry &table, const idx_t minimum_memory_per_thread)
@@ -160,6 +169,8 @@ public:
 	DuckTableEntry &table;
 	idx_t row_group_size;
 	idx_t insert_count;
+	//! Set by any thread hitting OutOfMemory — signals all threads to flush pending collections
+	atomic<bool> force_flush {false};
 	vector<RowGroupBatchEntry> collections;
 	idx_t next_start = 0;
 	atomic<bool> optimistically_written;
@@ -171,6 +182,8 @@ public:
 	                               OptimisticDataWriter &writer);
 	void AddCollection(ClientContext &context, const idx_t batch_index, const idx_t min_batch_index,
 	                   const PhysicalIndex collection_index, optional_ptr<OptimisticDataWriter> writer = nullptr);
+	void AddCollections(ClientContext &context, vector<PendingBatchEntry> &entries, const idx_t min_batch_index,
+	                    optional_ptr<OptimisticDataWriter> writer = nullptr);
 
 	idx_t MaxThreads(const idx_t source_max_threads) override {
 		// try to request 4MB per column per thread
@@ -191,6 +204,11 @@ public:
 	PhysicalIndex collection_index;
 	unique_ptr<OptimisticDataWriter> optimistic_writer;
 	unique_ptr<ConstraintState> constraint_state;
+
+	//! Locally accumulated collections, flushed to global when total rows reach threshold
+	vector<PendingBatchEntry> pending_collections;
+	idx_t pending_total_rows = 0;
+	idx_t pending_memory = 0;
 
 	void CreateNewCollection(ClientContext &context, DuckTableEntry &table_entry,
 	                         const vector<LogicalType> &insert_types) {
@@ -405,6 +423,60 @@ void BatchInsertGlobalState::AddCollection(ClientContext &context, const idx_t b
 	}
 }
 
+void BatchInsertGlobalState::AddCollections(ClientContext &context, vector<PendingBatchEntry> &entries,
+                                            const idx_t min_batch_index,
+                                            optional_ptr<OptimisticDataWriter> writer) {
+	// Prepare new entries (can do outside lock for the non-global parts)
+	vector<RowGroupBatchEntry> new_entries;
+	new_entries.reserve(entries.size());
+	for (auto &entry : entries) {
+		auto &optimistic_collection = table.GetStorage().GetOptimisticCollection(context, entry.collection_index);
+		auto new_count = optimistic_collection.collection->GetTotalRows();
+		auto batch_type = new_count < row_group_size ? RowGroupBatchType::NOT_FLUSHED : RowGroupBatchType::FLUSHED;
+		if (batch_type == RowGroupBatchType::FLUSHED && writer) {
+			writer->WriteUnflushedRowGroups(optimistic_collection);
+		}
+		new_entries.emplace_back(optimistic_collection, entry.batch_index, entry.collection_index, batch_type);
+	}
+
+	annotated_lock_guard<annotated_mutex> l(lock);
+	// Merge two sorted lists in one O(n+m) pass
+	vector<RowGroupBatchEntry> merged;
+	merged.reserve(collections.size() + new_entries.size());
+	idx_t i_old = 0, i_new = 0;
+	while (i_old < collections.size() && i_new < new_entries.size()) {
+		if (collections[i_old].batch_idx < new_entries[i_new].batch_idx) {
+			merged.push_back(std::move(collections[i_old++]));
+		} else if (collections[i_old].batch_idx > new_entries[i_new].batch_idx) {
+			auto &e = new_entries[i_new++];
+			insert_count += e.total_rows;
+			if (e.type == RowGroupBatchType::NOT_FLUSHED) {
+				memory_manager.IncreaseUnflushedMemory(e.unflushed_memory);
+			}
+			merged.push_back(std::move(e));
+		} else {
+			throw InternalException("PhysicalBatchInsert::AddCollections error: duplicate batch index %d",
+			                        new_entries[i_new].batch_idx);
+		}
+	}
+	while (i_old < collections.size()) {
+		merged.push_back(std::move(collections[i_old++]));
+	}
+	while (i_new < new_entries.size()) {
+		auto &e = new_entries[i_new++];
+		insert_count += e.total_rows;
+		if (e.type == RowGroupBatchType::NOT_FLUSHED) {
+			memory_manager.IncreaseUnflushedMemory(e.unflushed_memory);
+		}
+		merged.push_back(std::move(e));
+	}
+	collections = std::move(merged);
+
+	if (writer) {
+		ScheduleMergeTasks(context, min_batch_index);
+	}
+}
+
 //===--------------------------------------------------------------------===//
 // States
 //===--------------------------------------------------------------------===//
@@ -465,30 +537,58 @@ SinkNextBatchType PhysicalBatchInsert::NextBatch(ExecutionContext &context, Oper
 		if (lstate.current_index == batch_index) {
 			throw InternalException("NextBatch called with the same batch index?");
 		}
-		// batch index has changed: move the old collection to the global state and create a new collection
+		// Finalize current collection and add to local pending list
 		TransactionData tdata(0, 0);
 		auto &optimistic_collection =
 		    gstate.table.GetStorage().GetOptimisticCollection(context.client, lstate.collection_index);
 		auto &collection = *optimistic_collection.collection;
+		auto row_count = collection.GetTotalRows();
 		collection.FinalizeAppend(tdata, lstate.current_append_state);
-		gstate.AddCollection(context.client, lstate.current_index, lstate.partition_info.min_batch_index.GetIndex(),
-		                     lstate.collection_index, lstate.optimistic_writer);
 
-		bool any_unblocked;
-		{
-			const annotated_lock_guard<annotated_mutex> guard {memory_manager.lock};
-			any_unblocked = memory_manager.UnblockTasks();
-		}
-		if (!any_unblocked) {
-			ExecuteTasks(context.client, gstate, lstate);
-		}
+		// Track pending memory so OutOfMemory is aware of locally held data
+		auto pending_memory = collection.GetAllocationSize();
+		memory_manager.IncreaseUnflushedMemory(pending_memory);
+
+		lstate.pending_collections.emplace_back(lstate.current_index, lstate.collection_index, row_count);
+		lstate.pending_total_rows += row_count;
+		lstate.pending_memory += pending_memory;
 		lstate.collection_index.index = DConstants::INVALID_INDEX;
+
+		// Flush pending collections to global when we have enough data or memory pressure
+		if (lstate.pending_total_rows >= gstate.row_group_size ||
+		    gstate.force_flush.load(std::memory_order_relaxed) ||
+		    memory_manager.OutOfMemory(batch_index)) {
+			gstate.force_flush.store(false, std::memory_order_relaxed);
+			std::sort(lstate.pending_collections.begin(), lstate.pending_collections.end(),
+			          [](const PendingBatchEntry &a, const PendingBatchEntry &b) {
+				          return a.batch_index < b.batch_index;
+			          });
+			// Reduce pending memory before AddCollections re-adds it
+			memory_manager.ReduceUnflushedMemory(lstate.pending_memory);
+			lstate.pending_memory = 0;
+			auto min_pending = lstate.pending_collections.front().batch_index;
+			gstate.AddCollections(context.client, lstate.pending_collections, min_pending,
+			                      lstate.optimistic_writer);
+			lstate.pending_collections.clear();
+			lstate.pending_total_rows = 0;
+
+			bool any_unblocked;
+			{
+				const annotated_lock_guard<annotated_mutex> guard {memory_manager.lock};
+				any_unblocked = memory_manager.UnblockTasks();
+			}
+			if (!any_unblocked) {
+				ExecuteTasks(context.client, gstate, lstate);
+			}
+		}
 	}
 	lstate.current_index = batch_index;
 
-	// unblock any blocked tasks
-	const annotated_lock_guard<annotated_mutex> guard {memory_manager.lock};
-	memory_manager.UnblockTasks();
+	// Only unblock tasks when we actually flushed to global (otherwise nothing changed)
+	if (lstate.pending_collections.empty()) {
+		const annotated_lock_guard<annotated_mutex> guard {memory_manager.lock};
+		memory_manager.UnblockTasks();
+	}
 
 	return SinkNextBatchType::READY;
 }
@@ -513,21 +613,57 @@ SinkResultType PhysicalBatchInsert::Sink(ExecutionContext &context, DataChunk &i
 		// we are not processing the current min batch index
 		// check if we have exceeded the maximum number of unflushed rows
 		if (memory_manager.OutOfMemory(batch_index)) {
+			// Signal all threads to flush their pending collections
+			gstate.force_flush.store(true, std::memory_order_release);
+			// If we have pending local collections, flush them first to free tracked memory
+			if (!lstate.pending_collections.empty()) {
+				std::sort(lstate.pending_collections.begin(), lstate.pending_collections.end(),
+				          [](const PendingBatchEntry &a, const PendingBatchEntry &b) {
+					          return a.batch_index < b.batch_index;
+				          });
+				memory_manager.ReduceUnflushedMemory(lstate.pending_memory);
+				lstate.pending_memory = 0;
+				auto min_pending = lstate.pending_collections.front().batch_index;
+				gstate.AddCollections(context.client, lstate.pending_collections, min_pending,
+				                      lstate.optimistic_writer);
+				lstate.pending_collections.clear();
+				lstate.pending_total_rows = 0;
+			}
+
 			// out-of-memory
 			// execute tasks while we wait (if any are available)
 			ExecuteTasks(context.client, gstate, lstate);
 
-			const annotated_lock_guard<annotated_mutex> guard {memory_manager.lock};
 			if (!memory_manager.IsMinimumBatchIndex(batch_index)) {
-				//  we are not the minimum batch index and we have no memory available to buffer - block the task for
-				//  now
-				return memory_manager.BlockSink(input.interrupt_state);
+				if (!lstate.pending_collections.empty()) {
+					// We have pending data — don't block, retry so we can flush it
+					return SinkResultType::NEED_MORE_INPUT;
+				}
+				// No pending data, high batch index — safe to block and wait
+				const annotated_lock_guard<annotated_mutex> guard {memory_manager.lock};
+				if (!memory_manager.IsMinimumBatchIndex(batch_index)) {
+					return memory_manager.BlockSink(input.interrupt_state);
+				}
 			}
 		}
 	}
 	if (!lstate.collection_index.IsValid()) {
-		annotated_lock_guard<annotated_mutex> l(gstate.lock);
-		// no collection yet: create a new one
+		// Before creating, check if we should flush pending to free memory
+		if (!lstate.pending_collections.empty() &&
+		    (gstate.force_flush.load(std::memory_order_acquire) || memory_manager.OutOfMemory(batch_index))) {
+			std::sort(lstate.pending_collections.begin(), lstate.pending_collections.end(),
+			          [](const PendingBatchEntry &a, const PendingBatchEntry &b) {
+				          return a.batch_index < b.batch_index;
+			          });
+			memory_manager.ReduceUnflushedMemory(lstate.pending_memory);
+			lstate.pending_memory = 0;
+			auto min_pending = lstate.pending_collections.front().batch_index;
+			gstate.AddCollections(context.client, lstate.pending_collections, min_pending,
+			                      lstate.optimistic_writer);
+			lstate.pending_collections.clear();
+			lstate.pending_total_rows = 0;
+			gstate.force_flush.store(false, std::memory_order_relaxed);
+		}
 		lstate.CreateNewCollection(context.client, table, insert_types);
 	}
 
@@ -575,10 +711,26 @@ SinkCombineResultType PhysicalBatchInsert::Combine(ExecutionContext &context, Op
 		auto &collection = *optimistic_collection.collection;
 		collection.FinalizeAppend(tdata, lstate.current_append_state);
 		if (collection.GetTotalRows() > 0) {
-			auto batch_index = lstate.partition_info.min_batch_index.GetIndex();
-			gstate.AddCollection(context.client, lstate.current_index, batch_index, lstate.collection_index);
+			auto pending_mem = collection.GetAllocationSize();
+			memory_manager.IncreaseUnflushedMemory(pending_mem);
+			lstate.pending_memory += pending_mem;
+			lstate.pending_collections.emplace_back(lstate.current_index, lstate.collection_index,
+			                                        collection.GetTotalRows());
 			lstate.collection_index = PhysicalIndex(DConstants::INVALID_INDEX);
 		}
+	}
+	// Flush all remaining pending collections to global
+	if (!lstate.pending_collections.empty()) {
+		std::sort(lstate.pending_collections.begin(), lstate.pending_collections.end(),
+		          [](const PendingBatchEntry &a, const PendingBatchEntry &b) {
+			          return a.batch_index < b.batch_index;
+		          });
+		memory_manager.ReduceUnflushedMemory(lstate.pending_memory);
+		lstate.pending_memory = 0;
+		auto min_pending = lstate.pending_collections.front().batch_index;
+		gstate.AddCollections(context.client, lstate.pending_collections, min_pending);
+		lstate.pending_collections.clear();
+		lstate.pending_total_rows = 0;
 	}
 	if (lstate.optimistic_writer) {
 		annotated_lock_guard<annotated_mutex> l(gstate.lock);

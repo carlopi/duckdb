@@ -1,6 +1,7 @@
 #include "duckdb/function/table/range.hpp"
 #include "duckdb/function/table/summary.hpp"
 #include "duckdb/function/table_function.hpp"
+#include "duckdb/execution/partition_info.hpp"
 #include "duckdb/function/function_set.hpp"
 #include "duckdb/common/operator/add.hpp"
 #include "duckdb/common/operator/subtract.hpp"
@@ -77,6 +78,7 @@ struct RangeFunctionLocalState : public LocalTableFunctionState {
 	bool initialized_row = false;
 	idx_t current_input_row = 0;
 	idx_t current_idx = 0;
+	idx_t batch_index = 0;
 
 	hugeint_t start;
 	hugeint_t end;
@@ -178,8 +180,14 @@ static OperatorResultType RangeFunction(ExecutionContext &context, TableFunction
 			state.initialized_row = false;
 			continue;
 		}
+		state.batch_index++;
 		return OperatorResultType::HAVE_MORE_OUTPUT;
 	}
+}
+
+static OperatorPartitionData RangeGetPartitionData(ClientContext &context, TableFunctionGetPartitionInput &input) {
+	auto &lstate = input.local_state->Cast<RangeFunctionLocalState>();
+	return OperatorPartitionData(lstate.batch_index);
 }
 
 unique_ptr<NodeStatistics> RangeCardinality(ClientContext &context, const FunctionData *bind_data_p) {
@@ -385,6 +393,8 @@ void RangeTableFunction::RegisterFunction(BuiltinFunctions &set) {
 	                             RangeFunctionLocalInit);
 	range_function.in_out_function = RangeFunction<false>;
 	range_function.cardinality = RangeCardinality;
+	range_function.supports_fan_out = true;
+	range_function.get_partition_data = RangeGetPartitionData;
 
 	// single argument range: (end) - implicit start = 0 and increment = 1
 	range.AddFunction(range_function);

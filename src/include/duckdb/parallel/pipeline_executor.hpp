@@ -125,6 +125,11 @@ private:
 	//! This flag is set when the pipeline gets interrupted by NextBatch -> NextBatch should be called again and the
 	//! source_chunk should be sent through the pipeline
 	bool next_batch_blocked = false;
+	//! Deferred NextBatch sync — amortize lock overhead
+	static constexpr idx_t NEXT_BATCH_SYNC_INTERVAL = 64;
+	idx_t next_batch_deferred_count = 0;
+	idx_t next_batch_first_pending = 0;
+	bool next_batch_has_pending = false;
 
 	//! Current operator being flushed
 	idx_t flushing_idx;
