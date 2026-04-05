@@ -32,7 +32,8 @@ public:
 	mutex producer_lock;
 	//! Global batch counter
 	idx_t next_batch = 0;
-	//! Current batch size — ramps up exponentially: 1, 2, 4, 8, ... up to FAN_OUT_MAX_BATCH_SIZE
+	//! Current batch size — ramps up exponentially: 1, 1, 2, 4, 8, ... up to FAN_OUT_MAX_BATCH_SIZE
+	//! (ramp up will be a power of 2 total)
 	idx_t current_batch_size = 1;
 	//! Whether the child source is exhausted
 	atomic<bool> exhausted {false};
@@ -143,10 +144,14 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 		}
 
 		// We are the producer — fetch N chunks into our local buffer
-		// Batch size ramps up exponentially: 1, 2, 4, ... up to FAN_OUT_MAX_BATCH_SIZE
+		// Batch size ramps up: 1, 1, 2, 4, 8, ... up to FAN_OUT_MAX_BATCH_SIZE
 		auto batch_size = gstate.current_batch_size;
 		if (gstate.current_batch_size < FAN_OUT_MAX_BATCH_SIZE) {
-			gstate.current_batch_size = MinValue(gstate.current_batch_size * 2, FAN_OUT_MAX_BATCH_SIZE);
+			if (gstate.next_batch == 0) {
+				// First two rounds are size 1 to establish parallelism quickly
+			} else {
+				gstate.current_batch_size = MinValue(gstate.current_batch_size * 2, FAN_OUT_MAX_BATCH_SIZE);
+			}
 		}
 		bool source_exhausted = false;
 		bool source_blocked = false;
