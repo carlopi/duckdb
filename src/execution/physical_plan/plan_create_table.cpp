@@ -17,6 +17,8 @@ namespace duckdb {
 
 PhysicalOperator &DuckCatalog::PlanCreateTableAs(ClientContext &context, PhysicalPlanGenerator &planner,
                                                  LogicalCreateTable &op, PhysicalOperator &plan) {
+	// Inject FanOut before checking batch index support — FanOut provides batch indices
+	planner.InjectFanOut(plan);
 	bool parallel_streaming_insert = !PhysicalPlanGenerator::PreserveInsertionOrder(context, plan);
 	bool use_batch_index = PhysicalPlanGenerator::UseBatchIndex(context, plan);
 	auto num_threads = TaskScheduler::GetScheduler(context).NumberOfThreads();
