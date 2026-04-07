@@ -118,11 +118,14 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 
 	// Step 3: try to become the producer
 	if (gstate.producer_lock.try_lock()) {
+		// Use unique_lock with adopt_lock so producer_lock is released on exception or scope exit
+		unique_lock<mutex> producer_guard(gstate.producer_lock, std::adopt_lock);
+
 		// If child is blocked and we're not the resuming producer — don't produce
 		if (gstate.child_blocked.load(std::memory_order_acquire) && !lstate.resume_as_producer) {
 			// But if exhausted, don't block — let it through to discover FINISHED
 			if (!gstate.exhausted.load(std::memory_order_acquire)) {
-				gstate.producer_lock.unlock();
+				producer_guard.unlock();
 				lock_guard<mutex> lock(gstate.blocked_lock);
 				gstate.blocked_threads.push_back(input.interrupt_state);
 				return SourceResultType::BLOCKED;
@@ -133,7 +136,7 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 		gstate.child_blocked.store(false, std::memory_order_release);
 		// Re-check exhausted under lock
 		if (gstate.exhausted.load(std::memory_order_acquire)) {
-			gstate.producer_lock.unlock();
+			producer_guard.unlock();
 			// Wake all blocked threads so they can finish
 			lock_guard<mutex> lock(gstate.blocked_lock);
 			for (auto &blocked : gstate.blocked_threads) {
@@ -201,7 +204,7 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 			gstate.exhausted.store(true, std::memory_order_release);
 		}
 
-		gstate.producer_lock.unlock();
+		producer_guard.unlock();
 
 		// Wake blocked threads — but NOT if child source is blocked
 		if (!source_blocked) {
