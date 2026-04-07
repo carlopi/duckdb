@@ -681,6 +681,45 @@ def test_once(shell, random_filepath):
     result.stdout = open(random_filepath, 'rb').read()
     result.check_stdout(b'43')
 
+def test_output_off_no_error(shell):
+    # .output off should suppress output without printing an error to stderr
+    test = (
+        ShellTest(shell)
+        .statement(".output off")
+    )
+    result = test.run()
+    assert "Error" not in result.stderr
+
+def test_output_invalid_path_error(shell, tmp_path):
+    # .output to an invalid path should print an error to stderr
+    invalid_path = (tmp_path / "nonexistent_dir" / "file.txt").as_posix()
+    test = (
+        ShellTest(shell)
+        .statement(f".output {invalid_path}")
+    )
+    result = test.run()
+    result.check_stderr("Error: cannot write to")
+
+def test_once_temp_file_cleanup(shell, tmp_path):
+    # Verify that temp files created by .once are cleaned up
+    # when a new temp file is created via NewTempFile -> ClearTempFile
+    filepath1 = tmp_path / "first.txt"
+    filepath2 = tmp_path / "second.txt"
+    test = (
+        ShellTest(shell)
+        .statement(f".once {filepath1.as_posix()}")
+        .statement("SELECT 'first'")
+        .statement(f".once {filepath2.as_posix()}")
+        .statement("SELECT 'second'")
+        .statement(".output stdout")
+        .statement("SELECT 'done'")
+    )
+    result = test.run()
+    result.check_stdout("done")
+    assert filepath2.exists()
+    result.stdout = open(filepath2, 'rb').read()
+    result.check_stdout(b'second')
+
 @pytest.mark.parametrize("dot_command", [
     ".mode ascii",
     ""
@@ -1311,5 +1350,12 @@ def test_open_with_sql_and_null_return(shell):
     )
     result = test.run()
     result.check_stderr("Error: --sql query returned a null value")
+
+
+def test_about(shell):
+    test = ShellTest(shell).statement(".about")
+
+    result = test.run()
+    result.check_stdout("DuckDB is an in-process analytical database management system designed for fast ")
 
 # fmt: on

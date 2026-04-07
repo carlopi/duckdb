@@ -3,6 +3,7 @@
 #include "duckdb/catalog/catalog_entry/scalar_function_catalog_entry.hpp"
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
 #include "duckdb/catalog/catalog_search_path.hpp"
+#include "duckdb/common/chrono.hpp"
 #include "duckdb/common/error_data.hpp"
 #include "duckdb/common/exception/transaction_exception.hpp"
 #include "duckdb/common/progress_bar/progress_bar.hpp"
@@ -37,6 +38,7 @@
 #include "duckdb/parser/statement/insert_statement.hpp"
 #include "duckdb/parser/statement/merge_into_statement.hpp"
 #include "duckdb/parser/statement/update_statement.hpp"
+#include "duckdb/parser/query_node/update_query_node.hpp"
 #include "duckdb/parser/statement/prepare_statement.hpp"
 #include "duckdb/parser/statement/relation_statement.hpp"
 #include "duckdb/parser/statement/select_statement.hpp"
@@ -164,7 +166,8 @@ struct DebugClientContextState : public ClientContextState {
 #endif
 
 ClientContext::ClientContext(shared_ptr<DatabaseInstance> database)
-    : db(std::move(database)), interrupted(false), transaction(*this), connection_id(DConstants::INVALID_INDEX) {
+    : db(std::move(database)), interrupt_state(ClientInterruptState::NOT_INTERRUPTED), transaction(*this),
+      connection_id(DConstants::INVALID_INDEX) {
 	registered_state = make_uniq<RegisteredStateManager>();
 #ifdef DEBUG
 	registered_state->GetOrCreate<DebugClientContextState>("debug_client_context_state");
@@ -238,6 +241,15 @@ void ClientContext::BeginQueryInternal(ClientContextLock &lock, const string &qu
 	active_query->query = query;
 
 	query_progress.Initialize();
+	// Set query deadline if max_execution_time is configured
+	auto max_execution_time = Settings::Get<MaxExecutionTimeSetting>(*this);
+	if (max_execution_time > 0) {
+		auto now = steady_clock::now();
+		auto deadline_tp = now + milliseconds(max_execution_time);
+		query_deadline = NumericCast<idx_t>(duration_cast<milliseconds>(deadline_tp.time_since_epoch()).count());
+	} else {
+		query_deadline.SetInvalid();
+	}
 	// Notify any registered state of query begin
 	for (auto &state : registered_state->States()) {
 		state->QueryBegin(*this);
@@ -263,6 +275,7 @@ ErrorData ClientContext::EndQueryInternal(ClientContextLock &lock, bool success,
 	active_query->progress_bar.reset();
 	D_ASSERT(active_query.get());
 	active_query.reset();
+	query_deadline.SetInvalid();
 	query_progress.Initialize();
 	ErrorData error;
 	try {
@@ -392,7 +405,7 @@ shared_ptr<PreparedStatementData> ClientContext::CreatePreparedStatementInternal
 	auto result = make_shared_ptr<PreparedStatementData>(statement_type);
 
 	auto &profiler = QueryProfiler::Get(*this);
-	profiler.StartQuery(query, IsExplainAnalyze(statement.get()), true);
+	profiler.StartQuery(query, IsExplainAnalyze(statement.get()));
 	profiler.StartPhase(MetricType::PLANNER);
 	Planner logical_planner(*this);
 	if (parameters.parameters) {
@@ -689,17 +702,19 @@ PendingExecutionResult ClientContext::ExecuteTaskInternal(ClientContextLock &loc
 void ClientContext::InitialCleanup(ClientContextLock &lock) {
 	//! Cleanup any open results and reset the interrupted flag
 	CleanupInternal(lock);
-	interrupted = false;
+	interrupt_state = ClientInterruptState::NOT_INTERRUPTED;
 }
 
 vector<unique_ptr<SQLStatement>> ClientContext::ParseStatements(const string &query) {
 	auto lock = LockContext();
 	return ParseStatementsInternal(*lock, query);
 }
-
 vector<unique_ptr<SQLStatement>> ClientContext::ParseStatementsInternal(ClientContextLock &lock, const string &query) {
 	try {
 		Parser parser(GetParserOptions());
+		auto &profiler = QueryProfiler::Get(*this);
+		profiler.StartQuery(query);
+		profiler.StartPhase(MetricType::PARSER);
 		parser.ParseQuery(query);
 
 		StatementPreprocessor preprocessor(*this);
@@ -931,8 +946,8 @@ unique_ptr<PendingQueryResult> ClientContext::PendingStatementOrPreparedStatemen
 					// FIXME: these properties don't round-trip in ToString(), so we overwrite them manually
 					if (statement->type == StatementType::UPDATE_STATEMENT) {
 						// re-apply `prioritize_table_when_binding` (which is normally set during transform)
-						parser.statements[0]->Cast<UpdateStatement>().prioritize_table_when_binding =
-						    statement->Cast<UpdateStatement>().prioritize_table_when_binding;
+						parser.statements[0]->Cast<UpdateStatement>().node->prioritize_table_when_binding =
+						    statement->Cast<UpdateStatement>().node->prioritize_table_when_binding;
 					} else if (statement->type == StatementType::TRANSACTION_STATEMENT) {
 						// re-apply invalidation policy
 						auto &reparsed_transaction_stmt = parser.statements[0]->Cast<TransactionStatement>();
@@ -959,11 +974,6 @@ unique_ptr<PendingQueryResult> ClientContext::PendingStatementOrPreparedStatemen
     ClientContextLock &lock, const string &query, unique_ptr<SQLStatement> statement,
     shared_ptr<PreparedStatementData> &prepared, const PendingQueryParameters &parameters) {
 	unique_ptr<PendingQueryResult> pending;
-
-	// Start the profiler.
-	auto &profiler = QueryProfiler::Get(*this);
-	profiler.StartQuery(query, IsExplainAnalyze(statement ? statement.get() : prepared->unbound_statement.get()));
-
 	try {
 		BeginQueryInternal(lock, query);
 	} catch (std::exception &ex) {
@@ -1078,7 +1088,7 @@ unique_ptr<QueryResult> ClientContext::Query(const string &query, QueryParameter
 			}
 			// Reset the interrupted flag, this was set by the task that found the error
 			// Next statements should not be bothered by that interruption
-			interrupted = false;
+			interrupt_state = ClientInterruptState::NOT_INTERRUPTED;
 			return current_result;
 		}
 		// now append the result to the list of results
@@ -1184,15 +1194,37 @@ unique_ptr<QueryResult> ClientContext::ExecutePendingQueryInternal(ClientContext
 }
 
 void ClientContext::Interrupt() {
-	interrupted = true;
+	ClientInterruptState expected = ClientInterruptState::NOT_INTERRUPTED;
+	interrupt_state.compare_exchange_strong(expected, ClientInterruptState::INTERRUPTED);
 }
 
 bool ClientContext::IsInterrupted() const {
-	return interrupted;
+	return interrupt_state.load(std::memory_order_relaxed) == ClientInterruptState::INTERRUPTED;
 }
 
 void ClientContext::ClearInterrupt() {
-	interrupted = false;
+	interrupt_state = ClientInterruptState::NOT_INTERRUPTED;
+}
+
+void ClientContext::SuppressInterrupts() {
+	interrupt_state = ClientInterruptState::INTERRUPTS_SUPPRESSED;
+}
+
+void ClientContext::InterruptCheck() const {
+	// Counter for throttling timeout checks - only check every N iterations
+	static constexpr uint32_t TIMEOUT_CHECK_INTERVAL = 256;
+	thread_local uint32_t timeout_check_counter = 0;
+
+	if (interrupt_state.load(std::memory_order_relaxed) == ClientInterruptState::INTERRUPTED) {
+		throw InterruptException();
+	}
+	// Only check timeout every N calls to avoid expensive steady_clock::now() syscall
+	if (query_deadline.IsValid() && ++timeout_check_counter % TIMEOUT_CHECK_INTERVAL == 0) {
+		auto now = NumericCast<idx_t>(duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count());
+		if (now >= query_deadline.GetIndex()) {
+			throw InterruptException();
+		}
+	}
 }
 
 void ClientContext::CancelTransaction() {
@@ -1242,7 +1274,7 @@ void ClientContext::RunFunctionInTransactionInternal(ClientContextLock &lock, co
 	if (require_new_transaction) {
 		D_ASSERT(!active_query);
 		transaction.BeginTransaction();
-		interrupted = false;
+		interrupt_state = ClientInterruptState::NOT_INTERRUPTED;
 	}
 	try {
 		fun();

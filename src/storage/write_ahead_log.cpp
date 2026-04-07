@@ -2,6 +2,7 @@
 
 #include "duckdb/catalog/catalog_entry/duck_index_entry.hpp"
 #include "duckdb/catalog/catalog_entry/duck_table_entry.hpp"
+#include "duckdb/catalog/catalog_entry/trigger_catalog_entry.hpp"
 #include "duckdb/catalog/catalog_entry/scalar_macro_catalog_entry.hpp"
 #include "duckdb/catalog/catalog_entry/schema_catalog_entry.hpp"
 #include "duckdb/catalog/catalog_entry/table_catalog_entry.hpp"
@@ -21,6 +22,7 @@
 #include "duckdb/storage/storage_manager.hpp"
 #include "duckdb/storage/table/column_data.hpp"
 #include "duckdb/storage/table/data_table_info.hpp"
+#include "duckdb/storage/data_table.hpp"
 
 namespace duckdb {
 
@@ -431,6 +433,23 @@ void WriteAheadLog::WriteDropType(const TypeCatalogEntry &entry) {
 }
 
 //===--------------------------------------------------------------------===//
+// TRIGGERS
+//===--------------------------------------------------------------------===//
+void WriteAheadLog::WriteCreateTrigger(const TriggerCatalogEntry &entry) {
+	WriteAheadLogSerializer serializer(*this, WALType::CREATE_TRIGGER);
+	serializer.WriteProperty(101, "trigger", &entry);
+	serializer.End();
+}
+
+void WriteAheadLog::WriteDropTrigger(const TriggerCatalogEntry &entry) {
+	WriteAheadLogSerializer serializer(*this, WALType::DROP_TRIGGER);
+	serializer.WriteProperty(101, "schema", entry.schema.name);
+	serializer.WriteProperty(102, "name", entry.name);
+	serializer.WriteProperty(103, "table", entry.base_table->table_name);
+	serializer.End();
+}
+
+//===--------------------------------------------------------------------===//
 // VIEWS
 //===--------------------------------------------------------------------===//
 void WriteAheadLog::WriteCreateView(const ViewCatalogEntry &entry) {
@@ -467,7 +486,7 @@ void WriteAheadLog::WriteSetTable(const string &schema, const string &table) {
 
 void WriteAheadLog::WriteInsert(DataChunk &chunk) {
 	D_ASSERT(chunk.size() > 0);
-	chunk.Verify();
+	chunk.Verify(GetDatabase().GetDatabase());
 
 	WriteAheadLogSerializer serializer(*this, WALType::INSERT_TUPLE);
 	serializer.WriteProperty(101, "chunk", chunk);
@@ -491,7 +510,7 @@ void WriteAheadLog::WriteRowGroupData(const PersistentCollectionData &data) {
 void WriteAheadLog::WriteDelete(DataChunk &chunk) {
 	D_ASSERT(chunk.size() > 0);
 	D_ASSERT(chunk.ColumnCount() == 1 && chunk.data[0].GetType() == LogicalType::ROW_TYPE);
-	chunk.Verify();
+	chunk.Verify(GetDatabase().GetDatabase());
 
 	WriteAheadLogSerializer serializer(*this, WALType::DELETE_TUPLE);
 	serializer.WriteProperty(101, "chunk", chunk);
@@ -502,7 +521,7 @@ void WriteAheadLog::WriteUpdate(DataChunk &chunk, const vector<column_t> &column
 	D_ASSERT(chunk.size() > 0);
 	D_ASSERT(chunk.ColumnCount() == 2);
 	D_ASSERT(chunk.data[1].GetType().id() == LogicalType::ROW_TYPE);
-	chunk.Verify();
+	chunk.Verify(GetDatabase().GetDatabase());
 
 	WriteAheadLogSerializer serializer(*this, WALType::UPDATE_TUPLE);
 	serializer.WriteProperty(101, "column_indexes", column_indexes);

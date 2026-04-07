@@ -29,7 +29,11 @@ Statement <-
 	InstallStatement /
 	UpdateExtensionsStatement /
 	AnalyzeStatement /
-	MergeIntoStatement
+	MergeIntoStatement /
+	ExpressionStatement
+
+ExpressionStatement <- List(ExpressionAlias)
+ExpressionAlias <- ColIdExpression / ExpressionAsCollabel / Expression
 
 CatalogName <- Identifier
 SchemaName <- Identifier
@@ -47,6 +51,7 @@ ReservedFunctionName <- Identifier
 TableFunctionName <- Identifier
 ConstraintName <- ColIdOrString
 SequenceName <- Identifier
+TriggerName <- Identifier
 CollationName <- Identifier
 CopyOptionName <- ColLabel
 SecretName <- ColId

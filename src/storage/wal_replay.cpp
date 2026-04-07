@@ -12,11 +12,14 @@
 #include "duckdb/execution/index/index_type_set.hpp"
 #include "duckdb/main/attached_database.hpp"
 #include "duckdb/main/client_context.hpp"
+#include "duckdb/main/client_data.hpp"
 #include "duckdb/main/config.hpp"
 #include "duckdb/main/connection.hpp"
 #include "duckdb/main/database.hpp"
+#include "duckdb/main/settings.hpp"
 #include "duckdb/parser/parsed_data/alter_table_info.hpp"
 #include "duckdb/parser/parsed_data/create_schema_info.hpp"
+#include "duckdb/parser/parsed_data/create_trigger_info.hpp"
 #include "duckdb/parser/parsed_data/create_view_info.hpp"
 #include "duckdb/parser/parsed_data/drop_info.hpp"
 #include "duckdb/planner/binder.hpp"
@@ -25,12 +28,13 @@
 #include "duckdb/storage/single_file_block_manager.hpp"
 #include "duckdb/storage/storage_manager.hpp"
 #include "duckdb/storage/table/column_data.hpp"
+#include "duckdb/storage/table/data_table_info.hpp"
 #include "duckdb/storage/table/delete_state.hpp"
 #include "duckdb/storage/write_ahead_log.hpp"
 #include "duckdb/transaction/meta_transaction.hpp"
 #include "duckdb/transaction/duck_transaction.hpp"
-#include "duckdb/main/client_data.hpp"
-#include "duckdb/main/settings.hpp"
+#include "duckdb/storage/data_table.hpp"
+#include "duckdb/storage/table/row_group_collection.hpp"
 
 namespace duckdb {
 enum class WALReplayState { MAIN_WAL, CHECKPOINT_WAL };
@@ -244,6 +248,9 @@ protected:
 
 	void ReplayCreateIndex();
 	void ReplayDropIndex();
+
+	void ReplayCreateTrigger();
+	void ReplayDropTrigger();
 
 	void ReplayUseTable();
 	void ReplayInsert();
@@ -641,6 +648,12 @@ void WriteAheadLogDeserializer::ReplayEntry(WALType entry_type) {
 	case WALType::DROP_TYPE:
 		ReplayDropType();
 		break;
+	case WALType::CREATE_TRIGGER:
+		ReplayCreateTrigger();
+		break;
+	case WALType::DROP_TRIGGER:
+		ReplayDropTrigger();
+		break;
 	default:
 		throw InternalException("Invalid WAL entry type!");
 	}
@@ -665,6 +678,9 @@ void WriteAheadLogDeserializer::ReplayVersion() {
 	data_t db_identifier[MainHeader::DB_IDENTIFIER_LEN];
 	bool is_set = false;
 	deserializer.ReadOptionalList(102, "db_identifier", [&](Deserializer::List &list, idx_t i) {
+		if (i >= MainHeader::DB_IDENTIFIER_LEN) {
+			throw IOException("Corrupt file - database identifier in header out of range");
+		}
 		db_identifier[i] = list.ReadElement<uint8_t>();
 		is_set = true;
 	});
@@ -774,6 +790,7 @@ void WriteAheadLogDeserializer::ReplayIndexData(IndexStorageInfo &info) {
 void WriteAheadLogDeserializer::ReplayAlter() {
 	auto info = deserializer.ReadProperty<unique_ptr<ParseInfo>>(101, "info");
 	auto &alter_info = info->Cast<AlterInfo>();
+	alter_info.bind_mode = AlterBindMode::SKIP_BINDING;
 	if (!alter_info.IsAddPrimaryKey()) {
 		return ReplayWithoutIndex(context, catalog, alter_info, DeserializeOnly());
 	}
@@ -803,7 +820,7 @@ void WriteAheadLogDeserializer::ReplayAlter() {
 
 	// Create a binder to bind the parsed expressions.
 	vector<ColumnIndex> column_indexes;
-	binder->bind_context.AddBaseTable(0, string(), column_names, column_types, column_indexes, table);
+	binder->bind_context.AddBaseTable(TableIndex(0), string(), column_names, column_types, column_indexes, table);
 	IndexBinder idx_binder(*binder, context);
 
 	// Bind the parsed expressions to create unbound expressions.
@@ -902,6 +919,40 @@ void WriteAheadLogDeserializer::ReplayDropType() {
 	}
 
 	catalog.DropEntry(context, info);
+}
+
+//===--------------------------------------------------------------------===//
+// Replay Trigger
+//===--------------------------------------------------------------------===//
+void WriteAheadLogDeserializer::ReplayCreateTrigger() {
+	auto info = deserializer.ReadProperty<unique_ptr<CreateInfo>>(101, "trigger");
+	info->on_conflict = OnCreateConflict::IGNORE_ON_CONFLICT;
+	if (DeserializeOnly()) {
+		return;
+	}
+	auto &trigger_info = info->Cast<CreateTriggerInfo>();
+	auto &table = Catalog::GetEntry<TableCatalogEntry>(context, trigger_info.catalog, trigger_info.schema,
+	                                                   trigger_info.base_table->table_name);
+	auto &duck_table = table.Cast<DuckTableEntry>();
+	auto transaction = catalog.GetCatalogTransaction(context);
+	duck_table.CreateTrigger(transaction, trigger_info);
+}
+
+void WriteAheadLogDeserializer::ReplayDropTrigger() {
+	DropInfo info;
+	info.type = CatalogType::TRIGGER_ENTRY;
+	info.schema = deserializer.ReadProperty<string>(101, "schema");
+	info.name = deserializer.ReadProperty<string>(102, "name");
+	auto table_name = deserializer.ReadPropertyWithDefault<string>(103, "table");
+	if (DeserializeOnly()) {
+		return;
+	}
+	if (!table_name.empty()) {
+		auto &table = Catalog::GetEntry<TableCatalogEntry>(context, catalog.GetName(), info.schema, table_name);
+		auto &duck_table = table.Cast<DuckTableEntry>();
+		auto transaction = catalog.GetCatalogTransaction(context);
+		duck_table.DropTrigger(transaction, info.name, info.cascade);
+	}
 }
 
 //===--------------------------------------------------------------------===//

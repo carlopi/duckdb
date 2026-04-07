@@ -69,7 +69,7 @@ bool RowGroupPruner::TryOptimize(LogicalOperator &op) const {
 		return false;
 	}
 
-	if (!logical_get->table_filters.filters.empty()) {
+	if (logical_get->table_filters.HasFilters()) {
 		// If there are filters, we only order the row groups but do not prune
 		row_limit.SetInvalid();
 		row_offset.SetInvalid();
@@ -131,7 +131,9 @@ optional_ptr<LogicalGet> RowGroupPruner::FindLogicalGet(const LogicalOrder &logi
 	const auto &primary_order = logical_order.orders[0];
 	auto &colref = primary_order.expression->Cast<BoundColumnRefExpression>();
 
-	vector<JoinFilterPushdownColumn> columns {JoinFilterPushdownColumn {colref.binding}};
+	JoinFilterPushdownColumn column;
+	column.probe_column_index = colref.binding;
+	vector<JoinFilterPushdownColumn> columns {std::move(column)};
 	vector<PushdownFilterTarget> pushdown_targets;
 	JoinFilterPushdownOptimizer::GetPushdownFilterTargets(*logical_order.children[0], std::move(columns),
 	                                                      pushdown_targets);
@@ -147,8 +149,8 @@ optional_ptr<LogicalGet> RowGroupPruner::FindLogicalGet(const LogicalOrder &logi
 		return nullptr;
 	}
 
-	auto col_idx = pushdown_targets[0].columns[0].probe_column_index.column_index;
-	column_index = logical_get.GetColumnIds()[col_idx];
+	auto &binding = pushdown_targets[0].columns[0].probe_column_index;
+	column_index = logical_get.GetColumnIndex(binding);
 
 	return logical_get;
 }

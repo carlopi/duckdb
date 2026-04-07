@@ -14,6 +14,12 @@
 #include "duckdb/parser/tableref/at_clause.hpp"
 #include "duckdb/parser/query_node/set_operation_node.hpp"
 #include "duckdb/parser/tableref/pivotref.hpp"
+#include "duckdb/parser/statement/insert_statement.hpp"
+#include "duckdb/parser/statement/update_statement.hpp"
+#include "duckdb/parser/statement/delete_statement.hpp"
+#include "duckdb/parser/query_node/insert_query_node.hpp"
+#include "duckdb/parser/query_node/update_query_node.hpp"
+#include "duckdb/parser/query_node/delete_query_node.hpp"
 
 namespace duckdb {
 
@@ -1384,7 +1390,7 @@ GroupByNode PEGTransformerFactory::TransformGroupByClause(PEGTransformer &transf
 }
 
 struct GroupingExpressionMap {
-	parsed_expression_map_t<idx_t> map;
+	parsed_expression_map_t<ProjectionIndex> map;
 };
 
 GroupByNode PEGTransformerFactory::TransformGroupByExpressions(PEGTransformer &transformer,
@@ -1416,7 +1422,7 @@ static void CheckGroupingSetCubes(idx_t current_count, idx_t cube_count) {
 	}
 }
 
-static GroupingSet VectorToGroupingSet(vector<idx_t> &indexes) {
+static GroupingSet VectorToGroupingSet(vector<ProjectionIndex> &indexes) {
 	GroupingSet result;
 	for (idx_t i = 0; i < indexes.size(); i++) {
 		result.insert(indexes[i]);
@@ -1425,7 +1431,7 @@ static GroupingSet VectorToGroupingSet(vector<idx_t> &indexes) {
 }
 
 void PEGTransformerFactory::AddGroupByExpression(unique_ptr<ParsedExpression> expression, GroupingExpressionMap &map,
-                                                 GroupByNode &result, vector<idx_t> &result_set) {
+                                                 GroupByNode &result, vector<ProjectionIndex> &result_set) {
 	if (expression->GetExpressionType() == ExpressionType::FUNCTION) {
 		auto &func = expression->Cast<FunctionExpression>();
 		if (func.function_name == "row") {
@@ -1436,9 +1442,9 @@ void PEGTransformerFactory::AddGroupByExpression(unique_ptr<ParsedExpression> ex
 		}
 	}
 	auto entry = map.map.find(*expression);
-	idx_t result_idx;
+	ProjectionIndex result_idx;
 	if (entry == map.map.end()) {
-		result_idx = result.group_expressions.size();
+		result_idx = ProjectionIndex(result.group_expressions.size());
 		map.map[*expression] = result_idx;
 		result.group_expressions.push_back(std::move(expression));
 	} else {
@@ -1466,7 +1472,7 @@ vector<GroupingSet> PEGTransformerFactory::GroupByExpressionUnfolding(PEGTransfo
 		result_sets.emplace_back();
 
 	} else if (StringUtil::CIEquals(group_by_expr->name, "Expression")) {
-		vector<idx_t> indexes;
+		vector<ProjectionIndex> indexes;
 		auto expr = transformer.Transform<unique_ptr<ParsedExpression>>(group_by_expr);
 		AddGroupByExpression(std::move(expr), map, result, indexes);
 		result_sets.push_back(VectorToGroupingSet(indexes));
@@ -1492,7 +1498,7 @@ vector<GroupingSet> PEGTransformerFactory::GroupByExpressionUnfolding(PEGTransfo
 
 		vector<GroupingSet> unfolding_sets;
 		for (auto &expr_node : expr_list) {
-			vector<idx_t> indexes;
+			vector<ProjectionIndex> indexes;
 			auto expr = transformer.Transform<unique_ptr<ParsedExpression>>(expr_node);
 			AddGroupByExpression(std::move(expr), map, result, indexes);
 
@@ -1597,7 +1603,15 @@ CommonTableExpressionMap PEGTransformerFactory::TransformWithClause(PEGTransform
 		    transformer.Transform<pair<string, unique_ptr<CommonTableExpressionInfo>>>(with_statement_list[entry_idx]);
 
 		if (is_recursive) {
-			auto &query_node = with_entry.second->query->node;
+			auto &query_node = with_entry.second->query_node;
+			if (!query_node) {
+				throw ParserException("Recursive CTEs with DML statements are not supported");
+			}
+			if (query_node->type == QueryNodeType::INSERT_QUERY_NODE ||
+			    query_node->type == QueryNodeType::UPDATE_QUERY_NODE ||
+			    query_node->type == QueryNodeType::DELETE_QUERY_NODE) {
+				throw ParserException("Recursive CTEs with DML statements are not supported");
+			}
 			if (!query_node->modifiers.empty()) {
 				for (auto &modifier : query_node->modifiers) {
 					if (modifier->type == ResultModifierType::LIMIT_MODIFIER ||
@@ -1645,7 +1659,7 @@ PEGTransformerFactory::TransformWithStatement(PEGTransformer &transformer, optio
 	auto table_ref = transformer.Transform<unique_ptr<TableRef>>(list_pr.Child<ListParseResult>(5));
 	D_ASSERT(table_ref->type == TableReferenceType::SUBQUERY);
 	auto subquery_ref = unique_ptr_cast<TableRef, SubqueryRef>(std::move(table_ref));
-	result->query = std::move(subquery_ref->subquery);
+	result->query_node = std::move(subquery_ref->subquery->node);
 	return make_pair(cte_name, std::move(result));
 }
 
@@ -1657,10 +1671,28 @@ unique_ptr<TableRef> PEGTransformerFactory::TransformCTEBody(PEGTransformer &tra
 	// CTEBodyContent <- SelectStatementInternal / Statement
 	auto &content_list = inner->Cast<ListParseResult>();
 	auto &body_choice = content_list.Child<ChoiceParseResult>(0);
-	if (body_choice.result->name != "SelectStatementInternal") {
-		throw ParserException("A CTE needs a SELECT");
+	if (body_choice.result->name == "SelectStatementInternal") {
+		auto select_statement = transformer.Transform<unique_ptr<SelectStatement>>(body_choice.result);
+		return make_uniq<SubqueryRef>(std::move(select_statement));
 	}
-	auto select_statement = transformer.Transform<unique_ptr<SelectStatement>>(body_choice.result);
+	// DML body (INSERT / UPDATE / DELETE) - transform as a Statement and extract its QueryNode
+	auto sql_stmt = transformer.Transform<unique_ptr<SQLStatement>>(body_choice.result);
+	unique_ptr<QueryNode> query_node;
+	switch (sql_stmt->type) {
+	case StatementType::INSERT_STATEMENT:
+		query_node = unique_ptr_cast<InsertQueryNode, QueryNode>(std::move(sql_stmt->Cast<InsertStatement>().node));
+		break;
+	case StatementType::UPDATE_STATEMENT:
+		query_node = unique_ptr_cast<UpdateQueryNode, QueryNode>(std::move(sql_stmt->Cast<UpdateStatement>().node));
+		break;
+	case StatementType::DELETE_STATEMENT:
+		query_node = unique_ptr_cast<DeleteQueryNode, QueryNode>(std::move(sql_stmt->Cast<DeleteStatement>().node));
+		break;
+	default:
+		throw ParserException("A CTE body must be a SELECT, INSERT, UPDATE, or DELETE statement");
+	}
+	auto select_statement = make_uniq<SelectStatement>();
+	select_statement->node = std::move(query_node);
 	return make_uniq<SubqueryRef>(std::move(select_statement));
 }
 

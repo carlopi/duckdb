@@ -319,9 +319,10 @@ MissingExtensionException::MissingExtensionException(const string &msg)
 }
 
 AutoloadException::AutoloadException(const string &extension_name, const string &message)
-    : Exception(ExceptionType::AUTOLOAD,
-                "An error occurred while trying to automatically install the required extension '" + extension_name +
-                    "':\n" + message) {
+    : Exception(
+          ExceptionType::AUTOLOAD,
+          StringUtil::Format("An error occurred while trying to automatically install the required extension '%s:\n%s",
+                             extension_name, message)) {
 }
 
 SerializationException::SerializationException(const string &msg) : Exception(ExceptionType::SERIALIZATION, msg) {
@@ -370,7 +371,7 @@ OutOfMemoryException::OutOfMemoryException(const string &msg)
 }
 
 string OutOfMemoryException::ExtendOutOfMemoryError(const string &msg) {
-	string link = "https://duckdb.org/docs/stable/guides/performance/how_to_tune_workloads";
+	string link = "https://duckdb.org/docs/current/guides/performance/how_to_tune_workloads";
 	if (StringUtil::Contains(msg, link)) {
 		// already extended
 		return msg;

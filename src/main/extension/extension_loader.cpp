@@ -16,6 +16,9 @@
 #include "duckdb/main/config.hpp"
 #include "duckdb/main/secret/secret_manager.hpp"
 #include "duckdb/main/database.hpp"
+#include "duckdb/main/shell_command_extension.hpp"
+#include "duckdb/main/extension_callback_manager.hpp"
+#include "duckdb/common/string_util.hpp"
 
 namespace duckdb {
 
@@ -57,6 +60,7 @@ void ExtensionLoader::RegisterFunction(ScalarFunctionSet function) {
 
 void ExtensionLoader::RegisterFunction(CreateScalarFunctionInfo function) {
 	D_ASSERT(!function.functions.name.empty());
+	function.extension_name = extension_name;
 	auto &system_catalog = Catalog::GetSystemCatalog(db);
 	auto data = CatalogTransaction::GetSystemTransaction(db);
 	system_catalog.CreateFunction(data, function);
@@ -76,6 +80,7 @@ void ExtensionLoader::RegisterFunction(AggregateFunctionSet function) {
 
 void ExtensionLoader::RegisterFunction(CreateAggregateFunctionInfo function) {
 	D_ASSERT(!function.functions.name.empty());
+	function.extension_name = extension_name;
 	auto &system_catalog = Catalog::GetSystemCatalog(db);
 	auto data = CatalogTransaction::GetSystemTransaction(db);
 	system_catalog.CreateFunction(data, function);
@@ -102,6 +107,7 @@ void ExtensionLoader::RegisterFunction(TableFunctionSet function) {
 
 void ExtensionLoader::RegisterFunction(CreateTableFunctionInfo info) {
 	D_ASSERT(!info.functions.name.empty());
+	info.extension_name = extension_name;
 	auto &system_catalog = Catalog::GetSystemCatalog(db);
 	auto data = CatalogTransaction::GetSystemTransaction(db);
 	system_catalog.CreateFunction(data, info);
@@ -118,6 +124,7 @@ void ExtensionLoader::RegisterFunction(PragmaFunctionSet function) {
 	D_ASSERT(!function.name.empty());
 	auto function_name = function.name;
 	CreatePragmaFunctionInfo info(std::move(function_name), std::move(function));
+	info.extension_name = extension_name;
 	auto &system_catalog = Catalog::GetSystemCatalog(db);
 	auto data = CatalogTransaction::GetSystemTransaction(db);
 	system_catalog.CreatePragmaFunction(data, info);
@@ -125,18 +132,21 @@ void ExtensionLoader::RegisterFunction(PragmaFunctionSet function) {
 
 void ExtensionLoader::RegisterFunction(CopyFunction function) {
 	CreateCopyFunctionInfo info(std::move(function));
+	info.extension_name = extension_name;
 	auto &system_catalog = Catalog::GetSystemCatalog(db);
 	auto data = CatalogTransaction::GetSystemTransaction(db);
 	system_catalog.CreateCopyFunction(data, info);
 }
 
 void ExtensionLoader::RegisterFunction(CreateMacroInfo &info) {
+	info.extension_name = extension_name;
 	auto &system_catalog = Catalog::GetSystemCatalog(db);
 	auto data = CatalogTransaction::GetSystemTransaction(db);
 	system_catalog.CreateFunction(data, info);
 }
 
 void ExtensionLoader::RegisterCollation(CreateCollationInfo &info) {
+	info.extension_name = extension_name;
 	auto &system_catalog = Catalog::GetSystemCatalog(db);
 	auto data = CatalogTransaction::GetSystemTransaction(db);
 	info.on_conflict = OnCreateConflict::IGNORE_ON_CONFLICT;
@@ -144,6 +154,7 @@ void ExtensionLoader::RegisterCollation(CreateCollationInfo &info) {
 
 	// Also register as a function for serialisation
 	CreateScalarFunctionInfo finfo(info.function);
+	finfo.extension_name = extension_name;
 	finfo.on_conflict = OnCreateConflict::IGNORE_ON_CONFLICT;
 	system_catalog.CreateFunction(data, finfo);
 }
@@ -213,6 +224,7 @@ void ExtensionLoader::RegisterType(string type_name, LogicalType type, bind_logi
 	CreateTypeInfo info(std::move(type_name), std::move(type), bind_modifiers);
 	info.temporary = true;
 	info.internal = true;
+	info.extension_name = extension_name;
 	auto &system_catalog = Catalog::GetSystemCatalog(db);
 	auto data = CatalogTransaction::GetSystemTransaction(db);
 	system_catalog.CreateType(data, info);
@@ -235,6 +247,15 @@ void ExtensionLoader::RegisterCastFunction(const LogicalType &source, const Logi
 	auto &config = DBConfig::GetConfig(db);
 	auto &casts = config.GetCastFunctions();
 	casts.RegisterCastFunction(source, target, std::move(function), implicit_cast_cost);
+}
+
+void ExtensionLoader::RegisterShellCommand(ShellCommandExtension extension) {
+	if (!StringUtil::CIEquals(extension.command, extension_name)) {
+		throw InvalidInputException("Shell command extension name '%s' does not match extension name '%s' — "
+		                            "an extension may only register a dot-command whose name equals its own name",
+		                            extension.command, extension_name);
+	}
+	DBConfig::GetConfig(db).GetCallbackManager().Register(std::move(extension));
 }
 
 } // namespace duckdb

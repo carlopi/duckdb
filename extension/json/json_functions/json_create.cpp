@@ -1,3 +1,9 @@
+#include "duckdb/common/vector/array_vector.hpp"
+#include "duckdb/common/vector/flat_vector.hpp"
+#include "duckdb/common/vector/list_vector.hpp"
+#include "duckdb/common/vector/map_vector.hpp"
+#include "duckdb/common/vector/union_vector.hpp"
+#include "duckdb/common/vector/struct_vector.hpp"
 #include "duckdb/function/cast/cast_function_set.hpp"
 #include "duckdb/function/cast/default_casts.hpp"
 #include "duckdb/planner/expression/bound_parameter_expression.hpp"
@@ -327,7 +333,7 @@ static void CreateValuesStruct(const StructNames &names, yyjson_mut_doc *doc, yy
 	auto &entries = StructVector::GetEntries(value_v);
 	for (idx_t entry_i = 0; entry_i < entries.size(); entry_i++) {
 		auto &struct_key_v = *names.at(StructType::GetChildName(value_v.GetType(), entry_i));
-		auto &struct_val_v = *entries[entry_i];
+		auto &struct_val_v = entries[entry_i];
 		CreateKeyValuePairs(names, doc, vals, nested_vals, struct_key_v, struct_val_v, count);
 	}
 	// Whole struct can be NULL
@@ -382,7 +388,7 @@ static void CreateValuesUnion(const StructNames &names, yyjson_mut_doc *doc, yyj
 	// Structs become values, therefore we initialize vals to JSON values
 	UnifiedVectorFormat value_data;
 	value_v.ToUnifiedFormat(count, value_data);
-	if (value_data.validity.AllValid()) {
+	if (value_data.validity.CannotHaveNull()) {
 		for (idx_t i = 0; i < count; i++) {
 			vals[i] = yyjson_mut_obj(doc);
 		}
@@ -566,7 +572,7 @@ static void CreateValues(const StructNames &names, yyjson_mut_doc *doc, yyjson_m
 		break;
 	case LogicalTypeId::BIT:
 	case LogicalTypeId::BLOB:
-	case LogicalTypeId::AGGREGATE_STATE:
+	case LogicalTypeId::LEGACY_AGGREGATE_STATE:
 	case LogicalTypeId::ENUM:
 	case LogicalTypeId::DATE:
 	case LogicalTypeId::INTERVAL:
@@ -617,6 +623,7 @@ static void CreateValues(const StructNames &names, yyjson_mut_doc *doc, yyjson_m
 	case LogicalTypeId::VALIDITY:
 	case LogicalTypeId::TABLE:
 	case LogicalTypeId::LAMBDA:
+	case LogicalTypeId::AGGREGATE_STATE:
 		throw InternalException("Unsupported type arrived at JSON create function");
 	}
 }
@@ -647,10 +654,6 @@ static void ObjectFunction(DataChunk &args, ExpressionState &state, Vector &resu
 	for (idx_t i = 0; i < count; i++) {
 		objects[i] = JSONCommon::WriteVal<yyjson_mut_val>(objs[i], alc);
 	}
-	if (args.AllConstant()) {
-		result.SetVectorType(VectorType::CONSTANT_VECTOR);
-	}
-
 	JSONAllocator::AddBuffer(result, alc);
 }
 
@@ -681,10 +684,6 @@ static void ArrayFunction(DataChunk &args, ExpressionState &state, Vector &resul
 	for (idx_t i = 0; i < count; i++) {
 		objects[i] = JSONCommon::WriteVal<yyjson_mut_val>(arrs[i], alc);
 	}
-	if (args.AllConstant()) {
-		result.SetVectorType(VectorType::CONSTANT_VECTOR);
-	}
-
 	JSONAllocator::AddBuffer(result, alc);
 }
 

@@ -182,14 +182,14 @@ CaseCheck CaseCheck::Deserialize(Deserializer &deserializer) {
 }
 
 void ColumnBinding::Serialize(Serializer &serializer) const {
-	serializer.WritePropertyWithDefault<idx_t>(100, "table_index", table_index);
-	serializer.WritePropertyWithDefault<idx_t>(101, "column_index", column_index);
+	serializer.WritePropertyWithDefault<TableIndex>(100, "table_index", table_index);
+	serializer.WritePropertyWithDefault<ProjectionIndex>(101, "column_index", column_index);
 }
 
 ColumnBinding ColumnBinding::Deserialize(Deserializer &deserializer) {
 	ColumnBinding result;
-	deserializer.ReadPropertyWithDefault<idx_t>(100, "table_index", result.table_index);
-	deserializer.ReadPropertyWithDefault<idx_t>(101, "column_index", result.column_index);
+	deserializer.ReadPropertyWithDefault<TableIndex>(100, "table_index", result.table_index);
+	deserializer.ReadPropertyWithDefault<ProjectionIndex>(101, "column_index", result.column_index);
 	return result;
 }
 
@@ -200,7 +200,7 @@ void ColumnDefinition::Serialize(Serializer &serializer) const {
 	serializer.WriteProperty<TableColumnType>(103, "category", category);
 	serializer.WriteProperty<duckdb::CompressionType>(104, "compression_type", compression_type);
 	serializer.WritePropertyWithDefault<Value>(105, "comment", comment, Value());
-	serializer.WritePropertyWithDefault<unordered_map<string, string>>(106, "tags", tags, unordered_map<string, string>());
+	serializer.WritePropertyWithDefault<InsertionOrderPreservingMap<string>>(106, "tags", tags, InsertionOrderPreservingMap<string>());
 }
 
 ColumnDefinition ColumnDefinition::Deserialize(Deserializer &deserializer) {
@@ -211,7 +211,7 @@ ColumnDefinition ColumnDefinition::Deserialize(Deserializer &deserializer) {
 	ColumnDefinition result(std::move(name), std::move(type), std::move(expression), category);
 	deserializer.ReadProperty<duckdb::CompressionType>(104, "compression_type", result.compression_type);
 	deserializer.ReadPropertyWithExplicitDefault<Value>(105, "comment", result.comment, Value());
-	deserializer.ReadPropertyWithExplicitDefault<unordered_map<string, string>>(106, "tags", result.tags, unordered_map<string, string>());
+	deserializer.ReadPropertyWithExplicitDefault<InsertionOrderPreservingMap<string>>(106, "tags", result.tags, InsertionOrderPreservingMap<string>());
 	return result;
 }
 
@@ -259,17 +259,29 @@ ColumnList ColumnList::Deserialize(Deserializer &deserializer) {
 
 void CommonTableExpressionInfo::Serialize(Serializer &serializer) const {
 	serializer.WritePropertyWithDefault<vector<string>>(100, "aliases", aliases);
-	serializer.WritePropertyWithDefault<unique_ptr<SelectStatement>>(101, "query", query);
+	if (!serializer.ShouldSerialize(8)) {
+		serializer.WritePropertyWithDefault<unique_ptr<SelectStatement>>(101, "query", GetQueryForSerialization(serializer));
+	}
 	serializer.WriteProperty<CTEMaterialize>(102, "materialized", GetMaterializedForSerialization(serializer));
 	serializer.WritePropertyWithDefault<vector<unique_ptr<ParsedExpression>>>(103, "key_targets", key_targets);
+	serializer.WritePropertyWithDefault<vector<unique_ptr<ParsedExpression>>>(104, "payload_aggregates", payload_aggregates);
+	if (serializer.ShouldSerialize(8)) {
+		serializer.WritePropertyWithDefault<unique_ptr<QueryNode>>(105, "query_node", query_node);
+	}
 }
 
 unique_ptr<CommonTableExpressionInfo> CommonTableExpressionInfo::Deserialize(Deserializer &deserializer) {
-	auto result = duckdb::unique_ptr<CommonTableExpressionInfo>(new CommonTableExpressionInfo());
-	deserializer.ReadPropertyWithDefault<vector<string>>(100, "aliases", result->aliases);
-	deserializer.ReadPropertyWithDefault<unique_ptr<SelectStatement>>(101, "query", result->query);
-	deserializer.ReadProperty<CTEMaterialize>(102, "materialized", result->materialized);
-	deserializer.ReadPropertyWithDefault<vector<unique_ptr<ParsedExpression>>>(103, "key_targets", result->key_targets);
+	auto aliases = deserializer.ReadPropertyWithDefault<vector<string>>(100, "aliases");
+	auto query = deserializer.ReadPropertyWithDefault<unique_ptr<SelectStatement>>(101, "query");
+	auto materialized = deserializer.ReadProperty<CTEMaterialize>(102, "materialized");
+	auto key_targets = deserializer.ReadPropertyWithDefault<vector<unique_ptr<ParsedExpression>>>(103, "key_targets");
+	auto payload_aggregates = deserializer.ReadPropertyWithDefault<vector<unique_ptr<ParsedExpression>>>(104, "payload_aggregates");
+	auto query_node = deserializer.ReadPropertyWithDefault<unique_ptr<QueryNode>>(105, "query_node");
+	auto result = duckdb::unique_ptr<CommonTableExpressionInfo>(new CommonTableExpressionInfo(std::move(query), std::move(query_node)));
+	result->aliases = std::move(aliases);
+	result->materialized = materialized;
+	result->key_targets = std::move(key_targets);
+	result->payload_aggregates = std::move(payload_aggregates);
 	return result;
 }
 
@@ -346,10 +358,10 @@ void JoinCondition::Serialize(Serializer &serializer) const {
 }
 
 JoinCondition JoinCondition::Deserialize(Deserializer &deserializer) {
-	JoinCondition result;
-	deserializer.ReadPropertyWithDefault<unique_ptr<Expression>>(100, "left", result.left);
-	deserializer.ReadPropertyWithDefault<unique_ptr<Expression>>(101, "right", result.right);
-	deserializer.ReadProperty<ExpressionType>(102, "comparison", result.comparison);
+	auto left = deserializer.ReadPropertyWithDefault<unique_ptr<Expression>>(100, "left");
+	auto right = deserializer.ReadPropertyWithDefault<unique_ptr<Expression>>(101, "right");
+	auto comparison = deserializer.ReadProperty<ExpressionType>(102, "comparison");
+	JoinCondition result(std::move(left), std::move(right), comparison);
 	return result;
 }
 
@@ -502,6 +514,7 @@ void SampleOptions::Serialize(Serializer &serializer) const {
 	serializer.WritePropertyWithDefault<bool>(101, "is_percentage", is_percentage);
 	serializer.WriteProperty<SampleMethod>(102, "method", method);
 	serializer.WritePropertyWithDefault<int64_t>(103, "seed", GetSeed());
+	serializer.WritePropertyWithDefault<bool>(104, "repeatable", repeatable);
 }
 
 unique_ptr<SampleOptions> SampleOptions::Deserialize(Deserializer &deserializer) {
@@ -513,6 +526,7 @@ unique_ptr<SampleOptions> SampleOptions::Deserialize(Deserializer &deserializer)
 	result->sample_size = sample_size;
 	result->is_percentage = is_percentage;
 	result->method = method;
+	deserializer.ReadPropertyWithDefault<bool>(104, "repeatable", result->repeatable);
 	return result;
 }
 
@@ -718,12 +732,12 @@ TableColumn TableColumn::Deserialize(Deserializer &deserializer) {
 }
 
 void TableFilterSet::Serialize(Serializer &serializer) const {
-	serializer.WritePropertyWithDefault<map<idx_t, unique_ptr<TableFilter>>>(100, "filters", filters);
+	serializer.WritePropertyWithDefault<map<ProjectionIndex, unique_ptr<TableFilter>>>(100, "filters", filters);
 }
 
 TableFilterSet TableFilterSet::Deserialize(Deserializer &deserializer) {
 	TableFilterSet result;
-	deserializer.ReadPropertyWithDefault<map<idx_t, unique_ptr<TableFilter>>>(100, "filters", result.filters);
+	deserializer.ReadPropertyWithDefault<map<ProjectionIndex, unique_ptr<TableFilter>>>(100, "filters", result.filters);
 	return result;
 }
 

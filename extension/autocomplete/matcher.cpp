@@ -9,7 +9,7 @@
 #include "keyword_helper.hpp"
 #include "duckdb/common/case_insensitive_map.hpp"
 #include "duckdb/common/exception/parser_exception.hpp"
-#include "tokenizer.hpp"
+#include "include/parser/tokenizer/base_tokenizer.hpp"
 #include "parser/peg_parser.hpp"
 #include "transformer/parse_result.hpp"
 #ifdef PEG_PARSER_SOURCE_FILE
@@ -118,9 +118,19 @@ public:
 
 	MatchResultType Match(MatchState &state) const override {
 		MatchState list_state(state);
+		// when suppress_suggestions is set, we discard any suggestions added by child matchers
+		auto saved_suggestion_size = suppress_suggestions ? list_state.suggestions.size() : 0;
 		for (idx_t child_idx = 0; child_idx < matchers.size(); child_idx++) {
 			auto &child_matcher = matchers[child_idx].get();
 			if (list_state.token_index >= list_state.tokens.size()) {
+				if (suppress_suggestions) {
+					// this rule should not contribute autocomplete suggestions
+					// discard any suggestions added by earlier children
+					list_state.suggestions.erase(list_state.suggestions.begin() +
+					                                 NumericCast<int64_t>(saved_suggestion_size),
+					                             list_state.suggestions.end());
+					return MatchResultType::FAIL;
+				}
 				// we exhausted the tokens - push suggestions for the child matcher
 				for (; child_idx < matchers.size(); child_idx++) {
 					auto suggestion_type = matchers[child_idx].get().AddSuggestion(list_state);
@@ -139,12 +149,21 @@ public:
 			}
 			auto match_result = child_matcher.Match(list_state);
 			if (match_result != MatchResultType::SUCCESS) {
-				// we did not succeed in matching a child - skip
+				if (suppress_suggestions) {
+					list_state.suggestions.erase(list_state.suggestions.begin() +
+					                                 NumericCast<int64_t>(saved_suggestion_size),
+					                             list_state.suggestions.end());
+				}
 				return match_result;
 			}
 		}
 		// we matched all child matchers - propagate token index upward
 		state.token_index = list_state.token_index;
+		if (suppress_suggestions) {
+			// discard suggestions from child matchers that were added during matching
+			state.suggestions.erase(state.suggestions.begin() + NumericCast<int64_t>(saved_suggestion_size),
+			                        state.suggestions.end());
+		}
 		return MatchResultType::SUCCESS;
 	}
 
@@ -169,6 +188,9 @@ public:
 	}
 
 	SuggestionType AddSuggestionInternal(MatchState &state) const override {
+		if (suppress_suggestions) {
+			return SuggestionType::OPTIONAL;
+		}
 		for (auto &matcher : matchers) {
 			auto suggestion_result = matcher.get().AddSuggestion(state);
 			if (suggestion_result == SuggestionType::MANDATORY) {
@@ -193,6 +215,8 @@ public:
 
 public:
 	vector<reference<Matcher>> matchers;
+	//! If true, this matcher will not contribute autocomplete suggestions (used for rules like ExpressionStatement)
+	bool suppress_suggestions = false;
 };
 
 class OptionalMatcher : public Matcher {
@@ -438,6 +462,7 @@ public:
 		if (!MatchIdentifier(state)) {
 			return MatchResultType::FAIL;
 		}
+		state.tokens[state.token_index - 1].type = GetTokenType();
 		return MatchResultType::SUCCESS;
 	}
 
@@ -463,6 +488,31 @@ public:
 			result_text = StringUtil::Replace(result_text, "''", "'");
 		}
 		return state.allocator.Allocate(make_uniq<IdentifierParseResult>(result_text, start_offset));
+	}
+
+	TokenType GetTokenType() const {
+		switch (suggestion_type) {
+		case SuggestionState::SUGGEST_CATALOG_NAME:
+			return TokenType::CATALOG_NAME;
+		case SuggestionState::SUGGEST_SCHEMA_NAME:
+			return TokenType::SCHEMA_NAME;
+		case SuggestionState::SUGGEST_TABLE_NAME:
+			return TokenType::TABLE_NAME;
+		case SuggestionState::SUGGEST_TYPE_NAME:
+			return TokenType::TYPE_NAME;
+		case SuggestionState::SUGGEST_COLUMN_NAME:
+			return TokenType::COLUMN_NAME;
+		case SuggestionState::SUGGEST_SCALAR_FUNCTION_NAME:
+			return TokenType::SCALAR_FUNCTION;
+		case SuggestionState::SUGGEST_TABLE_FUNCTION_NAME:
+			return TokenType::TABLE_FUNCTION;
+		case SuggestionState::SUGGEST_PRAGMA_NAME:
+			return TokenType::PRAGMA_FUNCTION;
+		case SuggestionState::SUGGEST_SETTING_NAME:
+			return TokenType::SETTING_NAME;
+		default:
+			return TokenType::IDENTIFIER;
+		}
 	}
 
 	bool SupportsStringLiteral() const {
@@ -578,6 +628,7 @@ public:
 		if (!MatchReservedIdentifier(state)) {
 			return MatchResultType::FAIL;
 		}
+		state.tokens[state.token_index - 1].type = GetTokenType();
 		return MatchResultType::SUCCESS;
 	}
 
@@ -632,6 +683,7 @@ public:
 		if (!MatchStringLiteral(state, string_info)) {
 			return MatchResultType::FAIL;
 		}
+		state.tokens[state.token_index - 1].type = TokenType::STRING_LITERAL;
 		return MatchResultType::SUCCESS;
 	}
 
@@ -704,6 +756,7 @@ public:
 		if (!MatchNumberLiteral(state)) {
 			return MatchResultType::FAIL;
 		}
+		state.tokens[state.token_index - 1].type = TokenType::NUMBER_LITERAL;
 		return MatchResultType::SUCCESS;
 	}
 
@@ -931,6 +984,7 @@ private:
 
 	void AddKeywordOverride(const char *name, uint32_t score, char extra_char = ' ');
 	void AddRuleOverride(const char *name, Matcher &matcher);
+	void SuppressSuggestions(const char *name);
 	Matcher &CreateMatcher(PEGParser &parser, string_t rule_name);
 	Matcher &CreateMatcher(PEGParser &parser, string_t rule_name, vector<reference<Matcher>> &parameters);
 
@@ -938,6 +992,7 @@ private:
 	MatcherAllocator &allocator;
 	string_map_t<reference<Matcher>> matchers;
 	case_insensitive_map_t<reference<Matcher>> keyword_overrides;
+	string_set_t no_suggestion_rules;
 };
 
 Matcher &MatcherFactory::Keyword(const string &keyword) const {
@@ -1293,6 +1348,9 @@ Matcher &MatcherFactory::CreateMatcher(PEGParser &parser, string_t rule_name, ve
 		throw InternalException("PEG matcher create error - unclosed bracket found");
 	}
 	matcher.SetName(rule_name.GetString());
+	if (no_suggestion_rules.count(rule_name.GetString())) {
+		matcher.Cast<ListMatcher>().suppress_suggestions = true;
+	}
 	return matcher;
 }
 
@@ -1303,6 +1361,10 @@ void MatcherFactory::AddKeywordOverride(const char *name, uint32_t score, char e
 
 void MatcherFactory::AddRuleOverride(const char *name, Matcher &matcher) {
 	matchers.insert(make_pair(name, reference<Matcher>(matcher)));
+}
+
+void MatcherFactory::SuppressSuggestions(const char *name) {
+	no_suggestion_rules.insert(name);
 }
 
 Matcher &MatcherFactory::CreateMatcher(const char *grammar, const char *root_rule) {
@@ -1341,22 +1403,42 @@ Matcher &MatcherFactory::CreateMatcher(const char *grammar, const char *root_rul
 	AddRuleOverride("StringLiteral", StringLiteral());
 	AddRuleOverride("OperatorLiteral", Operator());
 
+	// suppress suggestions for catch-all rules that would pollute statement-level autocomplete
+	SuppressSuggestions("ExpressionStatement");
+
 	// now create the matchers for each of the rules recursively - starting at the root rule
 	return CreateMatcher(parser, root_rule);
 }
 
-Matcher &Matcher::RootMatcher(MatcherAllocator &allocator) {
-	MatcherFactory factory(allocator);
+shared_ptr<PEGMatcher> PEGMatcherCache::GetMatcher() {
+	{
+		std::unique_lock<std::mutex> lock(mutex);
+		if (matcher) {
+			return matcher;
+		}
+	}
+	auto new_matcher = make_shared_ptr<PEGMatcher>();
+	MatcherFactory factory(new_matcher->allocator);
 #ifdef PEG_PARSER_SOURCE_FILE
 	std::ifstream t(PEG_PARSER_SOURCE_FILE);
 	std::stringstream buffer;
 	buffer << t.rdbuf();
-	auto string = buffer.str();
+	auto grammar_string = buffer.str();
 
-	return factory.CreateMatcher(string.c_str(), "Statement");
+	new_matcher->root = factory.CreateMatcher(grammar_string.c_str(), "Statement");
 #else
-	return factory.CreateMatcher(const_char_ptr_cast(INLINED_PEG_GRAMMAR), "Statement");
+	new_matcher->root = factory.CreateMatcher(const_char_ptr_cast(INLINED_PEG_GRAMMAR), "Statement");
 #endif
+	std::unique_lock<std::mutex> lock(mutex);
+	if (!matcher) {
+		matcher = std::move(new_matcher);
+	}
+	return matcher;
+}
+
+void PEGMatcherCache::Invalidate() {
+	std::unique_lock<std::mutex> lock(mutex);
+	matcher = nullptr;
 }
 
 } // namespace duckdb

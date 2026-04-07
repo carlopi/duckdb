@@ -1,7 +1,6 @@
 #pragma once
 
 #include "ast/unpivot_name_values.hpp"
-#include "tokenizer.hpp"
 #include "parse_result.hpp"
 #include "transform_enum_result.hpp"
 #include "transform_result.hpp"
@@ -25,6 +24,7 @@
 #include "ast/sequence_option.hpp"
 #include "ast/setting_info.hpp"
 #include "ast/table_alias.hpp"
+#include "ast/trigger_event_info.hpp"
 #include "ast/window_frame.hpp"
 #include "duckdb/function/macro_function.hpp"
 #include "duckdb/parser/parser_options.hpp"
@@ -53,6 +53,7 @@ namespace duckdb {
 struct QualifiedName;
 struct MatcherToken;
 struct GroupingExpressionMap;
+class Matcher;
 
 struct PEGTransformerState {
 	explicit PEGTransformerState(const vector<MatcherToken> &tokens_p) : tokens(tokens_p), token_index(0) {
@@ -200,7 +201,8 @@ public:
 	explicit PEGTransformerFactory();
 
 	//! Helper functions
-	static unique_ptr<SQLStatement> Transform(vector<MatcherToken> &tokens, ParserOptions &options);
+	static unique_ptr<SQLStatement> Transform(vector<MatcherToken> &tokens, ParserOptions &options,
+	                                          Matcher &root_matcher);
 	static optional_ptr<ParseResult> ExtractResultFromParens(optional_ptr<ParseResult> parse_result);
 	static vector<optional_ptr<ParseResult>> ExtractParseResultsFromList(optional_ptr<ParseResult> parse_result);
 	static bool ExpressionIsEmptyStar(ParsedExpression &expr);
@@ -210,7 +212,7 @@ public:
 	static bool TryNegateValue(Value &val);
 	static unique_ptr<ParsedExpression> ConvertNumberToValue(string val);
 	static void AddGroupByExpression(unique_ptr<ParsedExpression> expression, GroupingExpressionMap &map,
-	                                 GroupByNode &result, vector<idx_t> &result_set);
+	                                 GroupByNode &result, vector<ProjectionIndex> &result_set);
 	static vector<GroupingSet> GroupByExpressionUnfolding(PEGTransformer &transformer,
 	                                                      optional_ptr<ParseResult> group_by_expr,
 	                                                      GroupingExpressionMap &map, GroupByNode &result);
@@ -253,6 +255,7 @@ public:
 	void RegisterCreateTable();
 	void RegisterCreateType();
 	void RegisterCreateView();
+	void RegisterCreateTrigger();
 	void RegisterDeallocate();
 	void RegisterDelete();
 	void RegisterDetach();
@@ -381,7 +384,8 @@ private:
 	                                                                optional_ptr<ParseResult> parse_result);
 	static GenericCopyOption TransformGenericCopyOption(PEGTransformer &transformer,
 	                                                    optional_ptr<ParseResult> parse_result);
-	static string TransformDatabasePath(PEGTransformer &transformer, optional_ptr<ParseResult> parse_result);
+	static unique_ptr<ParsedExpression> TransformDatabasePath(PEGTransformer &transformer,
+	                                                          optional_ptr<ParseResult> parse_result);
 
 	// analyze.gram
 	static unique_ptr<SQLStatement> TransformAnalyzeStatement(PEGTransformer &transformer,
@@ -658,6 +662,26 @@ private:
 	static unique_ptr<CreateStatement> TransformCreateViewStmt(PEGTransformer &transformer,
 	                                                           optional_ptr<ParseResult> parse_result);
 
+	// create_trigger.gram
+	static unique_ptr<CreateStatement> TransformCreateTriggerStmt(PEGTransformer &transformer,
+	                                                              optional_ptr<ParseResult> parse_result);
+	static TriggerForEach TransformForEachClause(PEGTransformer &transformer, optional_ptr<ParseResult> parse_result);
+	static string TransformTriggerName(PEGTransformer &transformer, optional_ptr<ParseResult> parse_result);
+	static TriggerTiming TransformTriggerTiming(PEGTransformer &transformer, optional_ptr<ParseResult> parse_result);
+	static TriggerEventInfo TransformTriggerEvent(PEGTransformer &transformer, optional_ptr<ParseResult> parse_result);
+	static TriggerEventInfo TransformTriggerEventInsert(PEGTransformer &transformer,
+	                                                    optional_ptr<ParseResult> parse_result);
+	static TriggerEventInfo TransformTriggerEventDelete(PEGTransformer &transformer,
+	                                                    optional_ptr<ParseResult> parse_result);
+	static TriggerEventInfo TransformTriggerEventUpdate(PEGTransformer &transformer,
+	                                                    optional_ptr<ParseResult> parse_result);
+	static TriggerEventInfo TransformTriggerEventUpdateOf(PEGTransformer &transformer,
+	                                                      optional_ptr<ParseResult> parse_result);
+	static vector<string> TransformTriggerColumnList(PEGTransformer &transformer,
+	                                                 optional_ptr<ParseResult> parse_result);
+	static unique_ptr<SQLStatement> TransformTriggerBody(PEGTransformer &transformer,
+	                                                     optional_ptr<ParseResult> parse_result);
+
 	// deallocate.gram
 	static unique_ptr<SQLStatement> TransformDeallocateStatement(PEGTransformer &transformer,
 	                                                             optional_ptr<ParseResult> parse_result);
@@ -723,6 +747,8 @@ private:
 	static unique_ptr<DropStatement> TransformDropSecret(PEGTransformer &transformer,
 	                                                     optional_ptr<ParseResult> parse_result);
 	static string TransformDropSecretStorage(PEGTransformer &transformer, optional_ptr<ParseResult> parse_result);
+	static unique_ptr<DropStatement> TransformDropTrigger(PEGTransformer &transformer,
+	                                                      optional_ptr<ParseResult> parse_result);
 
 	// execute.gram
 	static unique_ptr<SQLStatement> TransformExecuteStatement(PEGTransformer &transformer,
@@ -740,6 +766,10 @@ private:
 	static string TransformExportSource(PEGTransformer &transformer, optional_ptr<ParseResult> parse_result);
 
 	// expression.gram
+	static unique_ptr<SQLStatement> TransformExpressionStatement(PEGTransformer &transformer,
+	                                                             optional_ptr<ParseResult> parse_result);
+	static unique_ptr<ParsedExpression> TransformExpressionAlias(PEGTransformer &transformer,
+	                                                             optional_ptr<ParseResult> parse_result);
 	static unique_ptr<ParsedExpression> TransformBaseExpression(PEGTransformer &transformer,
 	                                                            optional_ptr<ParseResult> parse_result);
 	static unique_ptr<ParsedExpression> TransformExpression(PEGTransformer &transformer,

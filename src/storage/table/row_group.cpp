@@ -22,6 +22,7 @@
 #include "duckdb/transaction/duck_transaction.hpp"
 #include "duckdb/transaction/duck_transaction_manager.hpp"
 #include "duckdb/storage/table/row_id_column_data.hpp"
+#include "duckdb/storage/table/row_group_collection.hpp"
 #include "duckdb/main/settings.hpp"
 
 #include "duckdb/planner/expression/bound_cast_expression.hpp"
@@ -525,7 +526,7 @@ bool RowGroup::CheckZonemap(ScanFilterInfo &filters) {
 		if (prune_result == FilterPropagateResult::FILTER_ALWAYS_FALSE) {
 			return false;
 		}
-		if (filter.filter_type == TableFilterType::OPTIONAL_FILTER) {
+		if (filter.IsOnlyForZoneMapFiltering()) {
 			// these are only for row group checking, set as always true so we don't check it
 			filters.SetFilterAlwaysTrue(i);
 		} else if (prune_result == FilterPropagateResult::FILTER_ALWAYS_TRUE) {

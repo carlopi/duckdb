@@ -10,7 +10,7 @@
 
 #include "duckdb.hpp"
 #include "duckdb/common/helper.hpp"
-#include "duckdb/storage/caching_file_system.hpp"
+#include "duckdb/storage/external_file_cache/caching_file_system.hpp"
 #include "duckdb/common/common.hpp"
 #include "duckdb/common/encryption_functions.hpp"
 #include "duckdb/common/encryption_state.hpp"
@@ -48,11 +48,11 @@ struct ParquetReaderPrefetchConfig {
 };
 
 struct ParquetScanFilter {
-	ParquetScanFilter(ClientContext &context, idx_t filter_idx, TableFilter &filter);
+	ParquetScanFilter(ClientContext &context, ProjectionIndex filter_idx, TableFilter &filter);
 	~ParquetScanFilter();
 	ParquetScanFilter(ParquetScanFilter &&) = default;
 
-	idx_t filter_idx;
+	ProjectionIndex filter_idx;
 	TableFilter &filter;
 	unique_ptr<TableFilterState> filter_state;
 };
@@ -107,6 +107,7 @@ struct ParquetOptions {
 	explicit ParquetOptions(ClientContext &context);
 
 	bool binary_as_string = false;
+	bool variant_legacy_encoding = false;
 	bool file_row_number = false;
 	shared_ptr<ParquetEncryptionConfig> encryption_config;
 

@@ -1,13 +1,14 @@
-#include "duckdb/storage/string_uncompressed.hpp"
-#include "duckdb/function/compression/compression.hpp"
-#include "duckdb/storage/table/column_data_checkpointer.hpp"
-#include "duckdb/storage/block_manager.hpp"
-#include "duckdb/main/config.hpp"
-#include "duckdb/main/settings.hpp"
 #include "duckdb/common/constants.hpp"
 #include "duckdb/common/allocator.hpp"
 #include "duckdb/common/serializer/deserializer.hpp"
+#include "duckdb/function/compression/compression.hpp"
+#include "duckdb/main/config.hpp"
+#include "duckdb/main/settings.hpp"
+#include "duckdb/storage/table/column_data_checkpointer.hpp"
+#include "duckdb/storage/block_manager.hpp"
 #include "duckdb/storage/checkpoint/string_checkpoint_state.hpp"
+#include "duckdb/storage/string_uncompressed.hpp"
+#include "duckdb/storage/table/data_table_info.hpp"
 
 #include "duckdb/storage/compression/zstd/zstd.hpp"
 #include "zstd.h"
@@ -933,8 +934,8 @@ public:
 		for (idx_t i = 0; i < count; i++) {
 			uncompressed_length += string_lengths[i];
 		}
-		auto &buffer = StringVector::GetStringBuffer(result);
-		auto uncompressed_data = buffer.AllocateShrinkableBuffer(uncompressed_length);
+		auto &allocator = StringVector::GetStringAllocator(result);
+		auto uncompressed_data = StringVector::AllocateShrinkableBuffer(allocator, uncompressed_length);
 		auto string_data = FlatVector::GetData<string_t>(result);
 
 		DecompressString(scan_state, uncompressed_data, uncompressed_length);

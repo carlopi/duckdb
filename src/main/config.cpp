@@ -65,6 +65,7 @@ bool DBConfigOptions::debug_print_bindings = false;
 
 static const ConfigurationOption internal_options[] = {
 
+    DUCKDB_GLOBAL(DeltaOnlyVariantEncodingEnabledSetting),
     DUCKDB_GLOBAL(AccessModeSetting),
     DUCKDB_SETTING_CALLBACK(AllocatorBackgroundThreadsSetting),
     DUCKDB_GLOBAL(AllocatorBulkDeallocationFlushThresholdSetting),
@@ -89,10 +90,11 @@ static const ConfigurationOption internal_options[] = {
     DUCKDB_SETTING(AutoloadKnownExtensionsSetting),
     DUCKDB_GLOBAL(BlockAllocatorMemorySetting),
     DUCKDB_SETTING(CatalogErrorMaxSchemasSetting),
+    DUCKDB_SETTING_CALLBACK(CheckpointOnDetachSetting),
     DUCKDB_GLOBAL(CheckpointThresholdSetting),
+    DUCKDB_LOCAL(ConfigureProfilingSetting),
     DUCKDB_SETTING_CALLBACK(CurrentTransactionInvalidationPolicySetting),
     DUCKDB_SETTING(CustomExtensionRepositorySetting),
-    DUCKDB_LOCAL(CustomProfilingSettingsSetting),
     DUCKDB_GLOBAL(CustomUserAgentSetting),
     DUCKDB_SETTING(DebugAsofIejoinSetting),
     DUCKDB_SETTING_CALLBACK(DebugCheckpointAbortSetting),
@@ -162,6 +164,7 @@ static const ConfigurationOption internal_options[] = {
     DUCKDB_GLOBAL(LoggingLevel),
     DUCKDB_GLOBAL(LoggingMode),
     DUCKDB_GLOBAL(LoggingStorage),
+    DUCKDB_SETTING(MaxExecutionTimeSetting),
     DUCKDB_SETTING(MaxExpressionDepthSetting),
     DUCKDB_GLOBAL(MaxMemorySetting),
     DUCKDB_GLOBAL(MaxTempDirectorySizeSetting),
@@ -169,6 +172,7 @@ static const ConfigurationOption internal_options[] = {
     DUCKDB_SETTING(MergeJoinThresholdSetting),
     DUCKDB_SETTING(NestedLoopJoinThresholdSetting),
     DUCKDB_SETTING(OldImplicitCastingSetting),
+    DUCKDB_LOCAL(OperatorMemoryLimitSetting),
     DUCKDB_SETTING(OrderByNonIntegerLiteralSetting),
     DUCKDB_SETTING_CALLBACK(OrderedAggregateThresholdSetting),
     DUCKDB_SETTING(PartitionedWriteFlushThresholdSetting),
@@ -206,12 +210,14 @@ static const ConfigurationOption internal_options[] = {
     DUCKDB_SETTING(ZstdMinStringLengthSetting),
     FINAL_SETTING};
 
-static const ConfigurationAlias setting_aliases[] = {DUCKDB_SETTING_ALIAS("memory_limit", 98),
-                                                     DUCKDB_SETTING_ALIAS("null_order", 42),
-                                                     DUCKDB_SETTING_ALIAS("profiling_output", 117),
-                                                     DUCKDB_SETTING_ALIAS("user", 132),
-                                                     DUCKDB_SETTING_ALIAS("wal_autocheckpoint", 24),
-                                                     DUCKDB_SETTING_ALIAS("worker_threads", 131),
+static const ConfigurationAlias setting_aliases[] = {DUCKDB_SETTING_ALIAS("configure_metrics", 27),
+                                                     DUCKDB_SETTING_ALIAS("custom_profiling_settings", 27),
+                                                     DUCKDB_SETTING_ALIAS("memory_limit", 101),
+                                                     DUCKDB_SETTING_ALIAS("null_order", 44),
+                                                     DUCKDB_SETTING_ALIAS("profiling_output", 121),
+                                                     DUCKDB_SETTING_ALIAS("user", 136),
+                                                     DUCKDB_SETTING_ALIAS("wal_autocheckpoint", 26),
+                                                     DUCKDB_SETTING_ALIAS("worker_threads", 135),
                                                      FINAL_ALIAS};
 
 vector<ConfigurationOption> DBConfig::GetOptions() {
@@ -639,7 +645,7 @@ idx_t DBConfig::ParseMemoryLimit(const string &arg) {
 
 	if (!error.empty()) {
 		if (error == "Memory cannot be negative") {
-			result = DConstants::INVALID_INDEX;
+			return NumericLimits<idx_t>::Maximum();
 		} else {
 			throw ParserException(error);
 		}
@@ -892,64 +898,6 @@ bool DBConfig::CanAccessFile(const string &input_path, FileType type) {
 
 SerializationOptions::SerializationOptions(AttachedDatabase &db) {
 	serialization_compatibility = SerializationCompatibility::FromDatabase(db);
-}
-
-SerializationCompatibility SerializationCompatibility::FromDatabase(AttachedDatabase &db) {
-	return FromIndex(db.GetStorageManager().GetStorageVersion());
-}
-
-SerializationCompatibility SerializationCompatibility::FromIndex(const idx_t version) {
-	SerializationCompatibility result;
-	result.duckdb_version = "";
-	result.serialization_version = version;
-	result.manually_set = false;
-	return result;
-}
-
-SerializationCompatibility SerializationCompatibility::FromString(const string &input) {
-	if (input.empty()) {
-		throw InvalidInputException("Version string can not be empty");
-	}
-
-	auto serialization_version = GetSerializationVersion(input.c_str());
-	if (!serialization_version.IsValid()) {
-		auto candidates = GetSerializationCandidates();
-		throw InvalidInputException("The version string '%s' is not a known DuckDB version, valid options are: %s",
-		                            input, StringUtil::Join(candidates, ", "));
-	}
-	SerializationCompatibility result;
-	result.duckdb_version = input;
-	result.serialization_version = serialization_version.GetIndex();
-	result.manually_set = true;
-	return result;
-}
-
-SerializationCompatibility SerializationCompatibility::Default() {
-#ifdef DUCKDB_ALTERNATIVE_VERIFY
-	auto res = FromString("latest");
-	res.manually_set = false;
-	return res;
-#else
-#ifdef DUCKDB_LATEST_STORAGE
-	auto res = FromString("latest");
-	res.manually_set = false;
-	return res;
-#else
-	auto res = FromString("v0.10.2");
-	res.manually_set = false;
-	return res;
-#endif
-#endif
-}
-
-SerializationCompatibility SerializationCompatibility::Latest() {
-	auto res = FromString("latest");
-	res.manually_set = false;
-	return res;
-}
-
-bool SerializationCompatibility::Compare(idx_t property_version) const {
-	return property_version <= serialization_version;
 }
 
 void DBConfig::SetHTTPUtil(const shared_ptr<HTTPUtil> &new_http_util) {

@@ -36,6 +36,7 @@
 #include "duckdb/main/user_settings.hpp"
 #include "duckdb/parser/parsed_data/create_info.hpp"
 #include "duckdb/common/types/type_manager.hpp"
+#include "duckdb/common/serialization_compatibility.hpp"
 
 namespace duckdb {
 
@@ -63,29 +64,6 @@ struct CompressionFunctionSet;
 struct DatabaseCacheEntry;
 struct DBConfig;
 struct SettingLookupResult;
-
-class SerializationCompatibility {
-public:
-	static SerializationCompatibility FromDatabase(AttachedDatabase &db);
-	static SerializationCompatibility FromIndex(idx_t serialization_version);
-	static SerializationCompatibility FromString(const string &input);
-	static SerializationCompatibility Default();
-	static SerializationCompatibility Latest();
-
-public:
-	bool Compare(idx_t property_version) const;
-
-public:
-	//! The user provided version
-	string duckdb_version;
-	//! The max version that should be serialized
-	idx_t serialization_version;
-	//! Whether this was set by a manual SET/PRAGMA or default
-	bool manually_set;
-
-protected:
-	SerializationCompatibility() = default;
-};
 
 //! NOTE: DBConfigOptions is mostly deprecated.
 //! If you want to add a setting that can be set by the user, add it as a generic setting to `settings.json`.
@@ -149,6 +127,8 @@ struct DBConfigOptions {
 	idx_t allocator_flush_threshold = 134217728ULL;
 	//! If bulk deallocation larger than this occurs, flush outstanding allocations (1 << 30, ~1GB)
 	idx_t allocator_bulk_deallocation_flush_threshold = 536870912ULL;
+	//! Delta Only! - Fall back to recognizing Variant columns structurally
+	bool variant_legacy_encoding = false;
 	//! Metadata from DuckDB callers
 	string custom_user_agent;
 	//! The default block header size for new duckdb database files.

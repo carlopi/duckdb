@@ -13,7 +13,10 @@
       {
         "id": 101,
         "name": "query",
-        "type": "SelectStatement*"
+        "type": "SelectStatement*",
+        "version": "v2.0.0",
+        "status": "read_only",
+        "serialize_property": "GetQueryForSerialization(serializer)"
       },
       {
         "id": 102,
@@ -25,8 +28,20 @@
         "id": 103,
         "name": "key_targets",
         "type": "vector<ParsedExpression*>"
+      },
+      {
+        "id": 104,
+        "name": "payload_aggregates",
+        "type": "vector<ParsedExpression*>"
+      },
+      {
+        "id": 105,
+        "name": "query_node",
+        "type": "QueryNode*",
+        "version": "v2.0.0"
       }
-    ]
+    ],
+    "constructor": ["query", "query_node"]
   },
   {
     "class": "CommonTableExpressionMap",
@@ -183,6 +198,11 @@
         "name": "seed",
         "type": "int64_t",
         "serialize_property": "GetSeed()"
+      },
+      {
+        "id": 104,
+        "name": "repeatable",
+        "type": "bool"
       }
     ],
     "constructor": ["seed"]
@@ -406,8 +426,8 @@
       {
         "id": 106,
         "name": "tags",
-        "type": "unordered_map<string, string>",
-        "default": "unordered_map<string, string>()"
+        "type": "InsertionOrderPreservingMap<string>",
+        "default": "InsertionOrderPreservingMap<string>()"
       }
     ],
     "constructor": ["name", "type", "expression", "category"],
@@ -437,12 +457,12 @@
       {
         "id": 100,
         "name": "table_index",
-        "type": "idx_t"
+        "type": "TableIndex"
       },
       {
         "id": 101,
         "name": "column_index",
-        "type": "idx_t"
+        "type": "ProjectionIndex"
       }
     ],
     "pointer_type": "none"
@@ -489,6 +509,7 @@
         "type": "ExpressionType"
       }
     ],
+    "constructor": ["left", "right", "comparison"],
     "pointer_type": "none"
   },
   {
@@ -519,7 +540,7 @@
       {
         "id": 100,
         "name": "filters",
-        "type": "map<idx_t, TableFilter*>"
+        "type": "map<ProjectionIndex, TableFilter*>"
       }
     ],
     "pointer_type": "none"

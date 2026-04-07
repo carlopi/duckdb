@@ -1,5 +1,12 @@
 [
     {
+        "name": "__delta_only_variant_encoding_enabled",
+        "description": "Enables the Parquet reader to identify a Variant structurally.",
+        "type": "BOOLEAN",
+        "scope": "global",
+        "custom_implementation": true
+    },
+    {
         "name": "access_mode",
         "description": "Access mode of the database (AUTOMATIC, READ_ONLY or READ_WRITE)",
         "type": "ENUM<AccessMode>",
@@ -194,6 +201,13 @@
         "default_value": "100"
     },
     {
+        "name": "checkpoint_on_detach",
+        "description": "Override checkpoint behavior when detaching a database. ENABLED always checkpoints, DISABLED never checkpoints, DEFAULT defers to the global checkpoint_on_shutdown setting.",
+        "type": "ENUM<CheckpointOnDetach>",
+        "default_scope": "local",
+        "default_value": "DEFAULT"
+    },
+    {
         "name": "checkpoint_threshold",
         "description": "The WAL size threshold at which to automatically trigger a checkpoint (e.g. 1GB)",
         "type": "VARCHAR",
@@ -205,6 +219,17 @@
         ],
         "aliases": [
             "wal_autocheckpoint"
+        ]
+    },
+    {
+        "name": "configure_profiling",
+        "description": "Accepts a JSON enabling custom metrics",
+        "type": "VARCHAR",
+        "scope": "local",
+        "custom_implementation": true,
+        "aliases": [
+            "custom_profiling_settings",
+            "configure_metrics"
         ]
     },
     {
@@ -225,13 +250,6 @@
         "internal_setting": "custom_extension_repo",
         "scope": "global",
         "default_value": ""
-    },
-    {
-        "name": "custom_profiling_settings",
-        "description": "Accepts a JSON enabling custom metrics",
-        "type": "VARCHAR",
-        "scope": "local",
-        "custom_implementation": true
     },
     {
         "name": "custom_user_agent",
@@ -782,6 +800,13 @@
         "custom_implementation": true
     },
     {
+        "name": "max_execution_time",
+        "description": "The maximum execution time per query in milliseconds (0 = no limit)",
+        "type": "BIGINT",
+        "scope": "local",
+        "default_value": "0"
+    },
+    {
         "name": "max_expression_depth",
         "description": "The maximum expression depth limit in the parser. WARNING: increasing this setting and using very deep \"\n\t    \"expressions might lead to stack overflow errors.",
         "type": "UBIGINT",
@@ -832,6 +857,13 @@
         "type": "BOOLEAN",
         "default_scope": "global",
         "default_value": "false"
+    },
+    {
+        "name": "operator_memory_limit",
+        "description": "The maximum memory for query intermediates (sorts, hash tables) per connection (e.g. 256MB)",
+        "type": "VARCHAR",
+        "scope": "local",
+        "custom_implementation": true
     },
     {
         "name": "order_by_non_integer_literal",

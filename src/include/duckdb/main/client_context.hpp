@@ -12,6 +12,7 @@
 #include "duckdb/catalog/catalog_set.hpp"
 #include "duckdb/common/atomic.hpp"
 #include "duckdb/common/deque.hpp"
+#include "duckdb/common/optional_idx.hpp"
 #include "duckdb/common/enums/pending_execution_result.hpp"
 #include "duckdb/common/enums/prepared_statement_mode.hpp"
 #include "duckdb/common/error_data.hpp"
@@ -61,6 +62,9 @@ struct PendingQueryParameters {
 	QueryParameters query_parameters;
 };
 
+//! Interrupt state for the client context
+enum class ClientInterruptState : uint8_t { NOT_INTERRUPTED, INTERRUPTED, INTERRUPTS_SUPPRESSED };
+
 //! The ClientContext holds information relevant to the current client session
 //! during execution
 class ClientContext : public enable_shared_from_this<ClientContext> {
@@ -77,8 +81,10 @@ public:
 
 	//! The database that this client is connected to
 	shared_ptr<DatabaseInstance> db;
-	//! Whether or not the query is interrupted
-	atomic<bool> interrupted;
+	//! Interrupt state for the current query
+	atomic<ClientInterruptState> interrupt_state {ClientInterruptState::NOT_INTERRUPTED};
+	//! The deadline for the current query (milliseconds since epoch)
+	optional_idx query_deadline;
 	//! Set of optional states (e.g. Caches) that can be held by the ClientContext
 	unique_ptr<RegisteredStateManager> registered_state;
 	//! The logger to be used by this ClientContext
@@ -99,7 +105,12 @@ public:
 	DUCKDB_API void Interrupt();
 	DUCKDB_API bool IsInterrupted() const;
 	DUCKDB_API void ClearInterrupt();
+	//! Suppress all further interrupts for the current query (called after irreversible operations like COMMIT)
+	DUCKDB_API void SuppressInterrupts();
 	DUCKDB_API void CancelTransaction();
+
+	//! Check for interrupt or timeout, throws InterruptException if triggered
+	DUCKDB_API void InterruptCheck() const;
 
 	//! Enable query profiling
 	DUCKDB_API void EnableProfiling();

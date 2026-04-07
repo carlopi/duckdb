@@ -1,3 +1,7 @@
+#include "duckdb/common/vector/flat_vector.hpp"
+#include "duckdb/common/vector/list_vector.hpp"
+#include "duckdb/common/vector/map_vector.hpp"
+#include "duckdb/common/vector/struct_vector.hpp"
 #include "duckdb/function/variant/variant_shredding.hpp"
 #include "duckdb/function/scalar/variant_utils.hpp"
 
@@ -55,7 +59,7 @@ static bool IsVariantStringType(VariantLogicalType type_id) {
 static void WriteShreddedString(UnifiedVariantVectorData &variant, Vector &result, const SelectionVector &sel,
                                 const SelectionVector &value_index_sel, const SelectionVector &result_sel,
                                 idx_t count) {
-	auto result_data = FlatVector::GetData<string_t>(result);
+	auto result_data = FlatVector::Writer<string_t>(result);
 	for (idx_t i = 0; i < count; i++) {
 		auto row = sel[i];
 		auto result_row = result_sel[i];
@@ -63,14 +67,14 @@ static void WriteShreddedString(UnifiedVariantVectorData &variant, Vector &resul
 		D_ASSERT(variant.RowIsValid(row) && IsVariantStringType(variant.GetTypeId(row, value_index)));
 
 		auto string_data = VariantUtils::DecodeStringData(variant, row, value_index);
-		result_data[result_row] = StringVector::AddStringOrBlob(result, string_data);
+		result_data[result_row] = string_data;
 	}
 }
 
 static void WriteShreddedBoolean(UnifiedVariantVectorData &variant, Vector &result, const SelectionVector &sel,
                                  const SelectionVector &value_index_sel, const SelectionVector &result_sel,
                                  idx_t count) {
-	auto result_data = FlatVector::GetData<bool>(result);
+	auto result_data = FlatVector::Writer<bool>(result);
 	for (idx_t i = 0; i < count; i++) {
 		auto row = sel[i];
 		auto result_row = result_sel[i];
@@ -192,7 +196,7 @@ void VariantShredding::WriteTypedObjectValues(UnifiedVariantVectorData &variant,
 	child_result_sel.Initialize(count);
 
 	for (idx_t child_idx = 0; child_idx < shredded_types.size(); child_idx++) {
-		auto &child_vec = *shredded_fields[child_idx];
+		auto &child_vec = shredded_fields[child_idx];
 		D_ASSERT(child_vec.GetType() == shredded_types[child_idx].second);
 
 		//! Prepare the path component to perform the lookup for
@@ -206,7 +210,7 @@ void VariantShredding::WriteTypedObjectValues(UnifiedVariantVectorData &variant,
 		VariantUtils::FindChildValues(variant, path_component, sel, child_values_indexes, lookup_validity,
 		                              nested_data.get(), all_valid_validity, count);
 
-		if (!lookup_validity.AllValid()) {
+		if (lookup_validity.CanHaveNull()) {
 			optional_ptr<Vector> typed_value_vector;
 			optional_ptr<Vector> untyped_value_vector;
 			if (child_vec.GetType().id() == LogicalTypeId::STRUCT) {

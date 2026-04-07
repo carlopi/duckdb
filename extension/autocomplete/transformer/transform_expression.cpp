@@ -15,8 +15,75 @@
 #include "duckdb/parser/tableref/subqueryref.hpp"
 #include "duckdb/parser/tableref/emptytableref.hpp"
 #include "duckdb/parser/parsed_expression_iterator.hpp"
+#include "duckdb/common/string_util.hpp"
 
 namespace duckdb {
+
+unique_ptr<SQLStatement> PEGTransformerFactory::TransformExpressionStatement(PEGTransformer &transformer,
+                                                                             optional_ptr<ParseResult> parse_result) {
+	auto &list_pr = parse_result->Cast<ListParseResult>();
+	auto expr_list = ExtractParseResultsFromList(list_pr.GetChild(0));
+
+	vector<unique_ptr<ParsedExpression>> expressions;
+	for (auto &expr : expr_list) {
+		expressions.push_back(transformer.Transform<unique_ptr<ParsedExpression>>(expr));
+	}
+
+	auto select_statement = make_uniq<SelectStatement>();
+	auto select_node = make_uniq<SelectNode>();
+
+	bool any_column_ref = false;
+	for (auto &expr : expressions) {
+		if (expr->GetExpressionClass() == ExpressionClass::COLUMN_REF) {
+			any_column_ref = true;
+			break;
+		}
+	}
+
+	if (any_column_ref && expressions.size() > 1) {
+		throw ParserException("Mix of table names and expressions is not supported. "
+		                      "Use SELECT to explicitly specify what you want to query.");
+	}
+
+	if (any_column_ref) {
+		// Single COLUMN_REF: treat as table scan
+		auto &col_expr = expressions[0]->Cast<ColumnRefExpression>();
+		if (col_expr.IsQualified()) {
+			if (col_expr.column_names.size() >= 4) {
+				throw ParserException(
+				    "Too many qualifiers encountered. Expected \"catalog.schema.table\" or \"schema.table\"");
+			}
+			if (col_expr.column_names.size() == 3) {
+				auto table_description =
+				    TableDescription(col_expr.column_names[0], col_expr.column_names[1], col_expr.column_names[2]);
+				select_node->from_table = make_uniq<BaseTableRef>(table_description);
+			} else if (col_expr.column_names.size() == 2) {
+				auto table_description =
+				    TableDescription(INVALID_CATALOG, col_expr.column_names[0], col_expr.column_names[1]);
+				select_node->from_table = make_uniq<BaseTableRef>(table_description);
+			}
+		} else {
+			auto base_table = make_uniq<BaseTableRef>();
+			base_table->table_name = col_expr.GetColumnName();
+			select_node->from_table = std::move(base_table);
+		}
+		select_node->select_list.push_back(make_uniq<StarExpression>());
+	} else {
+		for (auto &expr : expressions) {
+			select_node->select_list.push_back(std::move(expr));
+		}
+		select_node->from_table = make_uniq<EmptyTableRef>();
+	}
+
+	select_statement->node = std::move(select_node);
+	return std::move(select_statement);
+}
+
+unique_ptr<ParsedExpression> PEGTransformerFactory::TransformExpressionAlias(PEGTransformer &transformer,
+                                                                             optional_ptr<ParseResult> parse_result) {
+	auto &list_pr = parse_result->Cast<ListParseResult>();
+	return transformer.Transform<unique_ptr<ParsedExpression>>(list_pr.Child<ChoiceParseResult>(0).result);
+}
 
 // BaseExpression <- SingleExpression Indirection*
 unique_ptr<ParsedExpression> PEGTransformerFactory::TransformBaseExpression(PEGTransformer &transformer,
@@ -110,50 +177,6 @@ string PEGTransformerFactory::TransformReservedTableQualification(PEGTransformer
 	return list_pr.Child<IdentifierParseResult>(0).identifier;
 }
 
-static bool IsExcludableWindowFunction(ExpressionType type) {
-	switch (type) {
-	case ExpressionType::WINDOW_FIRST_VALUE:
-	case ExpressionType::WINDOW_LAST_VALUE:
-	case ExpressionType::WINDOW_NTH_VALUE:
-	case ExpressionType::WINDOW_AGGREGATE:
-		return true;
-	case ExpressionType::WINDOW_RANK_DENSE:
-	case ExpressionType::WINDOW_RANK:
-	case ExpressionType::WINDOW_PERCENT_RANK:
-	case ExpressionType::WINDOW_ROW_NUMBER:
-	case ExpressionType::WINDOW_NTILE:
-	case ExpressionType::WINDOW_CUME_DIST:
-	case ExpressionType::WINDOW_LEAD:
-	case ExpressionType::WINDOW_LAG:
-	case ExpressionType::WINDOW_FILL:
-		return false;
-	default:
-		throw InternalException("Unknown excludable window type %s", ExpressionTypeToString(type).c_str());
-	}
-}
-
-static bool IsOrderableWindowFunction(ExpressionType type) {
-	switch (type) {
-	case ExpressionType::WINDOW_FIRST_VALUE:
-	case ExpressionType::WINDOW_LAST_VALUE:
-	case ExpressionType::WINDOW_NTH_VALUE:
-	case ExpressionType::WINDOW_RANK:
-	case ExpressionType::WINDOW_PERCENT_RANK:
-	case ExpressionType::WINDOW_ROW_NUMBER:
-	case ExpressionType::WINDOW_NTILE:
-	case ExpressionType::WINDOW_CUME_DIST:
-	case ExpressionType::WINDOW_LEAD:
-	case ExpressionType::WINDOW_LAG:
-	case ExpressionType::WINDOW_FILL:
-	case ExpressionType::WINDOW_AGGREGATE:
-		return true;
-	case ExpressionType::WINDOW_RANK_DENSE:
-		return false;
-	default:
-		throw InternalException("Unknown orderable window type %s", ExpressionTypeToString(type).c_str());
-	}
-}
-
 unique_ptr<ParsedExpression>
 PEGTransformerFactory::TransformFunctionExpression(PEGTransformer &transformer,
                                                    optional_ptr<ParseResult> parse_result) {
@@ -193,74 +216,28 @@ PEGTransformerFactory::TransformFunctionExpression(PEGTransformer &transformer,
 		if (transformer.in_window_definition) {
 			throw ParserException("window functions are not allowed in window definitions");
 		}
-		const auto win_fun_type = WindowExpression::WindowToExpressionType(lowercase_name);
-		if (win_fun_type == ExpressionType::INVALID) {
-			throw InternalException("Unknown/unsupported window function");
+		//	We map first/last OVER() to first_value/last_value.
+		//	Not sure the semantics match, but we are stuck with it.
+		if (lowercase_name == "first" || lowercase_name == "last") {
+			lowercase_name += "_value";
 		}
 
-		if (win_fun_type != ExpressionType::WINDOW_AGGREGATE && distinct) {
-			throw ParserException("DISTINCT is not implemented for non-aggregate window functions!");
-		}
-
-		if (!order_modifier->orders.empty() && !IsOrderableWindowFunction(win_fun_type)) {
-			throw ParserException("ORDER BY is not supported for the window function \"%s\"", lowercase_name.c_str());
-		}
-
-		if (win_fun_type != ExpressionType::WINDOW_AGGREGATE && filter_expr) {
-			throw ParserException("FILTER is not implemented for non-aggregate window functions!");
-		}
 		if (export_opt.HasResult()) {
 			throw ParserException("EXPORT_STATE is not supported for window functions!");
 		}
 
-		if (win_fun_type == ExpressionType::WINDOW_AGGREGATE && has_ignore_nulls_result) {
-			throw ParserException("RESPECT/IGNORE NULLS is not supported for windowed aggregates");
-		}
 		transformer.in_window_definition = true;
 		auto expr = transformer.Transform<unique_ptr<WindowExpression>>(over_opt.optional_result);
 		expr->catalog = qualified_function.catalog;
 		expr->schema = qualified_function.schema;
-		expr->function_name = lowercase_name;
-		expr->type = win_fun_type;
-		if (expr->type == ExpressionType::WINDOW_AGGREGATE) {
-			expr->children = std::move(function_children);
-		} else {
-			if (!function_children.empty()) {
-				expr->children.push_back(std::move(function_children[0]));
-			}
-			if (expr->type == ExpressionType::WINDOW_LEAD || expr->type == ExpressionType::WINDOW_LAG) {
-				if (function_children.size() > 1) {
-					expr->offset_expr = std::move(function_children[1]);
-				}
-				if (function_children.size() > 2) {
-					expr->default_expr = std::move(function_children[2]);
-				}
-				if (function_children.size() > 3) {
-					throw ParserException("Incorrect number of parameters for function %s", qualified_function.name);
-				}
-			} else if (expr->type == ExpressionType::WINDOW_NTH_VALUE) {
-				if (function_children.size() > 1) {
-					expr->children.push_back(std::move(function_children[1]));
-				}
-				if (function_children.size() > 2) {
-					throw ParserException("Incorrect number of parameters for function %s", qualified_function.name);
-				}
-			} else {
-				if (function_children.size() > 1) {
-					throw ParserException("Incorrect number of parameters for function %s", qualified_function.name);
-				}
-			}
-		}
+		expr->SetFunctionName(lowercase_name);
+
+		expr->children = std::move(function_children);
+		expr->has_ignore_nulls = has_ignore_nulls_result;
 		expr->ignore_nulls = ignore_nulls;
 		expr->filter_expr = std::move(filter_expr);
 		expr->arg_orders = std::move(order_modifier->orders);
 		expr->distinct = distinct;
-
-		if (expr->exclude_clause != WindowExcludeMode::NO_OTHER && !expr->arg_orders.empty() &&
-		    !IsExcludableWindowFunction(expr->type)) {
-			throw ParserException("EXCLUDE is not supported for the window function \"%s\"",
-			                      expr->function_name.c_str());
-		}
 		transformer.in_window_definition = false;
 		return std::move(expr);
 	}
@@ -377,10 +354,6 @@ PEGTransformerFactory::TransformFunctionExpression(PEGTransformer &transformer,
 			throw ParserException("Unknown ordered aggregate \"%s\".", qualified_function.name);
 		}
 	}
-	if (has_ignore_nulls_result) {
-		throw ParserException("RESPECT/IGNORE NULLS is not supported for non-window functions");
-	}
-
 	auto result = make_uniq<FunctionExpression>(qualified_function.catalog, qualified_function.schema, lowercase_name,
 	                                            std::move(function_children), std::move(filter_expr),
 	                                            std::move(order_modifier), distinct, false, export_opt.HasResult());
@@ -1944,8 +1917,6 @@ PEGTransformerFactory::TransformWindowFrameNameContentsParens(PEGTransformer &tr
 	copied_window->start_expr = std::move(window_frame_contents->start_expr);
 	copied_window->end_expr = std::move(window_frame_contents->end_expr);
 
-	copied_window->offset_expr = std::move(window_frame_contents->offset_expr);
-	copied_window->default_expr = std::move(window_frame_contents->default_expr);
 	if (!copied_window->orders.empty() && !window_frame_contents->orders.empty()) {
 		throw ParserException("Cannot override ORDER BY clause of window \"%s\"", window_name);
 	}
@@ -1972,8 +1943,7 @@ PEGTransformerFactory::TransformWindowFrameContents(PEGTransformer &transformer,
                                                     optional_ptr<ParseResult> parse_result) {
 	auto &list_pr = parse_result->Cast<ListParseResult>();
 	//! Create a dummy result to add modifiers to
-	auto result =
-	    make_uniq<WindowExpression>(ExpressionType::WINDOW_AGGREGATE, INVALID_CATALOG, INVALID_SCHEMA, string());
+	auto result = make_uniq<WindowExpression>(INVALID_CATALOG, INVALID_SCHEMA, string());
 	auto partition_opt = list_pr.Child<OptionalParseResult>(0);
 	if (partition_opt.HasResult()) {
 		result->partitions = transformer.Transform<vector<unique_ptr<ParsedExpression>>>(partition_opt.optional_result);
