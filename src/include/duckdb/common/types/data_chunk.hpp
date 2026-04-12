@@ -115,6 +115,12 @@ public:
 
 	//! Append with explicit handling of what happens to the input. See
 	//! DataChunkAppendMode for the available modes.
+	//!
+	//! TODO: all current modes enforce flat destination (Flatten after fast-
+	//! path swap/Move). Consider a separate non-flattening variant (e.g.
+	//! TakeFrom) for callers who only need to forward rows downstream without
+	//! further Appends into `this` — would avoid the materialization cost of
+	//! Flatten on non-flat sources.
 	DUCKDB_API void Append(DataChunk &other, DataChunkAppendMode mode);
 
 	//! Destroy all data and columns owned by this DataChunk

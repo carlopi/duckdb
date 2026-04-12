@@ -267,19 +267,25 @@ void DataChunk::AppendAndResetInput(DataChunk &other) {
 	// Swap vectors so this takes other's data and other keeps this's empty
 	// flat vectors for reuse. Flatten afterwards so subsequent Appends on
 	// this work (downstream assumes flat destination).
-	if (size() == 0 && other.lifetime == ChunkLifetime::OWNED && ColumnCount() == other.ColumnCount()) {
+	if (size() == 0 && other.lifetime == ChunkLifetime::OWNED) {
+		Reset();
+		idx_t other_count = other.size();
 		std::swap(data, other.data);
 		std::swap(vector_caches, other.vector_caches);
-		idx_t other_count = other.size();
-		idx_t other_capacity = other.GetCapacity();
+		std::swap(capacity, other.capacity);
+		std::swap(initial_capacity, other.initial_capacity);
 		SetCardinality(other_count);
-		SetCapacity(other_capacity);
 		other.SetCardinality(0);
+		std::swap(lifetime, other.lifetime);
 		lifetime = ChunkLifetime::OWNED;
 		other.lifetime = ChunkLifetime::OWNED;
-		// Ensure this has flat vectors — no-op if source was already flat,
-		// materializes otherwise (dict/constant/etc.).
+		// Ensure this has flat vectors — materializes dict/constant/etc.
+		// from other.
 		Flatten();
+		// Reset other so its (our old) vectors are properly restored from
+		// vector_caches (validity, auxiliary buffers, etc.).
+		//other.Reset();
+		other.Flatten();
 		return;
 	}
 	Append(other);
