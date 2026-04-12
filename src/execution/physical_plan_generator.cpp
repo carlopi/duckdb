@@ -34,10 +34,11 @@ void PhysicalPlanGenerator::InjectFanOut(PhysicalOperator &op) {
 		auto &child = op.children[i].get();
 		// Recurse first (bottom-up)
 		InjectFanOut(child);
-		// Only wrap table scans — other sources (ORDER BY, etc.) should not be wrapped
-		if (child.type != PhysicalOperatorType::TABLE_SCAN) {
+		// Only sources are candidates for FanOut wrapping
+		if (!child.IsSource()) {
 			continue;
 		}
+		// WrapWithFanOut handles the decision — only wraps sequential sources
 		auto &wrapped = WrapWithFanOut(child);
 		if (&wrapped != &child) {
 			op.children[i] = reference<PhysicalOperator>(wrapped);
