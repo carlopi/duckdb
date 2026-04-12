@@ -263,10 +263,10 @@ void DataChunk::Append(DataChunk &other, DataChunkAppendMode mode) {
 }
 
 void DataChunk::AppendAndResetInput(DataChunk &other) {
-	// Fast path: this is empty and other owns its data and we have matching
-	// column counts — swap data so this takes other's vectors and other gets
-	// this's empty-but-initialized vectors. Net effect is the same as
-	// Append + Reset, but zero-copy.
+	// Fast path: this is empty, other owns its data, column counts match.
+	// Swap vectors so this takes other's data and other keeps this's empty
+	// flat vectors for reuse. Flatten afterwards so subsequent Appends on
+	// this work (downstream assumes flat destination).
 	if (size() == 0 && other.lifetime == ChunkLifetime::OWNED && ColumnCount() == other.ColumnCount()) {
 		std::swap(data, other.data);
 		std::swap(vector_caches, other.vector_caches);
@@ -275,10 +275,11 @@ void DataChunk::AppendAndResetInput(DataChunk &other) {
 		SetCardinality(other_count);
 		SetCapacity(other_capacity);
 		other.SetCardinality(0);
-		// Both chunks now hold owned vectors — explicitly mark both OWNED
-		// (this.lifetime might have been stale from a prior Reference/Reset).
 		lifetime = ChunkLifetime::OWNED;
 		other.lifetime = ChunkLifetime::OWNED;
+		// Ensure this has flat vectors — no-op if source was already flat,
+		// materializes otherwise (dict/constant/etc.).
+		Flatten();
 		return;
 	}
 	Append(other);
@@ -286,13 +287,15 @@ void DataChunk::AppendAndResetInput(DataChunk &other) {
 }
 
 void DataChunk::AppendAndDestroyInput(DataChunk &other) {
-	// Zero-copy path: destination is empty and source owns its buffers —
-	// just transfer ownership via Move.
+	// Fast path: this is empty and other owns its buffers — Move is zero-copy.
+	// Flatten afterwards so downstream Appends on this still work (materializes
+	// dict/constant/etc. if source had them; no-op if already flat).
 	if (size() == 0 && other.lifetime == ChunkLifetime::OWNED) {
 		Move(other);
+		Flatten();
 		return;
 	}
-	// Otherwise fall back to a value-copy Append, then consume the source.
+	// Fall back to a value-copy Append, then consume the source.
 	Append(other);
 	other.Destroy();
 }
