@@ -129,6 +129,9 @@ void DataChunk::Reference(DataChunk &chunk) {
 	for (idx_t i = 0; i < chunk.ColumnCount(); i++) {
 		data[i].Reference(chunk.data[i]);
 	}
+	// PIPELINE contracts propagate; everything else becomes TRANSIENT — we
+	// don't know whether the upstream owner will continue to exist.
+	lifetime = (chunk.lifetime == ChunkLifetime::PIPELINE) ? ChunkLifetime::PIPELINE : ChunkLifetime::TRANSIENT;
 }
 
 void DataChunk::Move(DataChunk &chunk) {
@@ -136,6 +139,8 @@ void DataChunk::Move(DataChunk &chunk) {
 	SetCardinality(chunk);
 	data = std::move(chunk.data);
 	vector_caches = std::move(chunk.vector_caches);
+	// Same downgrade rule as Reference: only PIPELINE survives.
+	lifetime = (chunk.lifetime == ChunkLifetime::PIPELINE) ? ChunkLifetime::PIPELINE : ChunkLifetime::TRANSIENT;
 
 	chunk.Destroy();
 }
@@ -149,6 +154,8 @@ void DataChunk::Copy(DataChunk &other, idx_t offset) const {
 		VectorOperations::Copy(data[i], other.data[i], size(), offset, 0);
 	}
 	other.SetCardinality(size() - offset);
+	// We deep-copied into other's owned buffers.
+	other.lifetime = ChunkLifetime::OWNED;
 }
 
 void DataChunk::Copy(DataChunk &other, const SelectionVector &sel, const idx_t source_count, const idx_t offset) const {
@@ -161,6 +168,8 @@ void DataChunk::Copy(DataChunk &other, const SelectionVector &sel, const idx_t s
 		VectorOperations::Copy(data[i], other.data[i], sel, source_count, offset, 0);
 	}
 	other.SetCardinality(source_count - offset);
+	// We deep-copied into other's owned buffers.
+	other.lifetime = ChunkLifetime::OWNED;
 }
 
 void DataChunk::Split(DataChunk &other, idx_t split_idx) {

@@ -11,6 +11,7 @@
 #include "duckdb/common/allocator.hpp"
 #include "duckdb/common/arrow/arrow_wrapper.hpp"
 #include "duckdb/common/common.hpp"
+#include "duckdb/common/enums/source_chunks_lifetime.hpp"
 #include "duckdb/common/types/vector.hpp"
 #include "duckdb/common/winapi.hpp"
 
@@ -49,6 +50,11 @@ public:
 
 	//! The vectors owned by the DataChunk.
 	vector<Vector> data;
+	//! Lifetime of the data currently held in this chunk. See ChunkLifetime for
+	//! propagation rules across Reference/Move/Copy/Append/Initialize/Slice.
+	//! Downstream consumers that buffer chunks (FanOut, CachingPhysicalOperator)
+	//! inspect this to decide whether a deep copy is required.
+	ChunkLifetime lifetime = ChunkLifetime::OWNED;
 
 public:
 	inline idx_t size() const { // NOLINT
