@@ -446,7 +446,9 @@ OperatorResultType CachingPhysicalOperator::Execute(ExecutionContext &context, D
 		tmp->Move(chunk);
 		chunk.Move(*state.cached_chunk);
 		state.cached_chunk->Initialize(Allocator::Get(context.client), chunk.GetTypes());
-		state.cached_chunk->Append(*tmp);
+		// tmp is a local unique_ptr going out of scope — consume it to avoid
+		// the value-copy when it's OWNED (the common case for input chunks).
+		state.cached_chunk->Append(*tmp, DataChunkAppendMode::CONSUME);
 		break;
 	}
 	case CachingPhysicalOperatorExecuteMode::RETURN_CACHED_PLUS_CHUNK:

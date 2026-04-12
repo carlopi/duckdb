@@ -21,13 +21,21 @@ namespace duckdb {
 //!   Reset              -> unchanged
 //!   Reference(other)   -> PIPELINE if other is PIPELINE, else TRANSIENT
 //!   Slice(other, ...)  -> PIPELINE if other is PIPELINE, else TRANSIENT
-//!   Move(other)        -> PIPELINE if other is PIPELINE, else TRANSIENT
+//!   Move(other)        -> other.lifetime (ownership transferred, not shared)
 //!   Copy(other)        -> other becomes OWNED (we deep-copied into it)
 //!   Append(other)      -> this stays OWNED (we deep-copied from other into us)
 //!
-//! Note: Reference/Move downgrade OWNED -> TRANSIENT because once data flows
-//! through a Reference/Move, we no longer know whether the upstream owner will
-//! continue to exist. Only explicit PIPELINE contracts carry through.
+//! Note: Reference downgrades OWNED -> TRANSIENT because referencing creates
+//! a second reader for the same buffer. Without a per-VectorBuffer ownership
+//! guarantee, we can't tell if the underlying memory is kept alive by the
+//! shared_ptr refcount. Move, in contrast, transfers ownership — no other
+//! reader exists after the move — so the lifetime carries through unchanged.
+//!
+//! TODO: consider adding a NOT_INITIALIZED / NEEDS_INITIALIZE state (or
+//! similar) to track chunks with no valid vectors — e.g. freshly default-
+//! constructed, post-Destroy, or post-Move source chunks. Would let consumers
+//! assert precondition ("this chunk has data to operate on") rather than
+//! relying on implicit invariants around Destroy/Move usage.
 enum class ChunkLifetime : uint8_t {
 	//! Valid only until the next operation on the producer. Consumers buffering
 	//! across calls must deep-copy.

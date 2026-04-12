@@ -11,6 +11,7 @@
 #include "duckdb/common/allocator.hpp"
 #include "duckdb/common/arrow/arrow_wrapper.hpp"
 #include "duckdb/common/common.hpp"
+#include "duckdb/common/enums/data_chunk_append_mode.hpp"
 #include "duckdb/common/enums/source_chunks_lifetime.hpp"
 #include "duckdb/common/types/vector.hpp"
 #include "duckdb/common/winapi.hpp"
@@ -107,11 +108,14 @@ public:
 	DUCKDB_API void Initialize(Allocator &allocator, const vector<LogicalType> &types, const vector<bool> &initialize,
 	                           idx_t capacity = STANDARD_VECTOR_SIZE);
 
-	//! Append the other DataChunk to this one. The column count and types of
-	//! the two DataChunks have to match exactly. Throws an exception if there
-	//! is not enough space in the chunk and resize is not allowed.
+	//! Append the other DataChunk to this one. Input is unchanged.
+	//! Throws an exception if there's not enough space and resize is not allowed.
 	DUCKDB_API void Append(const DataChunk &other, bool resize = false, SelectionVector *sel = nullptr,
 	                       idx_t count = 0);
+
+	//! Append with explicit handling of what happens to the input. See
+	//! DataChunkAppendMode for the available modes.
+	DUCKDB_API void Append(DataChunk &other, DataChunkAppendMode mode);
 
 	//! Destroy all data and columns owned by this DataChunk
 	DUCKDB_API void Destroy();
@@ -172,6 +176,13 @@ public:
 	DUCKDB_API void Verify(optional_ptr<DatabaseInstance> database_instance = nullptr);
 
 private:
+	//! Internal helper: value-copy + Reset input (keeps input's vectors).
+	//! Fast path swaps vectors when this is empty and input is OWNED.
+	void AppendAndResetInput(DataChunk &other);
+	//! Internal helper: Move input if possible (this empty and input OWNED),
+	//! else value-copy + Destroy input. Input has no vectors after the call.
+	void AppendAndDestroyInput(DataChunk &other);
+
 	//! The amount of tuples stored in the data chunk
 	idx_t count;
 	//! The amount of tuples that can be stored in the data chunk

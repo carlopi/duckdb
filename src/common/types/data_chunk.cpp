@@ -139,8 +139,10 @@ void DataChunk::Move(DataChunk &chunk) {
 	SetCardinality(chunk);
 	data = std::move(chunk.data);
 	vector_caches = std::move(chunk.vector_caches);
-	// Same downgrade rule as Reference: only PIPELINE survives.
-	lifetime = (chunk.lifetime == ChunkLifetime::PIPELINE) ? ChunkLifetime::PIPELINE : ChunkLifetime::TRANSIENT;
+	// Move transfers ownership of the Vectors (and their shared_ptr<VectorBuffer>)
+	// from the other chunk to this one. The other chunk is destroyed — there is no
+	// separate owner to worry about. Lifetime is preserved straight through.
+	lifetime = chunk.lifetime;
 
 	chunk.Destroy();
 }
@@ -239,6 +241,55 @@ void DataChunk::Append(const DataChunk &other, bool resize, SelectionVector *sel
 		}
 	}
 	SetCardinality(new_size);
+}
+
+void DataChunk::Append(DataChunk &other, DataChunkAppendMode mode) {
+	switch (mode) {
+	case DataChunkAppendMode::COPY:
+		Append(static_cast<const DataChunk &>(other));
+		break;
+	case DataChunkAppendMode::COPY_AND_RESET:
+		AppendAndResetInput(other);
+		break;
+	case DataChunkAppendMode::CONSUME:
+		AppendAndDestroyInput(other);
+		break;
+	}
+}
+
+void DataChunk::AppendAndResetInput(DataChunk &other) {
+	// Fast path: this is empty and other owns its data and we have matching
+	// column counts — swap data so this takes other's vectors and other gets
+	// this's empty-but-initialized vectors. Net effect is the same as
+	// Append + Reset, but zero-copy.
+	if (size() == 0 && other.lifetime == ChunkLifetime::OWNED && ColumnCount() == other.ColumnCount()) {
+		std::swap(data, other.data);
+		std::swap(vector_caches, other.vector_caches);
+		idx_t other_count = other.size();
+		idx_t other_capacity = other.GetCapacity();
+		SetCardinality(other_count);
+		SetCapacity(other_capacity);
+		other.SetCardinality(0);
+		// Both chunks now hold owned vectors — explicitly mark both OWNED
+		// (this.lifetime might have been stale from a prior Reference/Reset).
+		lifetime = ChunkLifetime::OWNED;
+		other.lifetime = ChunkLifetime::OWNED;
+		return;
+	}
+	Append(other);
+	other.Reset();
+}
+
+void DataChunk::AppendAndDestroyInput(DataChunk &other) {
+	// Zero-copy path: destination is empty and source owns its buffers —
+	// just transfer ownership via Move.
+	if (size() == 0 && other.lifetime == ChunkLifetime::OWNED) {
+		Move(other);
+		return;
+	}
+	// Otherwise fall back to a value-copy Append, then consume the source.
+	Append(other);
+	other.Destroy();
 }
 
 void DataChunk::Flatten() {
