@@ -23,7 +23,8 @@ namespace duckdb {
 //!   Slice(other, ...)  -> PIPELINE if other is PIPELINE, else TRANSIENT
 //!   Move(other)        -> other.lifetime (ownership transferred, not shared)
 //!   Copy(other)        -> other becomes OWNED (we deep-copied into it)
-//!   Append(other)      -> this stays OWNED (we deep-copied from other into us)
+//!   Append(other)      -> requires this is OWNED or PIPELINE; preserves
+//!                         lifetime (writes values into this's own buffers)
 //!
 //! Note: Reference downgrades OWNED -> TRANSIENT because referencing creates
 //! a second reader for the same buffer. Without a per-VectorBuffer ownership

@@ -214,6 +214,11 @@ void DataChunk::ReferenceColumns(DataChunk &other, const vector<column_t> &colum
 }
 
 void DataChunk::Append(const DataChunk &other, bool resize, SelectionVector *sel, idx_t sel_count) {
+	// Append writes into this's own flat buffers via VectorOperations::Copy.
+	// TRANSIENT chunks reference reclaimable data — writing would be unsafe.
+	// OWNED and PIPELINE chunks are expected to have stable flat buffers.
+	// Preserves lifetime.
+	D_ASSERT(lifetime != ChunkLifetime::TRANSIENT);
 	idx_t new_size = sel ? size() + sel_count : size() + other.size();
 	if (other.size() == 0) {
 		return;
