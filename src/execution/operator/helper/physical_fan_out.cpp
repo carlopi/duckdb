@@ -1,9 +1,23 @@
 #include "duckdb/execution/operator/helper/physical_fan_out.hpp"
 #include "duckdb/execution/execution_context.hpp"
 #include "duckdb/parallel/interrupt.hpp"
+#include "duckdb/parallel/meta_pipeline.hpp"
+#include "duckdb/parallel/pipeline.hpp"
 #include "duckdb/parallel/task_scheduler.hpp"
 
 namespace duckdb {
+
+void PhysicalFanOut::BuildPipelines(Pipeline &current, MetaPipeline &meta_pipeline) {
+	op_state.reset();
+	// Let the wrapped child initialize its internal pipelines (e.g. recursive CTE
+	// builds its recursive meta-pipeline here). This also sets current's source to
+	// the child — we override it to ourselves below.
+	child_source.get().BuildPipelines(current, meta_pipeline);
+	// Override the pipeline source to be the FanOut itself, so GetData on the
+	// pipeline goes through our relay logic.
+	auto &state = meta_pipeline.GetState();
+	state.SetPipelineSource(current, *this);
+}
 
 PhysicalFanOut::PhysicalFanOut(PhysicalPlan &plan, PhysicalOperator &child_source_p, idx_t estimated_cardinality)
     : PhysicalOperator(plan, PhysicalOperatorType::FAN_OUT, child_source_p.types, estimated_cardinality),
@@ -54,6 +68,11 @@ class FanOutLocalSourceState : public LocalSourceState {
 public:
 	//! Pre-allocated chunk buffer — initialized once, reused across batches
 	DataChunk chunks[FAN_OUT_MAX_BATCH_SIZE];
+	//! Scratch chunk for receiving GetData output; we then deep-copy into owned chunks[]
+	//! to avoid dangling references to source-internal buffers that may be reclaimed
+	//! between GetData calls (e.g. RecursiveCTE's intermediate_table.Reset).
+	DataChunk scratch;
+	bool scratch_initialized = false;
 	idx_t chunk_count = 0;
 	idx_t chunk_idx = 0;
 	idx_t chunks_initialized = 0;
@@ -165,16 +184,25 @@ SourceResultType PhysicalFanOut::GetDataInternal(ExecutionContext &context, Data
 			                                                    child_source.get().types);
 			lstate.chunks_initialized++;
 		}
+		// Initialize scratch chunk for GetData output
+		if (!lstate.scratch_initialized) {
+			lstate.scratch.Initialize(Allocator::DefaultAllocator(), child_source.get().types);
+			lstate.scratch_initialized = true;
+		}
 
 		lstate.chunk_count = 0;
 		for (idx_t i = 0;
 		     i < batch_size && !source_exhausted && !source_blocked && batch_bytes < FAN_OUT_MAX_BATCH_BYTES; i++) {
-			lstate.chunks[lstate.chunk_count].Reset();
+			lstate.scratch.Reset();
 
 			OperatorSourceInput child_input {*gstate.child_global, *gstate.child_local, input.interrupt_state};
-			auto result = child_source.get().GetData(context, lstate.chunks[lstate.chunk_count], child_input);
+			auto result = child_source.get().GetData(context, lstate.scratch, child_input);
 
-			if (lstate.chunks[lstate.chunk_count].size() > 0) {
+			if (lstate.scratch.size() > 0) {
+				// Deep-copy into owned chunk so references into source-internal buffers
+				// (which may be reclaimed between calls) don't become dangling.
+				lstate.chunks[lstate.chunk_count].Reset();
+				lstate.scratch.Copy(lstate.chunks[lstate.chunk_count]);
 				batch_bytes += lstate.chunks[lstate.chunk_count].GetAllocationSize();
 				lstate.chunk_count++;
 			}

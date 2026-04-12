@@ -66,6 +66,8 @@ public:
 		}
 		return result;
 	}
+
+	void BuildPipelines(Pipeline &current, MetaPipeline &meta_pipeline) override;
 };
 
 } // namespace duckdb
