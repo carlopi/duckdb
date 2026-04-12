@@ -476,8 +476,7 @@ OperatorResultType CachingPhysicalOperator::Execute(ExecutionContext &context, D
 		return OperatorResultType::HAVE_MORE_OUTPUT;
 	}
 	case CachingPhysicalOperatorExecuteMode::APPEND_CHUNK: {
-		state.cached_chunk->Append(chunk);
-		chunk.Reset();
+		state.cached_chunk->Append(chunk, DataChunkAppendMode::COPY_AND_RESET);
 		break;
 	}
 	case CachingPhysicalOperatorExecuteMode::RETURN_CHUNK:
