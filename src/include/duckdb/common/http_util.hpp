@@ -42,7 +42,6 @@ struct HTTPParams {
 	bool keep_alive = DEFAULT_KEEP_ALIVE;
 	bool follow_location = true;
 	bool override_verify_ssl = false;
-	bool verify_ssl = true;
 
 	string http_proxy;
 	idx_t http_proxy_port;
