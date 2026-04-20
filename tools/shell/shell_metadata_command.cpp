@@ -270,6 +270,32 @@ MetadataResult ToggleLog(ShellState &state, const vector<string> &args) {
 	return MetadataResult::SUCCESS;
 }
 
+MetadataResult SetLlmBytesBudget(ShellState &state, const vector<string> &args) {
+	if (args.size() > 2) {
+		return MetadataResult::PRINT_USAGE;
+	}
+	if (args.size() == 1) {
+		state.PrintF("current mode_llm_bytes_budget: %llu bytes (0 = unlimited)\n",
+		             (unsigned long long)state.llm_bytes_budget);
+		return MetadataResult::SUCCESS;
+	}
+	state.llm_bytes_budget = (idx_t)ShellState::StringToInt(args[1]);
+	return MetadataResult::SUCCESS;
+}
+
+MetadataResult SetLlmValueTruncation(ShellState &state, const vector<string> &args) {
+	if (args.size() > 2) {
+		return MetadataResult::PRINT_USAGE;
+	}
+	if (args.size() == 1) {
+		state.PrintF("current mode_llm_value_truncation: %llu chars (0 = no truncation)\n",
+		             (unsigned long long)state.llm_value_truncation);
+		return MetadataResult::SUCCESS;
+	}
+	state.llm_value_truncation = (idx_t)ShellState::StringToInt(args[1]);
+	return MetadataResult::SUCCESS;
+}
+
 MetadataResult SetMaxRows(ShellState &state, const vector<string> &args) {
 	if (args.size() > 3) {
 		return MetadataResult::PRINT_USAGE;
@@ -871,6 +897,10 @@ static const MetadataCommand metadata_commands[] = {
      "line\tOne value per line\n\tlist\tValues delimited by \"|\"\n\tmarkdown\tMarkdown table format\n\t"
      "quote\tEscape answers as for SQL\n\ttable\tASCII-art table\n\ttabs\tTab-separated values\n\ttcl\tTCL list "
      "elements\n\ttrash\tNo output"},
+    {"mode_llm_bytes_budget", 0, SetLlmBytesBudget, "BYTES",
+     "Byte budget before pagination in llm mode (default: 4000, 0 = unlimited)", 0, ""},
+    {"mode_llm_value_truncation", 0, SetLlmValueTruncation, "CHARS",
+     "Max characters per cell value in llm mode (default: 72, 0 = no truncation)", 0, ""},
 #ifdef HAVE_LINENOISE
     {"multiline", 1, ToggleMultiLine, "", "Sets the render mode to multi-line", 0, ""},
 #endif

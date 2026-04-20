@@ -73,7 +73,8 @@ enum class RenderMode : uint32_t {
 	LATEX,     /* Latex tabular formatting */
 	TRASH,     /* Discard output */
 	JSONLINES, /* Output JSON Lines */
-	DUCKBOX    /* Unicode box drawing - using DuckDB's own renderer */
+	DUCKBOX,   /* Unicode box drawing - using DuckDB's own renderer */
+	LLM        /* LLM-friendly: pipe-separated, budget-paginated */
 };
 
 enum class PrintOutput { STDOUT, STDERR };
@@ -191,6 +192,14 @@ public:
 	size_t max_width = 0; /* The maximum number of characters to render horizontally in DuckBox mode */
 	//! The maximum number of rows to analyze in order to determine column widths in DuckBox mode
 	idx_t max_analyze_rows = 0;
+	//! LLM mode: byte budget before pagination (0 = unlimited)
+	idx_t llm_bytes_budget = 4000;
+	//! LLM mode: max chars per cell value before truncation (0 = no truncation)
+	idx_t llm_value_truncation = 72;
+	//! LLM mode: string to display for NULL values
+	string llm_null = "-";
+	//! SQL of the query currently being rendered (used by LLM renderer for OFFSET detection)
+	string current_query;
 	//! Decimal separator (if any)
 	char decimal_separator = '\0';
 	//! Thousand separator (if any)

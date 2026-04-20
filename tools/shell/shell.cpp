@@ -707,6 +707,8 @@ string ShellState::ModeToString(RenderMode mode) {
 		return "jsonlines";
 	case RenderMode::DUCKBOX:
 		return "duckbox";
+	case RenderMode::LLM:
+		return "llm";
 	}
 	return "invalid";
 }
@@ -1013,6 +1015,7 @@ SuccessState ShellState::ExecuteSQL(const string &zSql) {
 			if (mode == RenderMode::DUCKBOX && UseDescribeRenderMode(*statement, describe_table_name)) {
 				cMode = RenderMode::DESCRIBE;
 			}
+			current_query = zStmtSql;
 
 			auto rc = ExecuteStatement(std::move(statement));
 			if (rc != SuccessState::SUCCESS) {
@@ -1591,7 +1594,9 @@ bool ShellState::SetOutputMode(const string &mode_name, const char *tbl_name) {
 		PrintF(PrintOutput::STDERR, "TABLE argument can only be used with .mode insert");
 		return false;
 	}
-	if (c2 == 'l' && n2 > 2 && strncmp(mode_str, "lines", n2) == 0) {
+	if (c2 == 'l' && strncmp(mode_str, "llm", n2) == 0) {
+		mode = RenderMode::LLM;
+	} else if (c2 == 'l' && n2 > 2 && strncmp(mode_str, "lines", n2) == 0) {
 		mode = RenderMode::LINE;
 		rowSeparator = SEP_Row;
 	} else if (c2 == 'c' && strncmp(mode_str, "columns", n2) == 0) {
@@ -1647,7 +1652,7 @@ bool ShellState::SetOutputMode(const string &mode_name, const char *tbl_name) {
 	} else {
 		PrintF(PrintOutput::STDERR, "Error: mode should be one of: "
 		                            "ascii box column csv duckbox html insert json jsonlines latex line "
-		                            "list markdown quote table tabs tcl trash \n");
+		                            "list llm markdown quote table tabs tcl trash \n");
 		return false;
 	}
 	cMode = mode;
