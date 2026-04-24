@@ -4337,25 +4337,6 @@ RequestType EnumUtil::FromString<RequestType>(const char *value) {
 	return static_cast<RequestType>(StringUtil::StringToEnum(GetRequestTypeValues(), 5, "RequestType", value));
 }
 
-const StringUtil::EnumStringLiteral *GetRescheduleTaskResultValues() {
-	static constexpr StringUtil::EnumStringLiteral values[] {
-		{ static_cast<uint32_t>(RescheduleTaskResult::RESCHEDULED), "RESCHEDULED" },
-		{ static_cast<uint32_t>(RescheduleTaskResult::NO_TASK_FOUND), "NO_TASK_FOUND" },
-		{ static_cast<uint32_t>(RescheduleTaskResult::TASK_WAS_CANCELED), "TASK_WAS_CANCELED" }
-	};
-	return values;
-}
-
-template<>
-const char* EnumUtil::ToChars<RescheduleTaskResult>(RescheduleTaskResult value) {
-	return StringUtil::EnumToString(GetRescheduleTaskResultValues(), 3, "RescheduleTaskResult", static_cast<uint32_t>(value));
-}
-
-template<>
-RescheduleTaskResult EnumUtil::FromString<RescheduleTaskResult>(const char *value) {
-	return static_cast<RescheduleTaskResult>(StringUtil::StringToEnum(GetRescheduleTaskResultValues(), 3, "RescheduleTaskResult", value));
-}
-
 const StringUtil::EnumStringLiteral *GetResultModifierTypeValues() {
 	static constexpr StringUtil::EnumStringLiteral values[] {
 		{ static_cast<uint32_t>(ResultModifierType::LIMIT_MODIFIER), "LIMIT_MODIFIER" },
