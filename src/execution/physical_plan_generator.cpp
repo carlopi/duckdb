@@ -57,18 +57,12 @@ PhysicalOperator &PhysicalPlanGenerator::WrapWithFanOut(PhysicalOperator &source
 		return source;
 	}
 	// Read the global setting
-	auto setting_str = Settings::Get<ParallelizeSequentialSourcesSetting>(context);
-	// Global "disabled" vetoes everything
-	if (setting_str == "disabled") {
-		return source;
-	}
-	// SEQUENTIAL_PARALLELIZABLE: wrap unless global says disabled (already checked above)
+	// SEQUENTIAL: wrap unless global says disabled
 	if (parallelism == TableFunctionParallelism::SEQUENTIAL) {
-		return Make<PhysicalFanOut>(source, source.estimated_cardinality);
-	}
-	// SEQUENTIAL_PREFER_SINGLE_THREADED: only wrap if global says enabled
-	if (parallelism == TableFunctionParallelism::SEQUENTIAL_PREFER_SINGLE_THREADED && setting_str == "enabled") {
-		return Make<PhysicalFanOut>(source, source.estimated_cardinality);
+		auto parallelize_sequential = Settings::Get<ParallelizeSequentialSourcesSetting>(context);
+		if (parallelize_sequential) {
+			return Make<PhysicalFanOut>(source, source.estimated_cardinality);
+		}
 	}
 	return source;
 }
