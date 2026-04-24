@@ -3,6 +3,7 @@
 #include "duckdb/catalog/catalog_entry/scalar_function_catalog_entry.hpp"
 #include "duckdb/common/types/column/column_data_collection.hpp"
 #include "duckdb/execution/column_binding_resolver.hpp"
+#include "duckdb/execution/operator/helper/physical_fan_out.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/main/config.hpp"
 #include "duckdb/main/query_profiler.hpp"
@@ -11,6 +12,7 @@
 #include "duckdb/planner/operator/list.hpp"
 #include "duckdb/execution/operator/helper/physical_verify_vector.hpp"
 #include "duckdb/main/settings.hpp"
+#include "duckdb/parallel/task_scheduler.hpp"
 
 namespace duckdb {
 
@@ -24,6 +26,50 @@ unique_ptr<PhysicalPlan> PhysicalPlanGenerator::Plan(unique_ptr<LogicalOperator>
 	auto &plan = ResolveAndPlan(std::move(op));
 	plan.Verify();
 	return std::move(physical_plan);
+}
+
+void PhysicalPlanGenerator::InjectFanOut(PhysicalOperator &op) {
+	// Recursively walk the plan tree and wrap eligible sources with FanOut
+	for (idx_t i = 0; i < op.children.size(); i++) {
+		auto &child = op.children[i].get();
+		// Recurse first (bottom-up)
+		InjectFanOut(child);
+		// Only wrap table scans — other sources (ORDER BY, etc.) should not be wrapped
+		if (child.type != PhysicalOperatorType::TABLE_SCAN) {
+			continue;
+		}
+		auto &wrapped = WrapWithFanOut(child);
+		if (&wrapped != &child) {
+			op.children[i] = reference<PhysicalOperator>(wrapped);
+		}
+	}
+}
+
+PhysicalOperator &PhysicalPlanGenerator::WrapWithFanOut(PhysicalOperator &source) {
+	auto parallelism = source.SourceParallelism();
+	// Only sequential sources can benefit from FanOut
+	if (parallelism == TableFunctionParallelism::SELF_MANAGED_PARALLELISM) {
+		return source;
+	}
+	// No point fanning out if there's only 1 worker thread
+	if (TaskScheduler::GetScheduler(context).NumberOfThreads() <= 1) {
+		return source;
+	}
+	// Read the global setting
+	auto setting_str = Settings::Get<ParallelizeSequentialSourcesSetting>(context);
+	// Global "disabled" vetoes everything
+	if (setting_str == "disabled") {
+		return source;
+	}
+	// SEQUENTIAL_PARALLELIZABLE: wrap unless global says disabled (already checked above)
+	if (parallelism == TableFunctionParallelism::SEQUENTIAL) {
+		return Make<PhysicalFanOut>(source, source.estimated_cardinality);
+	}
+	// SEQUENTIAL_PREFER_SINGLE_THREADED: only wrap if global says enabled
+	if (parallelism == TableFunctionParallelism::SEQUENTIAL_PREFER_SINGLE_THREADED && setting_str == "enabled") {
+		return Make<PhysicalFanOut>(source, source.estimated_cardinality);
+	}
+	return source;
 }
 
 PhysicalOperator &PhysicalPlanGenerator::ResolveAndPlan(unique_ptr<LogicalOperator> op) {
@@ -44,6 +90,10 @@ PhysicalOperator &PhysicalPlanGenerator::ResolveAndPlan(unique_ptr<LogicalOperat
 	profiler.StartPhase(MetricType::PHYSICAL_PLANNER_CREATE_PLAN);
 	physical_plan = PlanInternal(*op);
 	profiler.EndPhase();
+
+	// Post-pass: inject FanOut wrappers on sources that support parallel fan-out.
+	// Done after plan creation so index scans and other optimizations are already resolved.
+	InjectFanOut(physical_plan->Root());
 
 	// Return a reference to the root of this plan.
 	return physical_plan->Root();

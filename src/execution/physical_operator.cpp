@@ -23,6 +23,10 @@ PhysicalOperator::PhysicalOperator(PhysicalPlan &physical_plan, PhysicalOperator
       estimated_cardinality(estimated_cardinality) {
 }
 
+TableFunctionParallelism PhysicalOperator::SourceParallelism() const {
+	return TableFunctionParallelism::SELF_MANAGED_PARALLELISM;
+}
+
 string PhysicalOperator::GetName() const {
 	return PhysicalOperatorToString(type);
 }
@@ -138,10 +142,6 @@ OperatorPartitionData PhysicalOperator::GetPartitionData(ExecutionContext &conte
                                                          GlobalSourceState &gstate, LocalSourceState &lstate,
                                                          const OperatorPartitionInfo &partition_info) const {
 	throw InternalException("Calling GetPartitionData on a node that does not support it");
-}
-
-TableFunctionParallelism PhysicalOperator::SourceParallelism() const {
-	return TableFunctionParallelism::SELF_MANAGED_PARALLELISM;
 }
 
 ProgressData PhysicalOperator::GetProgress(ClientContext &context, GlobalSourceState &gstate) const {

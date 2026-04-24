@@ -3904,19 +3904,20 @@ const StringUtil::EnumStringLiteral *GetPhysicalOperatorTypeValues() {
 		{ static_cast<uint32_t>(PhysicalOperatorType::EXTENSION), "EXTENSION" },
 		{ static_cast<uint32_t>(PhysicalOperatorType::VERIFY_VECTOR), "VERIFY_VECTOR" },
 		{ static_cast<uint32_t>(PhysicalOperatorType::UPDATE_EXTENSIONS), "UPDATE_EXTENSIONS" },
-		{ static_cast<uint32_t>(PhysicalOperatorType::CREATE_SECRET), "CREATE_SECRET" }
+		{ static_cast<uint32_t>(PhysicalOperatorType::CREATE_SECRET), "CREATE_SECRET" },
+		{ static_cast<uint32_t>(PhysicalOperatorType::FAN_OUT), "FAN_OUT" }
 	};
 	return values;
 }
 
 template<>
 const char* EnumUtil::ToChars<PhysicalOperatorType>(PhysicalOperatorType value) {
-	return StringUtil::EnumToString(GetPhysicalOperatorTypeValues(), 83, "PhysicalOperatorType", static_cast<uint32_t>(value));
+	return StringUtil::EnumToString(GetPhysicalOperatorTypeValues(), 84, "PhysicalOperatorType", static_cast<uint32_t>(value));
 }
 
 template<>
 PhysicalOperatorType EnumUtil::FromString<PhysicalOperatorType>(const char *value) {
-	return static_cast<PhysicalOperatorType>(StringUtil::StringToEnum(GetPhysicalOperatorTypeValues(), 83, "PhysicalOperatorType", value));
+	return static_cast<PhysicalOperatorType>(StringUtil::StringToEnum(GetPhysicalOperatorTypeValues(), 84, "PhysicalOperatorType", value));
 }
 
 const StringUtil::EnumStringLiteral *GetPhysicalTableScanExecutionStrategyValues() {
@@ -4334,6 +4335,25 @@ const char* EnumUtil::ToChars<RequestType>(RequestType value) {
 template<>
 RequestType EnumUtil::FromString<RequestType>(const char *value) {
 	return static_cast<RequestType>(StringUtil::StringToEnum(GetRequestTypeValues(), 5, "RequestType", value));
+}
+
+const StringUtil::EnumStringLiteral *GetRescheduleTaskResultValues() {
+	static constexpr StringUtil::EnumStringLiteral values[] {
+		{ static_cast<uint32_t>(RescheduleTaskResult::RESCHEDULED), "RESCHEDULED" },
+		{ static_cast<uint32_t>(RescheduleTaskResult::NO_TASK_FOUND), "NO_TASK_FOUND" },
+		{ static_cast<uint32_t>(RescheduleTaskResult::TASK_WAS_CANCELED), "TASK_WAS_CANCELED" }
+	};
+	return values;
+}
+
+template<>
+const char* EnumUtil::ToChars<RescheduleTaskResult>(RescheduleTaskResult value) {
+	return StringUtil::EnumToString(GetRescheduleTaskResultValues(), 3, "RescheduleTaskResult", static_cast<uint32_t>(value));
+}
+
+template<>
+RescheduleTaskResult EnumUtil::FromString<RescheduleTaskResult>(const char *value) {
+	return static_cast<RescheduleTaskResult>(StringUtil::StringToEnum(GetRescheduleTaskResultValues(), 3, "RescheduleTaskResult", value));
 }
 
 const StringUtil::EnumStringLiteral *GetResultModifierTypeValues() {
