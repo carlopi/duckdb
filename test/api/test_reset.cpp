@@ -132,7 +132,8 @@ OptionValueSet GetValueForOption(const string &name, const LogicalType &type) {
 	    {"experimental_metadata_reuse", {false}},
 	    {"storage_block_prefetch", {"always_prefetch"}},
 	    {"pin_threads", {"off"}},
-	    {"current_transaction_invalidation_policy", {"ALL_ERRORS_INVALIDATE_TRANSACTION"}}};
+	    {"current_transaction_invalidation_policy", {"ALL_ERRORS_INVALIDATE_TRANSACTION"}},
+	    {"enable_caching_operators", {false}}};
 	// Every option that's not excluded has to be part of this map
 	if (!value_map.count(name)) {
 		switch (type.id()) {
@@ -173,6 +174,7 @@ bool OptionIsExcludedFromTest(const string &name) {
 	    "allow_community_extensions",    // cant change this while db is running
 	    "allow_unredacted_secrets",      // cant change this while db is running
 	    "disable_database_invalidation", // cant change this while db is running
+	    "vacuum_rebuild_indexes",        // cant change this while db is running
 	    "temp_file_encryption",
 	    "enable_object_cache",
 	    "force_variant_shredding",

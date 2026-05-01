@@ -68,7 +68,7 @@ DataTable::DataTable(AttachedDatabase &db, shared_ptr<TableIOManager> table_io_m
 	this->row_groups = make_shared_ptr<RowGroupCollection>(info, io_manager, types, 0);
 	if (data && data->row_group_count > 0) {
 		this->row_groups->Initialize(*data);
-		row_groups->SetAppendRequiresNewRowGroup();
+		row_groups->SetRowGroupAppendMode(RowGroupAppendMode::SUGGEST_NEW);
 	} else {
 		this->row_groups->InitializeEmpty();
 		D_ASSERT(row_groups->GetTotalRows() == 0);
@@ -355,6 +355,63 @@ void DataTable::VacuumIndexes() {
 		if (index.IsBound()) {
 			index.Cast<BoundIndex>().Vacuum();
 		}
+	}
+}
+
+void DataTable::RebuildIndexes() {
+	auto &indexes = info->indexes;
+	auto &types = row_groups->GetTypes();
+
+	for (auto &index : indexes.Indexes()) {
+		if (!index.IsBound()) {
+			throw InternalException("RebuildIndexes expects all indexes to be bound during checkpoint");
+		}
+		auto &bound_index = index.Cast<BoundIndex>();
+		bound_index.CommitDrop();
+
+		auto &col_ids = bound_index.GetColumnIds();
+
+		vector<StorageIndex> scan_column_ids;
+		vector<LogicalType> scan_types;
+		for (auto col_id : col_ids) {
+			scan_column_ids.emplace_back(col_id);
+			scan_types.push_back(types[col_id]);
+		}
+		scan_column_ids.emplace_back(COLUMN_IDENTIFIER_ROW_ID);
+		scan_types.push_back(LogicalType::ROW_TYPE);
+
+		DataChunk scan_chunk;
+		scan_chunk.Initialize(Allocator::Get(db), scan_types);
+
+		CreateIndexScanState state;
+		auto scan_type = TableScanType::TABLE_SCAN_COMMITTED_ROWS;
+		state.Initialize(scan_column_ids, nullptr);
+		QueryContext context;
+		row_groups->InitializeScan(context, state.table_state, scan_column_ids, nullptr);
+		row_groups->InitializeCreateIndexScan(state);
+
+		DataChunk table_chunk;
+		table_chunk.InitializeEmpty(types);
+
+		while (true) {
+			scan_chunk.Reset();
+			state.table_state.Scan(scan_chunk, scan_type, state.segment_lock);
+			if (scan_chunk.size() == 0) {
+				break;
+			}
+			for (idx_t i = 0; i < col_ids.size(); i++) {
+				table_chunk.data[col_ids[i]].Reference(scan_chunk.data[i]);
+			}
+			table_chunk.SetCardinality(scan_chunk);
+			Vector &row_ids = scan_chunk.data[col_ids.size()];
+
+			auto error = bound_index.Append(table_chunk, row_ids);
+			if (error.HasError()) {
+				throw InternalException("Failed to rebuild index '%s' after vacuum: %s", bound_index.GetIndexName(),
+				                        error.Message());
+			}
+		}
+		bound_index.Verify();
 	}
 }
 
@@ -1099,7 +1156,7 @@ void DataTable::AppendLock(DuckTransaction &transaction, TableAppendState &state
 		// there is a checkpoint active while we are appending
 		// in this case we cannot just blindly append to the last row group, because we need to checkpoint that
 		// always start a new row group in this case
-		row_groups->SetAppendRequiresNewRowGroup();
+		row_groups->SetRowGroupAppendMode(RowGroupAppendMode::REQUIRE_NEW);
 	}
 }
 
@@ -1427,7 +1484,8 @@ void DataTable::RevertIndexAppend(TableAppendState &state, DataChunk &chunk, Vec
 
 void DataTable::RemoveFromIndexes(const QueryContext &context, Vector &row_identifiers, idx_t count,
                                   IndexRemovalType removal_type, optional_idx active_checkpoint) {
-	D_ASSERT(IsMainTable());
+	D_ASSERT(IsMainTable() || removal_type == IndexRemovalType::REVERT_MAIN_INDEX ||
+	         removal_type == IndexRemovalType::REVERT_MAIN_INDEX_ONLY);
 	row_groups->RemoveFromIndexes(context, info->indexes, row_identifiers, count, removal_type, active_checkpoint);
 }
 
@@ -1759,7 +1817,10 @@ void DataTable::Checkpoint(TableDataWriter &writer, Serializer &serializer) {
 	// checkpoint each individual row group
 	TableStatistics global_stats;
 	row_groups->Checkpoint(writer, global_stats);
-	row_groups->SetAppendRequiresNewRowGroup();
+	row_groups->SetRowGroupAppendMode(RowGroupAppendMode::SUGGEST_NEW);
+	if (writer.GetRebuildIndexes()) {
+		RebuildIndexes();
+	}
 	// The row group payload data has been written. Now write:
 	//   sample
 	//   column stats

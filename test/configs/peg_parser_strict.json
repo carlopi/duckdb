@@ -5,16 +5,9 @@
   "statically_loaded_extensions": ["core_functions", "autocomplete"],
   "skip_tests": [
     {
-      "reason": "Strict mode is currently not compatible with loadable parser override extensions. Requires redesign of the parser selection setting.",
+      "reason": "This test verifies pg_err_pos reset behavior specific to the Postgres parser internals (errhint from LIMIT #,# grammar rule), which does not apply to the PEG parser",
       "paths": [
-        "test/extension/loadable_parser_override.test",
-        "test/extension/consistent_semicolon_extension_parse.test",
-        "test/extension/load_extension.test",
-        "test/extension/test_tags.test",
-        "test/extension/concurrent_load_extension.test",
-        "test/extension/test_alias_point.test",
-        "test/extension/test_custom_type_modifier_cast.test",
-        "test/extension/load_test_alias.test"
+        "test/sql/parser/pg_err_pos_reset.test"
       ]
     }
   ]
