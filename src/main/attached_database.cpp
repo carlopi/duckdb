@@ -101,6 +101,12 @@ AttachOptions::AttachOptions(const unordered_map<string, Value> &attach_options,
 			}
 			continue;
 		}
+
+		if (entry.first == "connect_mode") {
+			auto mode_str = StringValue::Get(entry.second.DefaultCastAs(LogicalType::VARCHAR));
+			connect_mode = EnumUtil::FromString<ConnectMode>(mode_str);
+			continue;
+		}
 		options.emplace(entry.first, entry.second);
 	}
 }
@@ -138,6 +144,7 @@ AttachedDatabase::AttachedDatabase(DatabaseInstance &db, Catalog &catalog_p, str
 	recovery_mode = options.recovery_mode;
 	visibility = options.visibility;
 	catalog_mode = options.catalog_mode;
+	connect_mode = options.connect_mode;
 
 	// We create the storage after the catalog to guarantee we allow extensions to instantiate the DuckCatalog.
 	catalog = make_uniq<DuckCatalog>(*this);
@@ -146,6 +153,13 @@ AttachedDatabase::AttachedDatabase(DatabaseInstance &db, Catalog &catalog_p, str
 	transaction_manager = make_uniq<DuckTransactionManager>(*this);
 	attach_options = options.options;
 	internal = true;
+	// DuckCatalog doesn't support CONNECT; resolve AUTO to NONE here, error on ENABLE.
+	if (connect_mode == ConnectMode::AUTO) {
+		connect_mode = catalog->Supports(RemoteCapability::CONNECT) ? ConnectMode::ENABLE : ConnectMode::NONE;
+	} else if (connect_mode == ConnectMode::ENABLE && !catalog->Supports(RemoteCapability::CONNECT)) {
+		throw InvalidInputException("ATTACH ... (CONNECT_MODE ENABLE): database \"%s\" does not support CONNECT",
+		                            name);
+	}
 }
 
 AttachedDatabase::AttachedDatabase(DatabaseInstance &db, Catalog &catalog_p, StorageExtension &storage_extension_p,
@@ -160,12 +174,21 @@ AttachedDatabase::AttachedDatabase(DatabaseInstance &db, Catalog &catalog_p, Sto
 	recovery_mode = options.recovery_mode;
 	visibility = options.visibility;
 	catalog_mode = options.catalog_mode;
+	connect_mode = options.connect_mode;
 
 	optional_ptr<StorageExtensionInfo> storage_info = storage_extension->storage_info.get();
 	catalog = storage_extension->attach(storage_info, context, *this, name, info, options);
 	stored_database_path = std::move(options.stored_database_path);
 	if (!catalog) {
 		throw InternalException("AttachedDatabase - attach function did not return a catalog");
+	}
+	// Resolve CONNECT_MODE against the backend's capability so downstream checks read a single
+	// boolean off connect_mode rather than re-querying Supports(CONNECT). AUTO becomes ENABLE when
+	// the backend supports CONNECT, NONE otherwise.
+	if (connect_mode == ConnectMode::AUTO) {
+		connect_mode = catalog->Supports(RemoteCapability::CONNECT) ? ConnectMode::ENABLE : ConnectMode::NONE;
+	} else if (connect_mode == ConnectMode::ENABLE && !catalog->Supports(RemoteCapability::CONNECT)) {
+		throw InvalidInputException("ATTACH ... (CONNECT_MODE ENABLE): database \"%s\" does not support CONNECT", name);
 	}
 	if (catalog->IsDuckCatalog()) {
 		// The attached database uses the DuckCatalog.
