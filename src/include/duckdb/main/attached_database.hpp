@@ -29,8 +29,6 @@ enum class AttachedDatabaseType {
 	TEMP_DATABASE,
 };
 
-enum class AttachVisibility { SHOWN, HIDDEN };
-
 //! Controls whether the attached database provides any tables, and whether it surfaces in
 //! catalog enumeration (`SHOW DATABASES`, schema enumeration, etc).
 //!  - NONE:   no tables, not surfaced. Pure routing target (used by `CONNECT '<uri>'`).
@@ -90,8 +88,6 @@ struct AttachOptions {
 	QualifiedName default_table;
 	//! Whether this is the main database.
 	bool is_main_database = false;
-	//! The visibility of the attached database
-	AttachVisibility visibility = AttachVisibility::SHOWN;
 	//! Whether the attached database provides tables, and whether it surfaces in catalog
 	//! enumeration. Defaults to AUTO (backend's choice; today equivalent to ENABLE for all
 	//! current backends).
@@ -152,9 +148,6 @@ public:
 	RecoveryMode GetRecoveryMode() const {
 		return recovery_mode;
 	}
-	AttachVisibility GetVisibility() const {
-		return visibility;
-	}
 	CatalogMode GetCatalogMode() const {
 		return catalog_mode;
 	}
@@ -186,7 +179,6 @@ private:
 	optional_ptr<Catalog> parent_catalog;
 	optional_ptr<StorageExtension> storage_extension;
 	RecoveryMode recovery_mode = RecoveryMode::DEFAULT;
-	AttachVisibility visibility = AttachVisibility::SHOWN;
 	CatalogMode catalog_mode = CatalogMode::AUTO;
 	ConnectMode connect_mode = ConnectMode::AUTO;
 	bool is_initial_database = false;
