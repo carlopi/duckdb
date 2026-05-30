@@ -1,6 +1,8 @@
 #include "duckdb/parser/connect_mode/connect_mode_parser.hpp"
 
-#include "duckdb/common/string_util.hpp"
+#include "duckdb/parser/peg/matcher.hpp"
+#include "duckdb/parser/peg/tokenizer/base_tokenizer.hpp"
+#include "duckdb/parser/peg/transformer/parse_result.hpp"
 
 namespace duckdb {
 
@@ -33,7 +35,16 @@ PlainIdentifier   <- [a-zA-Z_] [a-zA-Z0-9_]*
 StringLiteral     <- "'" [^']* "'"
 )";
 
-ConnectModeParser::ConnectModeParser(const string &sql_p) : sql(sql_p) {
+//! Lazily-compiled, shared across all ConnectModeParser instances. Grammar compilation isn't
+//! free (parses the grammar string into a matcher tree), so we cache it for the process lifetime.
+static shared_ptr<PEGMatcher> GetConnectModeMatcher() {
+	static shared_ptr<PEGMatcher> cached = PEGMatcher::CompileGrammar(CONNECT_MODE_GRAMMAR, "Program");
+	return cached;
+}
+
+ConnectModeParser::ConnectModeParser(const string &sql_p) : sql(sql_p), matcher(GetConnectModeMatcher()) {
+	BaseTokenizer tokenizer(sql, tokens);
+	tokenizer.TokenizeInput();
 }
 
 ConnectModeParser::~ConnectModeParser() = default;

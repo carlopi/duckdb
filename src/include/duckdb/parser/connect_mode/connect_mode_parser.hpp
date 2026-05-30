@@ -9,10 +9,14 @@
 #pragma once
 
 #include "duckdb/common/optional_idx.hpp"
+#include "duckdb/common/shared_ptr.hpp"
 #include "duckdb/common/string.hpp"
 #include "duckdb/common/vector.hpp"
 
 namespace duckdb {
+struct PEGMatcher;
+struct MatcherToken;
+class ParseResult;
 
 //! One chunk of input as seen by the connect-mode (Layer 1) parser.
 //!
@@ -55,7 +59,11 @@ public:
 
 private:
 	const string &sql;
-	//! Position in `sql` we'll resume from on the next TryGetNext call.
+	//! Compiled connect-mode grammar matcher. Cached at first use, shared by all instances.
+	shared_ptr<PEGMatcher> matcher;
+	//! Tokenized input (filled at construction).
+	vector<MatcherToken> tokens;
+	//! Position in `tokens` we'll resume from on the next TryGetNext call.
 	idx_t cursor = 0;
 };
 
