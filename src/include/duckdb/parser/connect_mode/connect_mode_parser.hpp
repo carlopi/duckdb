@@ -62,7 +62,12 @@ public:
 	vector<ConnectModeChunk> AllRemaining();
 
 private:
-	const string &sql;
+	void ClassifyChunk(ParseResult &chunk_node, ConnectModeChunk &out);
+
+private:
+	//! Owned copy of the input — slicing inside ClassifyChunk reads from this after the parse phase
+	//! has finished, so capturing by reference would dangle when the caller passed a temporary.
+	string sql;
 	//! Compiled connect-mode grammar matcher. Cached at first use, shared by all instances.
 	shared_ptr<PEGMatcher> matcher;
 	//! Tokenized input (filled at construction).

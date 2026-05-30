@@ -52,9 +52,73 @@ ConnectModeParser::ConnectModeParser(const string &sql_p)
 
 ConnectModeParser::~ConnectModeParser() = default;
 
+//! Walk a parse subtree and record the min and max char-offset of any leaf node with a set offset.
+//! Leaf nodes (IDENTIFIER, KEYWORD, STRING, NUMBER, OPERATOR) carry the char offset of their token;
+//! container nodes (LIST/REPEAT/OPTIONAL/CHOICE) recurse into their children.
+static void CollectLeafOffsets(ParseResult &node, optional_idx &min_off, optional_idx &max_off) {
+	switch (node.type) {
+	case ParseResultType::LIST:
+		for (auto &c : node.Cast<ListParseResult>().GetChildren()) {
+			CollectLeafOffsets(c.get(), min_off, max_off);
+		}
+		return;
+	case ParseResultType::REPEAT:
+		for (auto &c : node.Cast<RepeatParseResult>().GetChildren()) {
+			CollectLeafOffsets(c.get(), min_off, max_off);
+		}
+		return;
+	case ParseResultType::OPTIONAL: {
+		auto &opt = node.Cast<OptionalParseResult>();
+		if (opt.HasResult()) {
+			CollectLeafOffsets(opt.GetResult(), min_off, max_off);
+		}
+		return;
+	}
+	case ParseResultType::CHOICE:
+		CollectLeafOffsets(node.Cast<ChoiceParseResult>().GetResult(), min_off, max_off);
+		return;
+	default:
+		break;
+	}
+	// Leaf — record its char offset if set.
+	if (!node.offset.IsValid()) {
+		return;
+	}
+	idx_t off = node.offset.GetIndex();
+	if (!min_off.IsValid() || off < min_off.GetIndex()) {
+		min_off = optional_idx(off);
+	}
+	if (!max_off.IsValid() || off > max_off.GetIndex()) {
+		max_off = optional_idx(off);
+	}
+}
+
+//! Slice the original SQL string for the source range covered by `node`. Returns empty string if
+//! the subtree contains no offset-bearing leaves. The end of the range is computed by looking up
+//! the last leaf's token in `tokens` and adding its length.
+static string SliceSubtreeText(const string &sql, const vector<MatcherToken> &tokens, ParseResult &node) {
+	optional_idx min_off;
+	optional_idx max_off;
+	CollectLeafOffsets(node, min_off, max_off);
+	if (!min_off.IsValid() || !max_off.IsValid()) {
+		return string();
+	}
+	// Tokens are emitted in source order, so a linear scan to find the token at max_off is fine.
+	// (Per-chunk cost; chunks are few.)
+	idx_t end_char = max_off.GetIndex();
+	for (auto &tok : tokens) {
+		if (tok.offset == max_off.GetIndex()) {
+			end_char = tok.offset + tok.length;
+			break;
+		}
+	}
+	idx_t start_char = min_off.GetIndex();
+	return sql.substr(start_char, end_char - start_char);
+}
+
 //! Classify a Chunk LIST by inspecting the underlying CHOICE-resolved rule name.
 //! The Chunk node has shape: LIST (Chunk) → CHOICE → LIST (ConnectChunk / DisconnectChunk / ...)
-static void ClassifyChunk(ParseResult &chunk_node, ConnectModeChunk &out) {
+void ConnectModeParser::ClassifyChunk(ParseResult &chunk_node, ConnectModeChunk &out) {
 	auto &chunk_list = chunk_node.Cast<ListParseResult>();
 	auto &inner = chunk_list.GetChild(0);
 	// The CHOICE wrapper exposes its resolved alternative via GetResult().
@@ -64,15 +128,19 @@ static void ClassifyChunk(ParseResult &chunk_node, ConnectModeChunk &out) {
 		out.type = ConnectModeChunk::Type::CONTROL;
 	} else if (name == "ExecuteChunk") {
 		out.type = ConnectModeChunk::Type::EXECUTE;
-		// TODO: extract target and payload from the resolved node's children.
+		// ExecuteChunk LIST shape: [KEYWORD CONNECT, IDENTIFIER target, KEYWORD EXECUTE, LIST(Raw)]
+		auto &exec_list = resolved.Cast<ListParseResult>();
+		auto &target_node = exec_list.GetChild(1);
+		auto &payload_node = exec_list.GetChild(3);
+		out.target = target_node.Cast<IdentifierParseResult>().identifier;
+		out.payload = SliceSubtreeText(sql, tokens, payload_node);
 	} else if (name == "ForbiddenConnect1" || name == "ForbiddenConnect2" || name == "ForbiddenDisconnect") {
 		out.type = ConnectModeChunk::Type::FORBIDDEN;
 	} else {
 		// "RawChunk" or anything else: treat as raw.
 		out.type = ConnectModeChunk::Type::RAW;
 	}
-	// TODO: populate out.text by slicing the original SQL using the resolved node's token offsets.
-	out.text = string();
+	out.text = SliceSubtreeText(sql, tokens, chunk_node);
 }
 
 bool ConnectModeParser::TryGetNext(ConnectModeChunk &out_chunk) {
@@ -90,20 +158,31 @@ bool ConnectModeParser::TryGetNext(ConnectModeChunk &out_chunk) {
 		cursor++;
 		return true;
 	}
-	auto &repeat_node = program->GetChild(1);
-	if (repeat_node.type == ParseResultType::REPEAT) {
-		auto &repeat = repeat_node.Cast<RepeatParseResult>();
-		auto children = repeat.GetChildren();
-		idx_t repeat_idx = cursor - 1;
-		if (repeat_idx < children.size()) {
-			auto &pair = children[repeat_idx].get().Cast<ListParseResult>();
-			auto &chunk_node = pair.GetChild(1);
-			ClassifyChunk(chunk_node, out_chunk);
-			cursor++;
-			return true;
-		}
+	// PEG `*` compiles as Optional(Repeat(...)), so child[1] is an OPTIONAL wrapping a REPEAT.
+	auto &optional_node = program->GetChild(1);
+	if (optional_node.type != ParseResultType::OPTIONAL) {
+		return false;
 	}
-	return false;
+	auto &optional = optional_node.Cast<OptionalParseResult>();
+	if (!optional.HasResult()) {
+		return false;
+	}
+	auto &repeat_node = optional.GetResult();
+	if (repeat_node.type != ParseResultType::REPEAT) {
+		return false;
+	}
+	auto &repeat = repeat_node.Cast<RepeatParseResult>();
+	auto children = repeat.GetChildren();
+	idx_t repeat_idx = cursor - 1;
+	if (repeat_idx >= children.size()) {
+		return false;
+	}
+	// Each repeat iteration is a LIST [KEYWORD ";", LIST(Chunk)] — we want the second child.
+	auto &pair = children[repeat_idx].get().Cast<ListParseResult>();
+	auto &chunk_node = pair.GetChild(1);
+	ClassifyChunk(chunk_node, out_chunk);
+	cursor++;
+	return true;
 }
 
 vector<ConnectModeChunk> ConnectModeParser::AllRemaining() {
