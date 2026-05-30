@@ -1,0 +1,161 @@
+#include "catch.hpp"
+
+#include "duckdb/parser/connect_mode/connect_mode_parser.hpp"
+
+using namespace duckdb; // NOLINT
+
+TEST_CASE("ConnectModeParser: empty / whitespace input yields no chunks", "[connect_mode]") {
+	{
+		ConnectModeParser p("");
+		REQUIRE(p.AllRemaining().empty());
+	}
+	{
+		ConnectModeParser p("   \t\n  ");
+		REQUIRE(p.AllRemaining().empty());
+	}
+	{
+		ConnectModeParser p(";");
+		REQUIRE(p.AllRemaining().empty());
+	}
+}
+
+TEST_CASE("ConnectModeParser: plain SQL is captured as RAW chunks", "[connect_mode]") {
+	SECTION("single statement") {
+		ConnectModeParser p("SELECT 1");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::RAW);
+		REQUIRE(chunks[0].text == "SELECT 1");
+	}
+
+	SECTION("two statements split on ;") {
+		ConnectModeParser p("SELECT 1; SELECT 2");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 2);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::RAW);
+		REQUIRE(chunks[0].text == "SELECT 1");
+		REQUIRE(chunks[1].type == ConnectModeChunk::Type::RAW);
+		REQUIRE(chunks[1].text == "SELECT 2");
+	}
+
+	SECTION("PIVOT statement captured opaquely (no decomposition)") {
+		ConnectModeParser p("PIVOT t ON x USING SUM(y)");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::RAW);
+		REQUIRE(chunks[0].text == "PIVOT t ON x USING SUM(y)");
+	}
+
+	SECTION("embedded semicolon inside string literal does not split") {
+		ConnectModeParser p("SELECT 'a;b;c'");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].text == "SELECT 'a;b;c'");
+	}
+}
+
+TEST_CASE("ConnectModeParser: well-formed CONNECT/DISCONNECT classified as CONTROL", "[connect_mode]") {
+	SECTION("bare CONNECT") {
+		ConnectModeParser p("CONNECT");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::CONTROL);
+	}
+
+	SECTION("CONNECT name") {
+		ConnectModeParser p("CONNECT pg");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::CONTROL);
+		REQUIRE(chunks[0].text == "CONNECT pg");
+	}
+
+	SECTION("CONNECT LOCAL") {
+		ConnectModeParser p("CONNECT LOCAL");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::CONTROL);
+	}
+
+	SECTION("CONNECT 'uri'") {
+		ConnectModeParser p("CONNECT 'quack:localhost'");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::CONTROL);
+	}
+
+	SECTION("DISCONNECT") {
+		ConnectModeParser p("DISCONNECT");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::CONTROL);
+	}
+}
+
+TEST_CASE("ConnectModeParser: CONNECT name EXECUTE payload classified as EXECUTE", "[connect_mode]") {
+	SECTION("simple SELECT payload") {
+		ConnectModeParser p("CONNECT pg EXECUTE SELECT 1");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::EXECUTE);
+		REQUIRE(chunks[0].target == "pg");
+		REQUIRE(chunks[0].payload == "SELECT 1");
+	}
+
+	SECTION("PIVOT payload (the original chokepoint use case)") {
+		ConnectModeParser p("CONNECT pg EXECUTE PIVOT t ON x USING SUM(y)");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::EXECUTE);
+		REQUIRE(chunks[0].target == "pg");
+		REQUIRE(chunks[0].payload == "PIVOT t ON x USING SUM(y)");
+	}
+}
+
+TEST_CASE("ConnectModeParser: malformed CONNECT classified as FORBIDDEN", "[connect_mode]") {
+	SECTION("extra tokens after CONNECT name") {
+		ConnectModeParser p("CONNECT pg foo bar");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::FORBIDDEN);
+	}
+
+	SECTION("nested CONNECT inside EXECUTE payload") {
+		ConnectModeParser p("CONNECT pg EXECUTE CONNECT inner");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::FORBIDDEN);
+	}
+
+	SECTION("DISCONNECT with extra tokens") {
+		ConnectModeParser p("DISCONNECT xyz");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::FORBIDDEN);
+	}
+}
+
+TEST_CASE("ConnectModeParser: multi-statement mixed chunks", "[connect_mode]") {
+	ConnectModeParser p("SELECT 1; CONNECT pg; PIVOT t ON x USING SUM(y); DISCONNECT");
+	auto chunks = p.AllRemaining();
+	REQUIRE(chunks.size() == 4);
+	REQUIRE(chunks[0].type == ConnectModeChunk::Type::RAW);
+	REQUIRE(chunks[1].type == ConnectModeChunk::Type::CONTROL);
+	REQUIRE(chunks[2].type == ConnectModeChunk::Type::RAW);
+	REQUIRE(chunks[2].text == "PIVOT t ON x USING SUM(y)");
+	REQUIRE(chunks[3].type == ConnectModeChunk::Type::CONTROL);
+}
+
+TEST_CASE("ConnectModeParser: TryGetNext is iterator-style", "[connect_mode]") {
+	ConnectModeParser p("CONNECT pg; SELECT 1");
+	ConnectModeChunk chunk;
+
+	REQUIRE(p.TryGetNext(chunk));
+	REQUIRE(chunk.type == ConnectModeChunk::Type::CONTROL);
+
+	REQUIRE(p.TryGetNext(chunk));
+	REQUIRE(chunk.type == ConnectModeChunk::Type::RAW);
+	REQUIRE(chunk.text == "SELECT 1");
+
+	REQUIRE_FALSE(p.TryGetNext(chunk));
+}
