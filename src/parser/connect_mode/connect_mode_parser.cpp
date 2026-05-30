@@ -43,11 +43,6 @@ ConnectModeParser::ConnectModeParser(const string &sql_p)
 	idx_t max_token_index = 0;
 	MatchState state(tokens, suggestions, *result_allocator, max_token_index, /* preserve_identifier_case */ true);
 	auto matched = matcher->Root().MatchParseResult(state);
-	fprintf(stderr, "[CMP \"%s\"] tokens=%zu matched=%s state.token_index=%zu\n", sql.c_str(), tokens.size(),
-	        matched ? "yes" : "null", state.token_index);
-	if (matched) {
-		fprintf(stderr, "%s\n", matched->ToString().c_str());
-	}
 	if (!matched || state.token_index < state.tokens.size()) {
 		return;
 	}
@@ -56,43 +51,57 @@ ConnectModeParser::ConnectModeParser(const string &sql_p)
 
 ConnectModeParser::~ConnectModeParser() = default;
 
-//! Recover the slice of the original SQL that a ParseResult covers, based on token offsets.
-static string ExtractText(const string &sql, const vector<MatcherToken> &tokens, ParseResult &result) {
-	// The simplest reliable signal we have is the offset on the leftmost-and-rightmost descendant
-	// tokens. For v0 we approximate by walking via the structured types we know about.
-	// TODO: replace with a real offset-range walker once we've built the broader implementation.
-	(void)sql;
-	(void)tokens;
-	(void)result;
-	return string();
-}
-
-//! Classify a Chunk ChoiceParseResult by inspecting the rule name of the alternative that matched.
-static void ClassifyChunk(const string &sql, const vector<MatcherToken> &tokens, ParseResult &matched_alt,
-                          ConnectModeChunk &out) {
-	const auto &name = matched_alt.name;
+//! Classify a Chunk LIST by inspecting the underlying CHOICE-resolved rule name.
+//! The Chunk node has shape: LIST (Chunk) → CHOICE → LIST (ConnectChunk / DisconnectChunk / ...)
+static void ClassifyChunk(ParseResult &chunk_node, ConnectModeChunk &out) {
+	auto &chunk_list = chunk_node.Cast<ListParseResult>();
+	auto &inner = chunk_list.GetChild(0);
+	// The CHOICE wrapper exposes its resolved alternative via GetResult().
+	auto &resolved = inner.Cast<ChoiceParseResult>().GetResult();
+	const auto &name = resolved.name;
 	if (name == "ConnectChunk" || name == "DisconnectChunk") {
 		out.type = ConnectModeChunk::Type::CONTROL;
 	} else if (name == "ExecuteChunk") {
 		out.type = ConnectModeChunk::Type::EXECUTE;
-		// TODO: extract target and payload from the matched_alt's children.
+		// TODO: extract target and payload from the resolved node's children.
 	} else if (name == "ForbiddenConnect" || name == "ForbiddenDisconnect") {
 		out.type = ConnectModeChunk::Type::FORBIDDEN;
 	} else {
+		// "RawChunk" or anything else: treat as raw.
 		out.type = ConnectModeChunk::Type::RAW;
 	}
-	out.text = ExtractText(sql, tokens, matched_alt);
+	// TODO: populate out.text by slicing the original SQL using the resolved node's token offsets.
+	out.text = string();
 }
 
 bool ConnectModeParser::TryGetNext(ConnectModeChunk &out_chunk) {
 	if (!program) {
 		return false;
 	}
-	// Program <- Chunk (Semi Chunk)* Semi?
-	// The ListParseResult holds the 3 sub-results. The (Semi Chunk)* portion is a RepeatParseResult.
-	// We "linearize" the cursor by treating positions 0, 1, 2, ... as logical chunk indices and
-	// fetching the corresponding Chunk node from the structured tree.
-	(void)out_chunk;
+	// Program shape:
+	//   child[0] = first Chunk
+	//   child[1] = RepeatParseResult over LIST [Semi, Chunk] pairs ← additional chunks
+	//   child[2] = OptionalParseResult for trailing Semi (always empty or contains ";")
+	// Linearize the cursor: position 0 = first chunk, positions 1..N = repeat[i-1]'s second child.
+	if (cursor == 0) {
+		auto &first_chunk = program->GetChild(0);
+		ClassifyChunk(first_chunk, out_chunk);
+		cursor++;
+		return true;
+	}
+	auto &repeat_node = program->GetChild(1);
+	if (repeat_node.type == ParseResultType::REPEAT) {
+		auto &repeat = repeat_node.Cast<RepeatParseResult>();
+		auto children = repeat.GetChildren();
+		idx_t repeat_idx = cursor - 1;
+		if (repeat_idx < children.size()) {
+			auto &pair = children[repeat_idx].get().Cast<ListParseResult>();
+			auto &chunk_node = pair.GetChild(1);
+			ClassifyChunk(chunk_node, out_chunk);
+			cursor++;
+			return true;
+		}
+	}
 	return false;
 }
 

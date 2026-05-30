@@ -120,18 +120,22 @@ TEST_CASE("ConnectModeParser: malformed CONNECT classified as FORBIDDEN", "[conn
 		REQUIRE(chunks[0].type == ConnectModeChunk::Type::FORBIDDEN);
 	}
 
-	SECTION("nested CONNECT inside EXECUTE payload") {
-		ConnectModeParser p("CONNECT pg EXECUTE CONNECT inner");
-		auto chunks = p.AllRemaining();
-		REQUIRE(chunks.size() == 1);
-		REQUIRE(chunks[0].type == ConnectModeChunk::Type::FORBIDDEN);
-	}
-
 	SECTION("DISCONNECT with extra tokens") {
 		ConnectModeParser p("DISCONNECT xyz");
 		auto chunks = p.AllRemaining();
 		REQUIRE(chunks.size() == 1);
 		REQUIRE(chunks[0].type == ConnectModeChunk::Type::FORBIDDEN);
+	}
+}
+
+TEST_CASE("ConnectModeParser: EXECUTE payload is opaque (keywords allowed)", "[connect_mode]") {
+	SECTION("payload starting with CONNECT is just text") {
+		ConnectModeParser p("CONNECT pg EXECUTE CONNECT inner");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::EXECUTE);
+		REQUIRE(chunks[0].target == "pg");
+		// payload is the raw text after EXECUTE; "CONNECT inner" is just forwarded as-is
 	}
 }
 

@@ -21,9 +21,10 @@ Chunk            <- ExecuteChunk
 
 ConnectChunk     <- 'CONNECT' (Identifier / 'LOCAL' / StringLiteral)?
 DisconnectChunk  <- 'DISCONNECT'
-# EXECUTE payload uses RawChunk (not bare Raw) so nested CONNECT/DISCONNECT inside the payload
-# fails the well-formed parse and falls into ForbiddenConnect below.
-ExecuteChunk     <- 'CONNECT' Identifier 'EXECUTE' RawChunk
+# EXECUTE payload is bare Raw — the payload can contain any text including the word CONNECT,
+# since it's forwarded verbatim to the remote backend. Nested control statements as part of
+# the payload are not specially rejected.
+ExecuteChunk     <- 'CONNECT' Identifier 'EXECUTE' Raw
 
 # Catch malformed control statements and surface a clear error rather than a confusing parse failure
 # or silent raw forwarding.
