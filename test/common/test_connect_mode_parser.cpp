@@ -17,6 +17,11 @@ TEST_CASE("ConnectModeParser: empty / whitespace input yields no chunks", "[conn
 		ConnectModeParser p(";");
 		REQUIRE(p.AllRemaining().empty());
 	}
+	{
+		// A run of bare semicolons is a valid Layer 1 program with zero chunks — it must NOT throw.
+		ConnectModeParser p(";;;;;;;");
+		REQUIRE(p.AllRemaining().empty());
+	}
 }
 
 TEST_CASE("ConnectModeParser: plain SQL is captured as RAW chunks", "[connect_mode]") {
@@ -33,9 +38,40 @@ TEST_CASE("ConnectModeParser: plain SQL is captured as RAW chunks", "[connect_mo
 		auto chunks = p.AllRemaining();
 		REQUIRE(chunks.size() == 2);
 		REQUIRE(chunks[0].type == ConnectModeChunk::Type::RAW);
-		REQUIRE(chunks[0].text == "SELECT 1");
+		// chunk.text round-trips the trailing `;` so downstream consumers (e.g. QueryLog) see the
+		// user-typed statement faithfully.
+		REQUIRE(chunks[0].text == "SELECT 1;");
 		REQUIRE(chunks[1].type == ConnectModeChunk::Type::RAW);
 		REQUIRE(chunks[1].text == "SELECT 2");
+	}
+
+	SECTION("trailing semicolon preserved on single statement") {
+		ConnectModeParser p("SELECT 1;");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].text == "SELECT 1;");
+	}
+
+	SECTION("leading semicolons are tolerated") {
+		ConnectModeParser p(";SELECT 1");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].text == "SELECT 1");
+	}
+
+	SECTION("multiple consecutive separator semicolons") {
+		ConnectModeParser p("SELECT 42;;;SELECT 10;");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 2);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::RAW);
+		REQUIRE(chunks[1].type == ConnectModeChunk::Type::RAW);
+	}
+
+	SECTION("multiple trailing semicolons after last statement") {
+		ConnectModeParser p("SELECT 1;;;;;");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::RAW);
 	}
 
 	SECTION("PIVOT statement captured opaquely (no decomposition)") {
@@ -146,7 +182,7 @@ TEST_CASE("ConnectModeParser: multi-statement mixed chunks", "[connect_mode]") {
 	REQUIRE(chunks[0].type == ConnectModeChunk::Type::RAW);
 	REQUIRE(chunks[1].type == ConnectModeChunk::Type::CONTROL);
 	REQUIRE(chunks[2].type == ConnectModeChunk::Type::RAW);
-	REQUIRE(chunks[2].text == "PIVOT t ON x USING SUM(y)");
+	REQUIRE(chunks[2].text == "PIVOT t ON x USING SUM(y);");
 	REQUIRE(chunks[3].type == ConnectModeChunk::Type::CONTROL);
 }
 

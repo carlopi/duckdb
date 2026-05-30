@@ -1,5 +1,7 @@
 #include "duckdb/parser/connect_mode/connect_mode_parser.hpp"
 
+#include "duckdb/common/exception/parser_exception.hpp"
+#include "duckdb/common/string_util.hpp"
 #include "duckdb/parser/peg/matcher.hpp"
 #include "duckdb/parser/peg/tokenizer/parser_tokenizer.hpp"
 #include "duckdb/parser/peg/transformer/parse_result.hpp"
@@ -10,7 +12,8 @@ namespace duckdb {
 //! Duplicated here as a string literal so the parser is self-contained and doesn't depend on the
 //! main grammar's inlining pipeline. Keep in sync with connect_mode.gram if you edit either.
 static constexpr const char *CONNECT_MODE_GRAMMAR = R"(
-Program <- Chunk (';' Chunk)* ';'?
+Program <- ';'* Body?
+Body <- Chunk (';'+ Chunk)* ';'*
 Chunk <- ExecuteChunk / ForbiddenConnect1 / ConnectChunk / ForbiddenConnect2 / ForbiddenDisconnect / DisconnectChunk / RawChunk
 ConnectChunk <- 'CONNECT' (Identifier / 'LOCAL' / StringLiteral)?
 DisconnectChunk <- 'DISCONNECT'
@@ -45,7 +48,10 @@ ConnectModeParser::ConnectModeParser(const string &sql_p)
 	MatchState state(tokens, suggestions, *result_allocator, max_token_index, /* preserve_identifier_case */ true);
 	auto matched = matcher->Root().MatchParseResult(state);
 	if (!matched || state.token_index < state.tokens.size()) {
-		return;
+		// Empty `tokens` is handled above. Reaching here means there were real tokens that the
+		// Layer 1 grammar couldn't classify — a clear drift signal. Surface it rather than letting
+		// the caller silently see zero chunks.
+		throw ParserException("ConnectModeParser failed to parse input: \"%s\"", sql);
 	}
 	program = matched->Cast<ListParseResult>();
 }
@@ -96,7 +102,14 @@ static void CollectLeafOffsets(ParseResult &node, optional_idx &min_off, optiona
 //! Slice the original SQL string for the source range covered by `node`. Returns empty string if
 //! the subtree contains no offset-bearing leaves. The end of the range is computed by looking up
 //! the last leaf's token in `tokens` and adding its length.
-static string SliceSubtreeText(const string &sql, const vector<MatcherToken> &tokens, ParseResult &node) {
+//!
+//! When `include_trailing_semicolon` is true, the range is extended past any intermediate whitespace
+//! to include a trailing `;` if present. The chunk-level slice uses this so that `chunk.text` is a
+//! faithful round-trip of the user-typed statement (e.g. so `QueryLog` records `SELECT 1;` instead
+//! of `SELECT 1`). Sub-slices like the EXECUTE payload do NOT include the trailing `;` — there is
+//! none at that level, since the `;` is consumed by `Program`'s top-level `(';' Chunk)*`.
+static string SliceSubtreeText(const string &sql, const vector<MatcherToken> &tokens, ParseResult &node,
+                               bool include_trailing_semicolon = false) {
 	optional_idx min_off;
 	optional_idx max_off;
 	CollectLeafOffsets(node, min_off, max_off);
@@ -110,6 +123,15 @@ static string SliceSubtreeText(const string &sql, const vector<MatcherToken> &to
 		if (tok.offset == max_off.GetIndex()) {
 			end_char = tok.offset + tok.length;
 			break;
+		}
+	}
+	if (include_trailing_semicolon) {
+		idx_t probe = end_char;
+		while (probe < sql.size() && StringUtil::CharacterIsSpace(sql[probe])) {
+			probe++;
+		}
+		if (probe < sql.size() && sql[probe] == ';') {
+			end_char = probe + 1;
 		}
 	}
 	idx_t start_char = min_off.GetIndex();
@@ -148,26 +170,37 @@ void ConnectModeParser::ClassifyChunk(ParseResult &chunk_node, ConnectModeChunk 
 		// "RawChunk" or anything else: treat as raw.
 		out.type = ConnectModeChunk::Type::RAW;
 	}
-	out.text = SliceSubtreeText(sql, tokens, chunk_node);
+	out.text = SliceSubtreeText(sql, tokens, chunk_node, /* include_trailing_semicolon */ true);
 }
 
 bool ConnectModeParser::TryGetNext(ConnectModeChunk &out_chunk) {
 	if (!program) {
 		return false;
 	}
-	// Program shape:
-	//   child[0] = first Chunk
-	//   child[1] = RepeatParseResult over LIST [Semi, Chunk] pairs ← additional chunks
-	//   child[2] = OptionalParseResult for trailing Semi (always empty or contains ";")
-	// Linearize the cursor: position 0 = first chunk, positions 1..N = repeat[i-1]'s second child.
+	// Program shape: LIST [';'*-OPTIONAL, Body-OPTIONAL].
+	//   - child[0] is the leading `';'*` (Optional(Repeat(';'))). We skip it — leading semicolons
+	//     are not chunks.
+	//   - child[1] is the optional Body. When present (input was non-empty after leading `;`s),
+	//     Body is a LIST [Chunk, OPTIONAL(REPEAT([';' Chunk])), OPTIONAL(';')] — same shape the
+	//     walker used to look at directly under Program before the leading-`;` change.
+	auto &body_optional = program->GetChild(1);
+	if (body_optional.type != ParseResultType::OPTIONAL) {
+		return false;
+	}
+	auto &body_opt = body_optional.Cast<OptionalParseResult>();
+	if (!body_opt.HasResult()) {
+		return false;
+	}
+	auto &body = body_opt.GetResult().Cast<ListParseResult>();
+
 	if (cursor == 0) {
-		auto &first_chunk = program->GetChild(0);
+		auto &first_chunk = body.GetChild(0);
 		ClassifyChunk(first_chunk, out_chunk);
 		cursor++;
 		return true;
 	}
 	// PEG `*` compiles as Optional(Repeat(...)), so child[1] is an OPTIONAL wrapping a REPEAT.
-	auto &optional_node = program->GetChild(1);
+	auto &optional_node = body.GetChild(1);
 	if (optional_node.type != ParseResultType::OPTIONAL) {
 		return false;
 	}
