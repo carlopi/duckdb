@@ -136,6 +136,14 @@ void ConnectModeParser::ClassifyChunk(ParseResult &chunk_node, ConnectModeChunk 
 		out.payload = SliceSubtreeText(sql, tokens, payload_node);
 	} else if (name == "ForbiddenConnect1" || name == "ForbiddenConnect2" || name == "ForbiddenDisconnect") {
 		out.type = ConnectModeChunk::Type::FORBIDDEN;
+		// TODO: store the failing rule name (or a Reason enum) on the chunk so the dispatcher can
+		// surface a precise diagnostic. ForbiddenConnect1, ForbiddenConnect2, ForbiddenDisconnect
+		// all map to FORBIDDEN today but represent distinct error situations:
+		//   - ForbiddenConnect1: well-formed CONNECT prefix followed by extra tokens
+		//     ("CONNECT pg foo bar")
+		//   - ForbiddenConnect2: CONNECT followed by something that isn't a valid target
+		//     ("CONNECT 42", "CONNECT EXECUTE ...")
+		//   - ForbiddenDisconnect: DISCONNECT with any trailing tokens
 	} else {
 		// "RawChunk" or anything else: treat as raw.
 		out.type = ConnectModeChunk::Type::RAW;

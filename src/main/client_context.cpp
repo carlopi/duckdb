@@ -33,6 +33,7 @@
 #include "duckdb/parser/expression/parameter_expression.hpp"
 #include "duckdb/parser/parsed_data/create_function_info.hpp"
 #include "duckdb/parser/parser.hpp"
+#include "duckdb/parser/connect_mode/connect_mode_parser.hpp"
 #include "duckdb/parser/query_node/select_node.hpp"
 #include "duckdb/parser/statement/drop_statement.hpp"
 #include "duckdb/parser/statement/execute_statement.hpp"
@@ -784,19 +785,43 @@ vector<unique_ptr<SQLStatement>> ClientContext::ParseStatements(const string &qu
 }
 vector<unique_ptr<SQLStatement>> ClientContext::ParseStatementsInternal(ClientContextLock &lock, const string &query) {
 	try {
-		Parser parser(GetParserOptions());
 		auto &profiler = QueryProfiler::Get(*this);
 		profiler.StartQuery(query);
 		auto parser_timer = profiler.StartTimer<MetricParserTotalTime>();
-		parser.ParseQuery(query);
+
+		// Layer 1: split the input into CONNECT-aware chunks. Each chunk is one of CONTROL / EXECUTE /
+		// FORBIDDEN / RAW. Running this on every query (not just when a CONNECT binding is active)
+		// surfaces any drift between the Layer 1 grammar and the main SQL grammar immediately.
+		ConnectModeParser layer1(query);
+		auto chunks = layer1.AllRemaining();
+
+		vector<unique_ptr<SQLStatement>> all_statements;
+		for (auto &chunk : chunks) {
+			switch (chunk.type) {
+			case ConnectModeChunk::Type::FORBIDDEN:
+				throw ParserException("Malformed CONNECT/DISCONNECT statement: \"%s\"", chunk.text);
+			case ConnectModeChunk::Type::EXECUTE:
+				throw NotImplementedException("CONNECT <name> EXECUTE is not yet supported");
+			case ConnectModeChunk::Type::CONTROL:
+			case ConnectModeChunk::Type::RAW: {
+				// Pass the chunk text through the SQL parser. We use a fresh Parser per chunk so
+				// parser-internal state can't leak across statement boundaries.
+				Parser parser(GetParserOptions());
+				parser.ParseQuery(chunk.text);
+				for (auto &stmt : parser.statements) {
+					all_statements.push_back(std::move(stmt));
+				}
+				break;
+			}
+			}
+		}
 
 		StatementPreprocessor preprocessor(*this);
-
 		const CurrentTransactionState transaction_context_state =
 		    transaction.HasActiveTransaction() ? IN_ACTIVE_TRANSACTION : NOT_IN_ACTIVE_TRANSACTION;
-		preprocessor.Preprocess(lock, parser.statements, transaction_context_state);
+		preprocessor.Preprocess(lock, all_statements, transaction_context_state);
 
-		return std::move(parser.statements);
+		return all_statements;
 	} catch (std::exception &ex) {
 		auto error = ErrorData(ex);
 		ProcessError(error, query);
