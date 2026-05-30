@@ -9,14 +9,18 @@
 #pragma once
 
 #include "duckdb/common/optional_idx.hpp"
+#include "duckdb/common/optional_ptr.hpp"
 #include "duckdb/common/shared_ptr.hpp"
 #include "duckdb/common/string.hpp"
+#include "duckdb/common/unique_ptr.hpp"
 #include "duckdb/common/vector.hpp"
 
 namespace duckdb {
 struct PEGMatcher;
 struct MatcherToken;
 class ParseResult;
+class ListParseResult;
+class ParseResultAllocator;
 
 //! One chunk of input as seen by the connect-mode (Layer 1) parser.
 //!
@@ -63,7 +67,11 @@ private:
 	shared_ptr<PEGMatcher> matcher;
 	//! Tokenized input (filled at construction).
 	vector<MatcherToken> tokens;
-	//! Position in `tokens` we'll resume from on the next TryGetNext call.
+	//! Owns the parse result tree (allocated during MatchParseResult).
+	unique_ptr<ParseResultAllocator> result_allocator;
+	//! Root of the parse tree (the Program node). Null when the input is empty/whitespace-only.
+	optional_ptr<ListParseResult> program;
+	//! Index of the next top-level chunk to emit from `program`.
 	idx_t cursor = 0;
 };
 

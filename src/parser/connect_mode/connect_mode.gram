@@ -31,10 +31,15 @@ ForbiddenConnect    <- 'CONNECT' Raw
 ForbiddenDisconnect <- 'DISCONNECT' Raw
 
 # RawChunk MUST NOT start with CONNECT/DISCONNECT — those go to the Forbidden* paths above.
+# (Note: the `!` negative-lookahead is silently ignored by DuckDB's PEG runtime today, so this
+# guard is documentation-only. ConnectChunk/DisconnectChunk being tried first via ordered choice
+# is what actually prevents the misclassification at runtime.)
 RawChunk         <- !ControlKeyword Raw
 ControlKeyword   <- 'CONNECT' / 'DISCONNECT'
 
-Raw              <- (!Semi !EOI .)+
+# `InStatementToken` is a built-in primitive: any non-TERMINATOR token. Lets us capture opaque
+# text up to a `;` without needing a `!` negative-lookahead operator.
+Raw              <- InStatementToken+
 Semi             <- ';'
 
 # Primitives (copy-pasted; lift to a shared file when a second Layer-1 grammar shows up)

@@ -858,6 +858,50 @@ static bool IsArithmeticOperatorChar(char c) {
 	}
 }
 
+//! Consumes any single non-TERMINATOR token. Useful in grammars that want to capture opaque text
+//! up to a `;` (statement boundary) without needing a negative lookahead operator.
+class InStatementTokenMatcher : public Matcher {
+public:
+	static constexpr MatcherType TYPE = MatcherType::VARIABLE;
+
+	InStatementTokenMatcher() : Matcher(TYPE) {
+	}
+
+	MatchResultType Match(MatchState &state) const override {
+		if (state.token_index >= state.tokens.size()) {
+			return MatchResultType::FAIL;
+		}
+		if (state.tokens[state.token_index].type == TokenType::TERMINATOR) {
+			return MatchResultType::FAIL;
+		}
+		state.token_index++;
+		return MatchResultType::SUCCESS;
+	}
+
+	optional_ptr<ParseResult> MatchParseResult(MatchState &state) const override {
+		if (state.token_index >= state.tokens.size()) {
+			return nullptr;
+		}
+		auto &token = state.tokens[state.token_index];
+		if (token.type == TokenType::TERMINATOR) {
+			return nullptr;
+		}
+		auto token_text = token.text;
+		auto start_offset = optional_idx(token.offset);
+		state.token_index++;
+		return state.allocator.Allocate(make_uniq<IdentifierParseResult>(token_text, start_offset));
+	}
+
+	SuggestionType AddSuggestionInternal(MatchState &state) const override {
+		(void)state;
+		return SuggestionType::OPTIONAL;
+	}
+
+	string ToString() const override {
+		return "ANY_TOKEN";
+	}
+};
+
 class OperatorMatcher : public Matcher {
 public:
 	static constexpr MatcherType TYPE = MatcherType::OPERATOR;
@@ -1009,6 +1053,7 @@ private:
 	Matcher &Optional(Matcher &matcher) const;
 	Matcher &Repeat(Matcher &matcher) const;
 	Matcher &Variable() const;
+	Matcher &InStatementToken() const;
 	Matcher &CatalogName() const;
 	Matcher &SchemaName() const;
 	Matcher &TypeName() const;
@@ -1073,6 +1118,10 @@ Matcher &MatcherFactory::Repeat(Matcher &matcher) const {
 
 Matcher &MatcherFactory::Variable() const {
 	return allocator.Allocate(make_uniq<IdentifierMatcher>(SuggestionState::SUGGEST_VARIABLE));
+}
+
+Matcher &MatcherFactory::InStatementToken() const {
+	return allocator.Allocate(make_uniq<InStatementTokenMatcher>());
 }
 
 Matcher &MatcherFactory::ReservedVariable() const {
@@ -1430,6 +1479,12 @@ void MatcherFactory::SuppressSuggestions(const char *name) {
 Matcher &MatcherFactory::CreateMatcherNoOverrides(const char *grammar, const char *root_rule) {
 	PEGParser parser;
 	parser.ParseRules(grammar);
+	// Universally-useful primitives that custom grammars can reference. These shadow any
+	// same-named rules defined in the grammar (matching the pattern used by the SQL grammar's
+	// CreateMatcher above).
+	AddRuleOverride("InStatementToken", InStatementToken());
+	AddRuleOverride("Identifier", Variable());
+	AddRuleOverride("StringLiteral", StringLiteral());
 	return CreateMatcher(parser, root_rule);
 }
 
