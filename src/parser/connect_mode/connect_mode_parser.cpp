@@ -116,12 +116,16 @@ static string SliceSubtreeText(const string &sql, const vector<MatcherToken> &to
 	if (!min_off.IsValid() || !max_off.IsValid()) {
 		return string();
 	}
-	// Tokens are emitted in source order, so a linear scan to find the token at max_off is fine.
-	// (Per-chunk cost; chunks are few.)
-	idx_t end_char = max_off.GetIndex();
-	for (auto &tok : tokens) {
-		if (tok.offset == max_off.GetIndex()) {
-			end_char = tok.offset + tok.length;
+	// Compute end_char from the START of the next token in source order, not from the last leaf's
+	// (text-derived) length. Some tokens are *rewritten* during tokenization — most notably,
+	// `$tag$content$tag$` is stored with text `'content'`, whose length doesn't match the source
+	// span. Using `last_token.offset + last_token.length` would truncate the chunk mid-string for
+	// those cases. The boundary up to (but not including) the next token's offset is always a safe
+	// upper bound for the last leaf's source span.
+	idx_t end_char = sql.size();
+	for (idx_t i = 0; i < tokens.size(); i++) {
+		if (tokens[i].offset > max_off.GetIndex()) {
+			end_char = tokens[i].offset;
 			break;
 		}
 	}
