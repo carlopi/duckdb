@@ -785,43 +785,19 @@ vector<unique_ptr<SQLStatement>> ClientContext::ParseStatements(const string &qu
 }
 vector<unique_ptr<SQLStatement>> ClientContext::ParseStatementsInternal(ClientContextLock &lock, const string &query) {
 	try {
+		Parser parser(GetParserOptions());
 		auto &profiler = QueryProfiler::Get(*this);
 		profiler.StartQuery(query);
 		auto parser_timer = profiler.StartTimer<MetricParserTotalTime>();
-
-		// Layer 1: split the input into CONNECT-aware chunks. Each chunk is one of CONTROL / EXECUTE /
-		// FORBIDDEN / RAW. Running this on every query (not just when a CONNECT binding is active)
-		// surfaces any drift between the Layer 1 grammar and the main SQL grammar immediately.
-		ConnectModeParser layer1(query);
-		auto chunks = layer1.AllRemaining();
-
-		vector<unique_ptr<SQLStatement>> all_statements;
-		for (auto &chunk : chunks) {
-			switch (chunk.type) {
-			case ConnectModeChunk::Type::FORBIDDEN:
-				throw ParserException("Malformed CONNECT/DISCONNECT statement: \"%s\"", chunk.text);
-			case ConnectModeChunk::Type::EXECUTE:
-				throw NotImplementedException("CONNECT <name> EXECUTE is not yet supported");
-			case ConnectModeChunk::Type::CONTROL:
-			case ConnectModeChunk::Type::RAW: {
-				// Pass the chunk text through the SQL parser. We use a fresh Parser per chunk so
-				// parser-internal state can't leak across statement boundaries.
-				Parser parser(GetParserOptions());
-				parser.ParseQuery(chunk.text);
-				for (auto &stmt : parser.statements) {
-					all_statements.push_back(std::move(stmt));
-				}
-				break;
-			}
-			}
-		}
+		parser.ParseQuery(query);
 
 		StatementPreprocessor preprocessor(*this);
+
 		const CurrentTransactionState transaction_context_state =
 		    transaction.HasActiveTransaction() ? IN_ACTIVE_TRANSACTION : NOT_IN_ACTIVE_TRANSACTION;
-		preprocessor.Preprocess(lock, all_statements, transaction_context_state);
+		preprocessor.Preprocess(lock, parser.statements, transaction_context_state);
 
-		return all_statements;
+		return std::move(parser.statements);
 	} catch (std::exception &ex) {
 		auto error = ErrorData(ex);
 		ProcessError(error, query);
@@ -1018,11 +994,11 @@ unique_ptr<PendingQueryResult> ClientContext::PendingStatementOrPreparedStatemen
 			is_control = true;
 		}
 		if (!is_control) {
-			if (!statement) {
+			if (!statement && prepared) {
 				// Prepared-statement execution path (statement is null, prepared is set). Parameterized
 				// prepared statements would need parameter substitution we don't do in v0 — reject.
 				// No-param prepared statements have a fully-resolved `query` already, route them.
-				if (!prepared || prepared->properties.parameter_count > 0) {
+				if (prepared->properties.parameter_count > 0) {
 					return ErrorResult<PendingQueryResult>(
 					    ErrorData(InvalidInputException(
 					        "Parameterized prepared statements cannot be executed while CONNECT-ed; "
@@ -1034,6 +1010,8 @@ unique_ptr<PendingQueryResult> ClientContext::PendingStatementOrPreparedStatemen
 				// rewritten SELECT below.
 				prepared.reset();
 			}
+			// statement==null && !prepared: bound-RAW chunk path from Query(string) — the chunk text
+			// in `query` is the entire payload to forward; fall through to the rewrite below.
 			auto live = connected_to_database.lock();
 			if (!live) {
 				// Target was detached elsewhere; user must explicitly DISCONNECT to clear is_connected.
@@ -1126,14 +1104,27 @@ unique_ptr<QueryResult> ClientContext::Query(unique_ptr<SQLStatement> statement,
 
 unique_ptr<QueryResult> ClientContext::Query(const string &query, QueryParameters query_parameters) {
 	auto lock = LockContext();
-	vector<unique_ptr<SQLStatement>> statements;
+	// Reset per-query state (notably interrupt_state) before doing any work — old ParseStatements
+	// did this via its leading InitialCleanup call, but we now skip ParseStatements at this entry
+	// in favor of per-chunk parsing.
+	InitialCleanup(*lock);
+
+	// Layer 1 split — surfaces CONNECT / DISCONNECT / EXECUTE / FORBIDDEN chunks. Classification
+	// is pure-grammar (independent of binding state), so doing it upfront is safe; the per-chunk
+	// loop below sees binding-state changes (CONNECT/DISCONNECT executed in chunk N take effect
+	// before chunk N+1 dispatches). For RAW chunks while bound, the chunk text is forwarded as a
+	// single passthrough — no SQL parser decomposition (this preserves PIVOT and similar
+	// statements that the parser would otherwise expand into MultiStatement).
+	vector<ConnectModeChunk> chunks;
 	try {
-		statements = ParseStatements(*lock, query);
+		ConnectModeParser layer1(query);
+		chunks = layer1.AllRemaining();
 	} catch (const std::exception &ex) {
 		return ErrorResult<MaterializedQueryResult>(ErrorData(ex), query);
 	}
-	if (statements.empty()) {
-		// no statements, return empty successful result
+
+	if (chunks.empty()) {
+		// no statements (empty / whitespace-only / bare-semicolons input), return empty result
 		StatementProperties properties;
 		vector<string> names;
 		auto collection = make_uniq<ColumnDataCollection>(Allocator::DefaultAllocator());
@@ -1144,47 +1135,98 @@ unique_ptr<QueryResult> ClientContext::Query(const string &query, QueryParameter
 	unique_ptr<QueryResult> result;
 	optional_ptr<QueryResult> last_result;
 	bool last_had_result = false;
-	for (idx_t i = 0; i < statements.size(); i++) {
-		auto &statement = statements[i];
-		bool is_last_statement = i + 1 == statements.size();
-		PendingQueryParameters parameters;
-		parameters.query_parameters = query_parameters;
-		if (!is_last_statement) {
-			parameters.query_parameters.output_type = QueryResultOutputType::FORCE_MATERIALIZED;
-		}
-		auto pending_query = PendingQueryInternal(*lock, std::move(statement), parameters);
-		auto has_result = pending_query->properties.return_type == StatementReturnType::QUERY_RESULT;
-		unique_ptr<QueryResult> current_result;
-		if (pending_query->HasError()) {
-			current_result = ErrorResult<MaterializedQueryResult>(pending_query->GetErrorObject());
-		} else {
-			current_result = ExecutePendingQueryInternal(*lock, *pending_query);
-		}
-		if (current_result->HasError()) {
-			if (transaction.HasActiveTransaction() && transaction.GetAutoRollback()) {
-				transaction.Rollback(current_result->GetErrorObject());
+
+	for (idx_t chunk_idx = 0; chunk_idx < chunks.size(); chunk_idx++) {
+		auto &chunk = chunks[chunk_idx];
+		bool is_last_chunk = (chunk_idx + 1 == chunks.size());
+
+		// Resolve chunk → statement(s) to dispatch. RAW + bound is the special case: no parse, the
+		// chunk text goes straight to the chokepoint which builds the remote passthrough.
+		vector<unique_ptr<SQLStatement>> chunk_statements;
+		bool bound_raw_passthrough = false;
+		try {
+			switch (chunk.type) {
+			case ConnectModeChunk::Type::FORBIDDEN:
+				throw ParserException("Malformed CONNECT/DISCONNECT: \"%s\"", chunk.text);
+			case ConnectModeChunk::Type::EXECUTE:
+				throw NotImplementedException("CONNECT <name> EXECUTE is not yet supported");
+			case ConnectModeChunk::Type::CONTROL:
+				chunk_statements = ParseStatementsInternal(*lock, chunk.text);
+				break;
+			case ConnectModeChunk::Type::RAW:
+				if (is_connected) {
+					bound_raw_passthrough = true;
+				} else {
+					chunk_statements = ParseStatementsInternal(*lock, chunk.text);
+				}
+				break;
 			}
-			// Reset the interrupted flag, this was set by the task that found the error
-			// Next statements should not be bothered by that interruption
-			interrupt_state = ClientInterruptState::NOT_INTERRUPTED;
-			return current_result;
+		} catch (const std::exception &ex) {
+			return ErrorResult<MaterializedQueryResult>(ErrorData(ex), query);
 		}
-		// now append the result to the list of results
-		if (!last_result || !last_had_result) {
-			// first result of the query
-			result = std::move(current_result);
-			last_result = result.get();
-			last_had_result = has_result;
-		} else {
-			// later results; attach to the result chain
-			// but only if there is a result
-			if (!has_result) {
-				continue;
+
+		idx_t statements_in_chunk = bound_raw_passthrough ? 1 : chunk_statements.size();
+		for (idx_t i = 0; i < statements_in_chunk; i++) {
+			bool is_last_statement = is_last_chunk && (i + 1 == statements_in_chunk);
+			PendingQueryParameters parameters;
+			parameters.query_parameters = query_parameters;
+			if (!is_last_statement) {
+				parameters.query_parameters.output_type = QueryResultOutputType::FORCE_MATERIALIZED;
 			}
-			last_result->next = std::move(current_result);
-			last_result = last_result->next.get();
+
+			unique_ptr<PendingQueryResult> pending_query;
+			if (bound_raw_passthrough) {
+				// Skip the SQL parser — call the chokepoint with statement=null, prepared=null and
+				// query=chunk.text. The chokepoint detects this shape, fetches the remote TableRef
+				// for the chunk text, and wraps it as a SELECT.
+				shared_ptr<PreparedStatementData> prepared;
+				pending_query = PendingStatementOrPreparedStatementInternal(*lock, chunk.text, nullptr, prepared,
+				                                                            parameters);
+			} else {
+				pending_query = PendingQueryInternal(*lock, std::move(chunk_statements[i]), parameters);
+			}
+			auto has_result = pending_query->properties.return_type == StatementReturnType::QUERY_RESULT;
+			unique_ptr<QueryResult> current_result;
+			if (pending_query->HasError()) {
+				current_result = ErrorResult<MaterializedQueryResult>(pending_query->GetErrorObject());
+			} else {
+				current_result = ExecutePendingQueryInternal(*lock, *pending_query);
+			}
+			if (current_result->HasError()) {
+				if (transaction.HasActiveTransaction() && transaction.GetAutoRollback()) {
+					transaction.Rollback(current_result->GetErrorObject());
+				}
+				// Reset the interrupted flag, this was set by the task that found the error
+				// Next statements should not be bothered by that interruption
+				interrupt_state = ClientInterruptState::NOT_INTERRUPTED;
+				return current_result;
+			}
+			// now append the result to the list of results
+			if (!last_result || !last_had_result) {
+				// first result of the query
+				result = std::move(current_result);
+				last_result = result.get();
+				last_had_result = has_result;
+			} else {
+				// later results; attach to the result chain
+				// but only if there is a result
+				if (!has_result) {
+					continue;
+				}
+				last_result->next = std::move(current_result);
+				last_result = last_result->next.get();
+			}
+			D_ASSERT(last_result);
 		}
-		D_ASSERT(last_result);
+	}
+	if (!result) {
+		// No statements actually executed (e.g. every chunk was comment-only or stripped to empty).
+		// Match the chunks-empty branch above and return a successful empty result.
+		StatementProperties properties;
+		vector<string> names;
+		auto collection = make_uniq<ColumnDataCollection>(Allocator::DefaultAllocator());
+		return make_uniq<MaterializedQueryResult>(StatementType::INVALID_STATEMENT, properties, std::move(names),
+		                                          std::move(collection), GetClientProperties());
 	}
 	return result;
 }

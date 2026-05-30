@@ -1,0 +1,56 @@
+# name: test/sql/connect/connect_pivot.test
+# description: Multi-statement script with PIVOT, executed through a CONNECT-bound quack backend.
+# group: [connect]
+
+require quack
+
+require httpfs
+
+statement ok
+CALL quack_serve(token='test_token');
+
+statement ok
+ATTACH 'quack:localhost' AS qk (TOKEN 'test_token');
+
+statement ok
+CONNECT qk;
+
+# Multi-statement script: CREATE + multi-line INSERT + PIVOT. All three go through the Layer 1
+# split, then through the CONNECT chokepoint. The PIVOT decomposes (PIVOT → MultiStatement) so
+# each sub-statement is forwarded individually to the bound backend.
+statement ok
+CREATE OR REPLACE TABLE monthly_sales(empid INT, amount INT, month TEXT);
+
+statement ok
+INSERT INTO monthly_sales VALUES
+    (1, 10000, '1-JAN'),
+    (1, 400, '1-JAN'),
+    (2, 4500, '1-JAN'),
+    (2, 35000, '1-JAN'),
+    (1, 5000, '2-FEB'),
+    (1, 3000, '2-FEB'),
+    (2, 200, '2-FEB'),
+    (2, 90500, '2-FEB');
+
+query III
+PIVOT monthly_sales ON MONTH USING SUM(AMOUNT) ORDER BY empid;
+----
+1	10400	8000
+2	39500	90700
+
+# PIVOT with explicit IN (no enum-extraction sub-statement, but still decomposes in the parser
+# unless our Layer 1 hands the raw text straight to the backend).
+query III
+PIVOT monthly_sales ON MONTH IN ('1-JAN', '2-FEB') USING SUM(AMOUNT) ORDER BY empid;
+----
+1	10400	8000
+2	39500	90700
+
+# PIVOT in a subquery / wrapped expression — exercises the "PIVOT inside larger statement" shape.
+query I
+SELECT count(*) FROM (PIVOT monthly_sales ON MONTH USING SUM(AMOUNT));
+----
+2
+
+statement ok
+DISCONNECT;
