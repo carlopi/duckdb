@@ -11,11 +11,12 @@ namespace duckdb {
 //! main grammar's inlining pipeline. Keep in sync with connect_mode.gram if you edit either.
 static constexpr const char *CONNECT_MODE_GRAMMAR = R"(
 Program <- Chunk (';' Chunk)* ';'?
-Chunk <- ExecuteChunk / ConnectChunk / DisconnectChunk / ForbiddenConnect / ForbiddenDisconnect / RawChunk
+Chunk <- ExecuteChunk / ForbiddenConnect1 / ConnectChunk / ForbiddenConnect2 / ForbiddenDisconnect / DisconnectChunk / RawChunk
 ConnectChunk <- 'CONNECT' (Identifier / 'LOCAL' / StringLiteral)?
 DisconnectChunk <- 'DISCONNECT'
 ExecuteChunk <- 'CONNECT' Identifier 'EXECUTE' Raw
-ForbiddenConnect <- 'CONNECT' Raw
+ForbiddenConnect1 <- 'CONNECT' (Identifier / 'LOCAL' / StringLiteral) Raw
+ForbiddenConnect2 <- 'CONNECT' Raw
 ForbiddenDisconnect <- 'DISCONNECT' Raw
 RawChunk <- Raw
 Raw <- InStatementToken+
@@ -64,7 +65,7 @@ static void ClassifyChunk(ParseResult &chunk_node, ConnectModeChunk &out) {
 	} else if (name == "ExecuteChunk") {
 		out.type = ConnectModeChunk::Type::EXECUTE;
 		// TODO: extract target and payload from the resolved node's children.
-	} else if (name == "ForbiddenConnect" || name == "ForbiddenDisconnect") {
+	} else if (name == "ForbiddenConnect1" || name == "ForbiddenConnect2" || name == "ForbiddenDisconnect") {
 		out.type = ConnectModeChunk::Type::FORBIDDEN;
 	} else {
 		// "RawChunk" or anything else: treat as raw.
