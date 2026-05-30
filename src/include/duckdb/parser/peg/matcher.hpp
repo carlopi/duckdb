@@ -219,6 +219,12 @@ struct PEGMatcher {
 	static shared_ptr<PEGMatcher> Get(ClientContext &context);
 	static shared_ptr<PEGMatcher> Get(DatabaseInstance &db);
 
+	//! Compile an arbitrary PEG grammar into a custom matcher. Unlike `Get(...)` which returns the
+	//! shared SQL grammar matcher, this builds a fresh matcher rooted at `root_rule` with no
+	//! SQL-specific rule overrides applied. The provided grammar must be self-contained — any
+	//! primitives it uses (Identifier, StringLiteral, etc.) must be defined within `grammar`.
+	static shared_ptr<PEGMatcher> CompileGrammar(const char *grammar, const char *root_rule);
+
 private:
 	friend struct ParserCache;
 	optional_ptr<Matcher> root;

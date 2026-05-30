@@ -994,8 +994,11 @@ public:
 	explicit MatcherFactory(MatcherAllocator &allocator) : allocator(allocator) {
 	}
 
-	//! Create a matcher from a PEG grammar
+	//! Create a matcher from a PEG grammar (with SQL-specific rule/keyword overrides applied).
 	Matcher &CreateMatcher(const char *grammar, const char *root_rule);
+	//! Create a matcher from a PEG grammar, with NO overrides applied. For custom grammars that
+	//! define their own primitives.
+	Matcher &CreateMatcherNoOverrides(const char *grammar, const char *root_rule);
 
 private:
 	// Base primitives
@@ -1424,6 +1427,12 @@ void MatcherFactory::SuppressSuggestions(const char *name) {
 	no_suggestion_rules.insert(name);
 }
 
+Matcher &MatcherFactory::CreateMatcherNoOverrides(const char *grammar, const char *root_rule) {
+	PEGParser parser;
+	parser.ParseRules(grammar);
+	return CreateMatcher(parser, root_rule);
+}
+
 Matcher &MatcherFactory::CreateMatcher(const char *grammar, const char *root_rule) {
 	// parse the grammar into a set of rules
 	PEGParser parser;
@@ -1477,6 +1486,13 @@ shared_ptr<PEGMatcher> PEGMatcher::Get(ClientContext &context) {
 shared_ptr<PEGMatcher> PEGMatcher::Get(DatabaseInstance &db) {
 	auto &parser_cache = db.GetParserCache();
 	return parser_cache.GetMatcher();
+}
+
+shared_ptr<PEGMatcher> PEGMatcher::CompileGrammar(const char *grammar, const char *root_rule) {
+	auto new_matcher = make_shared_ptr<PEGMatcher>();
+	MatcherFactory factory(new_matcher->allocator);
+	new_matcher->root = factory.CreateMatcherNoOverrides(grammar, root_rule);
+	return new_matcher;
 }
 
 shared_ptr<PEGMatcher> ParserCache::GetMatcher() {
