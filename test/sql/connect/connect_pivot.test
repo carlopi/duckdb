@@ -101,3 +101,45 @@ CONNECT plain EXECUTE SELECT 1;
 
 statement ok
 DETACH plain;
+
+# CONNECT LOCAL EXECUTE: runs the payload locally without changing the binding. Even when bound
+# to a remote backend, this opens a local-execution escape hatch.
+query I
+CONNECT LOCAL EXECUTE SELECT 7;
+----
+7
+
+# Same while bound to a remote backend — the local SQL runs against the LOCAL catalog, and the
+# binding remains intact for subsequent statements.
+statement ok
+CONNECT qk;
+
+query I
+CONNECT LOCAL EXECUTE SELECT 11;
+----
+11
+
+# Still bound to qk after the LOCAL EXECUTE.
+query I
+SELECT 99;
+----
+99
+
+statement ok
+DISCONNECT;
+
+# CONNECT LOCAL while bound errors per the single-binding rule.
+statement ok
+CONNECT qk;
+
+statement error
+CONNECT LOCAL;
+----
+<REGEX>:Invalid Input Error:.*Already connected.*DISCONNECT first.*
+
+statement ok
+DISCONNECT;
+
+# CONNECT LOCAL while LOCAL is a no-op.
+statement ok
+CONNECT LOCAL;

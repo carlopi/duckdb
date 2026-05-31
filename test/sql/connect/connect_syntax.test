@@ -11,11 +11,14 @@ CONNECT;
 ----
 <REGEX>:Parser Error:.*CONNECT requires a target identifier, LOCAL, or '<connection-string>' \(none was given\).*
 
-# CONNECT LOCAL; — keyword form, not yet implemented.
-statement error
+# CONNECT LOCAL; — keyword form. Semantically a no-op when not currently bound (we're already
+# LOCAL); errors with DISCONNECT-first while bound (single-binding rule).
+statement ok
 CONNECT LOCAL;
-----
-Not implemented Error: CONNECT LOCAL is not yet implemented
+
+# Repeating CONNECT LOCAL while still LOCAL is also fine (still a no-op).
+statement ok
+CONNECT LOCAL;
 
 # CONNECT <name>; — identifier form, IMPLEMENTED. Errors now come from the dispatch logic, not
 # the placeholder.

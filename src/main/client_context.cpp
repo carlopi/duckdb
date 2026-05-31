@@ -1155,6 +1155,9 @@ unique_ptr<QueryResult> ClientContext::Query(const string &query, QueryParameter
 		vector<unique_ptr<SQLStatement>> chunk_statements;
 		shared_ptr<AttachedDatabase> passthrough_target;
 		string passthrough_text;
+		//! `CONNECT LOCAL EXECUTE <sql>` — payload must run locally even if we're currently bound
+		//! to a remote catalog. Suppresses the per-statement wrap that would otherwise fire.
+		bool force_local = false;
 		try {
 			switch (chunk.type) {
 			case ConnectModeChunk::Type::FORBIDDEN:
@@ -1182,6 +1185,13 @@ unique_ptr<QueryResult> ClientContext::Query(const string &query, QueryParameter
 					throw ParserException("Malformed CONNECT/DISCONNECT: \"%s\"", chunk.text);
 				}
 			case ConnectModeChunk::Type::EXECUTE: {
+				// `CONNECT LOCAL EXECUTE <sql>` runs the payload locally without changing the
+				// current binding — bypass the chokepoint and parse it as plain SQL.
+				if (StringUtil::CIEquals(chunk.target, "LOCAL")) {
+					chunk_statements = ParseStatementsInternal(*lock, chunk.payload);
+					force_local = true;
+					break;
+				}
 				// `CONNECT <name> EXECUTE <sql>` is sugar for `RemoteExecute(<name>, <sql>)` — no
 				// binding change, no transaction coordination, the remote backend's per-statement
 				// semantics apply. Resolve the target catalog and let the chokepoint do the wrap
@@ -1233,11 +1243,13 @@ unique_ptr<QueryResult> ClientContext::Query(const string &query, QueryParameter
 				                                                            prepared, parameters,
 				                                                            passthrough_target.get());
 			} else {
-				// Parsed statement: the chokepoint wraps it against the current binding (if any).
-				// Caller-side detached-binding errors propagate as exceptions from the helper.
-				pending_query =
-				    PendingQueryInternal(*lock, std::move(chunk_statements[i]), parameters,
-				                         /* verify */ true, TryGetConnectWrapTarget().get());
+				// Parsed statement. force_local (set by CONNECT LOCAL EXECUTE) suppresses the wrap
+				// even if currently bound; otherwise the chokepoint wraps against the current
+				// binding (if any). Detached-binding errors propagate as exceptions from the helper.
+				optional_ptr<AttachedDatabase> wrap_target =
+				    force_local ? nullptr : TryGetConnectWrapTarget().get();
+				pending_query = PendingQueryInternal(*lock, std::move(chunk_statements[i]), parameters,
+				                                    /* verify */ true, wrap_target);
 			}
 			auto has_result = pending_query->properties.return_type == StatementReturnType::QUERY_RESULT;
 			unique_ptr<QueryResult> current_result;

@@ -9,20 +9,27 @@ namespace duckdb {
 
 SourceResultType PhysicalConnect::GetDataInternal(ExecutionContext &context, DataChunk &chunk,
                                                   OperatorSourceInput &input) const {
-	// The 4 grammar forms are accepted at parse time. This commit implements only
-	// `CONNECT <name>` (attached-db identifier); the other forms stay as per-form
-	// NotImplementedException placeholders and get swapped in by follow-up PRs.
+	auto &client = context.client;
+
+	// `CONNECT LOCAL` — semantically a no-op when we're already LOCAL (no current binding). The
+	// single-binding rule still applies: rejecting the statement while bound forces the user to
+	// DISCONNECT first, which keeps the binding state transitions explicit.
 	if (info->target_is_local) {
-		throw NotImplementedException("CONNECT LOCAL is not yet implemented");
+		if (client.IsConnected()) {
+			auto current = client.TryGetConnectedCatalog();
+			throw InvalidInputException("Already connected to \"%s\"; DISCONNECT first to switch to LOCAL",
+			                            current ? current->GetName() : "<detached>");
+		}
+		return SourceResultType::FINISHED;
 	}
 	if (info->name.empty()) {
+		// Layer 1 catches bare `CONNECT;` as MISSING_CONNECT_TARGET before this point — any remaining
+		// path here is via Parser-only entry points that don't go through Query(string).
 		throw NotImplementedException("CONNECT with no target is not yet implemented");
 	}
 	if (info->name_is_string_literal) {
 		throw NotImplementedException("CONNECT '<connection_string>' is not yet implemented");
 	}
-
-	auto &client = context.client;
 
 	// At most one active connection; only DISCONNECT clears it (even if the target was detached
 	// elsewhere, so the user explicitly acknowledges the broken connection).
