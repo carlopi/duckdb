@@ -1,0 +1,48 @@
+# name: test/sql/connect/current_connection.test
+# description: current_connection() — bind-time STRUCT(name, display, path) describing the
+#              currently bound catalog, or NULL when LOCAL.
+# group: [connect]
+
+require quack
+
+require httpfs
+
+# LOCAL — current_connection() is NULL.
+query I
+SELECT current_connection() IS NULL;
+----
+true
+
+# Spin up quack so we have something to bind to.
+statement ok
+CALL quack_serve(token='test_token');
+
+statement ok
+ATTACH 'quack:localhost' AS qk (TOKEN 'test_token');
+
+statement ok
+CONNECT qk;
+
+# Bound. A plain SELECT current_connection() is forwarded to qk by the chokepoint and runs in
+# qk's context, where qk has no binding — so it returns NULL. To inspect our own binding, the
+# call has to run locally via CONNECT LOCAL EXECUTE.
+query I
+SELECT current_connection() IS NULL;
+----
+true
+
+# name is the ATTACH AS alias; display and path are backend-formatted (quack returns the
+# connection string for both).
+query III
+CONNECT LOCAL EXECUTE SELECT current_connection().name, current_connection().display, current_connection().path;
+----
+qk	quack:localhost	quack:localhost
+
+statement ok
+DISCONNECT;
+
+# Back to LOCAL — NULL again.
+query I
+SELECT current_connection() IS NULL;
+----
+true

@@ -138,6 +138,7 @@ static const StaticFunctionDefinition core_functions[] = {
 	DUCKDB_AGGREGATE_FUNCTION_ALIAS(CountifFun),
 	DUCKDB_AGGREGATE_FUNCTION(CovarPopFun),
 	DUCKDB_AGGREGATE_FUNCTION(CovarSampFun),
+	DUCKDB_SCALAR_FUNCTION(CurrentConnectionFun),
 	DUCKDB_SCALAR_FUNCTION(CurrentDatabaseFun),
 	DUCKDB_SCALAR_FUNCTION(CurrentQueryFun),
 	DUCKDB_SCALAR_FUNCTION(CurrentSchemaFun),

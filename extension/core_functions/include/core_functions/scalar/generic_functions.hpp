@@ -135,6 +135,21 @@ struct CurrentSchemaFun {
 	static ScalarFunction GetFunction();
 };
 
+struct CurrentConnectionFun {
+	static constexpr const char *Name = "current_connection";
+	static constexpr const char *Parameters = "";
+	static constexpr const char *Description =
+	    "Returns a STRUCT describing the currently bound catalog (the target of the most recent "
+	    "CONNECT), or NULL when LOCAL. Fields: name (attached database name), display (backend-"
+	    "formatted display string from GetConnectDisplay, e.g. 'postgres://host:5432'), path (the "
+	    "original ATTACH path/URI). The value re-evaluates between query executions, so prepared "
+	    "plans pick up CONNECT/DISCONNECT changes.";
+	static constexpr const char *Example = "current_connection()";
+	static constexpr const char *Categories = "";
+
+	static ScalarFunction GetFunction();
+};
+
 struct CurrentSchemasFun {
 	static constexpr const char *Name = "current_schemas";
 	static constexpr const char *Parameters = "include_implicit";

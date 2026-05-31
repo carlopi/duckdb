@@ -1,5 +1,7 @@
 #include "duckdb/catalog/catalog_search_path.hpp"
 #include "core_functions/scalar/generic_functions.hpp"
+#include "duckdb/catalog/catalog.hpp"
+#include "duckdb/main/attached_database.hpp"
 #include "duckdb/main/database.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/main/client_data.hpp"
@@ -28,6 +30,26 @@ void CurrentSchemaFunction(DataChunk &input, ExpressionState &state, Vector &res
 // current_database
 void CurrentDatabaseFunction(DataChunk &input, ExpressionState &state, Vector &result) {
 	Value val(DatabaseManager::GetDefaultDatabase(state.GetContext()));
+	result.Reference(val, count_t(input.size()));
+}
+
+// current_connection — STRUCT(name, display, path) describing the current CONNECT binding,
+// or NULL when LOCAL.
+void CurrentConnectionFunction(DataChunk &input, ExpressionState &state, Vector &result) {
+	auto &context = state.GetContext();
+	auto target = context.TryGetConnectedCatalog();
+	Value val;
+	if (!target) {
+		// Not bound — NULL struct.
+		val = Value(result.GetType());
+	} else {
+		auto &catalog = target->GetCatalog();
+		child_list_t<Value> children;
+		children.emplace_back("name", Value(target->GetName()));
+		children.emplace_back("display", Value(catalog.GetConnectDisplay()));
+		children.emplace_back("path", Value(catalog.GetDBPath()));
+		val = Value::STRUCT(std::move(children));
+	}
 	result.Reference(val, count_t(input.size()));
 }
 
@@ -123,6 +145,17 @@ ScalarFunction CurrentDatabaseFun::GetFunction() {
 	ScalarFunction current_database({}, LogicalType::VARCHAR, CurrentDatabaseFunction);
 	current_database.SetStability(FunctionStability::CONSISTENT_WITHIN_QUERY);
 	return current_database;
+}
+
+ScalarFunction CurrentConnectionFun::GetFunction() {
+	child_list_t<LogicalType> fields;
+	fields.emplace_back("name", LogicalType::VARCHAR);
+	fields.emplace_back("display", LogicalType::VARCHAR);
+	fields.emplace_back("path", LogicalType::VARCHAR);
+	ScalarFunction current_connection({}, LogicalType::STRUCT(std::move(fields)), CurrentConnectionFunction);
+	// Re-evaluates per query so prepared plans see CONNECT/DISCONNECT changes between executions.
+	current_connection.SetStability(FunctionStability::CONSISTENT_WITHIN_QUERY);
+	return current_connection;
 }
 
 ScalarFunction CurrentSchemasFun::GetFunction() {
