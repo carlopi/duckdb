@@ -245,6 +245,19 @@ shared_ptr<AttachedDatabase> ClientContext::TryGetConnectedCatalog() const {
 	return connected_to_database.lock();
 }
 
+shared_ptr<AttachedDatabase> ClientContext::TryGetConnectWrapTarget() {
+	if (!is_connected) {
+		return nullptr;
+	}
+	auto target = connected_to_database.lock();
+	if (!target) {
+		throw InvalidInputException(
+		    "The connected database has been detached out from under this connection. Issue "
+		    "DISCONNECT to clear the connection before running further SQL.");
+	}
+	return target;
+}
+
 //! True if `type` is a CONNECT control statement that must execute against LOCAL even while a
 //! CONNECT binding is active (i.e. the chokepoint must let it fall through, not rewrite it).
 static bool IsConnectControlStatement(StatementType type) {
@@ -903,7 +916,8 @@ unique_ptr<PendingQueryResult> ClientContext::PendingQueryPreparedInternal(Clien
 	} catch (std::exception &ex) {
 		return ErrorResult<PendingQueryResult>(ErrorData(ex), query);
 	}
-	return PendingStatementOrPreparedStatementInternal(lock, query, nullptr, prepared, parameters);
+	return PendingStatementOrPreparedStatementInternal(lock, query, nullptr, prepared, parameters,
+	                                                   TryGetConnectWrapTarget().get());
 }
 
 unique_ptr<PendingQueryResult> ClientContext::PendingQuery(const string &query,
@@ -960,7 +974,7 @@ unique_ptr<PendingQueryResult> ClientContext::PendingStatementInternal(ClientCon
 unique_ptr<QueryResult> ClientContext::RunStatementInternal(ClientContextLock &lock, const string &query,
                                                             unique_ptr<SQLStatement> statement,
                                                             const PendingQueryParameters &parameters, bool verify) {
-	auto pending = PendingQueryInternal(lock, std::move(statement), parameters, verify);
+	auto pending = PendingQueryInternal(lock, std::move(statement), parameters, verify, TryGetConnectWrapTarget().get());
 	if (pending->HasError()) {
 		return ErrorResult<MaterializedQueryResult>(pending->GetErrorObject());
 	}
@@ -976,23 +990,26 @@ bool ClientContext::IsActiveResult(ClientContextLock &lock, BaseQueryResult &res
 
 unique_ptr<PendingQueryResult> ClientContext::PendingStatementOrPreparedStatementInternal(
     ClientContextLock &lock, const string &query, unique_ptr<SQLStatement> statement,
-    shared_ptr<PreparedStatementData> &prepared, const PendingQueryParameters &parameters) {
+    shared_ptr<PreparedStatementData> &prepared, const PendingQueryParameters &parameters,
+    optional_ptr<AttachedDatabase> connect_target) {
 	if (statement) {
 		StatementVerification(lock, query, statement, parameters);
 	}
-	return PendingStatementOrPreparedStatement(lock, query, std::move(statement), prepared, parameters);
+	return PendingStatementOrPreparedStatement(lock, query, std::move(statement), prepared, parameters,
+	                                           connect_target);
 }
 
 unique_ptr<PendingQueryResult> ClientContext::PendingStatementOrPreparedStatement(
     ClientContextLock &lock, const string &query, unique_ptr<SQLStatement> statement,
-    shared_ptr<PreparedStatementData> &prepared, const PendingQueryParameters &parameters) {
-	// CONNECT chokepoint: when connected, non-control SQL is rewritten in place and falls through to
-	// the normal pipeline. No recursion — the rewrite goes through PendingStatementInternal, not back here.
-	if (is_connected) {
-		bool is_control = false;
-		if (statement && IsConnectControlStatement(statement->type)) {
-			is_control = true;
-		}
+    shared_ptr<PreparedStatementData> &prepared, const PendingQueryParameters &parameters,
+    optional_ptr<AttachedDatabase> connect_target) {
+	// CONNECT chokepoint: when `connect_target` names a catalog to wrap against, non-control SQL is
+	// rewritten in place and falls through to the normal pipeline. No recursion — the rewrite goes
+	// through PendingStatementInternal, not back here. Callers compute connect_target (typically
+	// via TryGetConnectWrapTarget()); the chokepoint doesn't look up the current binding itself,
+	// which lets the EXECUTE chunk path target a different catalog than the current binding.
+	if (connect_target) {
+		bool is_control = statement && IsConnectControlStatement(statement->type);
 		if (!is_control) {
 			if (!statement && prepared) {
 				// Prepared-statement execution path (statement is null, prepared is set). Parameterized
@@ -1012,18 +1029,9 @@ unique_ptr<PendingQueryResult> ClientContext::PendingStatementOrPreparedStatemen
 			}
 			// statement==null && !prepared: bound-RAW chunk path from Query(string) — the chunk text
 			// in `query` is the entire payload to forward; fall through to the rewrite below.
-			auto live = connected_to_database.lock();
-			if (!live) {
-				// Target was detached elsewhere; user must explicitly DISCONNECT to clear is_connected.
-				return ErrorResult<PendingQueryResult>(
-				    ErrorData(InvalidInputException(
-				        "The connected database has been detached out from under this connection. Issue "
-				        "DISCONNECT to clear the connection before running further SQL.")),
-				    query);
-			}
-			// Dispatch via the catalog — Supports(CONNECT) was validated at CONNECT time, so RemoteExecute
-			// is contracted to be implemented. Wrap the returned TableRef into a SelectStatement.
-			auto remote_ref = live->GetCatalog().RemoteExecute(*this, query);
+			// Supports(CONNECT) was validated at CONNECT time / EXECUTE dispatch, so RemoteExecute
+			// is contracted to be implemented on this catalog.
+			auto remote_ref = connect_target->GetCatalog().RemoteExecute(*this, query);
 			statement = WrapAsSelect(std::move(remote_ref));
 			// statement is now SELECT * FROM <remote-ref>; fall through.
 		}
@@ -1140,10 +1148,13 @@ unique_ptr<QueryResult> ClientContext::Query(const string &query, QueryParameter
 		auto &chunk = chunks[chunk_idx];
 		bool is_last_chunk = (chunk_idx + 1 == chunks.size());
 
-		// Resolve chunk → statement(s) to dispatch. RAW + bound is the special case: no parse, the
-		// chunk text goes straight to the chokepoint which builds the remote passthrough.
+		// Resolve chunk → either a list of parsed statements (CONTROL / RAW-unbound) or a
+		// passthrough request (RAW-bound / EXECUTE). The passthrough path skips the SQL parser
+		// entirely; the chokepoint builds the wrap from `passthrough_text` against
+		// `passthrough_target`. This collapses EXECUTE and bound-RAW into the same dispatch shape.
 		vector<unique_ptr<SQLStatement>> chunk_statements;
-		bool bound_raw_passthrough = false;
+		shared_ptr<AttachedDatabase> passthrough_target;
+		string passthrough_text;
 		try {
 			switch (chunk.type) {
 			case ConnectModeChunk::Type::FORBIDDEN:
@@ -1170,14 +1181,30 @@ unique_ptr<QueryResult> ClientContext::Query(const string &query, QueryParameter
 				default:
 					throw ParserException("Malformed CONNECT/DISCONNECT: \"%s\"", chunk.text);
 				}
-			case ConnectModeChunk::Type::EXECUTE:
-				throw NotImplementedException("CONNECT <name> EXECUTE is not yet supported");
+			case ConnectModeChunk::Type::EXECUTE: {
+				// `CONNECT <name> EXECUTE <sql>` is sugar for `RemoteExecute(<name>, <sql>)` — no
+				// binding change, no transaction coordination, the remote backend's per-statement
+				// semantics apply. Resolve the target catalog and let the chokepoint do the wrap
+				// against it (same machinery as bound-RAW, just with a different target).
+				auto target_db = DatabaseManager::Get(*this).GetDatabase(chunk.target);
+				if (!target_db) {
+					throw InvalidInputException("Database \"%s\" is not attached", chunk.target);
+				}
+				if (target_db->GetConnectMode() != ConnectMode::ENABLE) {
+					throw InvalidInputException("Database \"%s\" does not support CONNECT", chunk.target);
+				}
+				passthrough_target = std::move(target_db);
+				passthrough_text = chunk.payload;
+				break;
+			}
 			case ConnectModeChunk::Type::CONTROL:
 				chunk_statements = ParseStatementsInternal(*lock, chunk.text);
 				break;
 			case ConnectModeChunk::Type::RAW:
 				if (is_connected) {
-					bound_raw_passthrough = true;
+					// Throws if bound-but-detached; that propagates out to the outer catch.
+					passthrough_target = TryGetConnectWrapTarget();
+					passthrough_text = chunk.text;
 				} else {
 					chunk_statements = ParseStatementsInternal(*lock, chunk.text);
 				}
@@ -1187,7 +1214,7 @@ unique_ptr<QueryResult> ClientContext::Query(const string &query, QueryParameter
 			return ErrorResult<MaterializedQueryResult>(ErrorData(ex), query);
 		}
 
-		idx_t statements_in_chunk = bound_raw_passthrough ? 1 : chunk_statements.size();
+		idx_t statements_in_chunk = passthrough_target ? 1 : chunk_statements.size();
 		for (idx_t i = 0; i < statements_in_chunk; i++) {
 			bool is_last_statement = is_last_chunk && (i + 1 == statements_in_chunk);
 			PendingQueryParameters parameters;
@@ -1197,15 +1224,20 @@ unique_ptr<QueryResult> ClientContext::Query(const string &query, QueryParameter
 			}
 
 			unique_ptr<PendingQueryResult> pending_query;
-			if (bound_raw_passthrough) {
-				// Skip the SQL parser — call the chokepoint with statement=null, prepared=null and
-				// query=chunk.text. The chokepoint detects this shape, fetches the remote TableRef
-				// for the chunk text, and wraps it as a SELECT.
+			if (passthrough_target) {
+				// Skip the SQL parser — call the chokepoint with statement=null, prepared=null,
+				// query=passthrough_text, and connect_target=passthrough_target. The chokepoint
+				// fetches the remote TableRef from the target's catalog and wraps it as a SELECT.
 				shared_ptr<PreparedStatementData> prepared;
-				pending_query = PendingStatementOrPreparedStatementInternal(*lock, chunk.text, nullptr, prepared,
-				                                                            parameters);
+				pending_query = PendingStatementOrPreparedStatementInternal(*lock, passthrough_text, nullptr,
+				                                                            prepared, parameters,
+				                                                            passthrough_target.get());
 			} else {
-				pending_query = PendingQueryInternal(*lock, std::move(chunk_statements[i]), parameters);
+				// Parsed statement: the chokepoint wraps it against the current binding (if any).
+				// Caller-side detached-binding errors propagate as exceptions from the helper.
+				pending_query =
+				    PendingQueryInternal(*lock, std::move(chunk_statements[i]), parameters,
+				                         /* verify */ true, TryGetConnectWrapTarget().get());
 			}
 			auto has_result = pending_query->properties.return_type == StatementReturnType::QUERY_RESULT;
 			unique_ptr<QueryResult> current_result;
@@ -1292,7 +1324,8 @@ unique_ptr<PendingQueryResult> ClientContext::PendingQuery(const string &query, 
 			throw InvalidInputException("Cannot prepare multiple statements at once!");
 		}
 
-		return PendingQueryInternal(*lock, std::move(statements[0]), parameters, true);
+		return PendingQueryInternal(*lock, std::move(statements[0]), parameters, true,
+		                            TryGetConnectWrapTarget().get());
 	} catch (std::exception &ex) {
 		ErrorData error(ex);
 		ProcessError(error, query);
@@ -1312,7 +1345,8 @@ unique_ptr<PendingQueryResult> ClientContext::PendingQuery(unique_ptr<SQLStateme
 		params.query_parameters = parameters;
 		params.parameters = values;
 
-		return PendingQueryInternal(*lock, std::move(statement), params, true);
+		return PendingQueryInternal(*lock, std::move(statement), params, true,
+		                            TryGetConnectWrapTarget().get());
 	} catch (std::exception &ex) {
 		return make_uniq<PendingQueryResult>(ErrorData(ex));
 	}
@@ -1321,13 +1355,16 @@ unique_ptr<PendingQueryResult> ClientContext::PendingQuery(unique_ptr<SQLStateme
 unique_ptr<PendingQueryResult> ClientContext::PendingQueryInternal(ClientContextLock &lock,
                                                                    unique_ptr<SQLStatement> statement,
                                                                    const PendingQueryParameters &parameters,
-                                                                   bool verify) {
+                                                                   bool verify,
+                                                                   optional_ptr<AttachedDatabase> connect_target) {
 	auto query = statement->query;
 	shared_ptr<PreparedStatementData> prepared;
 	if (verify) {
-		return PendingStatementOrPreparedStatementInternal(lock, query, std::move(statement), prepared, parameters);
+		return PendingStatementOrPreparedStatementInternal(lock, query, std::move(statement), prepared, parameters,
+		                                                   connect_target);
 	} else {
-		return PendingStatementOrPreparedStatement(lock, query, std::move(statement), prepared, parameters);
+		return PendingStatementOrPreparedStatement(lock, query, std::move(statement), prepared, parameters,
+		                                           connect_target);
 	}
 }
 
@@ -1542,7 +1579,8 @@ unique_ptr<PendingQueryResult> ClientContext::PendingQueryInternal(ClientContext
 	auto relation_stmt = make_uniq<RelationStatement>(relation);
 	PendingQueryParameters parameters;
 	parameters.query_parameters = query_parameters;
-	return PendingQueryInternal(lock, std::move(relation_stmt), parameters);
+	return PendingQueryInternal(lock, std::move(relation_stmt), parameters, /* verify */ true,
+	                            TryGetConnectWrapTarget().get());
 }
 
 unique_ptr<PendingQueryResult> ClientContext::PendingQuery(const shared_ptr<Relation> &relation,

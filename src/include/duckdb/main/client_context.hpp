@@ -112,6 +112,10 @@ public:
 	//! target has been detached out from under us (in that case IsConnected() is still true — call it
 	//! directly to disambiguate "never connected" from "was connected, target was detached elsewhere").
 	DUCKDB_API shared_ptr<AttachedDatabase> TryGetConnectedCatalog() const;
+	//! Returns the catalog to use as the CONNECT wrap target — null if no current binding, the
+	//! currently-bound catalog otherwise. Throws if bound but the catalog has been DETACHed out
+	//! from under us (callers shouldn't have to replicate that check).
+	shared_ptr<AttachedDatabase> TryGetConnectWrapTarget();
 
 	MetaTransaction &ActiveTransaction() {
 		return transaction.ActiveTransaction();
@@ -263,9 +267,14 @@ public:
 private:
 	//! Parse statements and resolve pragmas from a query
 	vector<unique_ptr<SQLStatement>> ParseStatements(ClientContextLock &lock, const string &query);
-	//! Issues a query to the database and returns a Pending Query Result
+	//! Issues a query to the database and returns a Pending Query Result.
+	//! `connect_target` tells the CONNECT chokepoint which catalog to wrap this statement against
+	//! as a remote passthrough. nullptr means no wrapping. Most callers pass the result of
+	//! TryGetConnectWrapTarget() (current binding or nullptr); the Query(string) loop passes an
+	//! explicit target catalog when handling `CONNECT <name> EXECUTE <sql>` chunks.
 	unique_ptr<PendingQueryResult> PendingQueryInternal(ClientContextLock &lock, unique_ptr<SQLStatement> statement,
-	                                                    const PendingQueryParameters &parameters, bool verify = true);
+	                                                    const PendingQueryParameters &parameters, bool verify,
+	                                                    optional_ptr<AttachedDatabase> connect_target);
 	unique_ptr<QueryResult> ExecutePendingQueryInternal(ClientContextLock &lock, PendingQueryResult &query);
 
 	//! Parse statements from a query
@@ -280,7 +289,8 @@ private:
 	unique_ptr<PendingQueryResult> PendingStatementOrPreparedStatement(ClientContextLock &lock, const string &query,
 	                                                                   unique_ptr<SQLStatement> statement,
 	                                                                   shared_ptr<PreparedStatementData> &prepared,
-	                                                                   const PendingQueryParameters &parameters);
+	                                                                   const PendingQueryParameters &parameters,
+	                                                                   optional_ptr<AttachedDatabase> connect_target);
 	unique_ptr<PendingQueryResult> PendingPreparedStatement(ClientContextLock &lock, const string &query,
 	                                                        shared_ptr<PreparedStatementData> statement_p,
 	                                                        const PendingQueryParameters &parameters);
@@ -317,7 +327,8 @@ private:
 
 	unique_ptr<PendingQueryResult> PendingStatementOrPreparedStatementInternal(
 	    ClientContextLock &lock, const string &query, unique_ptr<SQLStatement> statement,
-	    shared_ptr<PreparedStatementData> &prepared, const PendingQueryParameters &parameters);
+	    shared_ptr<PreparedStatementData> &prepared, const PendingQueryParameters &parameters,
+	    optional_ptr<AttachedDatabase> connect_target);
 
 	unique_ptr<PendingQueryResult> PendingQueryPreparedInternal(ClientContextLock &lock, const string &query,
 	                                                            shared_ptr<PreparedStatementData> &prepared,

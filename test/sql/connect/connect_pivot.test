@@ -54,3 +54,50 @@ SELECT count(*) FROM (PIVOT monthly_sales ON MONTH USING SUM(AMOUNT));
 
 statement ok
 DISCONNECT;
+
+# CONNECT <name> EXECUTE <sql>: one-shot remote execution against the named target. No binding
+# change, no transaction coordination — it's sugar for catalog.RemoteExecute(payload).
+query I
+CONNECT qk EXECUTE SELECT 42;
+----
+42
+
+# EXECUTE works while currently unbound (we just DISCONNECT-ed above).
+statement ok
+SELECT 1 + 1;
+
+# EXECUTE while bound to a different connection — the current binding is unchanged.
+statement ok
+CONNECT qk;
+
+query II
+CONNECT qk EXECUTE SELECT 1 AS x, 2 AS y;
+----
+1	2
+
+# Confirm we're still bound to qk after the EXECUTE.
+query I
+SELECT 99;
+----
+99
+
+statement ok
+DISCONNECT;
+
+# EXECUTE against an unknown name — clear error.
+statement error
+CONNECT unknown_db EXECUTE SELECT 1;
+----
+<REGEX>:Invalid Input Error:.*Database "unknown_db" is not attached.*
+
+# EXECUTE against an attached-but-non-CONNECT-supporting backend errors at parse-time.
+statement ok
+ATTACH ':memory:' AS plain;
+
+statement error
+CONNECT plain EXECUTE SELECT 1;
+----
+<REGEX>:Invalid Input Error:.*Database "plain" does not support CONNECT.*
+
+statement ok
+DETACH plain;
