@@ -1147,7 +1147,25 @@ unique_ptr<QueryResult> ClientContext::Query(const string &query, QueryParameter
 		try {
 			switch (chunk.type) {
 			case ConnectModeChunk::Type::FORBIDDEN:
-				throw ParserException("Malformed CONNECT/DISCONNECT: \"%s\"", chunk.text);
+				switch (chunk.forbidden_reason) {
+				case ConnectModeChunk::ForbiddenReason::EXTRA_TOKENS_AFTER_CONNECT_TARGET:
+					throw ParserException("CONNECT statement has extra tokens after the target. "
+					                      "Expected: 'CONNECT <name>;', 'CONNECT LOCAL;', or "
+					                      "'CONNECT '<connection-string>';'. Got: \"%s\"",
+					                      chunk.text);
+				case ConnectModeChunk::ForbiddenReason::INVALID_CONNECT_TARGET:
+					throw ParserException(
+					    "CONNECT requires a target identifier, LOCAL, or '<connection-string>'. "
+					    "Got: \"%s\"",
+					    chunk.text);
+				case ConnectModeChunk::ForbiddenReason::MISSING_CONNECT_TARGET:
+					throw ParserException("CONNECT requires a target identifier, LOCAL, or "
+					                      "'<connection-string>' (none was given)");
+				case ConnectModeChunk::ForbiddenReason::EXTRA_TOKENS_AFTER_DISCONNECT:
+					throw ParserException("DISCONNECT takes no arguments. Got: \"%s\"", chunk.text);
+				default:
+					throw ParserException("Malformed CONNECT/DISCONNECT: \"%s\"", chunk.text);
+				}
 			case ConnectModeChunk::Type::EXECUTE:
 				throw NotImplementedException("CONNECT <name> EXECUTE is not yet supported");
 			case ConnectModeChunk::Type::CONTROL:

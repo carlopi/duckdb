@@ -4,11 +4,12 @@
 
 # ========================= CONNECT =========================
 
-# CONNECT; — bare form, not yet implemented.
+# CONNECT; — bare form. Layer 1 catches this as a missing-target FORBIDDEN before any SQL-parser
+# dispatch happens (previously this fell through to a NotImplementedException from the executor).
 statement error
 CONNECT;
 ----
-Not implemented Error: CONNECT with no target is not yet implemented
+<REGEX>:Parser Error:.*CONNECT requires a target identifier, LOCAL, or '<connection-string>' \(none was given\).*
 
 # CONNECT LOCAL; — keyword form, not yet implemented.
 statement error
@@ -48,3 +49,45 @@ statement error
 DISCONNECT;
 ----
 <REGEX>:Invalid Input Error:.*no active CONNECT.*
+
+# ========================= FORBIDDEN forms =========================
+# Layer 1 catches malformed CONNECT/DISCONNECT shapes and routes them to a per-shape error message
+# (no decomposition, no remote round-trip).
+
+# Extra tokens after a valid CONNECT target (identifier form).
+statement error
+CONNECT pg foo bar;
+----
+<REGEX>:Parser Error:.*CONNECT statement has extra tokens after the target.*
+
+# Extra tokens after CONNECT LOCAL.
+statement error
+CONNECT LOCAL extra;
+----
+<REGEX>:Parser Error:.*CONNECT statement has extra tokens after the target.*
+
+# Extra tokens after CONNECT '<connection-string>'.
+statement error
+CONNECT 'quack:localhost' extra;
+----
+<REGEX>:Parser Error:.*CONNECT statement has extra tokens after the target.*
+
+# Non-identifier target after CONNECT.
+statement error
+CONNECT 42;
+----
+<REGEX>:Parser Error:.*CONNECT requires a target identifier, LOCAL, or '<connection-string>'.*
+
+# CONNECT EXECUTE without target — PEG accepts EXECUTE as an Identifier-shaped token, so this is
+# classified as EXTRA_TOKENS_AFTER_CONNECT_TARGET rather than INVALID_CONNECT_TARGET. Error
+# message is still appropriate to the malformed input.
+statement error
+CONNECT EXECUTE SELECT 1;
+----
+<REGEX>:Parser Error:.*CONNECT statement has extra tokens after the target.*
+
+# DISCONNECT with trailing tokens.
+statement error
+DISCONNECT xyz;
+----
+<REGEX>:Parser Error:.*DISCONNECT takes no arguments.*

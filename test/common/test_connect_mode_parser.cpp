@@ -91,12 +91,9 @@ TEST_CASE("ConnectModeParser: plain SQL is captured as RAW chunks", "[connect_mo
 }
 
 TEST_CASE("ConnectModeParser: well-formed CONNECT/DISCONNECT classified as CONTROL", "[connect_mode]") {
-	SECTION("bare CONNECT") {
-		ConnectModeParser p("CONNECT");
-		auto chunks = p.AllRemaining();
-		REQUIRE(chunks.size() == 1);
-		REQUIRE(chunks[0].type == ConnectModeChunk::Type::CONTROL);
-	}
+	// (bare `CONNECT` is now classified as FORBIDDEN with MISSING_CONNECT_TARGET — see the
+	// "malformed CONNECT" test case below.)
+
 
 	SECTION("CONNECT name") {
 		ConnectModeParser p("CONNECT pg");
@@ -149,11 +146,60 @@ TEST_CASE("ConnectModeParser: CONNECT name EXECUTE payload classified as EXECUTE
 }
 
 TEST_CASE("ConnectModeParser: malformed CONNECT classified as FORBIDDEN", "[connect_mode]") {
-	SECTION("extra tokens after CONNECT name") {
+	SECTION("extra tokens after CONNECT identifier target") {
 		ConnectModeParser p("CONNECT pg foo bar");
 		auto chunks = p.AllRemaining();
 		REQUIRE(chunks.size() == 1);
 		REQUIRE(chunks[0].type == ConnectModeChunk::Type::FORBIDDEN);
+		REQUIRE(chunks[0].forbidden_reason ==
+		        ConnectModeChunk::ForbiddenReason::EXTRA_TOKENS_AFTER_CONNECT_TARGET);
+	}
+
+	SECTION("extra tokens after CONNECT LOCAL") {
+		ConnectModeParser p("CONNECT LOCAL extra");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::FORBIDDEN);
+		REQUIRE(chunks[0].forbidden_reason ==
+		        ConnectModeChunk::ForbiddenReason::EXTRA_TOKENS_AFTER_CONNECT_TARGET);
+	}
+
+	SECTION("extra tokens after CONNECT 'string'") {
+		ConnectModeParser p("CONNECT 'quack:localhost' extra");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::FORBIDDEN);
+		REQUIRE(chunks[0].forbidden_reason ==
+		        ConnectModeChunk::ForbiddenReason::EXTRA_TOKENS_AFTER_CONNECT_TARGET);
+	}
+
+	SECTION("CONNECT with non-identifier target (numeric)") {
+		ConnectModeParser p("CONNECT 42");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::FORBIDDEN);
+		REQUIRE(chunks[0].forbidden_reason == ConnectModeChunk::ForbiddenReason::INVALID_CONNECT_TARGET);
+	}
+
+	SECTION("CONNECT EXECUTE without target — caught as EXTRA_TOKENS") {
+		// PEG's Identifier rule accepts the EXECUTE keyword as an identifier-shaped token, so
+		// ForbiddenConnect1 wins ("CONNECT" + Identifier(EXECUTE) + Raw("SELECT 1")). The
+		// classification is EXTRA_TOKENS rather than INVALID_TARGET — the user-facing error message
+		// is still appropriate.
+		ConnectModeParser p("CONNECT EXECUTE SELECT 1");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::FORBIDDEN);
+		REQUIRE(chunks[0].forbidden_reason ==
+		        ConnectModeChunk::ForbiddenReason::EXTRA_TOKENS_AFTER_CONNECT_TARGET);
+	}
+
+	SECTION("bare CONNECT — missing target") {
+		ConnectModeParser p("CONNECT");
+		auto chunks = p.AllRemaining();
+		REQUIRE(chunks.size() == 1);
+		REQUIRE(chunks[0].type == ConnectModeChunk::Type::FORBIDDEN);
+		REQUIRE(chunks[0].forbidden_reason == ConnectModeChunk::ForbiddenReason::MISSING_CONNECT_TARGET);
 	}
 
 	SECTION("DISCONNECT with extra tokens") {
@@ -161,6 +207,8 @@ TEST_CASE("ConnectModeParser: malformed CONNECT classified as FORBIDDEN", "[conn
 		auto chunks = p.AllRemaining();
 		REQUIRE(chunks.size() == 1);
 		REQUIRE(chunks[0].type == ConnectModeChunk::Type::FORBIDDEN);
+		REQUIRE(chunks[0].forbidden_reason ==
+		        ConnectModeChunk::ForbiddenReason::EXTRA_TOKENS_AFTER_DISCONNECT);
 	}
 }
 

@@ -35,7 +35,24 @@ class ParseResultAllocator;
 struct ConnectModeChunk {
 	enum class Type : uint8_t { CONTROL, EXECUTE, FORBIDDEN, RAW };
 
+	//! For FORBIDDEN chunks, which malformed shape did we recognize? Lets the dispatcher format a
+	//! diagnostic that names the specific problem ("extra tokens after CONNECT target" vs
+	//! "non-identifier after CONNECT") instead of a generic message.
+	enum class ForbiddenReason : uint8_t {
+		NONE,
+		//! `CONNECT <ident|LOCAL|'string'> <more tokens>` — well-formed prefix plus extra junk.
+		EXTRA_TOKENS_AFTER_CONNECT_TARGET,
+		//! `CONNECT <something that isn't an identifier / LOCAL / string-literal>` — e.g.
+		//! `CONNECT 42`.
+		INVALID_CONNECT_TARGET,
+		//! `CONNECT` alone with no target whatsoever.
+		MISSING_CONNECT_TARGET,
+		//! `DISCONNECT <anything>` — DISCONNECT takes no arguments.
+		EXTRA_TOKENS_AFTER_DISCONNECT,
+	};
+
 	Type type;
+	ForbiddenReason forbidden_reason = ForbiddenReason::NONE;
 	//! Slice of the original input that this chunk corresponds to (no surrounding `;`).
 	string text;
 

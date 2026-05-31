@@ -14,12 +14,13 @@ namespace duckdb {
 static constexpr const char *CONNECT_MODE_GRAMMAR = R"(
 Program <- ';'* Body?
 Body <- Chunk (';'+ Chunk)* ';'*
-Chunk <- ExecuteChunk / ForbiddenConnect1 / ConnectChunk / ForbiddenConnect2 / ForbiddenDisconnect / DisconnectChunk / RawChunk
-ConnectChunk <- 'CONNECT' (Identifier / 'LOCAL' / StringLiteral)?
+Chunk <- ExecuteChunk / ForbiddenConnect1 / ConnectChunk / ForbiddenConnect2 / ForbiddenConnect3 / ForbiddenDisconnect / DisconnectChunk / RawChunk
+ConnectChunk <- 'CONNECT' (Identifier / 'LOCAL' / StringLiteral)
 DisconnectChunk <- 'DISCONNECT'
 ExecuteChunk <- 'CONNECT' Identifier 'EXECUTE' Raw
 ForbiddenConnect1 <- 'CONNECT' (Identifier / 'LOCAL' / StringLiteral) Raw
 ForbiddenConnect2 <- 'CONNECT' Raw
+ForbiddenConnect3 <- 'CONNECT'
 ForbiddenDisconnect <- 'DISCONNECT' Raw
 RawChunk <- Raw
 Raw <- InStatementToken+
@@ -160,16 +161,18 @@ void ConnectModeParser::ClassifyChunk(ParseResult &chunk_node, ConnectModeChunk 
 		auto &payload_node = exec_list.GetChild(3);
 		out.target = target_node.Cast<IdentifierParseResult>().identifier;
 		out.payload = SliceSubtreeText(sql, tokens, payload_node);
-	} else if (name == "ForbiddenConnect1" || name == "ForbiddenConnect2" || name == "ForbiddenDisconnect") {
+	} else if (name == "ForbiddenConnect1") {
 		out.type = ConnectModeChunk::Type::FORBIDDEN;
-		// TODO: store the failing rule name (or a Reason enum) on the chunk so the dispatcher can
-		// surface a precise diagnostic. ForbiddenConnect1, ForbiddenConnect2, ForbiddenDisconnect
-		// all map to FORBIDDEN today but represent distinct error situations:
-		//   - ForbiddenConnect1: well-formed CONNECT prefix followed by extra tokens
-		//     ("CONNECT pg foo bar")
-		//   - ForbiddenConnect2: CONNECT followed by something that isn't a valid target
-		//     ("CONNECT 42", "CONNECT EXECUTE ...")
-		//   - ForbiddenDisconnect: DISCONNECT with any trailing tokens
+		out.forbidden_reason = ConnectModeChunk::ForbiddenReason::EXTRA_TOKENS_AFTER_CONNECT_TARGET;
+	} else if (name == "ForbiddenConnect2") {
+		out.type = ConnectModeChunk::Type::FORBIDDEN;
+		out.forbidden_reason = ConnectModeChunk::ForbiddenReason::INVALID_CONNECT_TARGET;
+	} else if (name == "ForbiddenConnect3") {
+		out.type = ConnectModeChunk::Type::FORBIDDEN;
+		out.forbidden_reason = ConnectModeChunk::ForbiddenReason::MISSING_CONNECT_TARGET;
+	} else if (name == "ForbiddenDisconnect") {
+		out.type = ConnectModeChunk::Type::FORBIDDEN;
+		out.forbidden_reason = ConnectModeChunk::ForbiddenReason::EXTRA_TOKENS_AFTER_DISCONNECT;
 	} else {
 		// "RawChunk" or anything else: treat as raw.
 		out.type = ConnectModeChunk::Type::RAW;
