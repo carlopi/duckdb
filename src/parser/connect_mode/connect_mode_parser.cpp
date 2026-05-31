@@ -14,10 +14,11 @@ namespace duckdb {
 static constexpr const char *CONNECT_MODE_GRAMMAR = R"(
 Program <- ';'* Body?
 Body <- Chunk (';'+ Chunk)* ';'*
-Chunk <- ExecuteChunk / ForbiddenConnect1 / ConnectChunk / ForbiddenConnect2 / ForbiddenConnect3 / ForbiddenDisconnect / DisconnectChunk / RawChunk
+Chunk <- ExecuteChunk / ForbiddenConnectExecute / ForbiddenConnect1 / ConnectChunk / ForbiddenConnect2 / ForbiddenConnect3 / ForbiddenDisconnect / DisconnectChunk / RawChunk
 ConnectChunk <- 'CONNECT' (Identifier / 'LOCAL' / StringLiteral)
 DisconnectChunk <- 'DISCONNECT'
 ExecuteChunk <- 'CONNECT' Identifier 'EXECUTE' Raw
+ForbiddenConnectExecute <- 'CONNECT' 'EXECUTE' Raw
 ForbiddenConnect1 <- 'CONNECT' (Identifier / 'LOCAL' / StringLiteral) Raw
 ForbiddenConnect2 <- 'CONNECT' Raw
 ForbiddenConnect3 <- 'CONNECT'
@@ -170,6 +171,9 @@ void ConnectModeParser::ClassifyChunk(ParseResult &chunk_node, ConnectModeChunk 
 	} else if (name == "ForbiddenConnect3") {
 		out.type = ConnectModeChunk::Type::FORBIDDEN;
 		out.forbidden_reason = ConnectModeChunk::ForbiddenReason::MISSING_CONNECT_TARGET;
+	} else if (name == "ForbiddenConnectExecute") {
+		out.type = ConnectModeChunk::Type::FORBIDDEN;
+		out.forbidden_reason = ConnectModeChunk::ForbiddenReason::CONNECT_EXECUTE_MISSING_TARGET;
 	} else if (name == "ForbiddenDisconnect") {
 		out.type = ConnectModeChunk::Type::FORBIDDEN;
 		out.forbidden_reason = ConnectModeChunk::ForbiddenReason::EXTRA_TOKENS_AFTER_DISCONNECT;

@@ -1161,6 +1161,10 @@ unique_ptr<QueryResult> ClientContext::Query(const string &query, QueryParameter
 				case ConnectModeChunk::ForbiddenReason::MISSING_CONNECT_TARGET:
 					throw ParserException("CONNECT requires a target identifier, LOCAL, or "
 					                      "'<connection-string>' (none was given)");
+				case ConnectModeChunk::ForbiddenReason::CONNECT_EXECUTE_MISSING_TARGET:
+					throw ParserException("CONNECT EXECUTE requires a target name. Use: "
+					                      "'CONNECT <name> EXECUTE <sql>'. Got: \"%s\"",
+					                      chunk.text);
 				case ConnectModeChunk::ForbiddenReason::EXTRA_TOKENS_AFTER_DISCONNECT:
 					throw ParserException("DISCONNECT takes no arguments. Got: \"%s\"", chunk.text);
 				default:

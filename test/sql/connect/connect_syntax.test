@@ -78,13 +78,12 @@ CONNECT 42;
 ----
 <REGEX>:Parser Error:.*CONNECT requires a target identifier, LOCAL, or '<connection-string>'.*
 
-# CONNECT EXECUTE without target — PEG accepts EXECUTE as an Identifier-shaped token, so this is
-# classified as EXTRA_TOKENS_AFTER_CONNECT_TARGET rather than INVALID_CONNECT_TARGET. Error
-# message is still appropriate to the malformed input.
+# CONNECT EXECUTE without a target name between — caught by a dedicated grammar rule
+# (ForbiddenConnectExecute) so the error hints at the correct CONNECT <name> EXECUTE <sql> shape.
 statement error
 CONNECT EXECUTE SELECT 1;
 ----
-<REGEX>:Parser Error:.*CONNECT statement has extra tokens after the target.*
+<REGEX>:Parser Error:.*CONNECT EXECUTE requires a target name.*Use: 'CONNECT <name> EXECUTE <sql>'.*
 
 # DISCONNECT with trailing tokens.
 statement error

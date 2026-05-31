@@ -181,17 +181,16 @@ TEST_CASE("ConnectModeParser: malformed CONNECT classified as FORBIDDEN", "[conn
 		REQUIRE(chunks[0].forbidden_reason == ConnectModeChunk::ForbiddenReason::INVALID_CONNECT_TARGET);
 	}
 
-	SECTION("CONNECT EXECUTE without target — caught as EXTRA_TOKENS") {
-		// PEG's Identifier rule accepts the EXECUTE keyword as an identifier-shaped token, so
-		// ForbiddenConnect1 wins ("CONNECT" + Identifier(EXECUTE) + Raw("SELECT 1")). The
-		// classification is EXTRA_TOKENS rather than INVALID_TARGET — the user-facing error message
-		// is still appropriate.
+	SECTION("CONNECT EXECUTE without target") {
+		// Caught by the specific 'CONNECT' 'EXECUTE' Raw rule (ForbiddenConnectExecute), which is
+		// ordered before ForbiddenConnect1 so the EXECUTE keyword is not mistakenly absorbed as an
+		// identifier target.
 		ConnectModeParser p("CONNECT EXECUTE SELECT 1");
 		auto chunks = p.AllRemaining();
 		REQUIRE(chunks.size() == 1);
 		REQUIRE(chunks[0].type == ConnectModeChunk::Type::FORBIDDEN);
 		REQUIRE(chunks[0].forbidden_reason ==
-		        ConnectModeChunk::ForbiddenReason::EXTRA_TOKENS_AFTER_CONNECT_TARGET);
+		        ConnectModeChunk::ForbiddenReason::CONNECT_EXECUTE_MISSING_TARGET);
 	}
 
 	SECTION("bare CONNECT — missing target") {

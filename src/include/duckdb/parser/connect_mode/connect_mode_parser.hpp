@@ -47,6 +47,9 @@ struct ConnectModeChunk {
 		INVALID_CONNECT_TARGET,
 		//! `CONNECT` alone with no target whatsoever.
 		MISSING_CONNECT_TARGET,
+		//! `CONNECT EXECUTE <sql>` — the target name between CONNECT and EXECUTE is missing.
+		//! Caught separately so the message can hint at the correct shape.
+		CONNECT_EXECUTE_MISSING_TARGET,
 		//! `DISCONNECT <anything>` — DISCONNECT takes no arguments.
 		EXTRA_TOKENS_AFTER_DISCONNECT,
 	};
