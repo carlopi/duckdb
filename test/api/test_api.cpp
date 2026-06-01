@@ -3,6 +3,7 @@
 #include "duckdb/parser/parser.hpp"
 #include "duckdb/planner/logical_operator.hpp"
 #include "duckdb/main/connection_manager.hpp"
+#include "duckdb/parser/statement/passthrough_statement.hpp"
 #include "duckdb/parser/statement/select_statement.hpp"
 #include "duckdb/parser/query_node/select_node.hpp"
 
@@ -753,6 +754,58 @@ TEST_CASE("Test SqlStatement::ToString for UPDATE, INSERT, DELETE statements wit
 	sql = "DELETE FROM test WHERE (id = 1) RETURNING id AS deleted";
 	stmts = con.ExtractStatements(sql);
 	REQUIRE(stmts[0]->ToString() == sql);
+}
+
+TEST_CASE("ExtractStatements: Layer 1 guards (CONTROL-mid + FORBIDDEN)", "[api][connect]") {
+	DuckDB db(nullptr);
+	Connection con(db);
+
+	// SECTION: single CONTROL passes the guard (errors come from the SQL parser layer / execution
+	// path, not from the guard). We just check the guard doesn't fire by exercising the code path.
+	REQUIRE_NOTHROW(con.ExtractStatements("CONNECT LOCAL;"));
+	REQUIRE_NOTHROW(con.ExtractStatements("DISCONNECT;"));
+
+	// CONTROL at the trailing position in a multi-statement batch is allowed.
+	REQUIRE_NOTHROW(con.ExtractStatements("SELECT 1; CONNECT LOCAL;"));
+
+	// CONTROL in the middle is rejected with a clear message.
+	REQUIRE_THROWS_WITH(
+	    con.ExtractStatements("CONNECT LOCAL; SELECT 1;"),
+	    Catch::Matchers::Contains("CONNECT or DISCONNECT in the middle"));
+	REQUIRE_THROWS_WITH(
+	    con.ExtractStatements("SELECT 1; DISCONNECT; SELECT 2;"),
+	    Catch::Matchers::Contains("CONNECT or DISCONNECT in the middle"));
+
+	// FORBIDDEN chunks surface their per-shape Layer 1 message — clearer than the
+	// SQL parser's generic syntax error.
+	REQUIRE_THROWS_WITH(con.ExtractStatements("CONNECT 42;"),
+	                    Catch::Matchers::Contains("CONNECT requires a target"));
+	REQUIRE_THROWS_WITH(con.ExtractStatements("CONNECT pg foo bar;"),
+	                    Catch::Matchers::Contains("extra tokens after the target"));
+	REQUIRE_THROWS_WITH(con.ExtractStatements("DISCONNECT xyz;"),
+	                    Catch::Matchers::Contains("DISCONNECT takes no arguments"));
+
+	// EXECUTE chunks: ExtractStatements now emits a PassthroughStatement carrying target+payload.
+	// The local SQL parser never sees the payload — that's how PIVOT-in-CONNECT-mode and other
+	// "the parser would decompose this" cases will survive. Target resolution happens at Bind time,
+	// not at Extract — same model as a plain `FROM unknown_table` (parses fine, binder errors).
+	{
+		auto stmts = con.ExtractStatements("CONNECT pg EXECUTE SELECT 1;");
+		REQUIRE(stmts.size() == 1);
+		REQUIRE(stmts[0]->type == StatementType::PASSTHROUGH_STATEMENT);
+		auto &p = stmts[0]->Cast<PassthroughStatement>();
+		REQUIRE(p.target == "pg");
+		REQUIRE(p.payload == "SELECT 1");
+	}
+	// The payload is opaque — even SQL that would normally decompose stays as a string.
+	{
+		auto stmts = con.ExtractStatements("CONNECT qk EXECUTE PIVOT t ON x USING SUM(y);");
+		REQUIRE(stmts.size() == 1);
+		REQUIRE(stmts[0]->type == StatementType::PASSTHROUGH_STATEMENT);
+		auto &p = stmts[0]->Cast<PassthroughStatement>();
+		REQUIRE(p.target == "qk");
+		REQUIRE(p.payload == "PIVOT t ON x USING SUM(y)");
+	}
 }
 
 TEST_CASE("Test buffer managed query result", "[api]") {

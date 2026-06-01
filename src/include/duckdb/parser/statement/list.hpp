@@ -17,6 +17,7 @@
 #include "duckdb/parser/statement/load_statement.hpp"
 #include "duckdb/parser/statement/logical_plan_statement.hpp"
 #include "duckdb/parser/statement/merge_into_statement.hpp"
+#include "duckdb/parser/statement/passthrough_statement.hpp"
 #include "duckdb/parser/statement/pragma_statement.hpp"
 #include "duckdb/parser/statement/prepare_statement.hpp"
 #include "duckdb/parser/statement/relation_statement.hpp"

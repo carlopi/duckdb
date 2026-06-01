@@ -14,7 +14,12 @@
 #include "duckdb/main/relation/table_relation.hpp"
 #include "duckdb/main/relation/value_relation.hpp"
 #include "duckdb/main/relation/view_relation.hpp"
+#include "duckdb/common/exception/parser_exception.hpp"
+#include "duckdb/common/string_util.hpp"
+#include "duckdb/main/attached_database.hpp"
 #include "duckdb/parser/parser.hpp"
+#include "duckdb/parser/connect_mode/connect_mode_parser.hpp"
+#include "duckdb/parser/statement/passthrough_statement.hpp"
 #include "duckdb/planner/logical_operator.hpp"
 
 namespace duckdb {
@@ -191,7 +196,84 @@ unique_ptr<TableDescription> Connection::TableInfo(const string &table_name) {
 }
 
 vector<unique_ptr<SQLStatement>> Connection::ExtractStatements(const string &query) {
-	return context->ParseStatements(query);
+	// Layer 1 peek: split the input into chunks, throw on FORBIDDEN with the per-shape message,
+	// and rewrite RAW-while-currently-bound chunks as EXECUTE chunks against the current binding.
+	// After the rewrite there are exactly two flavors to emit:
+	//   - EXECUTE chunks (whether the user typed CONNECT...EXECUTE or it came from the
+	//     RAW-while-bound rewrite) → emit a single PassthroughStatement carrying target+payload.
+	//     The binder resolves the target at Prepare time (matching how plain catalog lookups work
+	//     for `ATTACH x; FROM x.t;` — both need x present at Prepare).
+	//   - CONTROL and unbound-RAW chunks → ParseStatements on the chunk text (today's behavior).
+	// CONTROL in the middle of a batch is rejected: a state change executed *between* statements
+	// can't be applied before the batch was assembled, so subsequent statements would have been
+	// classified against stale state. Trailing CONTROL is fine.
+	ConnectModeParser layer1(query);
+	auto chunks = layer1.AllRemaining();
+
+	for (auto &chunk : chunks) {
+		if (chunk.type == ConnectModeChunk::Type::FORBIDDEN) {
+			switch (chunk.forbidden_reason) {
+			case ConnectModeChunk::ForbiddenReason::EXTRA_TOKENS_AFTER_CONNECT_TARGET:
+				throw ParserException("CONNECT statement has extra tokens after the target. "
+				                      "Expected: 'CONNECT <name>;', 'CONNECT LOCAL;', or "
+				                      "'CONNECT '<connection-string>';'. Got: \"%s\"",
+				                      chunk.text);
+			case ConnectModeChunk::ForbiddenReason::INVALID_CONNECT_TARGET:
+				throw ParserException(
+				    "CONNECT requires a target identifier, LOCAL, or '<connection-string>'. Got: \"%s\"", chunk.text);
+			case ConnectModeChunk::ForbiddenReason::MISSING_CONNECT_TARGET:
+				throw ParserException(
+				    "CONNECT requires a target identifier, LOCAL, or '<connection-string>' (none was given)");
+			case ConnectModeChunk::ForbiddenReason::CONNECT_EXECUTE_MISSING_TARGET:
+				throw ParserException("CONNECT EXECUTE requires a target name. Use: "
+				                      "'CONNECT <name> EXECUTE <sql>'. Got: \"%s\"",
+				                      chunk.text);
+			case ConnectModeChunk::ForbiddenReason::EXTRA_TOKENS_AFTER_DISCONNECT:
+				throw ParserException("DISCONNECT takes no arguments. Got: \"%s\"", chunk.text);
+			default:
+				throw ParserException("Malformed CONNECT/DISCONNECT: \"%s\"", chunk.text);
+			}
+		}
+	}
+	for (idx_t i = 0; i + 1 < chunks.size(); i++) {
+		if (chunks[i].type == ConnectModeChunk::Type::CONTROL) {
+			throw InvalidInputException(
+			    "CONNECT or DISCONNECT in the middle of a multi-statement batch is not supported "
+			    "by ExtractStatements (state changes can't be applied between extracted "
+			    "statements). Split the input into separate ExtractStatements calls, or run the "
+			    "query through Connection::Query() which interleaves parse and execute.");
+		}
+	}
+
+	// Rewrite RAW-while-currently-bound chunks as EXECUTE chunks. After this the dispatch below
+	// has only two flavors to consider; no special "RAW + bound" case.
+	auto wrap_target = context->TryGetConnectWrapTarget();
+	if (wrap_target) {
+		auto wrap_target_name = wrap_target->GetName();
+		for (auto &chunk : chunks) {
+			if (chunk.type == ConnectModeChunk::Type::RAW) {
+				chunk.type = ConnectModeChunk::Type::EXECUTE;
+				chunk.target = wrap_target_name;
+				chunk.payload = chunk.text;
+			}
+		}
+	}
+
+	vector<unique_ptr<SQLStatement>> result;
+	for (auto &chunk : chunks) {
+		if (chunk.type == ConnectModeChunk::Type::EXECUTE) {
+			auto stmt = make_uniq<PassthroughStatement>(chunk.target, chunk.payload);
+			stmt->query = chunk.text;
+			result.push_back(std::move(stmt));
+		} else {
+			// CONTROL or unbound RAW: today's behavior — feed the chunk text to the SQL parser.
+			auto stmts = context->ParseStatements(chunk.text);
+			for (auto &s : stmts) {
+				result.push_back(std::move(s));
+			}
+		}
+	}
+	return result;
 }
 
 unique_ptr<StatementIterator> Connection::ExtractStatementsIterator(const string &query) {

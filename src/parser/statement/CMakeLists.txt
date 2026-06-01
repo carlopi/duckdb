@@ -20,6 +20,7 @@ add_library_unity(
   load_statement.cpp
   merge_into_statement.cpp
   multi_statement.cpp
+  passthrough_statement.cpp
   pragma_statement.cpp
   prepare_statement.cpp
   relation_statement.cpp
