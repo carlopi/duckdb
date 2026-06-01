@@ -1110,6 +1110,23 @@ unique_ptr<QueryResult> ClientContext::Query(unique_ptr<SQLStatement> statement,
 	return pending_query->Execute();
 }
 
+unique_ptr<QueryResult> ClientContext::Query(unique_ptr<SQLStatement> statement, QueryParameters query_parameters,
+                                             optional_ptr<AttachedDatabase> connect_target) {
+	auto lock = LockContext();
+	InitialCleanup(*lock);
+	PendingQueryParameters parameters;
+	parameters.query_parameters = query_parameters;
+	auto pending_query = PendingQueryInternal(*lock, std::move(statement), parameters,
+	                                          /* verify */ true, connect_target);
+	if (pending_query->HasError()) {
+		if (transaction.HasActiveTransaction() && transaction.GetAutoRollback()) {
+			transaction.Rollback(pending_query->GetErrorObject());
+		}
+		return ErrorResult<MaterializedQueryResult>(pending_query->GetErrorObject());
+	}
+	return ExecutePendingQueryInternal(*lock, *pending_query);
+}
+
 unique_ptr<QueryResult> ClientContext::Query(const string &query, QueryParameters query_parameters) {
 	auto lock = LockContext();
 	// Reset per-query state (notably interrupt_state) before doing any work — old ParseStatements

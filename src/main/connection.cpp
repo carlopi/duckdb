@@ -4,6 +4,7 @@
 #include "duckdb/function/table/read_csv.hpp"
 #include "duckdb/main/appender.hpp"
 #include "duckdb/main/client_context.hpp"
+#include "duckdb/main/statement_iterator.hpp"
 #include "duckdb/main/connection_manager.hpp"
 #include "duckdb/main/database.hpp"
 #include "duckdb/main/query_profiler.hpp"
@@ -83,6 +84,12 @@ unique_ptr<QueryResult> Connection::SendQuery(const string &query, QueryParamete
 
 unique_ptr<QueryResult> Connection::SendQuery(unique_ptr<SQLStatement> statement, QueryParameters query_parameters) {
 	return context->Query(std::move(statement), query_parameters);
+}
+
+unique_ptr<QueryResult> Connection::SendQuery(unique_ptr<SQLStatement> statement,
+                                              optional_ptr<AttachedDatabase> connect_target,
+                                              QueryParameters query_parameters) {
+	return context->Query(std::move(statement), query_parameters, connect_target);
 }
 
 unique_ptr<MaterializedQueryResult> Connection::Query(const string &query) {
@@ -185,6 +192,10 @@ unique_ptr<TableDescription> Connection::TableInfo(const string &table_name) {
 
 vector<unique_ptr<SQLStatement>> Connection::ExtractStatements(const string &query) {
 	return context->ParseStatements(query);
+}
+
+unique_ptr<StatementIterator> Connection::ExtractStatementsIterator(const string &query) {
+	return make_uniq<StatementIterator>(*context, query);
 }
 
 unique_ptr<LogicalOperator> Connection::ExtractPlan(const string &query) {

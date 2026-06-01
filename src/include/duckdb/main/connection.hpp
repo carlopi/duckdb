@@ -22,6 +22,7 @@
 
 namespace duckdb {
 
+class AttachedDatabase;
 class ColumnDataCollection;
 class ClientContext;
 
@@ -29,6 +30,7 @@ class DatabaseInstance;
 class DuckDB;
 class LogicalOperator;
 class SelectStatement;
+class StatementIterator;
 struct CSVReaderOptions;
 
 typedef void (*warning_callback_t)(std::string);
@@ -82,6 +84,12 @@ public:
 	DUCKDB_API unique_ptr<QueryResult>
 	SendQuery(unique_ptr<SQLStatement> statement,
 	          QueryParameters query_parameters = QueryResultOutputType::ALLOW_STREAMING);
+	//! Variant that explicitly threads the CONNECT chokepoint's `connect_target` — nullptr means
+	//! the statement runs unwrapped (already pre-wrapped or LOCAL), non-null means wrap against
+	//! this catalog. Used by callers that drive their own chunk dispatch via StatementIterator.
+	DUCKDB_API unique_ptr<QueryResult>
+	SendQuery(unique_ptr<SQLStatement> statement, optional_ptr<AttachedDatabase> connect_target,
+	          QueryParameters query_parameters = QueryResultOutputType::ALLOW_STREAMING);
 	//! Issues a query to the database and materializes the result (if necessary). Always returns a
 	//! MaterializedQueryResult.
 	DUCKDB_API unique_ptr<MaterializedQueryResult> Query(const string &query);
@@ -134,6 +142,11 @@ public:
 
 	//! Extract a set of SQL statements from a specific query
 	DUCKDB_API vector<unique_ptr<SQLStatement>> ExtractStatements(const string &query);
+	//! Iterator-style extraction that interleaves parse and execute. Yields one statement at a
+	//! time, classifying each via the Layer 1 CONNECT-aware grammar against the *current*
+	//! binding state — so CONNECT/DISCONNECT side effects from executed statements take hold
+	//! before the next call. Required for CONNECT EXECUTE to work in the shell.
+	DUCKDB_API unique_ptr<StatementIterator> ExtractStatementsIterator(const string &query);
 	//! Extract the logical plan that corresponds to a query
 	DUCKDB_API unique_ptr<LogicalOperator> ExtractPlan(const string &query);
 

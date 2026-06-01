@@ -112,6 +112,11 @@ public:
 	//! target has been detached out from under us (in that case IsConnected() is still true — call it
 	//! directly to disambiguate "never connected" from "was connected, target was detached elsewhere").
 	DUCKDB_API shared_ptr<AttachedDatabase> TryGetConnectedCatalog() const;
+	//! Execute a single (parsed) statement with an explicit `connect_target` for the CONNECT
+	//! chokepoint. Used by the StatementIterator/Layer 1 driving path; most callers don't need it.
+	DUCKDB_API unique_ptr<QueryResult>
+	Query(unique_ptr<SQLStatement> statement, QueryParameters query_parameters,
+	      optional_ptr<AttachedDatabase> connect_target);
 	//! Returns the catalog to use as the CONNECT wrap target — null if no current binding, the
 	//! currently-bound catalog otherwise. Throws if bound but the catalog has been DETACHed out
 	//! from under us (callers shouldn't have to replicate that check).

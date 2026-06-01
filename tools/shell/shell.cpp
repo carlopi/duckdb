@@ -90,6 +90,7 @@
 #include "shell_state.hpp"
 #include "duckdb/main/error_manager.hpp"
 #include "duckdb/main/client_config.hpp"
+#include "duckdb/main/statement_iterator.hpp"
 
 using namespace duckdb_shell;
 
@@ -937,7 +938,8 @@ ShellState &ShellState::Get() {
 	return *GetReference();
 }
 
-SuccessState ShellState::ExecuteStatement(unique_ptr<duckdb::SQLStatement> statement) {
+SuccessState ShellState::ExecuteStatement(unique_ptr<duckdb::SQLStatement> statement,
+                                          duckdb::optional_ptr<duckdb::AttachedDatabase> connect_target) {
 	if (!statement->named_param_map.empty()) {
 		PrintDatabaseError("Prepared statement parameters cannot be used directly\nTo use prepared "
 		                   "statement parameters, use PREPARE to prepare a statement, followed by EXECUTE");
@@ -951,10 +953,10 @@ SuccessState ShellState::ExecuteStatement(unique_ptr<duckdb::SQLStatement> state
 		duckdb::QueryParameters parameters;
 		parameters.output_type = duckdb::QueryResultOutputType::FORCE_MATERIALIZED;
 		parameters.memory_type = duckdb::QueryResultMemoryType::BUFFER_MANAGED;
-		result = con.SendQuery(std::move(statement), parameters);
+		result = con.SendQuery(std::move(statement), connect_target, parameters);
 	} else {
 		// for row-wise rendering we can use streaming results
-		result = con.SendQuery(std::move(statement));
+		result = con.SendQuery(std::move(statement), connect_target);
 	}
 	auto &res = *result;
 	if (res.HasError()) {
@@ -992,8 +994,13 @@ SuccessState ShellState::ExecuteStatement(unique_ptr<duckdb::SQLStatement> state
 SuccessState ShellState::ExecuteSQL(const string &zSql) {
 	auto &con = *conn;
 	try {
-		auto statements = con.ExtractStatements(zSql);
-		for (auto &statement : statements) {
+		// Iterator-style extraction so CONNECT/DISCONNECT side effects of earlier statements
+		// take effect before the next statement is classified (e.g. `CONNECT pg EXECUTE …` needs
+		// to resolve `pg` after a preceding `ATTACH`).
+		auto it = con.ExtractStatementsIterator(zSql);
+		duckdb::optional_ptr<duckdb::AttachedDatabase> connect_target;
+		unique_ptr<duckdb::SQLStatement> statement;
+		while ((statement = it->GetNext(connect_target))) {
 			idx_t start_pos = statement->stmt_location;
 			idx_t len = statement->stmt_length;
 			while (len > 0 && IsSpace(zSql[start_pos])) {
@@ -1017,7 +1024,7 @@ SuccessState ShellState::ExecuteSQL(const string &zSql) {
 
 			// Reset before bind; the `_` replacement scan sets it to true if it fires.
 			last_result_referenced = false;
-			auto rc = ExecuteStatement(std::move(statement));
+			auto rc = ExecuteStatement(std::move(statement), connect_target);
 			if (rc != SuccessState::SUCCESS) {
 				return rc;
 			}
