@@ -18,10 +18,14 @@
 #include "duckdb/parser/parser_extension.hpp"
 
 namespace duckdb {
+class GroupByNode;
+} // namespace duckdb
+
+namespace duckdb_fork {
+using namespace duckdb;
 
 struct ParserCache;
 struct MatcherToken;
-class GroupByNode;
 struct UnicodeSpace {
 	UnicodeSpace(idx_t pos, idx_t bytes) : pos(pos), bytes(bytes) {
 	}
@@ -47,6 +51,7 @@ public:
 	//! successful, the parsed statements will be stored in the statements
 	//! variable.
 	void ParseQuery(const string &query);
+	void ParseQueryWhileLogging(const string &query);
 
 	//! Parse a single TopLevelStatement from an already-tokenized stream starting at
 	//! `token_cursor`. On success advances `token_cursor` past the consumed tokens and returns
@@ -96,6 +101,5 @@ private:
 	ParserCache &GetCache();
 
 	ParserOptions options;
-	unique_ptr<ParserCache> local_cache;
 };
-} // namespace duckdb
+} // namespace duckdb_fork

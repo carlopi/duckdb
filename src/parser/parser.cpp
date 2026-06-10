@@ -16,7 +16,11 @@
 #include "duckdb/parser/peg/tokenizer/highlight_tokenizer.hpp"
 #include "utf8proc_wrapper.hpp"
 
-namespace duckdb {
+#include <iostream>
+
+namespace duckdb_fork {
+
+using duckdb::make_uniq;
 
 Parser::Parser(ParserOptions options_p) : options(options_p) {
 }
@@ -24,13 +28,9 @@ Parser::Parser(ParserOptions options_p) : options(options_p) {
 Parser::~Parser() = default;
 
 ParserCache &Parser::GetCache() {
-	if (options.parser_cache) {
-		return *options.parser_cache;
-	}
-	if (!local_cache) {
-		local_cache = make_uniq<ParserCache>();
-	}
-	return *local_cache;
+	// options.parser_cache is the host's duckdb::ParserCache holding the host's grammar -
+	// the fork must always use its own cache.
+	return ParserCache::GetDefault();
 }
 
 static bool ReplaceUnicodeSpaces(const string &query, string &new_query, vector<UnicodeSpace> &unicode_spaces) {
@@ -218,6 +218,11 @@ void Parser::ThrowParserOverrideError(ParserOverrideResult &result) {
 	if (result.type == ParserExtensionResultType::DISPLAY_EXTENSION_ERROR) {
 		result.error.Throw();
 	}
+}
+
+void Parser::ParseQueryWhileLogging(const string &query) {
+	std::cout << query << "\n";
+	ParseQuery(query);
 }
 
 void Parser::ParseQuery(const string &query) {
@@ -684,4 +689,4 @@ ColumnDefinition Parser::ParseColumnDefinition(const string &column_definition, 
 	return column_list.GetColumn(LogicalIndex(0)).Copy();
 }
 
-} // namespace duckdb
+} // namespace duckdb_fork

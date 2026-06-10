@@ -17,7 +17,8 @@
 #include "duckdb/parser/parsed_expression_iterator.hpp"
 #include "duckdb/common/string_util.hpp"
 
-namespace duckdb {
+namespace duckdb_fork {
+using namespace duckdb;
 
 unique_ptr<SQLStatement>
 PEGTransformerFactory::TransformExpressionStatement(PEGTransformer &transformer,
@@ -2838,4 +2839,4 @@ bool PEGTransformerFactory::TransformIgnoreOrRespectNulls(PEGTransformer &transf
 	return transformer.TransformEnum<bool>(list_pr.Child<ChoiceParseResult>(0).GetResult());
 }
 
-} // namespace duckdb
+} // namespace duckdb_fork

@@ -1,29 +1,16 @@
-add_subdirectory(constraints)
-add_subdirectory(expression)
-add_subdirectory(parsed_data)
-add_subdirectory(peg)
-add_subdirectory(query_node)
-add_subdirectory(statement)
-add_subdirectory(tableref)
+# The fork contributes only the parsing machinery (namespace duckdb_fork):
+# parser.cpp + the PEG subtree. AST classes (statement/, expression/, ...) are
+# NOT compiled here - they resolve to the host DuckDB's namespace duckdb symbols.
 
-add_library_unity(
-  duckdb_parser
-  OBJECT
-  base_expression.cpp
-  common_table_expression_info.cpp
-  column_definition.cpp
-  column_list.cpp
-  constraint.cpp
-  expression_util.cpp
-  keyword_helper.cpp
-  parsed_expression.cpp
-  parsed_expression_iterator.cpp
-  parser.cpp
-  qualified_name.cpp
-  query_error_context.cpp
-  query_node.cpp
-  result_modifier.cpp
-  tableref.cpp)
+# Make this tree's headers win over the host DuckDB's for the renamed files.
+include_directories(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/../include)
+
+# Start from a clean object list: only fork objects may flow to the parent scope.
+set(ALL_OBJECT_FILES)
+
+add_subdirectory(peg)
+
+add_library_unity(duckdb_fork_parser OBJECT parser.cpp)
 set(ALL_OBJECT_FILES
-    ${ALL_OBJECT_FILES} $<TARGET_OBJECTS:duckdb_parser>
+    ${ALL_OBJECT_FILES} $<TARGET_OBJECTS:duckdb_fork_parser>
     PARENT_SCOPE)
