@@ -1,0 +1,108 @@
+# name: test/sql/peg_parser/assert_statement.test
+# description: Test the ASSERT statement
+# group: [peg_parser]
+
+require autocomplete
+
+# ASSERT <expr> desugars to SELECT assert_true(<expr>, '<expr text>')
+query I
+ASSERT 32;
+----
+NULL
+
+query I
+ASSERT 1 = 1;
+----
+NULL
+
+# the alias rules are SELECT's alias rules: bare identifier, AS identifier, AS string
+statement error
+ASSERT 0 message;
+----
+Assertion: message
+
+statement error
+ASSERT 0 AS message;
+----
+Assertion: message
+
+statement error
+ASSERT 0 AS 'longer message';
+----
+Assertion: longer message
+
+# without an alias the message is the expression text
+statement error
+ASSERT 1 = 2;
+----
+Assertion: (1 = 2)
+
+# NULL conditions throw as well
+statement error
+ASSERT NULL;
+----
+Assertion: NULL
+
+# a bare string is not an alias (same as SELECT)
+statement error
+ASSERT 0 'message';
+----
+Parser Error
+
+# no comma list: a single assertion per statement
+statement error
+ASSERT 32, 45;
+----
+Parser Error
+
+statement ok
+CREATE TABLE t(x INT, y INT);
+
+statement ok
+INSERT INTO t VALUES (1, 1), (2, 1);
+
+# per-row assertion with a FROM clause
+statement ok
+ASSERT x > 0 AS 'x must be positive' FROM t;
+
+statement error
+ASSERT x > 1 AS 'x must be larger than one' FROM t;
+----
+Assertion: x must be larger than one
+
+# WHERE filters before asserting
+statement ok
+ASSERT x > 1 AS 'filtered x must be larger than one' FROM t WHERE y = 1 AND x = 2;
+
+# aggregates make scalar claims about tables
+statement ok
+ASSERT count(*) = 2 AS 'two rows' FROM t;
+
+statement error
+ASSERT count(*) = 3 AS 'three rows' FROM t;
+----
+Assertion: three rows
+
+# GROUP BY / HAVING tail
+statement ok
+ASSERT count(*) >= 1 FROM t GROUP BY y;
+
+# WITH prelude
+statement ok
+WITH big AS (SELECT * FROM t WHERE x > 1)
+ASSERT count(*) = 1 AS 'one big row' FROM big;
+
+# scalar subqueries as the condition
+statement ok
+ASSERT (SELECT count(*) FROM t) = 2 AS 'two rows via subquery';
+
+# ASSERT composes with nothing: it cannot appear in other statements
+statement error
+SELECT * FROM (ASSERT 1 = 1);
+----
+Parser Error
+
+statement error
+CREATE VIEW v AS ASSERT 1 = 1;
+----
+Parser Error

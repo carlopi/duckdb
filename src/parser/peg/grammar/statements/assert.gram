@@ -1,0 +1,1 @@
+AssertStatement <- WithClause? 'ASSERT' AliasedExpression FromClause? WhereClause? GroupByClause? HavingClause?

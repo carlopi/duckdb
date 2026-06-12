@@ -36,6 +36,7 @@ Statement <-
 	MergeIntoStatement /
 	ConnectStatement /
 	DisconnectStatement /
+	AssertStatement /
 	ExpressionStatement
 
 ExpressionStatement <- List(ExpressionAlias)

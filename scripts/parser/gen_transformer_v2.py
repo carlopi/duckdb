@@ -1380,6 +1380,7 @@ def main():
 
     gram_files_to_gen = [
         'alter.gram',
+        'assert.gram',
         'analyze.gram',
         'attach.gram',
         'call.gram',

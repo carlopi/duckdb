@@ -819,6 +819,13 @@ private:
 	static unique_ptr<AlterInfo> TransformAlterDatabaseStmt(PEGTransformer &transformer, const bool &if_exists,
 	                                                        const Identifier &identifier,
 	                                                        const Identifier &identifier_1);
+	static unique_ptr<TransformResultValue> TransformAssertStatementInternal(PEGTransformer &transformer,
+	                                                                         ParseResult &parse_result);
+	static unique_ptr<SQLStatement>
+	TransformAssertStatement(PEGTransformer &transformer, CommonTableExpressionMap with_clause,
+	                         unique_ptr<ParsedExpression> aliased_expression, unique_ptr<TableRef> from_clause,
+	                         unique_ptr<ParsedExpression> where_clause, GroupByNode group_by_clause,
+	                         unique_ptr<ParsedExpression> having_clause);
 	static unique_ptr<TransformResultValue> TransformAnalyzeStatementInternal(PEGTransformer &transformer,
 	                                                                          ParseResult &parse_result);
 	static unique_ptr<SQLStatement> TransformAnalyzeStatement(PEGTransformer &transformer, const bool &analyze_verbose,

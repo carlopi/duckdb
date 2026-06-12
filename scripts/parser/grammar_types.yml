@@ -60,6 +60,7 @@ SQLStatement:
   rules:
     - Statement
     - AlterStatement
+    - AssertStatement
     - AnalyzeStatement
     - AttachStatement
     - CallStatement

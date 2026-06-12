@@ -420,6 +420,46 @@ unique_ptr<TransformResultValue> PEGTransformerFactory::TransformAlterDatabaseSt
 	return make_uniq<TypedTransformResult<unique_ptr<AlterInfo>>>(std::move(result));
 }
 
+unique_ptr<TransformResultValue> PEGTransformerFactory::TransformAssertStatementInternal(PEGTransformer &transformer,
+                                                                                         ParseResult &parse_result) {
+	auto &list_pr = parse_result.Cast<ListParseResult>();
+	CommonTableExpressionMap with_clause {};
+	auto &with_clause_opt = list_pr.GetChild(0).Cast<OptionalParseResult>();
+	if (with_clause_opt.HasResult()) {
+		auto with_clause_value = transformer.Transform<CommonTableExpressionMap>(with_clause_opt.GetResult());
+		with_clause = std::move(with_clause_value);
+	}
+	auto aliased_expression = transformer.Transform<unique_ptr<ParsedExpression>>(list_pr.GetChild(2));
+	unique_ptr<TableRef> from_clause {};
+	auto &from_clause_opt = list_pr.GetChild(3).Cast<OptionalParseResult>();
+	if (from_clause_opt.HasResult()) {
+		auto from_clause_value = transformer.Transform<unique_ptr<TableRef>>(from_clause_opt.GetResult());
+		from_clause = std::move(from_clause_value);
+	}
+	unique_ptr<ParsedExpression> where_clause {};
+	auto &where_clause_opt = list_pr.GetChild(4).Cast<OptionalParseResult>();
+	if (where_clause_opt.HasResult()) {
+		auto where_clause_value = transformer.Transform<unique_ptr<ParsedExpression>>(where_clause_opt.GetResult());
+		where_clause = std::move(where_clause_value);
+	}
+	GroupByNode group_by_clause {};
+	auto &group_by_clause_opt = list_pr.GetChild(5).Cast<OptionalParseResult>();
+	if (group_by_clause_opt.HasResult()) {
+		auto group_by_clause_value = transformer.Transform<GroupByNode>(group_by_clause_opt.GetResult());
+		group_by_clause = std::move(group_by_clause_value);
+	}
+	unique_ptr<ParsedExpression> having_clause {};
+	auto &having_clause_opt = list_pr.GetChild(6).Cast<OptionalParseResult>();
+	if (having_clause_opt.HasResult()) {
+		auto having_clause_value = transformer.Transform<unique_ptr<ParsedExpression>>(having_clause_opt.GetResult());
+		having_clause = std::move(having_clause_value);
+	}
+	auto result = TransformAssertStatement(transformer, std::move(with_clause), std::move(aliased_expression),
+	                                       std::move(from_clause), std::move(where_clause), std::move(group_by_clause),
+	                                       std::move(having_clause));
+	return make_uniq<TypedTransformResult<unique_ptr<SQLStatement>>>(std::move(result));
+}
+
 unique_ptr<TransformResultValue> PEGTransformerFactory::TransformAnalyzeStatementInternal(PEGTransformer &transformer,
                                                                                           ParseResult &parse_result) {
 	auto &list_pr = parse_result.Cast<ListParseResult>();
@@ -7158,6 +7198,7 @@ void PEGTransformerFactory::RegisterGenerated() {
 	    {"AlterSequenceOptions", &PEGTransformerFactory::TransformAlterSequenceOptionsInternal},
 	    {"SetSequenceOption", &PEGTransformerFactory::TransformSetSequenceOptionInternal},
 	    {"AlterDatabaseStmt", &PEGTransformerFactory::TransformAlterDatabaseStmtInternal},
+	    {"AssertStatement", &PEGTransformerFactory::TransformAssertStatementInternal},
 	    {"AnalyzeStatement", &PEGTransformerFactory::TransformAnalyzeStatementInternal},
 	    {"AnalyzeTarget", &PEGTransformerFactory::TransformAnalyzeTargetInternal},
 	    {"AnalyzeVerbose", &PEGTransformerFactory::TransformAnalyzeVerboseInternal},

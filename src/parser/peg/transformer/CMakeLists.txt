@@ -5,6 +5,7 @@ add_library_unity(
   peg_transformer_factory.cpp
   transform_generated.cpp
   transform_alter.cpp
+  transform_assert.cpp
   transform_analyze.cpp
   transform_attach.cpp
   transform_call.cpp
