@@ -9,12 +9,12 @@
 #pragma once
 
 #include "duckdb/parser/sql_statement.hpp"
-#include "duckdb/common/enums/explain_format.hpp"
+//#include "duckdb/common/enums/explain_format.hpp"
 
 namespace duckdb {
 
 enum class ExplainType : uint8_t { EXPLAIN_STANDARD, EXPLAIN_ANALYZE };
-
+/*
 class ExplainStatement : public SQLStatement {
 public:
 	static constexpr const StatementType TYPE = StatementType::EXPLAIN_STATEMENT;
@@ -35,5 +35,5 @@ public:
 	string OptionsToString() const;
 	string ToString() const override;
 };
-
+*/
 } // namespace duckdb

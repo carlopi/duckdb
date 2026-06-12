@@ -5,7 +5,7 @@
 
 namespace duckdb_fork {
 using namespace duckdb;
-
+/*
 ExplainFormat ParseExplainFormat(const Value &val) {
 	if (val.type().id() != LogicalTypeId::VARCHAR) {
 		throw InvalidInputException("Expected a string as argument to FORMAT");
@@ -28,33 +28,14 @@ ExplainFormat ParseExplainFormat(const Value &val) {
 	                            allowed_options);
 }
 
+*/
 unique_ptr<SQLStatement>
 PEGTransformerFactory::TransformExplainStatement(PEGTransformer &transformer, const bool &explain_analyze,
                                                  const vector<GenericCopyOption> &explain_option_list,
                                                  unique_ptr<SQLStatement> explainable_statements) {
-	auto explain_type = explain_analyze ? ExplainType::EXPLAIN_ANALYZE : ExplainType::EXPLAIN_STANDARD;
-	bool format_is_set = false;
-	auto explain_format = ExplainFormat::DEFAULT;
-	if (!explain_option_list.empty()) {
-		for (auto option : explain_option_list) {
-			auto option_name = StringUtil::Lower(option.name.GetIdentifierName());
-			if (option_name == "format") {
-				if (format_is_set) {
-					throw InvalidInputException("FORMAT can not be provided more than once");
-				}
-				explain_format = ParseExplainFormat(option.children[0]);
-				format_is_set = true;
-			} else if (option_name == "analyze") {
-				explain_type = ExplainType::EXPLAIN_ANALYZE;
-			} else {
-				throw NotImplementedException("Unimplemented explain type: %s", option_name);
-			}
-		}
-	}
-	auto statement = std::move(explainable_statements);
-	return make_uniq<ExplainStatement>(std::move(statement), explain_type, explain_format);
-}
 
+	return nullptr;
+}
 bool PEGTransformerFactory::TransformExplainAnalyze(PEGTransformer &transformer) {
 	return true;
 }
