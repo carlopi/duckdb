@@ -33,6 +33,10 @@
 #include "duckdb/parser/expression/parameter_expression.hpp"
 #include "duckdb/parser/parsed_data/create_function_info.hpp"
 #include "duckdb/parser/parser.hpp"
+#include "duckdb/parser/connect_mode/connect_mode_parser.hpp"
+#include "duckdb/parser/statement/passthrough_statement.hpp"
+#include "duckdb/common/exception/parser_exception.hpp"
+#include "duckdb/common/string_util.hpp"
 #include "duckdb/parser/query_node/select_node.hpp"
 #include "duckdb/parser/statement/drop_statement.hpp"
 #include "duckdb/parser/statement/execute_statement.hpp"
@@ -248,7 +252,10 @@ shared_ptr<AttachedDatabase> ClientContext::TryGetConnectedCatalog() const {
 //! True if `type` is a CONNECT control statement that must execute against LOCAL even while a
 //! CONNECT binding is active (i.e. the chokepoint must let it fall through, not rewrite it).
 static bool IsConnectControlStatement(StatementType type) {
-	return type == StatementType::CONNECT_STATEMENT || type == StatementType::DISCONNECT_STATEMENT;
+	// PASSTHROUGH carries its own explicit target (from `CONNECT <name> EXECUTE`), so the sticky
+	// chokepoint must not re-route it to the currently-bound catalog — its binder dispatches it.
+	return type == StatementType::CONNECT_STATEMENT || type == StatementType::DISCONNECT_STATEMENT ||
+	       type == StatementType::PASSTHROUGH_STATEMENT;
 }
 
 //! Wrap a TableRef returned from Catalog::RemoteExecute into `SELECT * FROM <ref>` for the chokepoint.
@@ -784,21 +791,77 @@ vector<unique_ptr<SQLStatement>> ClientContext::ParseStatements(const string &qu
 	auto lock = LockContext();
 	return ParseStatementsInternal(*lock, query);
 }
+//! Layer-1 connect-mode pre-pass. Returns true and fills `out` only when the input contains a
+//! `CONNECT <name> EXECUTE <payload>` form; returns false to let the normal SQL parser handle the
+//! whole query unchanged. EXECUTE chunks become a PassthroughStatement carrying the verbatim
+//! payload — the SQL parser never sees the payload text, so arbitrary (even non-SQL) payloads
+//! survive intact. Every other chunk shape (plain CONNECT/DISCONNECT, malformed control
+//! statements, ordinary SQL) is left to the normal parser so its grammar/binder error messages
+//! are preserved.
+static bool TryParseConnectMode(const ParserOptions &options, const string &query,
+                                vector<unique_ptr<SQLStatement>> &out) {
+	// Cheap gate: only `CONNECT … EXECUTE` is special. Skip the Layer-1 pass otherwise.
+	auto lowered = StringUtil::Lower(query);
+	if (!StringUtil::Contains(lowered, "connect") || !StringUtil::Contains(lowered, "execute")) {
+		return false;
+	}
+	vector<ConnectModeChunk> chunks;
+	try {
+		ConnectModeParser layer1(query);
+		chunks = layer1.AllRemaining();
+	} catch (...) {
+		// Layer-1 couldn't classify the input — let the normal SQL parser produce its (better) error.
+		return false;
+	}
+	bool has_execute = false;
+	for (auto &chunk : chunks) {
+		if (chunk.type == ConnectModeChunk::Type::EXECUTE) {
+			has_execute = true;
+			break;
+		}
+	}
+	if (!has_execute) {
+		// No EXECUTE form present — let the normal parser handle the whole query (it owns the error
+		// messages for plain/malformed CONNECT and DISCONNECT).
+		return false;
+	}
+	for (auto &chunk : chunks) {
+		if (chunk.type == ConnectModeChunk::Type::EXECUTE) {
+			auto stmt = make_uniq<PassthroughStatement>(chunk.target, chunk.payload);
+			stmt->query = chunk.text;
+			out.push_back(std::move(stmt));
+			continue;
+		}
+		// Everything else (CONTROL / RAW / malformed): hand the chunk's text to the normal parser.
+		Parser parser(options);
+		parser.ParseQuery(chunk.text);
+		for (auto &s : parser.statements) {
+			out.push_back(std::move(s));
+		}
+	}
+	return true;
+}
+
 vector<unique_ptr<SQLStatement>> ClientContext::ParseStatementsInternal(ClientContextLock &lock, const string &query) {
 	try {
-		Parser parser(GetParserOptions());
 		auto &profiler = QueryProfiler::Get(*this);
 		profiler.StartQuery(query);
 		auto parser_timer = profiler.StartTimer<MetricParserTotalTime>();
-		parser.ParseQuery(query);
+
+		vector<unique_ptr<SQLStatement>> statements;
+		if (!TryParseConnectMode(GetParserOptions(), query, statements)) {
+			Parser parser(GetParserOptions());
+			parser.ParseQuery(query);
+			statements = std::move(parser.statements);
+		}
 
 		StatementPreprocessor preprocessor(*this);
 
 		const CurrentTransactionState transaction_context_state =
 		    transaction.HasActiveTransaction() ? IN_ACTIVE_TRANSACTION : NOT_IN_ACTIVE_TRANSACTION;
-		preprocessor.Preprocess(lock, parser.statements, transaction_context_state);
+		preprocessor.Preprocess(lock, statements, transaction_context_state);
 
-		return std::move(parser.statements);
+		return statements;
 	} catch (std::exception &ex) {
 		auto error = ErrorData(ex);
 		ProcessError(error, query);
