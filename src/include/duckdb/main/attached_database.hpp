@@ -137,6 +137,12 @@ public:
 	void SetName(const Identifier &new_name) {
 		name = new_name;
 	}
+	//! Bind a deleter to this attachment: on detach, `CALL <deleter_function>(<deleter_payload>)` runs
+	//! (best-effort) to tear down an external resource the attachment owns (e.g. from LAUNCH).
+	void SetDeleter(string deleter_function_p, Value deleter_payload_p) {
+		deleter_function = std::move(deleter_function_p);
+		deleter_payload = std::move(deleter_payload_p);
+	}
 	bool IsSystem() const;
 	bool IsTemporary() const;
 	bool IsReadOnly() const;
@@ -190,6 +196,9 @@ private:
 	optional_idx vacuum_rebuild_threshold;
 	unordered_map<string, Value> attach_options;
 	optional<string> original_path;
+	//! Deleter binding (from LAUNCH): `CALL <deleter_function>(<deleter_payload>)` runs on detach.
+	string deleter_function;
+	Value deleter_payload;
 
 private:
 	//! Clean any (shared) resources held by the database.

@@ -1,0 +1,91 @@
+# name: test/sql/attach/with_external_resource.test
+# description: WITH EXTERNAL RESOURCE '<type>' [(params)] (ATTACH|CONNECT) AS x — provision + attach/connect
+# group: [attach]
+
+require quack
+
+require httpfs
+
+statement ok
+CALL quack_serve(token='test_token');
+
+# Recipe callbacks (non-TEMP macros). status returns the quack endpoint; destroy is a no-op.
+statement ok
+CREATE MACRO qk_create(p) AS TABLE SELECT MAP {'id': 'q1'} AS handle;
+
+statement ok
+CREATE MACRO qk_status(h) AS TABLE
+  SELECT 'ready' AS state, MAP {'uri': 'localhost', 'attached_db_type': 'quack', 'token': 'test_token'} AS result;
+
+statement ok
+CREATE MACRO qk_destroy(h) AS TABLE SELECT 'destroyed' AS status;
+
+statement ok
+CALL register_external_resource_type('quack@local', kind := 'catalog', create_function := 'qk_create',
+    status_function := 'qk_status', destroy_function := 'qk_destroy');
+
+# ATTACH via WITH EXTERNAL RESOURCE: provisions (create + status) and attaches the endpoint.
+statement ok
+WITH EXTERNAL RESOURCE 'quack@local' ATTACH AS qk;
+
+query I
+SELECT count(*) FROM duckdb_databases() WHERE database_name = 'qk';
+----
+1
+
+# DETACH runs the deleter and removes the attachment.
+statement ok
+DETACH qk;
+
+query I
+SELECT count(*) FROM duckdb_databases() WHERE database_name = 'qk';
+----
+0
+
+# Arbitrary params are accepted and passed through to the create callback (which ignores them here).
+statement ok
+WITH EXTERNAL RESOURCE 'quack@local' (INSTANCE 'r7i.16xlarge', REGION 'eu-west-1', ANYTHING 'else') ATTACH AS qk2;
+
+query I
+SELECT count(*) FROM duckdb_databases() WHERE database_name = 'qk2';
+----
+1
+
+statement ok
+DETACH qk2;
+
+# A resource alias (AS r) is accepted (currently ignored) alongside the attach alias.
+statement ok
+WITH EXTERNAL RESOURCE 'quack@local' AS beefy ATTACH AS qk3;
+
+statement ok
+DETACH qk3;
+
+# An unknown resource type errors.
+statement error
+WITH EXTERNAL RESOURCE 'does-not-exist' ATTACH AS bad;
+----
+<REGEX>:.*unknown resource type.*
+
+# The CONNECT variant provisions and connects (ephemeral, hidden alias).
+statement ok
+WITH EXTERNAL RESOURCE 'quack@local' CONNECT;
+
+statement ok
+DISCONNECT;
+
+# The deleter fires on DETACH: a failing deleter surfaces as a DETACH error (proves invocation).
+statement ok
+CREATE MACRO qk_destroy_fail(h) AS TABLE SELECT CAST('boom' AS INTEGER) AS x;
+
+statement ok
+CALL register_external_resource_type('quackfail@local', kind := 'catalog', create_function := 'qk_create',
+    status_function := 'qk_status', destroy_function := 'qk_destroy_fail');
+
+statement ok
+WITH EXTERNAL RESOURCE 'quackfail@local' ATTACH AS qkf;
+
+statement error
+DETACH qkf;
+----
+<REGEX>:.*deleter function.*failed.*

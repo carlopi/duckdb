@@ -5,6 +5,7 @@
 #include "duckdb/common/constants.hpp"
 #include "duckdb/common/enums/checkpoint_on_detach.hpp"
 #include "duckdb/common/file_system.hpp"
+#include "duckdb/main/connection.hpp"
 #include "duckdb/main/database.hpp"
 #include "duckdb/main/database_manager.hpp"
 #include "duckdb/main/settings.hpp"
@@ -341,6 +342,17 @@ void AttachedDatabase::OnDetach(ClientContext &context) {
 	}
 	if (stored_database_path && visibility != AttachVisibility::HIDDEN) {
 		stored_database_path->OnDetach();
+	}
+	// Run the deleter binding: CALL <deleter_function>(<deleter_payload>) tears down the external
+	// resource this attachment owns (e.g. from LAUNCH). On a separate internal connection, since the
+	// current connection's context lock is held during detach. A failed teardown is a leak, so it
+	// throws (fail the DETACH loudly) rather than silently swallowing.
+	if (!deleter_function.empty()) {
+		Connection con(db);
+		auto result = con.Query("SELECT * FROM " + deleter_function + "(" + deleter_payload.ToSQLString() + ")");
+		if (result->HasError()) {
+			throw IOException("DETACH: deleter function \"%s\" failed: %s", deleter_function, result->GetError());
+		}
 	}
 }
 

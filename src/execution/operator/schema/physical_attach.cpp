@@ -1,7 +1,10 @@
 #include "duckdb/execution/operator/schema/physical_attach.hpp"
 
 #include "duckdb/catalog/catalog.hpp"
+#include "duckdb/common/types/value.hpp"
+#include "duckdb/execution/operator/helper/launch_external_resource.hpp"
 #include "duckdb/main/attached_database.hpp"
+#include "duckdb/main/database.hpp"
 #include "duckdb/main/database_manager.hpp"
 #include "duckdb/main/extension_helper.hpp"
 #include "duckdb/parser/parsed_data/attach_info.hpp"
@@ -15,8 +18,20 @@ namespace duckdb {
 //===--------------------------------------------------------------------===//
 SourceResultType PhysicalAttach::GetDataInternal(ExecutionContext &context, DataChunk &chunk,
                                                  OperatorSourceInput &input) const {
-	// parse the options
 	auto &config = DBConfig::GetConfig(context.client);
+
+	// `WITH EXTERNAL RESOURCE ... ATTACH`: provision the resource first, then attach its endpoint under
+	// this alias and bind the deleter so DETACH tears it down.
+	string deleter_function;
+	Value deleter_payload;
+	if (info->external_resource) {
+		auto &external_resource = *info->external_resource;
+		auto launched = ProvisionExternalResource(context.client, external_resource.provider, external_resource.params);
+		ApplyLaunchedResource(launched, *info);
+		deleter_function = launched.deleter_function;
+		deleter_payload = launched.deleter_payload;
+	}
+
 	// construct the options
 	AttachOptions options(info->options, config.options.access_mode);
 
@@ -35,7 +50,12 @@ SourceResultType PhysicalAttach::GetDataInternal(ExecutionContext &context, Data
 
 	// check ATTACH IF NOT EXISTS
 	auto &db_manager = DatabaseManager::Get(context.client);
-	db_manager.AttachDatabase(context.client, *info, options);
+	auto attached = db_manager.AttachDatabase(context.client, *info, options);
+
+	// Bind the deleter to the attachment so DETACH runs the resource's teardown.
+	if (!deleter_function.empty() && attached) {
+		attached->SetDeleter(std::move(deleter_function), std::move(deleter_payload));
+	}
 	return SourceResultType::FINISHED;
 }
 

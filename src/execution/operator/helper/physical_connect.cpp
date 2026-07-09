@@ -2,6 +2,7 @@
 #include "duckdb/catalog/catalog.hpp"
 #include "duckdb/common/exception.hpp"
 #include "duckdb/common/types/uuid.hpp"
+#include "duckdb/execution/operator/helper/launch_external_resource.hpp"
 #include "duckdb/main/attached_database.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/main/config.hpp"
@@ -19,21 +20,59 @@ SourceResultType PhysicalConnect::GetDataInternal(ExecutionContext &context, Dat
 	if (info->target_is_local) {
 		throw NotImplementedException("CONNECT LOCAL is not yet implemented");
 	}
+
+	auto &client = context.client;
+	auto &db_manager = DatabaseManager::Get(client);
+
+	// At most one active connection; only DISCONNECT clears it (even if the target was detached
+	// elsewhere, so the user explicitly acknowledges the broken connection).
+	auto ensure_not_connected = [&]() {
+		if (client.IsConnected()) {
+			auto current = client.TryGetConnectedCatalog();
+			throw InvalidInputException("Already connected to \"%s\"; DISCONNECT first before issuing another CONNECT",
+			                            current ? current->GetName().GetIdentifierName() : "<detached>");
+		}
+	};
+
+	// `WITH EXTERNAL RESOURCE ... CONNECT`: provision the resource, then ephemeral-attach its endpoint
+	// under a hidden alias and connect to it. The deleter is bound so the DISCONNECT reap tears it down.
+	if (info->external_resource) {
+		ensure_not_connected();
+		auto &external_resource = *info->external_resource;
+		auto launched = ProvisionExternalResource(client, external_resource.provider, external_resource.params);
+		AttachInfo attach_info;
+		attach_info.name = Identifier("__connect_" + UUID::ToString(UUID::GenerateRandomUUID()));
+		// Any attach options supplied after the verb flow through as attach options.
+		for (auto &opt : info->options) {
+			attach_info.options[opt.first] = opt.second;
+		}
+		ApplyLaunchedResource(launched, attach_info);
+
+		auto &config = DBConfig::GetConfig(client);
+		AttachOptions options(attach_info.options, config.options.access_mode);
+		options.visibility = AttachVisibility::HIDDEN;
+		options.ephemeral = true;
+		if (options.db_type.empty()) {
+			DBPathAndType::ExtractExtensionPrefix(attach_info.path, options.db_type);
+		}
+		auto target = db_manager.AttachDatabase(client, attach_info, options);
+		if (!launched.deleter_function.empty() && target) {
+			target->SetDeleter(launched.deleter_function, launched.deleter_payload);
+		}
+		if (!target->GetCatalog().Supports(RemoteCapability::CONNECT)) {
+			db_manager.DetachDatabase(client, attach_info.name, OnEntryNotFound::RETURN_NULL);
+			throw InvalidInputException("WITH EXTERNAL RESOURCE ... CONNECT: the provisioned resource does not "
+			                            "support CONNECT");
+		}
+		client.ConnectToCatalog(target);
+		return SourceResultType::FINISHED;
+	}
+
 	if (info->name.empty()) {
 		throw NotImplementedException("CONNECT with no target is not yet implemented");
 	}
 
-	auto &client = context.client;
-
-	// At most one active connection; only DISCONNECT clears it (even if the target was detached
-	// elsewhere, so the user explicitly acknowledges the broken connection).
-	if (client.IsConnected()) {
-		auto current = client.TryGetConnectedCatalog();
-		throw InvalidInputException("Already connected to \"%s\"; DISCONNECT first before issuing another CONNECT",
-		                            current ? current->GetName().GetIdentifierName() : "<detached>");
-	}
-
-	auto &db_manager = DatabaseManager::Get(client);
+	ensure_not_connected();
 	if (info->name_is_string_literal) {
 		// `CONNECT '<uri>'`: attach the connection string under an internal, hidden, ephemeral alias and
 		// bind to it in one shot. The name is a random UUID (like __pivot_enum_<uuid>): unique, ASCII
