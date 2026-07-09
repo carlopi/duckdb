@@ -8,6 +8,7 @@ const char INLINED_PEG_GRAMMAR[] = {
 	"TopLevelStatement <- Statement? (';'+ / EndOfInput)\n"
 	"Statement <-\n"
 	"	CreateStatement /\n"
+	"	WithExternalResourceStatement /\n"
 	"	SelectStatement /\n"
 	"	SetStatement /\n"
 	"	PragmaStatement /\n"
@@ -602,6 +603,7 @@ const char INLINED_PEG_GRAMMAR[] = {
 	"'REPLACE' /\n"
 	"'REPLICA' /\n"
 	"'RESET' /\n"
+	"'RESOURCE' /\n"
 	"'RESPECT' /\n"
 	"'RESTART' /\n"
 	"'RESTRICT' /\n"
@@ -1716,6 +1718,9 @@ const char INLINED_PEG_GRAMMAR[] = {
 	"OptFreeze <- 'FREEZE'\n"
 	"OptVerbose <- 'VERBOSE'\n"
 	"NameList <- Parens(List(ColId))\n"
+	"WithExternalResourceStatement <- WithExternalResourceAttach / WithExternalResourceConnect\n"
+	"WithExternalResourceAttach <- 'WITH' 'EXTERNAL' 'RESOURCE' Expression AttachAlias? AttachOptions? 'ATTACH' AttachAlias? AttachOptions?\n"
+	"WithExternalResourceConnect <- 'WITH' 'EXTERNAL' 'RESOURCE' Expression AttachAlias? AttachOptions? 'CONNECT' AttachAlias? AttachOptions?\n"
 
 };
 

@@ -4,6 +4,7 @@ TopLevelStatement <- Statement? (';'+ / EndOfInput)
 
 Statement <-
 	CreateStatement /
+	WithExternalResourceStatement /
 	SelectStatement /
 	SetStatement /
 	PragmaStatement /
@@ -615,6 +616,7 @@ UnreservedKeyword <- 'ABORT' /
 'REPLACE' /
 'REPLICA' /
 'RESET' /
+'RESOURCE' /
 'RESPECT' /
 'RESTART' /
 'RESTRICT' /
@@ -1897,3 +1899,7 @@ OptFreeze <- 'FREEZE'
 OptVerbose <- 'VERBOSE'
 
 NameList <- Parens(List(ColId))
+WithExternalResourceStatement <- WithExternalResourceAttach / WithExternalResourceConnect
+WithExternalResourceAttach <- 'WITH' 'EXTERNAL' 'RESOURCE' Expression AttachAlias? AttachOptions? 'ATTACH' AttachAlias? AttachOptions?
+WithExternalResourceConnect <- 'WITH' 'EXTERNAL' 'RESOURCE' Expression AttachAlias? AttachOptions? 'CONNECT' AttachAlias? AttachOptions?
+

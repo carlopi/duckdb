@@ -4636,6 +4636,21 @@ public:
 	                                         TransformStackFrame &frame);
 	static unique_ptr<TransformResultValue>
 	FinalizeNameListTrampoline(PEGTransformer &transformer, TransformStack &stack, TransformStackFrame &frame);
+	static void InitializeWithExternalResourceStatementTrampoline(PEGTransformer &transformer, TransformStack &stack,
+	                                                              TransformStackFrame &frame);
+	static unique_ptr<TransformResultValue> FinalizeWithExternalResourceStatementTrampoline(PEGTransformer &transformer,
+	                                                                                        TransformStack &stack,
+	                                                                                        TransformStackFrame &frame);
+	static void InitializeWithExternalResourceAttachTrampoline(PEGTransformer &transformer, TransformStack &stack,
+	                                                           TransformStackFrame &frame);
+	static unique_ptr<TransformResultValue> FinalizeWithExternalResourceAttachTrampoline(PEGTransformer &transformer,
+	                                                                                     TransformStack &stack,
+	                                                                                     TransformStackFrame &frame);
+	static void InitializeWithExternalResourceConnectTrampoline(PEGTransformer &transformer, TransformStack &stack,
+	                                                            TransformStackFrame &frame);
+	static unique_ptr<TransformResultValue> FinalizeWithExternalResourceConnectTrampoline(PEGTransformer &transformer,
+	                                                                                      TransformStack &stack,
+	                                                                                      TransformStackFrame &frame);
 	//===--------------------------------------------------------------------===//
 	// END GENERATED TRAMPOLINE RULES
 	//===--------------------------------------------------------------------===//
@@ -8204,6 +8219,20 @@ public:
 	static unique_ptr<TransformResultValue> TransformNameListInternal(PEGTransformer &transformer,
 	                                                                  ParseResult &parse_result);
 	static vector<string> TransformNameList(PEGTransformer &transformer, const vector<Identifier> &col_id);
+	static unique_ptr<TransformResultValue> TransformWithExternalResourceStatementInternal(PEGTransformer &transformer,
+	                                                                                       ParseResult &parse_result);
+	static unique_ptr<TransformResultValue> TransformWithExternalResourceAttachInternal(PEGTransformer &transformer,
+	                                                                                    ParseResult &parse_result);
+	static unique_ptr<SQLStatement> TransformWithExternalResourceAttach(
+	    PEGTransformer &transformer, unique_ptr<ParsedExpression> expression, const optional<Identifier> &attach_alias,
+	    const optional<vector<GenericCopyOption>> &attach_options, const optional<Identifier> &attach_alias_1,
+	    const optional<vector<GenericCopyOption>> &attach_options_1);
+	static unique_ptr<TransformResultValue> TransformWithExternalResourceConnectInternal(PEGTransformer &transformer,
+	                                                                                     ParseResult &parse_result);
+	static unique_ptr<SQLStatement> TransformWithExternalResourceConnect(
+	    PEGTransformer &transformer, unique_ptr<ParsedExpression> expression, const optional<Identifier> &attach_alias,
+	    const optional<vector<GenericCopyOption>> &attach_options, const optional<Identifier> &attach_alias_1,
+	    const optional<vector<GenericCopyOption>> &attach_options_1);
 	//===--------------------------------------------------------------------===//
 	// END GENERATED RULES
 	//===--------------------------------------------------------------------===//

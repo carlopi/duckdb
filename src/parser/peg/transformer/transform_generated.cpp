@@ -10301,6 +10301,85 @@ unique_ptr<TransformResultValue> PEGTransformerFactory::TransformNameListInterna
 	return make_uniq<TypedTransformResult<vector<string>>>(result);
 }
 
+unique_ptr<TransformResultValue>
+PEGTransformerFactory::TransformWithExternalResourceStatementInternal(PEGTransformer &transformer,
+                                                                      ParseResult &parse_result) {
+	auto &list_pr = parse_result.Cast<ListParseResult>();
+	auto &choice_pr = list_pr.Child<ChoiceParseResult>(0);
+	auto result = transformer.Transform<unique_ptr<SQLStatement>>(choice_pr.GetResult());
+	return make_uniq<TypedTransformResult<unique_ptr<SQLStatement>>>(std::move(result));
+}
+
+unique_ptr<TransformResultValue>
+PEGTransformerFactory::TransformWithExternalResourceAttachInternal(PEGTransformer &transformer,
+                                                                   ParseResult &parse_result) {
+	auto &list_pr = parse_result.Cast<ListParseResult>();
+	auto expression = transformer.Transform<unique_ptr<ParsedExpression>>(list_pr.GetChild(3));
+	optional<Identifier> attach_alias {};
+	auto &attach_alias_opt = list_pr.GetChild(4).Cast<OptionalParseResult>();
+	if (attach_alias_opt.HasResult()) {
+		auto attach_alias_value = transformer.Transform<Identifier>(attach_alias_opt.GetResult());
+		attach_alias = attach_alias_value;
+	}
+	optional<vector<GenericCopyOption>> attach_options {};
+	auto &attach_options_opt = list_pr.GetChild(5).Cast<OptionalParseResult>();
+	if (attach_options_opt.HasResult()) {
+		auto attach_options_value = transformer.Transform<vector<GenericCopyOption>>(attach_options_opt.GetResult());
+		attach_options = attach_options_value;
+	}
+	optional<Identifier> attach_alias_1 {};
+	auto &attach_alias_1_opt = list_pr.GetChild(7).Cast<OptionalParseResult>();
+	if (attach_alias_1_opt.HasResult()) {
+		auto attach_alias_1_value = transformer.Transform<Identifier>(attach_alias_1_opt.GetResult());
+		attach_alias_1 = attach_alias_1_value;
+	}
+	optional<vector<GenericCopyOption>> attach_options_1 {};
+	auto &attach_options_1_opt = list_pr.GetChild(8).Cast<OptionalParseResult>();
+	if (attach_options_1_opt.HasResult()) {
+		auto attach_options_1_value =
+		    transformer.Transform<vector<GenericCopyOption>>(attach_options_1_opt.GetResult());
+		attach_options_1 = attach_options_1_value;
+	}
+	auto result = TransformWithExternalResourceAttach(transformer, std::move(expression), attach_alias, attach_options,
+	                                                  attach_alias_1, attach_options_1);
+	return make_uniq<TypedTransformResult<unique_ptr<SQLStatement>>>(std::move(result));
+}
+
+unique_ptr<TransformResultValue>
+PEGTransformerFactory::TransformWithExternalResourceConnectInternal(PEGTransformer &transformer,
+                                                                    ParseResult &parse_result) {
+	auto &list_pr = parse_result.Cast<ListParseResult>();
+	auto expression = transformer.Transform<unique_ptr<ParsedExpression>>(list_pr.GetChild(3));
+	optional<Identifier> attach_alias {};
+	auto &attach_alias_opt = list_pr.GetChild(4).Cast<OptionalParseResult>();
+	if (attach_alias_opt.HasResult()) {
+		auto attach_alias_value = transformer.Transform<Identifier>(attach_alias_opt.GetResult());
+		attach_alias = attach_alias_value;
+	}
+	optional<vector<GenericCopyOption>> attach_options {};
+	auto &attach_options_opt = list_pr.GetChild(5).Cast<OptionalParseResult>();
+	if (attach_options_opt.HasResult()) {
+		auto attach_options_value = transformer.Transform<vector<GenericCopyOption>>(attach_options_opt.GetResult());
+		attach_options = attach_options_value;
+	}
+	optional<Identifier> attach_alias_1 {};
+	auto &attach_alias_1_opt = list_pr.GetChild(7).Cast<OptionalParseResult>();
+	if (attach_alias_1_opt.HasResult()) {
+		auto attach_alias_1_value = transformer.Transform<Identifier>(attach_alias_1_opt.GetResult());
+		attach_alias_1 = attach_alias_1_value;
+	}
+	optional<vector<GenericCopyOption>> attach_options_1 {};
+	auto &attach_options_1_opt = list_pr.GetChild(8).Cast<OptionalParseResult>();
+	if (attach_options_1_opt.HasResult()) {
+		auto attach_options_1_value =
+		    transformer.Transform<vector<GenericCopyOption>>(attach_options_1_opt.GetResult());
+		attach_options_1 = attach_options_1_value;
+	}
+	auto result = TransformWithExternalResourceConnect(transformer, std::move(expression), attach_alias, attach_options,
+	                                                   attach_alias_1, attach_options_1);
+	return make_uniq<TypedTransformResult<unique_ptr<SQLStatement>>>(std::move(result));
+}
+
 void PEGTransformerFactory::RegisterGenerated() {
 	static const TransformRule builtin_transform_rules[] = {
 	    {"AlterStatement", &PEGTransformerFactory::TransformAlterStatementInternal},
@@ -11272,6 +11351,9 @@ void PEGTransformerFactory::RegisterGenerated() {
 	    {"OptFreeze", &PEGTransformerFactory::TransformOptFreezeInternal},
 	    {"OptVerbose", &PEGTransformerFactory::TransformOptVerboseInternal},
 	    {"NameList", &PEGTransformerFactory::TransformNameListInternal},
+	    {"WithExternalResourceStatement", &PEGTransformerFactory::TransformWithExternalResourceStatementInternal},
+	    {"WithExternalResourceAttach", &PEGTransformerFactory::TransformWithExternalResourceAttachInternal},
+	    {"WithExternalResourceConnect", &PEGTransformerFactory::TransformWithExternalResourceConnectInternal},
 	};
 	for (const auto &rule : builtin_transform_rules) {
 		sql_transform_functions[rule.name] = rule.transform;

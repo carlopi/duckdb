@@ -102,6 +102,9 @@ SQLStatement:
     - UseStatement
     - VacuumStatement
     - PragmaAssignOrFunction
+    - WithExternalResourceStatement
+    - WithExternalResourceAttach
+    - WithExternalResourceConnect
 
 SelectStatement:
   type: "unique_ptr<SelectStatement>"
