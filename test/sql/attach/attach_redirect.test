@@ -92,3 +92,14 @@ CALL redirect_create('{TEST_DIR}/redirect_ptr.db', 'redirect_real.db');
 
 statement ok
 CALL redirect_create('{TEST_DIR}/redirect_ptr.db', 'redirect_real.db', overwrite => true);
+
+# a redirect to an extension storage type is routed to that type's extension resolution (proving the redirect
+# rewrote the db_type) rather than silently opening the pointer as an empty duckdb database. Using an unknown
+# type keeps this deterministic offline: it fails on extension resolution instead of attaching an empty db.
+statement ok
+CALL redirect_create('{TEST_DIR}/ext_ptr.db', 'some_target', type := 'not_a_real_db_type');
+
+statement error
+ATTACH '{TEST_DIR}/ext_ptr.db' AS extdb;
+----
+not_a_real_db_type
