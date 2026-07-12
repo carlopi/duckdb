@@ -11,7 +11,6 @@
 #include "duckdb/common/constants.hpp"
 #include "duckdb/common/string.hpp"
 #include "duckdb/common/vector.hpp"
-#include "duckdb/common/pair.hpp"
 
 namespace duckdb {
 class WriteStream;

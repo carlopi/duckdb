@@ -20,9 +20,10 @@ void DBPathAndType::ExtractExtensionPrefix(string &path, string &db_type) {
 }
 
 void DBPathAndType::CheckMagicBytes(QueryContext context, FileSystem &fs, string &path, string &db_type,
-                                    optional_ptr<PrefetchedFileData> out_prefetch) {
+                                    optional_ptr<PrefetchedFileData> out_prefetch,
+                                    optional_ptr<RedirectInfo> out_redirect) {
 	// if there isn't - check the magic bytes of the file (if any)
-	auto file_type = MagicBytes::CheckMagicBytes(context, fs, path, out_prefetch);
+	auto file_type = MagicBytes::CheckMagicBytes(context, fs, path, out_prefetch, out_redirect);
 	db_type = string();
 	switch (file_type) {
 	case DataFileType::SQLITE_FILE:
@@ -44,7 +45,8 @@ void DBPathAndType::CheckMagicBytes(QueryContext context, FileSystem &fs, string
 }
 
 void DBPathAndType::ResolveDatabaseType(FileSystem &fs, string &path, string &db_type,
-                                        optional_ptr<PrefetchedFileData> out_prefetch) {
+                                        optional_ptr<PrefetchedFileData> out_prefetch,
+                                        optional_ptr<RedirectInfo> out_redirect) {
 	if (!db_type.empty()) {
 		// database type specified explicitly - no need to check
 		return;
@@ -56,7 +58,7 @@ void DBPathAndType::ResolveDatabaseType(FileSystem &fs, string &path, string &db
 		return;
 	}
 	// check database type by reading the magic bytes of a file
-	DBPathAndType::CheckMagicBytes(QueryContext(), fs, path, db_type, out_prefetch);
+	DBPathAndType::CheckMagicBytes(QueryContext(), fs, path, db_type, out_prefetch, out_redirect);
 }
 
 } // namespace duckdb

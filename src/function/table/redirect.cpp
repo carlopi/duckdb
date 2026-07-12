@@ -1,0 +1,133 @@
+#include "duckdb/function/table/range.hpp"
+#include "duckdb/function/function_set.hpp"
+#include "duckdb/main/client_context.hpp"
+#include "duckdb/common/file_system.hpp"
+#include "duckdb/common/checksum.hpp"
+#include "duckdb/common/helper.hpp"
+#include "duckdb/common/serializer/memory_stream.hpp"
+#include "duckdb/common/types/value.hpp"
+#include "duckdb/storage/storage_info.hpp"
+#include "duckdb/storage/redirect_info.hpp"
+
+namespace duckdb {
+
+//! Write a header-only pointer file: a valid DuckDB container whose MainHeader carries a redirect record and
+//! whose (empty) DatabaseHeaders use the latest storage version, so a reader without redirect support hard-fails
+//! instead of silently opening it as an empty database. Mirrors the default single-file header block layout.
+static void WriteRedirectPointerFile(FileSystem &fs, const string &path, const RedirectInfo &redirect,
+                                     bool overwrite) {
+	if (!overwrite && fs.FileExists(path)) {
+		throw IOException("redirect_create: file \"%s\" already exists (pass overwrite => true to replace it)", path);
+	}
+	auto handle = fs.OpenFile(path, FileFlags::FILE_FLAGS_WRITE | FileFlags::FILE_FLAGS_FILE_CREATE);
+
+	constexpr idx_t block_header = Storage::DEFAULT_BLOCK_HEADER_SIZE;
+	constexpr idx_t file_header = Storage::FILE_HEADER_SIZE;
+	constexpr idx_t data_size = file_header - block_header;
+
+	auto block = make_unsafe_uniq_array<data_t>(file_header);
+
+	// MainHeader block: carries the redirect record. The checksum covers the data region after the block header.
+	memset(block.get(), 0, file_header);
+	MainHeader main_header {};
+	main_header.version_number = VERSION_NUMBER;
+	main_header.SetRedirect();
+	main_header.redirect = redirect;
+	main_header.redirect.is_redirect = true;
+	{
+		MemoryStream ser(block.get() + block_header, data_size);
+		main_header.Write(ser);
+	}
+	Store<uint64_t>(Checksum(block.get() + block_header, data_size), block.get());
+	handle->Write(QueryContext(), block.get(), file_header, 0);
+
+	// Two empty DatabaseHeaders with the latest storage version (poisons old readers).
+	for (idx_t i = 1; i <= 2; i++) {
+		memset(block.get(), 0, file_header);
+		DatabaseHeader db_header;
+		db_header.iteration = 0;
+		db_header.meta_block = idx_t(INVALID_BLOCK);
+		db_header.free_list = idx_t(INVALID_BLOCK);
+		db_header.block_count = 0;
+		db_header.block_alloc_size = DEFAULT_BLOCK_ALLOC_SIZE;
+		db_header.vector_size = STANDARD_VECTOR_SIZE;
+		db_header.storage_compatibility = StorageVersion::V2_0_0;
+		MemoryStream ser(block.get() + block_header, data_size);
+		db_header.Write(ser);
+		Store<uint64_t>(Checksum(block.get() + block_header, data_size), block.get());
+		handle->Write(QueryContext(), block.get(), file_header, file_header * i);
+	}
+	handle->Sync();
+}
+
+struct RedirectCreateBindData : public TableFunctionData {
+	string path;
+	RedirectInfo redirect;
+	bool overwrite = false;
+};
+
+static unique_ptr<FunctionData> RedirectCreateBind(ClientContext &context, TableFunctionBindInput &input,
+                                                   vector<LogicalType> &return_types, vector<string> &names) {
+	auto result = make_uniq<RedirectCreateBindData>();
+	if (input.inputs[0].IsNull() || input.inputs[1].IsNull()) {
+		throw BinderException("redirect_create: the pointer path and target cannot be NULL");
+	}
+	result->path = StringValue::Get(input.inputs[0]);
+	result->redirect.is_redirect = true;
+	result->redirect.target = StringValue::Get(input.inputs[1]);
+	result->redirect.type = "duckdb";
+
+	for (auto &param : input.named_parameters) {
+		if (param.second.IsNull()) {
+			continue;
+		}
+		if (param.first == "type") {
+			result->redirect.type = StringValue::Get(param.second);
+		} else if (param.first == "overwrite") {
+			result->overwrite = BooleanValue::Get(param.second);
+		} else if (param.first == "options") {
+			auto &entries = ListValue::GetChildren(param.second);
+			for (auto &entry : entries) {
+				auto &kv = StructValue::GetChildren(entry);
+				result->redirect.options.push_back(
+				    {StringValue::Get(kv[0].DefaultCastAs(LogicalType::VARCHAR)),
+				     StringValue::Get(kv[1].DefaultCastAs(LogicalType::VARCHAR))});
+			}
+		}
+	}
+
+	return_types.emplace_back(LogicalType::VARCHAR);
+	names.emplace_back("path");
+	return std::move(result);
+}
+
+struct RedirectCreateState : public GlobalTableFunctionState {
+	bool finished = false;
+};
+
+static unique_ptr<GlobalTableFunctionState> RedirectCreateInit(ClientContext &context, TableFunctionInitInput &input) {
+	return make_uniq<RedirectCreateState>();
+}
+
+static void RedirectCreateFunc(ClientContext &context, TableFunctionInput &data_p, DataChunk &output) {
+	auto &bind_data = data_p.bind_data->Cast<RedirectCreateBindData>();
+	auto &state = data_p.global_state->Cast<RedirectCreateState>();
+	if (state.finished) {
+		return;
+	}
+	auto &fs = FileSystem::GetFileSystem(context);
+	WriteRedirectPointerFile(fs, bind_data.path, bind_data.redirect, bind_data.overwrite);
+	output.data[0].Append(Value(bind_data.path));
+	state.finished = true;
+}
+
+void RedirectCreateFunction::RegisterFunction(BuiltinFunctions &set) {
+	TableFunction redirect_create("redirect_create", {LogicalType::VARCHAR, LogicalType::VARCHAR}, RedirectCreateFunc,
+	                              RedirectCreateBind, RedirectCreateInit);
+	redirect_create.named_parameters["type"] = LogicalType::VARCHAR;
+	redirect_create.named_parameters["overwrite"] = LogicalType::BOOLEAN;
+	redirect_create.named_parameters["options"] = LogicalType::MAP(LogicalType::VARCHAR, LogicalType::VARCHAR);
+	set.AddFunction(redirect_create);
+}
+
+} // namespace duckdb

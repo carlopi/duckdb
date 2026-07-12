@@ -1,0 +1,94 @@
+# name: test/sql/attach/attach_redirect.test
+# description: Test redirect-on-attach: a pointer file reinterprets ATTACH to a different target database
+# group: [attach]
+
+# create a real database at the target location
+statement ok
+ATTACH '{TEST_DIR}/redirect_real.db' AS realdb;
+
+statement ok
+CREATE TABLE realdb.t(i INTEGER);
+
+statement ok
+INSERT INTO realdb.t VALUES (42), (43);
+
+statement ok
+DETACH realdb;
+
+# create a pointer file that redirects to the real database. A relative target is resolved against the
+# directory of the pointer file, so a bare filename points at a sibling database.
+statement ok
+CALL redirect_create('{TEST_DIR}/redirect_ptr.db', 'redirect_real.db');
+
+# attaching the pointer is reinterpreted to open the real database
+statement ok
+ATTACH '{TEST_DIR}/redirect_ptr.db' AS ptr;
+
+query I
+SELECT i FROM ptr.t ORDER BY i;
+----
+42
+43
+
+statement ok
+DETACH ptr;
+
+# re-attaching still works
+statement ok
+ATTACH '{TEST_DIR}/redirect_ptr.db' AS ptr2;
+
+query I
+SELECT count(*) FROM ptr2.t;
+----
+2
+
+statement ok
+DETACH ptr2;
+
+# a chained redirect (pointer -> pointer -> real) resolves through the chain
+statement ok
+CALL redirect_create('{TEST_DIR}/redirect_chain.db', 'redirect_ptr.db');
+
+statement ok
+ATTACH '{TEST_DIR}/redirect_chain.db' AS chained;
+
+query I
+SELECT count(*) FROM chained.t;
+----
+2
+
+statement ok
+DETACH chained;
+
+# an explicit TYPE on the ATTACH short-circuits redirect interpretation: the raw pointer file opens as an
+# ordinary (empty) duckdb database, proving the redirect was not applied.
+statement ok
+ATTACH '{TEST_DIR}/redirect_ptr.db' AS raw (TYPE duckdb);
+
+query I
+SELECT count(*) FROM duckdb_tables() WHERE database_name = 'raw';
+----
+0
+
+statement ok
+DETACH raw;
+
+# a redirect cycle is detected and rejected rather than looping forever
+statement ok
+CALL redirect_create('{TEST_DIR}/cycle_a.db', 'cycle_b.db');
+
+statement ok
+CALL redirect_create('{TEST_DIR}/cycle_b.db', 'cycle_a.db');
+
+statement error
+ATTACH '{TEST_DIR}/cycle_a.db' AS cyc;
+----
+redirect
+
+# creating a pointer over an existing file requires overwrite
+statement error
+CALL redirect_create('{TEST_DIR}/redirect_ptr.db', 'redirect_real.db');
+----
+
+statement ok
+CALL redirect_create('{TEST_DIR}/redirect_ptr.db', 'redirect_real.db', overwrite => true);

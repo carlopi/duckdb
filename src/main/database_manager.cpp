@@ -15,8 +15,82 @@
 #include "duckdb/transaction/duck_transaction_manager.hpp"
 #include "duckdb/common/enums/on_entry_not_found.hpp"
 #include "duckdb/transaction/meta_transaction.hpp"
+#include "duckdb/common/file_system.hpp"
+#include "duckdb/common/string_util.hpp"
+#include "duckdb/common/unordered_set.hpp"
+#include "duckdb/main/config.hpp"
+#include "duckdb/parser/parsed_data/attach_info.hpp"
+#include "duckdb/storage/redirect_info.hpp"
 
 namespace duckdb {
+
+//! The maximum number of redirect hops followed when resolving a pointer file. Bounds chains and, together with
+//! cycle detection, guarantees termination.
+static constexpr idx_t MAX_REDIRECT_DEPTH = 8;
+
+//! Resolve a redirect target. A duckdb file target given as a relative path is resolved against the directory of
+//! the pointer file; absolute paths, URIs and remote files are used verbatim.
+static string ResolveRedirectTarget(FileSystem &fs, const string &pointer_path, const string &target,
+                                    bool duckdb_target) {
+	if (!duckdb_target) {
+		return target;
+	}
+	if (fs.IsPathAbsolute(target) || FileSystem::IsRemoteFile(target) || StringUtil::Contains(target, "://")) {
+		return target;
+	}
+	auto dir = StringUtil::GetFilePath(pointer_path);
+	if (dir.empty()) {
+		return target;
+	}
+	return fs.JoinPath(dir, target);
+}
+
+//! Rewrite an ATTACH in place so it opens the redirect target instead of the pointer file. Follows chains up to
+//! MAX_REDIRECT_DEPTH, detects cycles, gates targets behind enable_external_access, and merges stored options
+//! (user-supplied ATTACH options win). After this the normal type-resolution/late-open opens the final target.
+static void ApplyRedirects(ClientContext &context, FileSystem &fs, AttachInfo &info, AttachOptions &options,
+                           RedirectInfo redirect) {
+	auto &config = DBConfig::GetConfig(context);
+	unordered_set<string> visited;
+	visited.insert(info.path);
+	idx_t depth = 0;
+	while (redirect.is_redirect) {
+		if (++depth > MAX_REDIRECT_DEPTH) {
+			throw InvalidInputException(
+			    "ATTACH of \"%s\" exceeded the maximum redirect depth of %llu (possible redirect cycle)", info.path,
+			    MAX_REDIRECT_DEPTH);
+		}
+		const bool duckdb_target = redirect.type.empty() || StringUtil::CIEquals(redirect.type, "duckdb");
+		auto target = ResolveRedirectTarget(fs, info.path, redirect.target, duckdb_target);
+		if (target.empty()) {
+			throw InvalidInputException("ATTACH of \"%s\" has an empty redirect target", info.path);
+		}
+		if (!visited.insert(target).second) {
+			throw InvalidInputException("ATTACH of \"%s\" forms a redirect cycle at target \"%s\"", info.path, target);
+		}
+		if (!config.CanAccessFile(target, FileType::FILE_TYPE_REGULAR)) {
+			throw PermissionException(
+			    "ATTACH of \"%s\" redirects to \"%s\", which is not allowed because enable_external_access is disabled",
+			    info.path, target);
+		}
+
+		// Merge stored options into the options the storage extension reads - user-supplied options win.
+		for (auto &option : redirect.options) {
+			options.options.emplace(option.key, Value(option.value));
+		}
+
+		// Rewrite the attach to point at the target and drop the pointer file's now-stale prefetched header.
+		info.path = target;
+		options.db_type = duckdb_target ? "" : redirect.type;
+		options.prefetched = PrefetchedFileData();
+
+		// Follow another hop only if the target is itself a duckdb file (re-reads its header, refills prefetch).
+		redirect = RedirectInfo();
+		if (duckdb_target) {
+			DBPathAndType::CheckMagicBytes(context, fs, info.path, options.db_type, &options.prefetched, &redirect);
+		}
+	}
+}
 
 // Oids are started at 20000 to avoid colliding with Postgres builtin types, which end at 16383:
 // https://github.com/postgres/postgres/blob/db93988ab0e78396f2ed9e96c826ff988d12b9f2/src/include/access/transam.h#L156-L197
@@ -390,7 +464,13 @@ void DatabaseManager::GetDatabaseType(ClientContext &context, AttachInfo &info, 
 	if (options.db_type.empty()) {
 		auto &fs = FileSystem::GetFileSystem(context);
 		// Prefetch the header for a DuckDB file, reused when opening it (see AttachOptions::prefetched).
-		DBPathAndType::CheckMagicBytes(context, fs, info.path, options.db_type, &options.prefetched);
+		// A redirect record (pointer file), if present, is parsed from the same bytes.
+		RedirectInfo redirect;
+		DBPathAndType::CheckMagicBytes(context, fs, info.path, options.db_type, &options.prefetched, &redirect);
+		if (redirect.is_redirect) {
+			// Reinterpret the ATTACH to open the redirect target instead of the pointer file.
+			ApplyRedirects(context, fs, info, options, std::move(redirect));
+		}
 	}
 
 	if (options.db_type.empty()) {

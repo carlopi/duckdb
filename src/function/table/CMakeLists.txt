@@ -11,6 +11,7 @@ add_library_unity(
   glob.cpp
   query_function.cpp
   range.cpp
+  redirect.cpp
   repeat.cpp
   repeat_row.cpp
   copy_csv.cpp
