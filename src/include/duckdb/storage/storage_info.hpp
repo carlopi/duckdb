@@ -15,6 +15,7 @@
 #include "duckdb/common/optional_idx.hpp"
 #include "duckdb/common/types/string_type.hpp"
 #include "duckdb/common/query_context.hpp"
+#include "duckdb/storage/redirect_info.hpp"
 
 namespace duckdb {
 
@@ -247,6 +248,8 @@ public:
 
 	//! Indicates whether database is encrypted or not.
 	static constexpr uint64_t ENCRYPTED_DATABASE_FLAG = 1;
+	//! Indicates whether this file is a redirect pointer: a redirect record follows the fixed MainHeader fields.
+	static constexpr uint64_t REDIRECT_DATABASE_FLAG = 2;
 	//! The encryption key length.
 	static constexpr uint64_t DEFAULT_ENCRYPTION_KEY_LENGTH = 32;
 	//! The magic bytes in front of the file should be "DUCK".
@@ -262,6 +265,8 @@ public:
 	uint64_t flags[FLAG_COUNT];
 	//! Encryption version
 	uint8_t encryption_version;
+	//! The redirect record. Only serialized/read when REDIRECT_DATABASE_FLAG is set.
+	RedirectInfo redirect;
 
 	//! The length of the unique database identifier.
 	static constexpr idx_t DB_IDENTIFIER_LEN = 16;
@@ -291,6 +296,12 @@ public:
 	}
 	void SetEncrypted() {
 		flags[0] |= MainHeader::ENCRYPTED_DATABASE_FLAG;
+	}
+	bool IsRedirect() const {
+		return flags[0] & MainHeader::REDIRECT_DATABASE_FLAG;
+	}
+	void SetRedirect() {
+		flags[0] |= MainHeader::REDIRECT_DATABASE_FLAG;
 	}
 	void SetEncryptionVersion(uint8_t version) {
 		encryption_version = version;
@@ -355,7 +366,9 @@ public:
 	}
 
 	void Write(WriteStream &ser);
-	static MainHeader Read(ReadStream &source);
+	//! Read a MainHeader. When check_version is false the storage-version gate is skipped, which is used to
+	//! detect a redirect pointer file (a poisoned storage version must not throw before the redirect fires).
+	static MainHeader Read(ReadStream &source, bool check_version = true);
 
 private:
 	data_t library_git_desc[MAX_VERSION_SIZE];
