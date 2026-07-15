@@ -10,12 +10,31 @@
 #include "duckdb/main/connection.hpp"
 #include "duckdb/main/database.hpp"
 #include "duckdb/main/external_resource_type_registry.hpp"
+#include "duckdb/logging/log_type.hpp"
+#include "duckdb/logging/logger.hpp"
 #include "duckdb/parser/qualified_name.hpp"
 
 #include <chrono>
 #include <thread>
 
 namespace duckdb {
+
+//! Empty `extra_info` map for an ExternalResource log entry.
+static Value NoExtraInfo() {
+	return Value::MAP(LogicalType::VARCHAR, LogicalType::VARCHAR, vector<Value>(), vector<Value>());
+}
+
+//! Single-entry `extra_info` map for an ExternalResource log entry.
+static Value ExtraInfo(const string &key, const string &value) {
+	return Value::MAP(LogicalType::VARCHAR, LogicalType::VARCHAR, {Value(key)}, {Value(value)});
+}
+
+//! Log one recipe callback invocation (on response). `resource_type` may be empty (rendered NULL) when
+//! the callsite does not know it; `error` is empty on success.
+static void LogExternalResourceOperation(ClientContext &context, const string &resource_type, const char *operation,
+                                         const string &sql, const string &error, const Value &extra_info) {
+	DUCKDB_LOG(context, ExternalResourceLogType, resource_type, string(), string(operation), error, extra_info, sql);
+}
 
 //! Defaults for the readiness poll loop, both overridable per call via named parameters. A timeout of 0
 //! means wait indefinitely (rely on a terminal status or query cancellation).
@@ -180,6 +199,8 @@ static void CreateExternalResourceFunction(ClientContext &context, TableFunction
 	auto sql = "SELECT * FROM " + QualifiedName::Parse(type->create_function).ToString() + "(" +
 	           bind_data.params.ToSQLString() + ")";
 	auto result = con.Query(sql);
+	LogExternalResourceOperation(context, bind_data.type_name, "create", sql,
+	                             result->HasError() ? result->GetError() : string(), NoExtraInfo());
 	if (result->HasError()) {
 		throw IOException("create_external_resource: create function \"%s\" failed: %s", type->create_function,
 		                  result->GetError());
@@ -197,6 +218,8 @@ static void CreateExternalResourceFunction(ClientContext &context, TableFunction
 	// a rolled-back resource. This guard runs the destroy on every exit path, including exception unwinding.
 	bool deleter_returned = false;
 	struct TeardownGuard {
+		ClientContext &context;
+		const string &resource_type;
 		Connection &con;
 		const string &destroy_function;
 		const Value &handle;
@@ -207,12 +230,17 @@ static void CreateExternalResourceFunction(ClientContext &context, TableFunction
 				return;
 			}
 			try {
-				con.Query("SELECT * FROM " + QualifiedName::Parse(destroy_function).ToString() + "(" +
-				          handle.ToSQLString() + ")");
+				auto sql = "SELECT * FROM " + QualifiedName::Parse(destroy_function).ToString() + "(" +
+				           handle.ToSQLString() + ")";
+				auto res = con.Query(sql);
+				LogExternalResourceOperation(context, resource_type, "destroy", sql,
+				                             res->HasError() ? res->GetError() : string(), NoExtraInfo());
 			} catch (...) { // best-effort: never mask the original failure with a teardown error
 			}
 		}
-	} teardown_guard {con, type->destroy_function, handle, bind_data.teardown_on_failure, deleter_returned};
+	} teardown_guard {
+	    context,         type->destroy_function, con, type->destroy_function, handle, bind_data.teardown_on_failure,
+	    deleter_returned};
 
 	if (type->status_function.empty()) {
 		throw InvalidInputException(
@@ -232,6 +260,14 @@ static void CreateExternalResourceFunction(ClientContext &context, TableFunction
 		auto status_sql = "SELECT state, result FROM " + QualifiedName::Parse(type->status_function).ToString() + "(" +
 		                  handle.ToSQLString() + ")";
 		auto sres = con.Query(status_sql);
+		string poll_state;
+		if (!sres->HasError() && sres->RowCount() > 0) {
+			auto sv = sres->GetValue(0, 0);
+			poll_state = sv.IsNull() ? string() : sv.ToString();
+		}
+		LogExternalResourceOperation(context, bind_data.type_name, "status", status_sql,
+		                             sres->HasError() ? sres->GetError() : string(),
+		                             poll_state.empty() ? NoExtraInfo() : ExtraInfo("state", poll_state));
 		if (sres->HasError()) {
 			throw IOException("create_external_resource: status function \"%s\" failed: %s", type->status_function,
 			                  sres->GetError());
@@ -362,6 +398,9 @@ static void DestroyExternalResourceFunction(ClientContext &context, TableFunctio
 	auto sql = "SELECT * FROM " + QualifiedName::Parse(bind_data.deleter_function).ToString() + "(" +
 	           bind_data.deleter_payload.ToSQLString() + ")";
 	auto result = con.Query(sql);
+	// resource_type is unknown at this callsite (the deleter binding does not carry it).
+	LogExternalResourceOperation(context, string(), "destroy", sql, result->HasError() ? result->GetError() : string(),
+	                             NoExtraInfo());
 	if (result->HasError()) {
 		throw IOException("destroy_external_resource: deleter function \"%s\" failed: %s", bind_data.deleter_function,
 		                  result->GetError());

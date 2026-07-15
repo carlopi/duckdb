@@ -1,0 +1,63 @@
+# name: test/sql/attach/with_external_resource_logging.test
+# description: ExternalResource log type — recipe create/status/destroy calls are logged on response
+# group: [attach]
+
+require quack
+
+statement ok
+CALL enable_logging('ExternalResource', storage='memory');
+
+statement ok
+CALL quack_serve(token='test_token');
+
+statement ok
+CREATE MACRO qk_create(p) AS TABLE SELECT MAP {'id': 'q1'} AS handle;
+
+statement ok
+CREATE MACRO qk_status(h) AS TABLE
+  SELECT 'ready' AS state, MAP {'uri': 'localhost', 'attached_db_type': 'quack', 'token': 'test_token'} AS result;
+
+statement ok
+CREATE MACRO qk_destroy(h) AS TABLE SELECT 'destroyed' AS status;
+
+statement ok
+CALL register_external_resource_type('quack@local', kind := 'catalog', create_function := 'qk_create',
+    status_function := 'qk_status', destroy_function := 'qk_destroy');
+
+statement ok
+WITH EXTERNAL RESOURCE 'quack@local' ATTACH AS qk;
+
+statement ok
+DETACH qk;
+
+# create + status carry the resource type; destroy at DETACH is best-effort (type not carried -> NULL).
+# status carries the returned state in extra_info; all succeed so error is NULL.
+query IIIII
+SELECT operation, outcome, coalesce(resource_type, '<null>'), coalesce(error, '<null>'),
+       extra_info['state']
+FROM duckdb_logs_parsed('ExternalResource')
+ORDER BY timestamp;
+----
+create	ok	quack@local	<null>	NULL
+status	ok	quack@local	<null>	ready
+destroy	ok	<null>	<null>	NULL
+
+# A failing recipe call is logged with outcome 'error' and a non-NULL error message.
+statement ok
+CREATE MACRO qk_create_fail(p) AS TABLE SELECT CAST('boom' AS INTEGER) AS handle;
+
+statement ok
+CALL register_external_resource_type('quackfail@local', kind := 'catalog', create_function := 'qk_create_fail',
+    status_function := 'qk_status', destroy_function := 'qk_destroy');
+
+statement error
+WITH EXTERNAL RESOURCE 'quackfail@local' ATTACH AS bad;
+----
+<REGEX>:.*create function.*failed.*
+
+query III
+SELECT operation, outcome, error IS NOT NULL
+FROM duckdb_logs_parsed('ExternalResource')
+WHERE resource_type = 'quackfail@local';
+----
+create	error	true

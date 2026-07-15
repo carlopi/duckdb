@@ -1,5 +1,6 @@
 #include "duckdb/main/attached_database.hpp"
 #include "duckdb/logging/log_manager.hpp"
+#include "duckdb/logging/log_type.hpp"
 
 #include "duckdb/catalog/duck_catalog.hpp"
 #include "duckdb/common/constants.hpp"
@@ -372,6 +373,10 @@ void ResourceDeleter::Delete() {
 	// On a separate internal connection, since the current connection's context lock is held.
 	Connection con(db);
 	auto result = con.Query(sql);
+	// resource_type is not carried on the deleter binding, so it is logged NULL here.
+	DUCKDB_LOG(db, ExternalResourceLogType, string(), string(), string("destroy"),
+	           result->HasError() ? result->GetError() : string(),
+	           Value::MAP(LogicalType::VARCHAR, LogicalType::VARCHAR, vector<Value>(), vector<Value>()), sql);
 	if (result->HasError()) {
 		// A failed teardown is a leak, so fail loudly and say how to retry it manually.
 		throw IOException("external resource teardown failed: %s. The resource was NOT torn down; run `%s;` "
