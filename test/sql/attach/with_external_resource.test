@@ -110,7 +110,7 @@ WITH EXTERNAL RESOURCE 'quackfail@local' ATTACH AS qkf;
 statement error
 DETACH qkf;
 ----
-<REGEX>:.*deleter function.*failed.*retry the teardown.*
+<REGEX>:.*teardown failed.*retry the teardown.*
 
 query I
 SELECT count(*) FROM duckdb_databases() WHERE database_name = 'qkf';

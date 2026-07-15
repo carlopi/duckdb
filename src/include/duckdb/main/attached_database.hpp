@@ -105,7 +105,10 @@ class ResourceDeleter {
 public:
 	ResourceDeleter(DatabaseInstance &db, string deleter_function, Value deleter_payload);
 
-	//! Run the teardown; throws on failure, including how to retry the teardown manually.
+	//! The teardown query `SELECT * FROM <deleter_function>(<deleter_payload>)`, with the function name
+	//! safely quoted. Empty if there is no deleter. The single source of the teardown SQL.
+	string DeleteSQL() const;
+	//! Run the teardown on a private internal connection; throws on failure, with a retry hint.
 	void Delete();
 	//! Best-effort teardown: logs a warning on failure instead of throwing.
 	void TryDelete();

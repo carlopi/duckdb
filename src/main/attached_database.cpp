@@ -354,22 +354,29 @@ ResourceDeleter::ResourceDeleter(DatabaseInstance &db, string deleter_function_p
     : db(db), deleter_function(std::move(deleter_function_p)), deleter_payload(std::move(deleter_payload_p)) {
 }
 
-void ResourceDeleter::Delete() {
+string ResourceDeleter::DeleteSQL() const {
 	if (deleter_function.empty()) {
-		return;
+		return string();
 	}
 	// Render the (possibly schema-qualified) function name with each component properly quoted, so a
 	// name needing quoting is valid SQL and a registry-supplied string cannot inject SQL.
 	auto function_name = QualifiedName::Parse(deleter_function).ToString();
+	return "SELECT * FROM " + function_name + "(" + deleter_payload.ToSQLString() + ")";
+}
+
+void ResourceDeleter::Delete() {
+	auto sql = DeleteSQL();
+	if (sql.empty()) {
+		return;
+	}
 	// On a separate internal connection, since the current connection's context lock is held.
 	Connection con(db);
-	auto sql = "SELECT * FROM " + function_name + "(" + deleter_payload.ToSQLString() + ")";
 	auto result = con.Query(sql);
 	if (result->HasError()) {
 		// A failed teardown is a leak, so fail loudly and say how to retry it manually.
-		throw IOException("deleter function %s failed: %s. The external resource was NOT torn down; run `%s;` "
+		throw IOException("external resource teardown failed: %s. The resource was NOT torn down; run `%s;` "
 		                  "to retry the teardown",
-		                  function_name, result->GetError(), sql);
+		                  result->GetError(), sql);
 	}
 }
 
