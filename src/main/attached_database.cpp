@@ -10,6 +10,7 @@
 #include "duckdb/main/database_manager.hpp"
 #include "duckdb/main/settings.hpp"
 #include "duckdb/parser/parsed_data/attach_info.hpp"
+#include "duckdb/parser/qualified_name.hpp"
 #include "duckdb/storage/storage_extension.hpp"
 #include "duckdb/storage/storage_manager.hpp"
 #include "duckdb/transaction/duck_transaction_manager.hpp"
@@ -357,15 +358,18 @@ void ResourceDeleter::Delete() {
 	if (deleter_function.empty()) {
 		return;
 	}
+	// Render the (possibly schema-qualified) function name with each component properly quoted, so a
+	// name needing quoting is valid SQL and a registry-supplied string cannot inject SQL.
+	auto function_name = QualifiedName::Parse(deleter_function).ToString();
 	// On a separate internal connection, since the current connection's context lock is held.
 	Connection con(db);
-	auto sql = "SELECT * FROM " + deleter_function + "(" + deleter_payload.ToSQLString() + ")";
+	auto sql = "SELECT * FROM " + function_name + "(" + deleter_payload.ToSQLString() + ")";
 	auto result = con.Query(sql);
 	if (result->HasError()) {
 		// A failed teardown is a leak, so fail loudly and say how to retry it manually.
-		throw IOException("deleter function \"%s\" failed: %s. The external resource was NOT torn down; run `%s;` "
+		throw IOException("deleter function %s failed: %s. The external resource was NOT torn down; run `%s;` "
 		                  "to retry the teardown",
-		                  deleter_function, result->GetError(), sql);
+		                  function_name, result->GetError(), sql);
 	}
 }
 

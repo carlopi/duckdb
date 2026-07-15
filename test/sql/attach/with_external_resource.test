@@ -117,6 +117,29 @@ SELECT count(*) FROM duckdb_databases() WHERE database_name = 'qkf';
 ----
 0
 
+# The deleter function name is quoted as an identifier, so a registry-supplied string cannot inject
+# SQL: an injection payload becomes an unknown-function error, not executed statements.
+statement ok
+CREATE TABLE victim(x INTEGER);
+
+statement ok
+CALL register_external_resource_type('quackinj@local', kind := 'catalog', create_function := 'qk_create',
+    status_function := 'qk_status', destroy_function := 'qk_destroy(1); DROP TABLE victim; --');
+
+statement ok
+WITH EXTERNAL RESOURCE 'quackinj@local' ATTACH AS qki;
+
+statement error
+DETACH qki;
+----
+<REGEX>:.*does not exist.*
+
+# The injected DROP did not run: victim survives.
+query I
+SELECT count(*) FROM duckdb_tables() WHERE table_name = 'victim';
+----
+1
+
 # A deleter with a side effect (sequence) proves single invocation on each teardown path.
 statement ok
 CREATE SEQUENCE destroy_seq;
