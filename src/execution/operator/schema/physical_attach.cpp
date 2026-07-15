@@ -20,23 +20,27 @@ SourceResultType PhysicalAttach::GetDataInternal(ExecutionContext &context, Data
                                                  OperatorSourceInput &input) const {
 	auto &config = DBConfig::GetConfig(context.client);
 
+	// Attach mutates the info (name resolution, path prefix stripping, injected provision options), so
+	// work on a copy: the plan-owned info must stay pristine for a re-executed prepared statement.
+	auto attach_info = info->Copy();
+
 	// `WITH EXTERNAL RESOURCE ... ATTACH`: provision the resource first, then attach its endpoint under
 	// this alias with the deleter bound so DETACH tears it down.
 	LaunchedResource launched;
-	if (info->external_resource) {
-		auto &external_resource = *info->external_resource;
+	if (attach_info->external_resource) {
+		auto &external_resource = *attach_info->external_resource;
 		launched = ProvisionExternalResource(context.client, external_resource.provider, external_resource.params);
-		ApplyLaunchedResource(launched, *info);
+		ApplyLaunchedResource(launched, *attach_info);
 	}
 
 	// construct the options
-	AttachOptions options(info->options, config.options.access_mode);
+	AttachOptions options(attach_info->options, config.options.access_mode);
 	options.deleter_function = launched.deleter_function;
 	options.deleter_payload = launched.deleter_payload;
 
 	// get the name and path of the database
-	auto &name = info->name;
-	auto &path = info->path;
+	auto &name = attach_info->name;
+	auto &path = attach_info->path;
 	// preserve the verbatim path before extension-prefix stripping
 	options.original_path = path;
 	if (options.db_type.empty()) {
@@ -50,7 +54,7 @@ SourceResultType PhysicalAttach::GetDataInternal(ExecutionContext &context, Data
 	// check ATTACH IF NOT EXISTS
 	auto &db_manager = DatabaseManager::Get(context.client);
 	try {
-		db_manager.AttachDatabase(context.client, *info, options);
+		db_manager.AttachDatabase(context.client, *attach_info, options);
 	} catch (...) {
 		// Compensating teardown (best-effort): the attach failed, so nothing owns the provisioned
 		// resource. The attach error takes precedence over a teardown failure.
