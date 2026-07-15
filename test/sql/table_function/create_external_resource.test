@@ -32,6 +32,13 @@ SELECT result FROM create_external_resource('mock@local');
 ----
 {uri='quack:localhost:9494', attached_db_type=quack, token=t1}
 
+# Adopt: `handle :=` skips create and resolves the given handle via status. The returned handle is the
+# provided one (not what create would mint), and the endpoint still comes from the status poll.
+query TT
+SELECT handle, uri FROM create_external_resource('mock@local', handle := MAP {'id': 'adopted'});
+----
+{id=adopted}	quack:localhost:9494
+
 # End-to-end: capture the deleter binding and invoke it.
 statement ok
 SET VARIABLE dfn = (SELECT deleter_function FROM create_external_resource('mock@local'));
