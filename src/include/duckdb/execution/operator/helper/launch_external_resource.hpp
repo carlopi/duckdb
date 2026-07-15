@@ -30,7 +30,8 @@ struct LaunchedResource {
 //! `create_external_resource`, returning the endpoint, connect options and deleter binding. Runs on a
 //! separate internal connection (the caller holds its context lock).
 LaunchedResource ProvisionExternalResource(ClientContext &client, const string &provider,
-                                           const unordered_map<string, Value> &params);
+                                           const unordered_map<string, Value> &params,
+                                           const string &resource_name = string());
 
 //! Rewrite an AttachInfo to point at a provisioned resource: set path=uri, options["type"], and flow the
 //! remaining result options (e.g. token) as attach options.

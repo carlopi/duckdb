@@ -40,7 +40,10 @@ SourceResultType PhysicalConnect::GetDataInternal(ExecutionContext &context, Dat
 	if (info->external_resource) {
 		ensure_not_connected();
 		auto &external_resource = *info->external_resource;
-		auto launched = ProvisionExternalResource(client, external_resource.provider, external_resource.params);
+		auto resource_type = external_resource.provider;
+		auto resource_name = external_resource.alias.GetIdentifierName();
+		auto launched =
+		    ProvisionExternalResource(client, external_resource.provider, external_resource.params, resource_name);
 		AttachInfo attach_info;
 		attach_info.name = Identifier("__connect_" + UUID::ToString(UUID::GenerateRandomUUID()));
 		// Any attach options supplied after the verb flow through as attach options.
@@ -55,6 +58,8 @@ SourceResultType PhysicalConnect::GetDataInternal(ExecutionContext &context, Dat
 		options.ephemeral = true;
 		options.deleter_function = launched.deleter_function;
 		options.deleter_payload = launched.deleter_payload;
+		options.deleter_resource_type = resource_type;
+		options.deleter_resource_name = resource_name;
 		if (options.db_type.empty()) {
 			DBPathAndType::ExtractExtensionPrefix(attach_info.path, options.db_type);
 		}
@@ -64,7 +69,8 @@ SourceResultType PhysicalConnect::GetDataInternal(ExecutionContext &context, Dat
 		} catch (...) {
 			// Compensating teardown (best-effort): the attach failed, so nothing owns the provisioned
 			// resource. The attach error takes precedence over a teardown failure.
-			ResourceDeleter(DatabaseInstance::GetDatabase(client), launched.deleter_function, launched.deleter_payload)
+			ResourceDeleter(DatabaseInstance::GetDatabase(client), launched.deleter_function, launched.deleter_payload,
+			                resource_type, resource_name)
 			    .TryDelete();
 			throw;
 		}

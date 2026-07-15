@@ -24,23 +24,41 @@ statement ok
 CALL register_external_resource_type('quack@local', kind := 'catalog', create_function := 'qk_create',
     status_function := 'qk_status', destroy_function := 'qk_destroy');
 
+# The resource alias (AS yoooo) is threaded to every operation, including the DETACH-time destroy.
 statement ok
-WITH EXTERNAL RESOURCE 'quack@local' ATTACH AS qk;
+WITH EXTERNAL RESOURCE 'quack@local' AS yoooo ATTACH AS qk;
 
 statement ok
 DETACH qk;
 
-# create + status carry the resource type; destroy at DETACH is best-effort (type not carried -> NULL).
-# status carries the returned state in extra_info; all succeed so error is NULL.
-query IIIII
-SELECT operation, outcome, coalesce(resource_type, '<null>'), coalesce(error, '<null>'),
-       extra_info['state']
+# All three operations carry the resource type + name; status carries the returned state in extra_info;
+# all succeed so error is NULL.
+query IIIIII
+SELECT operation, outcome, coalesce(resource_type, '<null>'), coalesce(resource_name, '<null>'),
+       coalesce(error, '<null>'), extra_info['state']
 FROM duckdb_logs_parsed('ExternalResource')
 ORDER BY timestamp;
 ----
-create	ok	quack@local	<null>	NULL
-status	ok	quack@local	<null>	ready
-destroy	ok	<null>	<null>	NULL
+create	ok	quack@local	yoooo	<null>	NULL
+status	ok	quack@local	yoooo	<null>	ready
+destroy	ok	quack@local	yoooo	<null>	NULL
+
+# An anonymous resource (no AS) leaves resource_name NULL.
+statement ok
+CALL truncate_duckdb_logs();
+
+statement ok
+WITH EXTERNAL RESOURCE 'quack@local' ATTACH AS anon;
+
+statement ok
+DETACH anon;
+
+query II
+SELECT operation, resource_name IS NULL FROM duckdb_logs_parsed('ExternalResource') ORDER BY timestamp;
+----
+create	true
+status	true
+destroy	true
 
 # A failing recipe call is logged with outcome 'error' and a non-NULL error message.
 statement ok

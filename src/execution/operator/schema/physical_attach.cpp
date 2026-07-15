@@ -27,9 +27,13 @@ SourceResultType PhysicalAttach::GetDataInternal(ExecutionContext &context, Data
 	// `WITH EXTERNAL RESOURCE ... ATTACH`: provision the resource first, then attach its endpoint under
 	// this alias with the deleter bound so DETACH tears it down.
 	LaunchedResource launched;
+	string resource_type, resource_name;
 	if (attach_info->external_resource) {
 		auto &external_resource = *attach_info->external_resource;
-		launched = ProvisionExternalResource(context.client, external_resource.provider, external_resource.params);
+		resource_type = external_resource.provider;
+		resource_name = external_resource.alias.GetIdentifierName();
+		launched = ProvisionExternalResource(context.client, external_resource.provider, external_resource.params,
+		                                     resource_name);
 		ApplyLaunchedResource(launched, *attach_info);
 	}
 
@@ -37,6 +41,8 @@ SourceResultType PhysicalAttach::GetDataInternal(ExecutionContext &context, Data
 	AttachOptions options(attach_info->options, config.options.access_mode);
 	options.deleter_function = launched.deleter_function;
 	options.deleter_payload = launched.deleter_payload;
+	options.deleter_resource_type = resource_type;
+	options.deleter_resource_name = resource_name;
 
 	// get the name and path of the database
 	auto &name = attach_info->name;
@@ -59,7 +65,7 @@ SourceResultType PhysicalAttach::GetDataInternal(ExecutionContext &context, Data
 		// Compensating teardown (best-effort): the attach failed, so nothing owns the provisioned
 		// resource. The attach error takes precedence over a teardown failure.
 		ResourceDeleter(DatabaseInstance::GetDatabase(context.client), launched.deleter_function,
-		                launched.deleter_payload)
+		                launched.deleter_payload, resource_type, resource_name)
 		    .TryDelete();
 		throw;
 	}

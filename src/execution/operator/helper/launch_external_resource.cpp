@@ -9,7 +9,7 @@
 namespace duckdb {
 
 LaunchedResource ProvisionExternalResource(ClientContext &client, const string &provider,
-                                           const unordered_map<string, Value> &params) {
+                                           const unordered_map<string, Value> &params, const string &resource_name) {
 	if (provider.empty()) {
 		throw BinderException("WITH EXTERNAL RESOURCE: a resource type is required");
 	}
@@ -26,9 +26,11 @@ LaunchedResource ProvisionExternalResource(ClientContext &client, const string &
 
 	// Provision on a separate internal connection (the current connection's context lock is held).
 	Connection con(DatabaseInstance::GetDatabase(client));
+	// resource_name is forwarded only for observability (it labels the recipe-call log entries).
+	auto name_arg = resource_name.empty() ? string() : ", resource_name := " + Value(resource_name).ToSQLString();
 	auto sql = "SELECT uri, attached_db_type, result, deleter_function, deleter_payload "
 	           "FROM create_external_resource(" +
-	           Value(provider).ToSQLString() + ", params := " + params_map.ToSQLString() + ")";
+	           Value(provider).ToSQLString() + ", params := " + params_map.ToSQLString() + name_arg + ")";
 	auto res = con.Query(sql);
 	if (res->HasError()) {
 		throw IOException("WITH EXTERNAL RESOURCE: provisioning '%s' failed: %s", provider, res->GetError());

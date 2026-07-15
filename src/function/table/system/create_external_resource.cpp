@@ -31,9 +31,11 @@ static Value ExtraInfo(const string &key, const string &value) {
 
 //! Log one recipe callback invocation (on response). `resource_type` may be empty (rendered NULL) when
 //! the callsite does not know it; `error` is empty on success.
-static void LogExternalResourceOperation(ClientContext &context, const string &resource_type, const char *operation,
-                                         const string &sql, const string &error, const Value &extra_info) {
-	DUCKDB_LOG(context, ExternalResourceLogType, resource_type, string(), string(operation), error, extra_info, sql);
+static void LogExternalResourceOperation(ClientContext &context, const string &resource_type,
+                                         const string &resource_name, const char *operation, const string &sql,
+                                         const string &error, const Value &extra_info) {
+	DUCKDB_LOG(context, ExternalResourceLogType, resource_type, resource_name, string(operation), error, extra_info,
+	           sql);
 }
 
 //! Defaults for the readiness poll loop, both overridable per call via named parameters. A timeout of 0
@@ -113,6 +115,7 @@ static int64_t ReadSecondsParameter(const string &key, const Value &value, int64
 
 struct CreateExternalResourceBindData : public TableFunctionData {
 	string type_name;
+	string resource_name;
 	Value params;
 	bool teardown_on_failure = true;
 	int64_t timeout_seconds = DEFAULT_READINESS_TIMEOUT_SECONDS;
@@ -135,6 +138,8 @@ static unique_ptr<FunctionData> CreateExternalResourceBind(ClientContext &contex
 		auto key = StringUtil::Lower(np.first.GetIdentifierName());
 		if (key == "params" && !np.second.IsNull()) {
 			result->params = np.second;
+		} else if (key == "resource_name" && !np.second.IsNull()) {
+			result->resource_name = StringValue::Get(np.second);
 		} else if (key == "teardown_on_failure" && !np.second.IsNull()) {
 			result->teardown_on_failure = BooleanValue::Get(np.second);
 		} else if (key == "timeout_seconds" && !np.second.IsNull()) {
@@ -199,7 +204,7 @@ static void CreateExternalResourceFunction(ClientContext &context, TableFunction
 	auto sql = "SELECT * FROM " + QualifiedName::Parse(type->create_function).ToString() + "(" +
 	           bind_data.params.ToSQLString() + ")";
 	auto result = con.Query(sql);
-	LogExternalResourceOperation(context, bind_data.type_name, "create", sql,
+	LogExternalResourceOperation(context, bind_data.type_name, bind_data.resource_name, "create", sql,
 	                             result->HasError() ? result->GetError() : string(), NoExtraInfo());
 	if (result->HasError()) {
 		throw IOException("create_external_resource: create function \"%s\" failed: %s", type->create_function,
@@ -220,6 +225,7 @@ static void CreateExternalResourceFunction(ClientContext &context, TableFunction
 	struct TeardownGuard {
 		ClientContext &context;
 		const string &resource_type;
+		const string &resource_name;
 		Connection &con;
 		const string &destroy_function;
 		const Value &handle;
@@ -233,14 +239,13 @@ static void CreateExternalResourceFunction(ClientContext &context, TableFunction
 				auto sql = "SELECT * FROM " + QualifiedName::Parse(destroy_function).ToString() + "(" +
 				           handle.ToSQLString() + ")";
 				auto res = con.Query(sql);
-				LogExternalResourceOperation(context, resource_type, "destroy", sql,
+				LogExternalResourceOperation(context, resource_type, resource_name, "destroy", sql,
 				                             res->HasError() ? res->GetError() : string(), NoExtraInfo());
 			} catch (...) { // best-effort: never mask the original failure with a teardown error
 			}
 		}
-	} teardown_guard {
-	    context,         type->destroy_function, con, type->destroy_function, handle, bind_data.teardown_on_failure,
-	    deleter_returned};
+	} teardown_guard {context, bind_data.type_name,           bind_data.resource_name, con, type->destroy_function,
+	                  handle,  bind_data.teardown_on_failure, deleter_returned};
 
 	if (type->status_function.empty()) {
 		throw InvalidInputException(
@@ -265,7 +270,7 @@ static void CreateExternalResourceFunction(ClientContext &context, TableFunction
 			auto sv = sres->GetValue(0, 0);
 			poll_state = sv.IsNull() ? string() : sv.ToString();
 		}
-		LogExternalResourceOperation(context, bind_data.type_name, "status", status_sql,
+		LogExternalResourceOperation(context, bind_data.type_name, bind_data.resource_name, "status", status_sql,
 		                             sres->HasError() ? sres->GetError() : string(),
 		                             poll_state.empty() ? NoExtraInfo() : ExtraInfo("state", poll_state));
 		if (sres->HasError()) {
@@ -345,6 +350,7 @@ void CreateExternalResourceFun::RegisterFunction(BuiltinFunctions &set) {
 	TableFunction fn("create_external_resource", {LogicalType::VARCHAR}, CreateExternalResourceFunction,
 	                 CreateExternalResourceBind, CreateExternalResourceInit);
 	fn.named_parameters["params"] = LogicalType::MAP(LogicalType::VARCHAR, LogicalType::VARCHAR);
+	fn.named_parameters["resource_name"] = LogicalType::VARCHAR;
 	fn.named_parameters["teardown_on_failure"] = LogicalType::BOOLEAN;
 	fn.named_parameters["timeout_seconds"] = LogicalType::BIGINT;
 	fn.named_parameters["poll_interval_seconds"] = LogicalType::BIGINT;
@@ -398,9 +404,9 @@ static void DestroyExternalResourceFunction(ClientContext &context, TableFunctio
 	auto sql = "SELECT * FROM " + QualifiedName::Parse(bind_data.deleter_function).ToString() + "(" +
 	           bind_data.deleter_payload.ToSQLString() + ")";
 	auto result = con.Query(sql);
-	// resource_type is unknown at this callsite (the deleter binding does not carry it).
-	LogExternalResourceOperation(context, string(), "destroy", sql, result->HasError() ? result->GetError() : string(),
-	                             NoExtraInfo());
+	// resource_type/name are unknown at this callsite (the deleter binding does not carry them).
+	LogExternalResourceOperation(context, string(), string(), "destroy", sql,
+	                             result->HasError() ? result->GetError() : string(), NoExtraInfo());
 	if (result->HasError()) {
 		throw IOException("destroy_external_resource: deleter function \"%s\" failed: %s", bind_data.deleter_function,
 		                  result->GetError());

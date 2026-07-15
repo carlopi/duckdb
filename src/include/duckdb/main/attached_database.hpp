@@ -94,6 +94,10 @@ struct AttachOptions {
 	//! runs to tear down the external resource the attachment owns.
 	string deleter_function;
 	Value deleter_payload;
+	//! Resource type (provider) and name (the `AS r` alias) of the owned resource, carried for teardown
+	//! logging only. resource_name is empty for an anonymous resource.
+	string deleter_resource_type;
+	string deleter_resource_name;
 	//! Header prefetched during file-type detection, reused when opening the file. Empty for non-DuckDB files.
 	PrefetchedFileData prefetched;
 };
@@ -103,7 +107,8 @@ struct AttachOptions {
 //! AttachedDatabase::ExtractDeleter, so exactly one owner ever runs it.
 class ResourceDeleter {
 public:
-	ResourceDeleter(DatabaseInstance &db, string deleter_function, Value deleter_payload);
+	ResourceDeleter(DatabaseInstance &db, string deleter_function, Value deleter_payload, string resource_type,
+	                string resource_name);
 
 	//! The teardown query `SELECT * FROM <deleter_function>(<deleter_payload>)`, with the function name
 	//! safely quoted. Empty if there is no deleter. The single source of the teardown SQL.
@@ -117,6 +122,8 @@ private:
 	DatabaseInstance &db;
 	string deleter_function;
 	Value deleter_payload;
+	string resource_type;
+	string resource_name;
 };
 
 //! The AttachedDatabase represents an attached database instance.
@@ -222,6 +229,8 @@ private:
 	//! Deleter binding (from WITH EXTERNAL RESOURCE): moved out via ExtractDeleter on detach.
 	string deleter_function;
 	Value deleter_payload;
+	string deleter_resource_type;
+	string deleter_resource_name;
 
 private:
 	//! Clean any (shared) resources held by the database.

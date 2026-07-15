@@ -153,6 +153,8 @@ AttachedDatabase::AttachedDatabase(DatabaseInstance &db, Catalog &catalog_p, Ide
 	original_path = options.original_path;
 	deleter_function = options.deleter_function;
 	deleter_payload = options.deleter_payload;
+	deleter_resource_type = options.deleter_resource_type;
+	deleter_resource_name = options.deleter_resource_name;
 
 	// We create the storage after the catalog to guarantee we allow extensions to instantiate the DuckCatalog.
 	catalog = make_uniq<DuckCatalog>(*this);
@@ -179,6 +181,8 @@ AttachedDatabase::AttachedDatabase(DatabaseInstance &db, Catalog &catalog_p, Sto
 	original_path = options.original_path;
 	deleter_function = options.deleter_function;
 	deleter_payload = options.deleter_payload;
+	deleter_resource_type = options.deleter_resource_type;
+	deleter_resource_name = options.deleter_resource_name;
 
 	optional_ptr<StorageExtensionInfo> storage_info = storage_extension->storage_info.get();
 	catalog = storage_extension->attach(storage_info, context, *this, name.GetIdentifierName(), info, options);
@@ -351,8 +355,10 @@ void AttachedDatabase::OnDetach(ClientContext &context) {
 	}
 }
 
-ResourceDeleter::ResourceDeleter(DatabaseInstance &db, string deleter_function_p, Value deleter_payload_p)
-    : db(db), deleter_function(std::move(deleter_function_p)), deleter_payload(std::move(deleter_payload_p)) {
+ResourceDeleter::ResourceDeleter(DatabaseInstance &db, string deleter_function_p, Value deleter_payload_p,
+                                 string resource_type_p, string resource_name_p)
+    : db(db), deleter_function(std::move(deleter_function_p)), deleter_payload(std::move(deleter_payload_p)),
+      resource_type(std::move(resource_type_p)), resource_name(std::move(resource_name_p)) {
 }
 
 string ResourceDeleter::DeleteSQL() const {
@@ -373,8 +379,7 @@ void ResourceDeleter::Delete() {
 	// On a separate internal connection, since the current connection's context lock is held.
 	Connection con(db);
 	auto result = con.Query(sql);
-	// resource_type is not carried on the deleter binding, so it is logged NULL here.
-	DUCKDB_LOG(db, ExternalResourceLogType, string(), string(), string("destroy"),
+	DUCKDB_LOG(db, ExternalResourceLogType, resource_type, resource_name, string("destroy"),
 	           result->HasError() ? result->GetError() : string(),
 	           Value::MAP(LogicalType::VARCHAR, LogicalType::VARCHAR, vector<Value>(), vector<Value>()), sql);
 	if (result->HasError()) {
@@ -397,7 +402,8 @@ unique_ptr<ResourceDeleter> AttachedDatabase::ExtractDeleter() {
 	if (deleter_function.empty()) {
 		return nullptr;
 	}
-	auto result = make_uniq<ResourceDeleter>(db, std::move(deleter_function), std::move(deleter_payload));
+	auto result = make_uniq<ResourceDeleter>(db, std::move(deleter_function), std::move(deleter_payload),
+	                                         std::move(deleter_resource_type), std::move(deleter_resource_name));
 	deleter_function.clear();
 	return result;
 }
