@@ -1,3 +1,4 @@
+#include "duckdb/parser/expression/constant_expression.hpp"
 #include "duckdb/parser/peg/ast/generic_copy_option.hpp"
 #include "duckdb/parser/peg/transformer/peg_transformer.hpp"
 #include "duckdb/parser/parsed_data/external_resource_options.hpp"
@@ -20,7 +21,12 @@ static unique_ptr<ExternalResourceOptions> BuildExternalResource(unique_ptr<Pars
 	}
 	if (params) {
 		for (const auto &opt : *params) {
-			result->parsed_params[opt.name.GetIdentifierName()] = opt.GetFirstChildOrExpression();
+			if (!opt.expression && opt.children.empty()) {
+				// Bare flag (e.g. `(SPOT)`): boolean true, mirroring ATTACH/CONNECT option handling.
+				result->parsed_params[opt.name.GetIdentifierName()] = make_uniq<ConstantExpression>(Value(true));
+			} else {
+				result->parsed_params[opt.name.GetIdentifierName()] = opt.GetFirstChildOrExpression();
+			}
 		}
 	}
 	return result;
@@ -46,12 +52,12 @@ unique_ptr<SQLStatement> PEGTransformerFactory::TransformWithExternalResourceAtt
 
 unique_ptr<SQLStatement> PEGTransformerFactory::TransformWithExternalResourceConnect(
     PEGTransformer &transformer, unique_ptr<ParsedExpression> expression, const optional<Identifier> &attach_alias,
-    const optional<vector<GenericCopyOption>> &attach_options, const optional<Identifier> &attach_alias_1,
+    const optional<vector<GenericCopyOption>> &attach_options,
     const optional<vector<GenericCopyOption>> &attach_options_1) {
 	auto result = make_uniq<ConnectStatement>();
 	auto info = make_uniq<ConnectInfo>();
-	// The connection is ephemeral and hidden (physical_connect names it internally), so `AS y` has no
-	// referent in the CONNECT model and is ignored.
+	// The connection is ephemeral and hidden (physical_connect names it internally), so unlike ATTACH
+	// the CONNECT verb takes no trailing `AS y` alias (the grammar rejects it).
 	info->external_resource = BuildExternalResource(std::move(expression), attach_alias, attach_options);
 	if (attach_options_1) {
 		SplitGenericOptions(*attach_options_1, info->parsed_options, info->options, "CONNECT");

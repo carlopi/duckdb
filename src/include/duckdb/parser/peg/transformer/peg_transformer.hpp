@@ -8229,10 +8229,11 @@ public:
 	    const optional<vector<GenericCopyOption>> &attach_options_1);
 	static unique_ptr<TransformResultValue> TransformWithExternalResourceConnectInternal(PEGTransformer &transformer,
 	                                                                                     ParseResult &parse_result);
-	static unique_ptr<SQLStatement> TransformWithExternalResourceConnect(
-	    PEGTransformer &transformer, unique_ptr<ParsedExpression> expression, const optional<Identifier> &attach_alias,
-	    const optional<vector<GenericCopyOption>> &attach_options, const optional<Identifier> &attach_alias_1,
-	    const optional<vector<GenericCopyOption>> &attach_options_1);
+	static unique_ptr<SQLStatement>
+	TransformWithExternalResourceConnect(PEGTransformer &transformer, unique_ptr<ParsedExpression> expression,
+	                                     const optional<Identifier> &attach_alias,
+	                                     const optional<vector<GenericCopyOption>> &attach_options,
+	                                     const optional<vector<GenericCopyOption>> &attach_options_1);
 	//===--------------------------------------------------------------------===//
 	// END GENERATED RULES
 	//===--------------------------------------------------------------------===//

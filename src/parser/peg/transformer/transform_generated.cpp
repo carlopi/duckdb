@@ -10362,21 +10362,15 @@ PEGTransformerFactory::TransformWithExternalResourceConnectInternal(PEGTransform
 		auto attach_options_value = transformer.Transform<vector<GenericCopyOption>>(attach_options_opt.GetResult());
 		attach_options = attach_options_value;
 	}
-	optional<Identifier> attach_alias_1 {};
-	auto &attach_alias_1_opt = list_pr.GetChild(7).Cast<OptionalParseResult>();
-	if (attach_alias_1_opt.HasResult()) {
-		auto attach_alias_1_value = transformer.Transform<Identifier>(attach_alias_1_opt.GetResult());
-		attach_alias_1 = attach_alias_1_value;
-	}
 	optional<vector<GenericCopyOption>> attach_options_1 {};
-	auto &attach_options_1_opt = list_pr.GetChild(8).Cast<OptionalParseResult>();
+	auto &attach_options_1_opt = list_pr.GetChild(7).Cast<OptionalParseResult>();
 	if (attach_options_1_opt.HasResult()) {
 		auto attach_options_1_value =
 		    transformer.Transform<vector<GenericCopyOption>>(attach_options_1_opt.GetResult());
 		attach_options_1 = attach_options_1_value;
 	}
 	auto result = TransformWithExternalResourceConnect(transformer, std::move(expression), attach_alias, attach_options,
-	                                                   attach_alias_1, attach_options_1);
+	                                                   attach_options_1);
 	return make_uniq<TypedTransformResult<unique_ptr<SQLStatement>>>(std::move(result));
 }
 

@@ -1901,5 +1901,5 @@ OptVerbose <- 'VERBOSE'
 NameList <- Parens(List(ColId))
 WithExternalResourceStatement <- WithExternalResourceAttach / WithExternalResourceConnect
 WithExternalResourceAttach <- 'WITH' 'EXTERNAL' 'RESOURCE' Expression AttachAlias? AttachOptions? 'ATTACH' AttachAlias? AttachOptions?
-WithExternalResourceConnect <- 'WITH' 'EXTERNAL' 'RESOURCE' Expression AttachAlias? AttachOptions? 'CONNECT' AttachAlias? AttachOptions?
+WithExternalResourceConnect <- 'WITH' 'EXTERNAL' 'RESOURCE' Expression AttachAlias? AttachOptions? 'CONNECT' AttachOptions?
 

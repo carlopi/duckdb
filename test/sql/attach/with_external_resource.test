@@ -42,9 +42,10 @@ SELECT count(*) FROM duckdb_databases() WHERE database_name = 'qk';
 ----
 0
 
-# Arbitrary params are accepted and passed through to the create callback (which ignores them here).
+# Arbitrary params are accepted and passed through to the create callback (which ignores them here),
+# including a bare flag (no value), which binds to boolean true like ATTACH/CONNECT options.
 statement ok
-WITH EXTERNAL RESOURCE 'quack@local' (INSTANCE 'r7i.16xlarge', REGION 'eu-west-1', ANYTHING 'else') ATTACH AS qk2;
+WITH EXTERNAL RESOURCE 'quack@local' (INSTANCE 'r7i.16xlarge', REGION 'eu-west-1', SPOT, ANYTHING 'else') ATTACH AS qk2;
 
 query I
 SELECT count(*) FROM duckdb_databases() WHERE database_name = 'qk2';
@@ -66,6 +67,26 @@ statement error
 WITH EXTERNAL RESOURCE 'does-not-exist' ATTACH AS bad;
 ----
 <REGEX>:.*unknown resource type.*
+
+# CONNECT is ephemeral and hidden, so it takes no trailing `AS y` alias (the grammar rejects it).
+statement error
+WITH EXTERNAL RESOURCE 'quack@local' CONNECT AS y;
+----
+<REGEX>:.*(syntax error|Parser).*
+
+# A NULL uri from the status callback surfaces as a clear uri error, not a "NULL" attach path.
+statement ok
+CREATE MACRO qk_status_null(h) AS TABLE
+  SELECT 'ready' AS state, MAP {'uri': NULL, 'attached_db_type': 'quack'} AS result;
+
+statement ok
+CALL register_external_resource_type('quacknull@local', kind := 'catalog', create_function := 'qk_create',
+    status_function := 'qk_status_null', destroy_function := 'qk_destroy');
+
+statement error
+WITH EXTERNAL RESOURCE 'quacknull@local' ATTACH AS qkn;
+----
+<REGEX>:.*uri.*
 
 # The CONNECT variant provisions and connects (ephemeral, hidden alias).
 statement ok

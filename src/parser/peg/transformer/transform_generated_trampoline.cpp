@@ -24043,15 +24043,10 @@ void PEGTransformerFactory::InitializeWithExternalResourceConnectTrampoline(PEGT
                                                                             TransformStack &stack,
                                                                             TransformStackFrame &frame) {
 	auto &list_pr = frame.parse_result.Cast<ListParseResult>();
-	frame.ReserveChildSlots(5);
-	auto &attach_options_1_opt = list_pr.GetChild(8).Cast<OptionalParseResult>();
+	frame.ReserveChildSlots(4);
+	auto &attach_options_1_opt = list_pr.GetChild(7).Cast<OptionalParseResult>();
 	if (attach_options_1_opt.HasResult()) {
 		stack.PushFrame(attach_options_1_opt.GetResult(), ATTACH_OPTIONS_OPS,
-		                TransformFrameResultTarget(frame.frame_index, 4));
-	}
-	auto &attach_alias_1_opt = list_pr.GetChild(7).Cast<OptionalParseResult>();
-	if (attach_alias_1_opt.HasResult()) {
-		stack.PushFrame(attach_alias_1_opt.GetResult(), ATTACH_ALIAS_OPS,
 		                TransformFrameResultTarget(frame.frame_index, 3));
 	}
 	auto &attach_options_opt = list_pr.GetChild(5).Cast<OptionalParseResult>();
@@ -24079,16 +24074,12 @@ PEGTransformerFactory::FinalizeWithExternalResourceConnectTrampoline(PEGTransfor
 	if (frame.child_results[2]) {
 		attach_options = frame.TakeResult<vector<GenericCopyOption>>(2);
 	}
-	optional<Identifier> attach_alias_1 {};
-	if (frame.child_results[3]) {
-		attach_alias_1 = frame.TakeResult<Identifier>(3);
-	}
 	optional<vector<GenericCopyOption>> attach_options_1 {};
-	if (frame.child_results[4]) {
-		attach_options_1 = frame.TakeResult<vector<GenericCopyOption>>(4);
+	if (frame.child_results[3]) {
+		attach_options_1 = frame.TakeResult<vector<GenericCopyOption>>(3);
 	}
 	auto result = TransformWithExternalResourceConnect(transformer, std::move(expression), attach_alias, attach_options,
-	                                                   attach_alias_1, attach_options_1);
+	                                                   attach_options_1);
 	return make_uniq<TypedTransformResult<unique_ptr<SQLStatement>>>(std::move(result));
 }
 

@@ -1720,7 +1720,7 @@ const char INLINED_PEG_GRAMMAR[] = {
 	"NameList <- Parens(List(ColId))\n"
 	"WithExternalResourceStatement <- WithExternalResourceAttach / WithExternalResourceConnect\n"
 	"WithExternalResourceAttach <- 'WITH' 'EXTERNAL' 'RESOURCE' Expression AttachAlias? AttachOptions? 'ATTACH' AttachAlias? AttachOptions?\n"
-	"WithExternalResourceConnect <- 'WITH' 'EXTERNAL' 'RESOURCE' Expression AttachAlias? AttachOptions? 'CONNECT' AttachAlias? AttachOptions?\n"
+	"WithExternalResourceConnect <- 'WITH' 'EXTERNAL' 'RESOURCE' Expression AttachAlias? AttachOptions? 'CONNECT' AttachOptions?\n"
 
 };
 

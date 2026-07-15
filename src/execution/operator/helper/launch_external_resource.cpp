@@ -37,8 +37,13 @@ LaunchedResource ProvisionExternalResource(ClientContext &client, const string &
 		throw IOException("WITH EXTERNAL RESOURCE: create_external_resource returned no rows for '%s'", provider);
 	}
 	LaunchedResource out;
-	out.uri = res->GetValue(0, 0).ToString();
-	out.attached_db_type = res->GetValue(1, 0).ToString();
+	auto uri_val = res->GetValue(0, 0);
+	if (uri_val.IsNull()) {
+		throw IOException("WITH EXTERNAL RESOURCE: provisioning '%s' returned a NULL uri", provider);
+	}
+	out.uri = uri_val.ToString();
+	auto type_val = res->GetValue(1, 0);
+	out.attached_db_type = type_val.IsNull() ? string() : type_val.ToString();
 	out.result = res->GetValue(2, 0);
 	auto del_fn = res->GetValue(3, 0);
 	out.deleter_function = del_fn.IsNull() ? string() : StringValue::Get(del_fn);
@@ -48,7 +53,10 @@ LaunchedResource ProvisionExternalResource(ClientContext &client, const string &
 
 void ApplyLaunchedResource(const LaunchedResource &launched, AttachInfo &info) {
 	info.path = launched.uri;
-	info.options["type"] = Value(launched.attached_db_type);
+	// A NULL/empty db type falls back to the extension prefix extracted from the uri.
+	if (!launched.attached_db_type.empty()) {
+		info.options["type"] = Value(launched.attached_db_type);
+	}
 	// The remaining connect options (e.g. token) flow through as attach options.
 	if (!launched.result.IsNull()) {
 		for (auto &entry : MapValue::GetChildren(launched.result)) {
