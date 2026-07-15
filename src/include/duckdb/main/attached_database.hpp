@@ -90,8 +90,30 @@ struct AttachOptions {
 	unique_ptr<StoredDatabasePath> stored_database_path;
 	//! Per-database override of vacuum_rebuild_indexes. If not set, the global setting value is used.
 	optional_idx vacuum_rebuild_indexes_threshold;
+	//! Deleter binding (from WITH EXTERNAL RESOURCE): on detach, `<deleter_function>(<deleter_payload>)`
+	//! runs to tear down the external resource the attachment owns.
+	string deleter_function;
+	Value deleter_payload;
 	//! Header prefetched during file-type detection, reused when opening the file. Empty for non-DuckDB files.
 	PrefetchedFileData prefetched;
+};
+
+//! Extracted deleter binding of an attachment that owns an external resource (from WITH EXTERNAL
+//! RESOURCE): runs `<deleter_function>(<deleter_payload>)` to tear the resource down. Obtained via
+//! AttachedDatabase::ExtractDeleter, so exactly one owner ever runs it.
+class ResourceDeleter {
+public:
+	ResourceDeleter(DatabaseInstance &db, string deleter_function, Value deleter_payload);
+
+	//! Run the teardown; throws on failure, including how to retry the teardown manually.
+	void Delete();
+	//! Best-effort teardown: logs a warning on failure instead of throwing.
+	void TryDelete();
+
+private:
+	DatabaseInstance &db;
+	string deleter_function;
+	Value deleter_payload;
 };
 
 //! The AttachedDatabase represents an attached database instance.
@@ -137,12 +159,10 @@ public:
 	void SetName(const Identifier &new_name) {
 		name = new_name;
 	}
-	//! Bind a deleter to this attachment: on detach, `CALL <deleter_function>(<deleter_payload>)` runs
-	//! (best-effort) to tear down an external resource the attachment owns (e.g. from LAUNCH).
-	void SetDeleter(string deleter_function_p, Value deleter_payload_p) {
-		deleter_function = std::move(deleter_function_p);
-		deleter_payload = std::move(deleter_payload_p);
-	}
+	//! Move the deleter binding (if any) out of this attachment: the returned object owns the
+	//! teardown of the external resource. Call after removing the attachment from the databases map,
+	//! while holding it exclusively; run the deleter only once no lock is held (it executes SQL).
+	unique_ptr<ResourceDeleter> ExtractDeleter();
 	bool IsSystem() const;
 	bool IsTemporary() const;
 	bool IsReadOnly() const;
@@ -196,7 +216,7 @@ private:
 	optional_idx vacuum_rebuild_threshold;
 	unordered_map<string, Value> attach_options;
 	optional<string> original_path;
-	//! Deleter binding (from LAUNCH): `CALL <deleter_function>(<deleter_payload>)` runs on detach.
+	//! Deleter binding (from WITH EXTERNAL RESOURCE): moved out via ExtractDeleter on detach.
 	string deleter_function;
 	Value deleter_payload;
 

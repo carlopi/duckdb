@@ -21,19 +21,18 @@ SourceResultType PhysicalAttach::GetDataInternal(ExecutionContext &context, Data
 	auto &config = DBConfig::GetConfig(context.client);
 
 	// `WITH EXTERNAL RESOURCE ... ATTACH`: provision the resource first, then attach its endpoint under
-	// this alias and bind the deleter so DETACH tears it down.
-	string deleter_function;
-	Value deleter_payload;
+	// this alias with the deleter bound so DETACH tears it down.
+	LaunchedResource launched;
 	if (info->external_resource) {
 		auto &external_resource = *info->external_resource;
-		auto launched = ProvisionExternalResource(context.client, external_resource.provider, external_resource.params);
+		launched = ProvisionExternalResource(context.client, external_resource.provider, external_resource.params);
 		ApplyLaunchedResource(launched, *info);
-		deleter_function = launched.deleter_function;
-		deleter_payload = launched.deleter_payload;
 	}
 
 	// construct the options
 	AttachOptions options(info->options, config.options.access_mode);
+	options.deleter_function = launched.deleter_function;
+	options.deleter_payload = launched.deleter_payload;
 
 	// get the name and path of the database
 	auto &name = info->name;
@@ -50,11 +49,15 @@ SourceResultType PhysicalAttach::GetDataInternal(ExecutionContext &context, Data
 
 	// check ATTACH IF NOT EXISTS
 	auto &db_manager = DatabaseManager::Get(context.client);
-	auto attached = db_manager.AttachDatabase(context.client, *info, options);
-
-	// Bind the deleter to the attachment so DETACH runs the resource's teardown.
-	if (!deleter_function.empty() && attached) {
-		attached->SetDeleter(std::move(deleter_function), std::move(deleter_payload));
+	try {
+		db_manager.AttachDatabase(context.client, *info, options);
+	} catch (...) {
+		// Compensating teardown (best-effort): the attach failed, so nothing owns the provisioned
+		// resource. The attach error takes precedence over a teardown failure.
+		ResourceDeleter(DatabaseInstance::GetDatabase(context.client), launched.deleter_function,
+		                launched.deleter_payload)
+		    .TryDelete();
+		throw;
 	}
 	return SourceResultType::FINISHED;
 }

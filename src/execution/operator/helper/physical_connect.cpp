@@ -6,6 +6,7 @@
 #include "duckdb/main/attached_database.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/main/config.hpp"
+#include "duckdb/main/database.hpp"
 #include "duckdb/main/database_manager.hpp"
 #include "duckdb/main/database_path_and_type.hpp"
 #include "duckdb/parser/parsed_data/attach_info.hpp"
@@ -52,14 +53,23 @@ SourceResultType PhysicalConnect::GetDataInternal(ExecutionContext &context, Dat
 		AttachOptions options(attach_info.options, config.options.access_mode);
 		options.visibility = AttachVisibility::HIDDEN;
 		options.ephemeral = true;
+		options.deleter_function = launched.deleter_function;
+		options.deleter_payload = launched.deleter_payload;
 		if (options.db_type.empty()) {
 			DBPathAndType::ExtractExtensionPrefix(attach_info.path, options.db_type);
 		}
-		auto target = db_manager.AttachDatabase(client, attach_info, options);
-		if (!launched.deleter_function.empty() && target) {
-			target->SetDeleter(launched.deleter_function, launched.deleter_payload);
+		shared_ptr<AttachedDatabase> target;
+		try {
+			target = db_manager.AttachDatabase(client, attach_info, options);
+		} catch (...) {
+			// Compensating teardown (best-effort): the attach failed, so nothing owns the provisioned
+			// resource. The attach error takes precedence over a teardown failure.
+			ResourceDeleter(DatabaseInstance::GetDatabase(client), launched.deleter_function, launched.deleter_payload)
+			    .TryDelete();
+			throw;
 		}
 		if (!target->GetCatalog().Supports(RemoteCapability::CONNECT)) {
+			// The detach also runs the extracted deleter, destroying the provisioned resource.
 			db_manager.DetachDatabase(client, attach_info.name, OnEntryNotFound::RETURN_NULL);
 			throw InvalidInputException("WITH EXTERNAL RESOURCE ... CONNECT: the provisioned resource does not "
 			                            "support CONNECT");

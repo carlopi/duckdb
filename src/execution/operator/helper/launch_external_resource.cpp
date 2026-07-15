@@ -1,6 +1,7 @@
 #include "duckdb/execution/operator/helper/launch_external_resource.hpp"
 
 #include "duckdb/common/exception.hpp"
+#include "duckdb/main/client_context.hpp"
 #include "duckdb/main/connection.hpp"
 #include "duckdb/main/database.hpp"
 #include "duckdb/parser/parsed_data/attach_info.hpp"

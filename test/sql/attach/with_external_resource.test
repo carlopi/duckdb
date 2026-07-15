@@ -74,7 +74,8 @@ WITH EXTERNAL RESOURCE 'quack@local' CONNECT;
 statement ok
 DISCONNECT;
 
-# The deleter fires on DETACH: a failing deleter surfaces as a DETACH error (proves invocation).
+# The deleter fires on DETACH: a failing deleter surfaces as a DETACH error (proves invocation),
+# with a hint on how to retry the teardown manually. The detach itself completes.
 statement ok
 CREATE MACRO qk_destroy_fail(h) AS TABLE SELECT CAST('boom' AS INTEGER) AS x;
 
@@ -88,4 +89,109 @@ WITH EXTERNAL RESOURCE 'quackfail@local' ATTACH AS qkf;
 statement error
 DETACH qkf;
 ----
-<REGEX>:.*deleter function.*failed.*
+<REGEX>:.*deleter function.*failed.*retry the teardown.*
+
+query I
+SELECT count(*) FROM duckdb_databases() WHERE database_name = 'qkf';
+----
+0
+
+# A deleter with a side effect (sequence) proves single invocation on each teardown path.
+statement ok
+CREATE SEQUENCE destroy_seq;
+
+statement ok
+CREATE MACRO qk_destroy_count(h) AS TABLE SELECT nextval('destroy_seq') AS status;
+
+statement ok
+CALL register_external_resource_type('quackcount@local', kind := 'catalog', create_function := 'qk_create',
+    status_function := 'qk_status', destroy_function := 'qk_destroy_count');
+
+# Compensating teardown: the attach fails after provisioning (name conflict), the deleter still runs.
+statement ok
+ATTACH ':memory:' AS taken;
+
+statement error
+WITH EXTERNAL RESOURCE 'quackcount@local' ATTACH AS taken;
+----
+<REGEX>:.*already exists.*
+
+query I
+SELECT currval('destroy_seq');
+----
+1
+
+# ATTACH OR REPLACE over an external-resource attachment: the old deleter runs (best-effort).
+statement ok
+WITH EXTERNAL RESOURCE 'quackcount@local' ATTACH AS qkr;
+
+statement ok
+ATTACH OR REPLACE ':memory:' AS qkr;
+
+query I
+SELECT currval('destroy_seq');
+----
+2
+
+statement ok
+DETACH qkr;
+
+# A failing deleter does not abort ATTACH OR REPLACE (best-effort on the implicit detach).
+statement ok
+WITH EXTERNAL RESOURCE 'quackfail@local' ATTACH AS qkr2;
+
+statement ok
+ATTACH OR REPLACE ':memory:' AS qkr2;
+
+statement ok
+DETACH qkr2;
+
+# Provisioning inside an explicit transaction: ROLLBACK undoes the attach and tears the resource down
+# (the deleter cannot run under the transaction lock, so it is queued and drained after rollback).
+statement ok
+BEGIN;
+
+statement ok
+WITH EXTERNAL RESOURCE 'quackcount@local' ATTACH AS qtx;
+
+query I
+SELECT count(*) FROM duckdb_databases() WHERE database_name = 'qtx';
+----
+1
+
+statement ok
+ROLLBACK;
+
+query I
+SELECT count(*) FROM duckdb_databases() WHERE database_name = 'qtx';
+----
+0
+
+# The deleter ran exactly once during rollback (sequence advanced by 1).
+query I
+SELECT currval('destroy_seq');
+----
+3
+
+# COMMIT keeps the attachment; a later DETACH still tears it down.
+statement ok
+BEGIN;
+
+statement ok
+WITH EXTERNAL RESOURCE 'quackcount@local' ATTACH AS qtx2;
+
+statement ok
+COMMIT;
+
+query I
+SELECT count(*) FROM duckdb_databases() WHERE database_name = 'qtx2';
+----
+1
+
+statement ok
+DETACH qtx2;
+
+query I
+SELECT currval('destroy_seq');
+----
+4

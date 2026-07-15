@@ -149,6 +149,8 @@ AttachedDatabase::AttachedDatabase(DatabaseInstance &db, Catalog &catalog_p, Ide
 	ephemeral = options.ephemeral;
 	vacuum_rebuild_threshold = options.vacuum_rebuild_indexes_threshold;
 	original_path = options.original_path;
+	deleter_function = options.deleter_function;
+	deleter_payload = options.deleter_payload;
 
 	// We create the storage after the catalog to guarantee we allow extensions to instantiate the DuckCatalog.
 	catalog = make_uniq<DuckCatalog>(*this);
@@ -173,6 +175,8 @@ AttachedDatabase::AttachedDatabase(DatabaseInstance &db, Catalog &catalog_p, Sto
 	ephemeral = options.ephemeral;
 	vacuum_rebuild_threshold = options.vacuum_rebuild_indexes_threshold;
 	original_path = options.original_path;
+	deleter_function = options.deleter_function;
+	deleter_payload = options.deleter_payload;
 
 	optional_ptr<StorageExtensionInfo> storage_info = storage_extension->storage_info.get();
 	catalog = storage_extension->attach(storage_info, context, *this, name.GetIdentifierName(), info, options);
@@ -343,17 +347,43 @@ void AttachedDatabase::OnDetach(ClientContext &context) {
 	if (stored_database_path && visibility != AttachVisibility::HIDDEN) {
 		stored_database_path->OnDetach();
 	}
-	// Run the deleter binding: CALL <deleter_function>(<deleter_payload>) tears down the external
-	// resource this attachment owns (e.g. from LAUNCH). On a separate internal connection, since the
-	// current connection's context lock is held during detach. A failed teardown is a leak, so it
-	// throws (fail the DETACH loudly) rather than silently swallowing.
-	if (!deleter_function.empty()) {
-		Connection con(db);
-		auto result = con.Query("SELECT * FROM " + deleter_function + "(" + deleter_payload.ToSQLString() + ")");
-		if (result->HasError()) {
-			throw IOException("DETACH: deleter function \"%s\" failed: %s", deleter_function, result->GetError());
-		}
+}
+
+ResourceDeleter::ResourceDeleter(DatabaseInstance &db, string deleter_function_p, Value deleter_payload_p)
+    : db(db), deleter_function(std::move(deleter_function_p)), deleter_payload(std::move(deleter_payload_p)) {
+}
+
+void ResourceDeleter::Delete() {
+	if (deleter_function.empty()) {
+		return;
 	}
+	// On a separate internal connection, since the current connection's context lock is held.
+	Connection con(db);
+	auto sql = "SELECT * FROM " + deleter_function + "(" + deleter_payload.ToSQLString() + ")";
+	auto result = con.Query(sql);
+	if (result->HasError()) {
+		// A failed teardown is a leak, so fail loudly and say how to retry it manually.
+		throw IOException("deleter function \"%s\" failed: %s. The external resource was NOT torn down; run `%s;` "
+		                  "to retry the teardown",
+		                  deleter_function, result->GetError(), sql);
+	}
+}
+
+void ResourceDeleter::TryDelete() {
+	try {
+		Delete();
+	} catch (std::exception &ex) {
+		DUCKDB_LOG_WARNING(db, ErrorData(ex).Message());
+	}
+}
+
+unique_ptr<ResourceDeleter> AttachedDatabase::ExtractDeleter() {
+	if (deleter_function.empty()) {
+		return nullptr;
+	}
+	auto result = make_uniq<ResourceDeleter>(db, std::move(deleter_function), std::move(deleter_payload));
+	deleter_function.clear();
+	return result;
 }
 
 void AttachedDatabase::Close(const DatabaseCloseAction action) {
