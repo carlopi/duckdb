@@ -1,0 +1,58 @@
+# name: test/sql/attach/external_resource_statements.test
+# description: CREATE/ADOPT/DESTROY/SHOW EXTERNAL RESOURCE — parser scaffolding (parse, not yet executed)
+# group: [attach]
+
+# All four verbs parse (no syntax error) and are rejected at bind: not yet implemented.
+statement error
+CREATE EXTERNAL RESOURCE 'aws:ec2:quack' AS x (SPOT, REGION 'eu-west-1');
+----
+<REGEX>:.*not yet implemented.*
+
+statement error
+CREATE EXTERNAL RESOURCE 'aws:ec2:quack';
+----
+<REGEX>:.*not yet implemented.*
+
+statement error
+ADOPT EXTERNAL RESOURCE 'aws:ec2:quack' AS x FROM {'id': 'i-123'};
+----
+<REGEX>:.*not yet implemented.*
+
+statement error
+ADOPT EXTERNAL RESOURCE 'aws:ec2:quack' FROM {'id': 'i-123'};
+----
+<REGEX>:.*not yet implemented.*
+
+statement error
+DESTROY EXTERNAL RESOURCE x;
+----
+<REGEX>:.*not yet implemented.*
+
+statement error
+SHOW EXTERNAL RESOURCES;
+----
+<REGEX>:.*not yet implemented.*
+
+statement error
+SHOW ALL EXTERNAL RESOURCES;
+----
+<REGEX>:.*not yet implemented.*
+
+# The grammar requires the pieces: DESTROY needs a name, ADOPT needs a handle. These are parser errors,
+# not "not yet implemented".
+statement error
+DESTROY EXTERNAL RESOURCE;
+----
+<REGEX>:.*(syntax error|Parser).*
+
+statement error
+ADOPT EXTERNAL RESOURCE 'aws:ec2:quack' AS x;
+----
+<REGEX>:.*(syntax error|Parser).*
+
+# Regression: the new SHOW form does not shadow existing SHOW ALL TABLES.
+statement ok
+CREATE TABLE t(i INTEGER);
+
+statement ok
+SHOW ALL TABLES;

@@ -3,6 +3,7 @@ Program <- TopLevelStatement*
 TopLevelStatement <- Statement? (';'+ / EndOfInput)
 
 Statement <-
+	ExternalResourceStatement /
 	CreateStatement /
 	WithExternalResourceStatement /
 	SelectStatement /
@@ -1516,6 +1517,14 @@ ExtractDatePart <-
     YearKeyword / MonthKeyword / DayKeyword / HourKeyword / MinuteKeyword / SecondKeyword /
     MillisecondKeyword / MicrosecondKeyword / WeekKeyword / QuarterKeyword / DecadeKeyword /
     CenturyKeyword / MillenniumKeyword
+
+ExternalResourceStatement <- CreateExternalResourceStmt / AdoptExternalResourceStmt / DestroyExternalResourceStmt / ShowExternalResourcesStmt
+
+CreateExternalResourceStmt <- 'CREATE' 'EXTERNAL' 'RESOURCE' Expression AttachAlias? AttachOptions?
+AdoptExternalResourceStmt <- 'ADOPT' 'EXTERNAL' 'RESOURCE' Expression AttachAlias? 'FROM' Expression
+DestroyExternalResourceStmt <- 'DESTROY' 'EXTERNAL' 'RESOURCE' ColId
+ShowExternalResourcesStmt <- 'SHOW' ShowAllModifier? 'EXTERNAL' 'RESOURCES'
+ShowAllModifier <- 'ALL'
 
 InsertStatement <- WithClause? 'INSERT' OrAction? 'INTO' InsertTarget ByNameOrPosition? InsertColumnList? InsertValues OnConflictClause? ReturningClause?
 

@@ -447,6 +447,7 @@ private:
 	BoundStatement Bind(MergeIntoStatement &stmt);
 	BoundStatement Bind(ConnectStatement &stmt);
 	BoundStatement Bind(DisconnectStatement &stmt);
+	BoundStatement Bind(ExternalResourceStatement &stmt);
 	//! Bind a `WITH EXTERNAL RESOURCE ...` clause: resolve its type + create params to bound values.
 	//! Shared by ATTACH and CONNECT.
 	void BindExternalResource(ExternalResourceOptions &external_resource);
