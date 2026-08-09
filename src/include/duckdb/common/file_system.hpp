@@ -124,6 +124,12 @@ public:
 
 	//! Closes the file handle.
 	DUCKDB_API virtual void Close() = 0;
+	//! Abandons the file handle without committing the write. For file systems where closing merely
+	//! releases the handle this is equivalent to Close(); for those where closing *publishes* the file
+	//! (e.g. an S3 multipart upload) it must not publish a partially written result.
+	DUCKDB_API virtual void Discard() {
+		Close();
+	}
 
 	string GetPath() const {
 		return path;

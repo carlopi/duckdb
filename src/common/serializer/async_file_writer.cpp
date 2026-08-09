@@ -58,10 +58,29 @@ AsyncFileWriter::AsyncFileWriter(QueryContext context_p, FileSystem &fs_p, const
 
 AsyncFileWriter::~AsyncFileWriter() {
 	if (!closed && handle) {
+		// Destruction is not a statement of success: whoever owns this writer must call Close()
+		// explicitly to publish. Anything else - an exception on the way out, an abandoned query -
+		// discards, so a file system where closing publishes cannot commit a partial result.
 		try {
-			Close();
+			Discard();
 		} catch (...) {
 		}
+	}
+}
+
+void AsyncFileWriter::Discard() {
+	if (closed) {
+		return;
+	}
+	try {
+		// deliberately not sealing the staging buffer - the stream is being abandoned
+		write_queue->Close();
+		handle->Discard();
+		handle.reset();
+		closed = true;
+	} catch (...) {
+		write_queue->ReleaseMemoryReservation();
+		throw;
 	}
 }
 
@@ -103,6 +122,16 @@ idx_t AsyncFileWriter::GetTotalWritten() const {
 }
 
 void AsyncFileWriter::WriteData(const_data_ptr_t buffer, idx_t write_size) {
+	try {
+		WriteDataInternal(buffer, write_size);
+	} catch (...) {
+		// the stream is now incomplete - Close() must not publish it
+		write_failed = true;
+		throw;
+	}
+}
+
+void AsyncFileWriter::WriteDataInternal(const_data_ptr_t buffer, idx_t write_size) {
 	if (write_size == 0) {
 		return;
 	}
@@ -334,12 +363,18 @@ void AsyncFileWriter::Close() {
 	if (closed) {
 		return;
 	}
+	const auto incomplete = write_failed || write_queue->HasError();
 	try {
-		if (!write_queue->HasError()) {
+		if (!incomplete) {
 			SealCopiedBuffer(ScheduleMode::DEFER);
 		}
 		write_queue->Close();
-		handle->Close();
+		if (incomplete) {
+			// a write failed, so the stream is partial - abandon it rather than publishing
+			handle->Discard();
+		} else {
+			handle->Close();
+		}
 		handle.reset();
 		closed = true;
 	} catch (...) {

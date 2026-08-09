@@ -73,6 +73,9 @@ public:
 	DUCKDB_API void ApplyBackpressure();
 	//! Wait for all writes, then close the file handle.
 	DUCKDB_API void Close();
+	//! Abandon the stream without publishing it. Used when the writer is destroyed without a
+	//! successful Close(), i.e. the caller never affirmed that it wrote everything it intended.
+	DUCKDB_API void Discard();
 	//! Wait for all writes, then fsync the file handle.
 	DUCKDB_API void Sync();
 	//! Wait for all writes, then truncate the file to the requested logical size.
@@ -97,6 +100,8 @@ private:
 	void RegisterWriteInternal(unique_ptr<AsyncWriteBuffer> buffer, idx_t offset, ScheduleMode schedule_mode);
 	//! Write caller-owned bytes through the local staging buffer when async draining is disabled.
 	void WriteDataSynchronously(data_ptr_t buffer, idx_t write_size);
+	//! Body of WriteData; wrapped by WriteData so a synchronous failure is latched.
+	void WriteDataInternal(const_data_ptr_t buffer, idx_t write_size);
 	//! Move any staged copied bytes into the pending write queue.
 	void SealCopiedBuffer(ScheduleMode schedule_mode = ScheduleMode::ALLOW);
 	//! Seal copied bytes, then schedule as many drain tasks as the pending queue allows.
@@ -136,6 +141,9 @@ private:
 	idx_t total_written = 0;
 	//! Set once the handle has been closed or detached.
 	bool closed = false;
+	//! Set when a write threw. The queue only records errors raised by async tasks, so a synchronous
+	//! failure here would otherwise leave Close() believing the stream is complete.
+	bool write_failed = false;
 };
 
 } // namespace duckdb
