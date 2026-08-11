@@ -20,7 +20,8 @@ static void ApplyOptions(const optional<vector<GenericCopyOption>> &options, Ext
 	}
 }
 
-unique_ptr<SQLStatement> PEGTransformerFactory::TransformCreateExternalResourceStmt(
+unique_ptr<SQLStatement>
+PEGTransformerFactory::TransformCreateExternalResourceStmt(
     PEGTransformer &transformer, const string &string_literal, const optional<Identifier> &attach_alias,
     const optional<vector<GenericCopyOption>> &external_resource_options) {
 	auto result = make_uniq<ExternalResourceStatement>(ExternalResourceOperation::CREATE);

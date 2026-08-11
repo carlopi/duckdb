@@ -1533,6 +1533,8 @@ RegisterExternalResourceStmt <- 'REGISTER' 'EXTERNAL' 'RESOURCE' StringLiteral A
 DestroyExternalResourceStmt <- 'DESTROY' 'EXTERNAL' 'RESOURCE' ColId
 ShowExternalResourcesStmt <- 'SHOW' ShowAllModifier? 'EXTERNAL' 'RESOURCES'
 ShowAllModifier <- 'ALL'
+# WITH marks recipe create params, as opposed to the bare option list of the DuckDB-side statement.
+ExternalResourceOptions <- 'WITH' GenericCopyOptionList
 
 # WITH marks recipe create params, as opposed to the bare option list of the DuckDB-side statement.
 ExternalResourceOptions <- 'WITH' GenericCopyOptionList
