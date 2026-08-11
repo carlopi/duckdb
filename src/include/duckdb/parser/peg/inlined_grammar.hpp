@@ -1758,7 +1758,6 @@ const char INLINED_PEG_GRAMMAR[] = {
 	"ExternalResourceSource <- ExternalResourceCreateClause / ExternalResourceReferenceClause\n"
 	"ExternalResourceCreateClause <- 'NEW' 'TEMPORARY' 'EXTERNAL' 'RESOURCE' StringLiteral ExternalResourceOptions?\n"
 	"ExternalResourceReferenceClause <- 'EXTERNAL' 'RESOURCE' ColId\n"
-	"ExternalResourceOptions <- GenericCopyOptionList\n"
 
 };
 
