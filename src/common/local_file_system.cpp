@@ -241,9 +241,13 @@ public:
 public:
 	void Close() override {
 		if (fd != -1) {
-			close(fd);
+			auto res = close(fd);
 			fd = -1;
-			DUCKDB_LOG_FILE_SYSTEM_CLOSE((*this));
+			if (res) {
+				DUCKDB_LOG_FILE_SYSTEM_ERROR((*this), "close(fd) failed");
+			} else {
+				DUCKDB_LOG_FILE_SYSTEM_CLOSE((*this));
+			}
 		}
 	};
 };
@@ -1182,7 +1186,7 @@ public:
 	    : FileHandle(file_system, path, flags), position(0), fd(fd) {
 	}
 	~WindowsFileHandle() override {
-		Close();
+		WindowsFileHandle::Close();
 	}
 
 	idx_t position;
