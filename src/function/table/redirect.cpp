@@ -17,7 +17,7 @@ namespace duckdb {
 //! later re-point swap it atomically via the h1/h2 iteration count, and rides the block-encryption path when the
 //! pointer is encrypted. h1 is the active slot; h2 is a valid fallback. Mirrors the default header block layout.
 static void WriteRedirectPointerFile(ClientContext &context, const string &path, const RedirectInfo &redirect,
-                                     bool overwrite) {
+                                     bool overwrite, StorageVersion storage_version) {
 	auto &fs = FileSystem::GetFileSystem(context);
 
 	// Inspect any existing file before writing. A redirect pointer may be replaced, but a real database or a
@@ -67,7 +67,7 @@ static void WriteRedirectPointerFile(ClientContext &context, const string &path,
 		db_header.block_count = 0;
 		db_header.block_alloc_size = DEFAULT_BLOCK_ALLOC_SIZE;
 		db_header.vector_size = STANDARD_VECTOR_SIZE;
-		db_header.storage_compatibility = StorageVersion::V2_0_0;
+		db_header.storage_compatibility = storage_version;
 		db_header.redirect = redirect;
 		db_header.redirect.is_redirect = true;
 		MemoryStream ser(block.get() + block_header, data_size);
@@ -82,6 +82,9 @@ struct RedirectCreateBindData : public TableFunctionData {
 	string path;
 	RedirectInfo redirect;
 	bool overwrite = false;
+	//! Pointer files are written at >= v2.0.0 so older DuckDB versions reject them (rather than opening them as an
+	//! empty database). Defaults to the earliest version that guarantees that.
+	StorageVersion storage_version = StorageVersion::V2_0_0;
 };
 
 static unique_ptr<FunctionData> RedirectCreateBind(ClientContext &context, TableFunctionBindInput &input,
@@ -103,6 +106,20 @@ static unique_ptr<FunctionData> RedirectCreateBind(ClientContext &context, Table
 			result->redirect.type = StringValue::Get(param.second);
 		} else if (param.first == "overwrite") {
 			result->overwrite = BooleanValue::Get(param.second);
+		} else if (param.first == "storage_version") {
+			auto version_string = StringValue::Get(param.second);
+			auto version = GetStorageVersion(version_string.c_str());
+			if (version == StorageVersion::INVALID) {
+				throw InvalidInputException("redirect_create: unknown storage version \"%s\"", version_string);
+			}
+			if (version < StorageVersion::V2_0_0) {
+				throw InvalidInputException(
+				    "redirect_create: storage version \"%s\" is too old for a redirect pointer file - it must be "
+				    "v2.0.0 or newer so that older DuckDB versions reject the pointer instead of opening it as an "
+				    "empty database",
+				    version_string);
+			}
+			result->storage_version = version;
 		} else if (param.first == "options") {
 			auto &entries = ListValue::GetChildren(param.second);
 			for (auto &entry : entries) {
@@ -133,7 +150,8 @@ static void RedirectCreateFunc(ClientContext &context, TableFunctionInput &data_
 	if (state.finished) {
 		return;
 	}
-	WriteRedirectPointerFile(context, bind_data.path, bind_data.redirect, bind_data.overwrite);
+	WriteRedirectPointerFile(context, bind_data.path, bind_data.redirect, bind_data.overwrite,
+	                         bind_data.storage_version);
 	output.data[0].Append(Value(bind_data.path));
 	state.finished = true;
 }
@@ -143,6 +161,7 @@ void RedirectCreateFunction::RegisterFunction(BuiltinFunctions &set) {
 	                              RedirectCreateBind, RedirectCreateInit);
 	redirect_create.named_parameters["type"] = LogicalType::VARCHAR;
 	redirect_create.named_parameters["overwrite"] = LogicalType::BOOLEAN;
+	redirect_create.named_parameters["storage_version"] = LogicalType::VARCHAR;
 	redirect_create.named_parameters["options"] = LogicalType::MAP(LogicalType::VARCHAR, LogicalType::VARCHAR);
 	set.AddFunction(redirect_create);
 }

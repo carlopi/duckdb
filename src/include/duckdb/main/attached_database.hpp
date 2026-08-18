@@ -67,6 +67,11 @@ struct AttachOptions {
 	//! Constructor for databases we attach when using ATTACH DATABASE.
 	AttachOptions(const unordered_map<string, Value> &options, const AccessMode default_access_mode);
 
+	//! Apply a single (key, value) ATTACH option: a core-consumed key updates the matching typed field, any other
+	//! key lands in `options`. Shared by the constructor and by late option sources (e.g. redirect records) so a
+	//! core option merged after construction still reaches its typed field instead of being rejected as unknown.
+	void ApplyOption(const string &key, const Value &value);
+
 	//! Defaults to the access mode configured in the DBConfig, unless specified otherwise.
 	AccessMode access_mode;
 	//! The recovery type of the database.

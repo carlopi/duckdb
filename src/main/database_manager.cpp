@@ -74,9 +74,14 @@ static void ApplyRedirects(ClientContext &context, FileSystem &fs, AttachInfo &i
 			    info.path, target);
 		}
 
-		// Merge stored options into the options the storage extension reads - user-supplied options win.
+		// Merge stored options - route each through AttachOptions so a core-consumed key (read_only, recovery_mode,
+		// ...) reaches its typed field instead of surviving as an unrecognized leftover. User-supplied ATTACH options
+		// win, so skip any key the user provided explicitly.
 		for (auto &option : redirect.options) {
-			options.options.emplace(option.key, Value(option.value));
+			if (info.options.find(option.key) != info.options.end()) {
+				continue;
+			}
+			options.ApplyOption(option.key, Value(option.value));
 		}
 
 		// Rewrite the attach to point at the target and drop the pointer file's now-stale prefetched header.

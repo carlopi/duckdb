@@ -118,3 +118,30 @@ statement error
 CALL redirect_create('{TEST_DIR}/redirect_real.db', 'somewhere', overwrite => true);
 ----
 <REGEX>:.*not a redirect pointer.*
+
+# F4: a core-consumed option (read_only) stored in a pointer is applied to the reinterpreted attach, not rejected
+# as an unknown option. The pointer opens its target read-only.
+statement ok
+CALL redirect_create('{TEST_DIR}/ro_ptr.db', 'redirect_real.db', options => MAP {'read_only': 'true'});
+
+statement ok
+ATTACH '{TEST_DIR}/ro_ptr.db' AS rodb;
+
+query I
+SELECT readonly FROM duckdb_databases WHERE database_name = 'rodb';
+----
+true
+
+statement error
+CREATE TABLE rodb.new_t(x INTEGER);
+----
+<REGEX>:.*read-only.*
+
+statement ok
+DETACH rodb;
+
+# a storage version below v2.0.0 is refused for a pointer file (older DuckDB must reject it, not open it empty)
+statement error
+CALL redirect_create('{TEST_DIR}/old_ptr.db', 'redirect_real.db', storage_version => 'v1.4.0');
+----
+<REGEX>:.*v2.0.0 or newer.*
