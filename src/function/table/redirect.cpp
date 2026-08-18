@@ -1,6 +1,9 @@
 #include "duckdb/function/table/range.hpp"
 #include "duckdb/function/function_set.hpp"
 #include "duckdb/main/client_context.hpp"
+#include "duckdb/main/database_manager.hpp"
+#include "duckdb/main/attached_database.hpp"
+#include "duckdb/catalog/catalog.hpp"
 #include "duckdb/common/file_system.hpp"
 #include "duckdb/common/checksum.hpp"
 #include "duckdb/common/helper.hpp"
@@ -87,22 +90,59 @@ struct RedirectCreateBindData : public TableFunctionData {
 	StorageVersion storage_version = StorageVersion::V2_0_0;
 };
 
+//! Derive a redirect record from a currently-attached database: capture its resolved path, storage type, and the
+//! options it was attached with, so a pointer created this way reopens the same target the same way.
+static void DeriveRedirectFromAttachedDatabase(ClientContext &context, const string &db_name, RedirectInfo &redirect) {
+	auto &db_manager = DatabaseManager::Get(context);
+	auto db = db_manager.GetDatabase(context, Identifier(db_name));
+	if (!db) {
+		throw BinderException("redirect_create: database \"%s\" is not attached", db_name);
+	}
+	auto &catalog = db->GetCatalog();
+	if (catalog.InMemory()) {
+		throw BinderException("redirect_create: database \"%s\" is in-memory, so there is no target to redirect to",
+		                      db_name);
+	}
+	if (catalog.IsEncrypted()) {
+		throw BinderException(
+		    "redirect_create: database \"%s\" is encrypted; its key cannot be captured into a pointer file", db_name);
+	}
+	redirect.target = catalog.GetDBPath();
+	redirect.type = catalog.GetCatalogType();
+	if (db->IsReadOnly()) {
+		redirect.options.push_back({"read_only", "true"});
+	}
+	for (auto &option : db->GetAttachOptions()) {
+		redirect.options.push_back({option.first, option.second.ToString()});
+	}
+}
+
 static unique_ptr<FunctionData> RedirectCreateBind(ClientContext &context, TableFunctionBindInput &input,
                                                    vector<LogicalType> &return_types, vector<Identifier> &names) {
 	auto result = make_uniq<RedirectCreateBindData>();
-	if (input.inputs[0].IsNull() || input.inputs[1].IsNull()) {
-		throw BinderException("redirect_create: the pointer path and target cannot be NULL");
+	if (input.inputs[0].IsNull()) {
+		throw BinderException("redirect_create: the pointer path cannot be NULL");
 	}
 	result->path = StringValue::Get(input.inputs[0]);
 	result->redirect.is_redirect = true;
-	result->redirect.target = StringValue::Get(input.inputs[1]);
 	result->redirect.type = "duckdb";
 
+	// Overload A: the second positional argument names a currently-attached database to capture.
+	if (input.inputs.size() == 2) {
+		if (input.inputs[1].IsNull()) {
+			throw BinderException("redirect_create: the source database name cannot be NULL");
+		}
+		DeriveRedirectFromAttachedDatabase(context, StringValue::Get(input.inputs[1]), result->redirect);
+	}
+
+	// Overload B (and shared options): explicit target via `path`/`type`/`attach_options`, plus overwrite/version.
 	for (auto &param : input.named_parameters) {
 		if (param.second.IsNull()) {
 			continue;
 		}
-		if (param.first == "type") {
+		if (param.first == "path") {
+			result->redirect.target = StringValue::Get(param.second);
+		} else if (param.first == "type") {
 			result->redirect.type = StringValue::Get(param.second);
 		} else if (param.first == "overwrite") {
 			result->overwrite = BooleanValue::Get(param.second);
@@ -120,7 +160,7 @@ static unique_ptr<FunctionData> RedirectCreateBind(ClientContext &context, Table
 				    version_string);
 			}
 			result->storage_version = version;
-		} else if (param.first == "options") {
+		} else if (param.first == "attach_options") {
 			auto &entries = ListValue::GetChildren(param.second);
 			for (auto &entry : entries) {
 				auto &kv = StructValue::GetChildren(entry);
@@ -129,6 +169,11 @@ static unique_ptr<FunctionData> RedirectCreateBind(ClientContext &context, Table
 				     StringValue::Get(kv[1].DefaultCastAs(LogicalType::VARCHAR))});
 			}
 		}
+	}
+
+	if (result->redirect.target.empty()) {
+		throw BinderException("redirect_create: no target specified - pass a second argument naming an attached "
+		                      "database, or the `path` named parameter");
 	}
 
 	return_types.emplace_back(LogicalType::VARCHAR);
@@ -157,12 +202,24 @@ static void RedirectCreateFunc(ClientContext &context, TableFunctionInput &data_
 }
 
 void RedirectCreateFunction::RegisterFunction(BuiltinFunctions &set) {
-	TableFunction redirect_create("redirect_create", {LogicalType::VARCHAR, LogicalType::VARCHAR}, RedirectCreateFunc,
-	                              RedirectCreateBind, RedirectCreateInit);
-	redirect_create.named_parameters["type"] = LogicalType::VARCHAR;
-	redirect_create.named_parameters["overwrite"] = LogicalType::BOOLEAN;
-	redirect_create.named_parameters["storage_version"] = LogicalType::VARCHAR;
-	redirect_create.named_parameters["options"] = LogicalType::MAP(LogicalType::VARCHAR, LogicalType::VARCHAR);
+	TableFunctionSet redirect_create("redirect_create");
+
+	// Overload A: redirect_create('pointer.db', 'attached_db_name') - capture a currently-attached database.
+	TableFunction from_database({LogicalType::VARCHAR, LogicalType::VARCHAR}, RedirectCreateFunc, RedirectCreateBind,
+	                            RedirectCreateInit);
+	from_database.named_parameters["overwrite"] = LogicalType::BOOLEAN;
+	from_database.named_parameters["storage_version"] = LogicalType::VARCHAR;
+	redirect_create.AddFunction(from_database);
+
+	// Overload B: redirect_create('pointer.db', path := ..., type := ..., attach_options := {...}) - explicit target.
+	TableFunction explicit_target({LogicalType::VARCHAR}, RedirectCreateFunc, RedirectCreateBind, RedirectCreateInit);
+	explicit_target.named_parameters["path"] = LogicalType::VARCHAR;
+	explicit_target.named_parameters["type"] = LogicalType::VARCHAR;
+	explicit_target.named_parameters["attach_options"] = LogicalType::MAP(LogicalType::VARCHAR, LogicalType::VARCHAR);
+	explicit_target.named_parameters["overwrite"] = LogicalType::BOOLEAN;
+	explicit_target.named_parameters["storage_version"] = LogicalType::VARCHAR;
+	redirect_create.AddFunction(explicit_target);
+
 	set.AddFunction(redirect_create);
 }
 
