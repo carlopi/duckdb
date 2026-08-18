@@ -88,7 +88,7 @@ struct RedirectCreateBindData : public TableFunctionData {
 };
 
 static unique_ptr<FunctionData> RedirectCreateBind(ClientContext &context, TableFunctionBindInput &input,
-                                                   vector<LogicalType> &return_types, vector<string> &names) {
+                                                   vector<LogicalType> &return_types, vector<Identifier> &names) {
 	auto result = make_uniq<RedirectCreateBindData>();
 	if (input.inputs[0].IsNull() || input.inputs[1].IsNull()) {
 		throw BinderException("redirect_create: the pointer path and target cannot be NULL");
