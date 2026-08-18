@@ -1,0 +1,188 @@
+# name: test/sql/attach/attach_redirect.test
+# description: Test redirect-on-attach: a pointer file reinterprets ATTACH to a different target database
+# group: [attach]
+
+# create a real database at the target location
+statement ok
+ATTACH '{TEST_DIR}/redirect_real.db' AS realdb;
+
+statement ok
+CREATE TABLE realdb.t(i INTEGER);
+
+statement ok
+INSERT INTO realdb.t VALUES (42), (43);
+
+statement ok
+DETACH realdb;
+
+# create a pointer file that redirects to the real database. A relative target given via `path` is resolved
+# against the directory of the pointer file, so a bare filename points at a sibling database.
+statement ok
+CALL redirect_create('{TEST_DIR}/redirect_ptr.db', path := 'redirect_real.db');
+
+# attaching the pointer is reinterpreted to open the real database
+statement ok
+ATTACH '{TEST_DIR}/redirect_ptr.db' AS ptr;
+
+query I
+SELECT i FROM ptr.t ORDER BY i;
+----
+42
+43
+
+statement ok
+DETACH ptr;
+
+# re-attaching still works
+statement ok
+ATTACH '{TEST_DIR}/redirect_ptr.db' AS ptr2;
+
+query I
+SELECT count(*) FROM ptr2.t;
+----
+2
+
+statement ok
+DETACH ptr2;
+
+# overload A: create a pointer by capturing a currently-attached database by name. The pointer inherits the
+# database's resolved path, so attaching it reopens the same target.
+statement ok
+ATTACH '{TEST_DIR}/redirect_real.db' AS src;
+
+statement ok
+CALL redirect_create('{TEST_DIR}/from_db_ptr.db', 'src');
+
+statement ok
+DETACH src;
+
+statement ok
+ATTACH '{TEST_DIR}/from_db_ptr.db' AS fromdb;
+
+query I
+SELECT count(*) FROM fromdb.t;
+----
+2
+
+statement ok
+DETACH fromdb;
+
+# overload A throws if the named database is not attached
+statement error
+CALL redirect_create('{TEST_DIR}/nope_ptr.db', 'not_attached_db');
+----
+<REGEX>:.*is not attached.*
+
+# chained redirects are not supported (0-or-1 rule): a pointer whose target is itself a pointer is rejected,
+# which also makes cycles impossible. redirect_ptr.db is itself a pointer, so redirecting to it is refused.
+statement ok
+CALL redirect_create('{TEST_DIR}/redirect_chain.db', path := 'redirect_ptr.db');
+
+statement error
+ATTACH '{TEST_DIR}/redirect_chain.db' AS chained;
+----
+<REGEX>:.*chained redirects are not supported.*
+
+# an explicit TYPE duckdb bypasses redirect detection, but the storage open path refuses to open a pointer
+# file as an ordinary database - otherwise a write could clobber it and orphan the real target's data.
+statement error
+ATTACH '{TEST_DIR}/redirect_ptr.db' AS raw (TYPE duckdb);
+----
+<REGEX>:.*redirect pointer file.*
+
+# a would-be cycle (a -> b -> a) cannot loop: the no-chain rule rejects it at the first hop, since b is a pointer
+statement ok
+CALL redirect_create('{TEST_DIR}/cycle_a.db', path := 'cycle_b.db');
+
+statement ok
+CALL redirect_create('{TEST_DIR}/cycle_b.db', path := 'cycle_a.db');
+
+statement error
+ATTACH '{TEST_DIR}/cycle_a.db' AS cyc;
+----
+<REGEX>:.*chained redirects are not supported.*
+
+# creating a pointer over an existing file requires overwrite
+statement error
+CALL redirect_create('{TEST_DIR}/redirect_ptr.db', path := 'redirect_real.db');
+----
+
+statement ok
+CALL redirect_create('{TEST_DIR}/redirect_ptr.db', path := 'redirect_real.db', overwrite => true);
+
+# a redirect to an extension storage type is routed to that type's extension resolution (proving the redirect
+# rewrote the db_type) rather than silently opening the pointer as an empty duckdb database. Using an unknown
+# type keeps this deterministic offline: it fails on extension resolution instead of attaching an empty db.
+statement ok
+CALL redirect_create('{TEST_DIR}/ext_ptr.db', path := 'some_target', type := 'not_a_real_db_type');
+
+statement error
+ATTACH '{TEST_DIR}/ext_ptr.db' AS extdb;
+----
+not_a_real_db_type
+
+# F1: the duplicate-open guard sees through a redirect. redirect_ptr.db points at redirect_real.db, so attaching
+# the real database directly and again via the pointer must conflict - otherwise two block managers could
+# checkpoint over each other and silently lose writes.
+statement ok
+ATTACH '{TEST_DIR}/redirect_real.db' AS direct;
+
+statement error
+ATTACH '{TEST_DIR}/redirect_ptr.db' AS via_ptr;
+----
+<REGEX>:.*conflict.*
+
+statement ok
+DETACH direct;
+
+# overwrite must refuse to clobber a real database - only a redirect pointer file may be replaced. Otherwise a
+# stray path typo would stamp a pointer header over a real database and orphan its data.
+statement error
+CALL redirect_create('{TEST_DIR}/redirect_real.db', path := 'somewhere', overwrite => true);
+----
+<REGEX>:.*not a redirect pointer.*
+
+# F4: a core-consumed option (read_only) stored in a pointer is applied to the reinterpreted attach, not rejected
+# as an unknown option. The pointer opens its target read-only.
+statement ok
+CALL redirect_create('{TEST_DIR}/ro_ptr.db', path := 'redirect_real.db', attach_options => MAP {'read_only': 'true'});
+
+statement ok
+ATTACH '{TEST_DIR}/ro_ptr.db' AS rodb;
+
+query I
+SELECT readonly FROM duckdb_databases WHERE database_name = 'rodb';
+----
+true
+
+statement error
+CREATE TABLE rodb.new_t(x INTEGER);
+----
+<REGEX>:.*read-only.*
+
+statement ok
+DETACH rodb;
+
+# a storage version below v2.0.0 is refused for a pointer file (older DuckDB must reject it, not open it empty)
+statement error
+CALL redirect_create('{TEST_DIR}/old_ptr.db', path := 'redirect_real.db', storage_version => 'v1.4.0');
+----
+<REGEX>:.*v2.0.0 or newer.*
+
+# #7: a redirected attach records the pointer file it came from in the `pointed_from` tag; the `path` column
+# shows the resolved target, the tag shows the pointer.
+statement ok
+ATTACH '{TEST_DIR}/redirect_ptr.db' AS ptrtag;
+
+query I
+SELECT tags['pointed_from'] LIKE '%redirect_ptr.db' FROM duckdb_databases WHERE database_name = 'ptrtag';
+----
+true
+
+query I
+SELECT path LIKE '%redirect_real.db' FROM duckdb_databases WHERE database_name = 'ptrtag';
+----
+true
+
+statement ok
+DETACH ptrtag;

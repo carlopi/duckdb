@@ -30,6 +30,62 @@ const char MainHeader::MAGIC_BYTES[] = "DUCK";
 const char MainHeader::CANARY[] = "DUCKKEY";
 static constexpr idx_t ENCRYPTION_METADATA_LEN = 8;
 
+static void WriteRedirectString(WriteStream &ser, const string &str) {
+	if (str.size() > RedirectInfo::MAX_RECORD_SIZE) {
+		throw InvalidInputException("Redirect string of length %llu exceeds the maximum redirect record size of %llu",
+		                            str.size(), RedirectInfo::MAX_RECORD_SIZE);
+	}
+	ser.Write<uint32_t>(NumericCast<uint32_t>(str.size()));
+	ser.WriteData(const_data_ptr_cast(str.c_str()), str.size());
+}
+
+static string ReadRedirectString(ReadStream &source) {
+	auto len = source.Read<uint32_t>();
+	if (len > RedirectInfo::MAX_RECORD_SIZE) {
+		throw IOException("Corrupt redirect record: string length %u exceeds the maximum redirect record size of %llu",
+		                  len, RedirectInfo::MAX_RECORD_SIZE);
+	}
+	string result(len, '\0');
+	if (len > 0) {
+		source.ReadData(data_ptr_cast(&result[0]), len);
+	}
+	return result;
+}
+
+void RedirectInfo::Serialize(WriteStream &ser) const {
+	ser.Write<uint8_t>(version);
+	WriteRedirectString(ser, type);
+	WriteRedirectString(ser, target);
+	ser.Write<uint32_t>(NumericCast<uint32_t>(options.size()));
+	for (auto &option : options) {
+		WriteRedirectString(ser, option.key);
+		WriteRedirectString(ser, option.value);
+	}
+}
+
+RedirectInfo RedirectInfo::Deserialize(ReadStream &source) {
+	RedirectInfo result;
+	result.is_redirect = true;
+	result.version = source.Read<uint8_t>();
+	if (result.version != RedirectInfo::CURRENT_VERSION) {
+		throw IOException("Unsupported redirect record version %d - this DuckDB build only understands version %d",
+		                  result.version, RedirectInfo::CURRENT_VERSION);
+	}
+	result.type = ReadRedirectString(source);
+	result.target = ReadRedirectString(source);
+	auto option_count = source.Read<uint32_t>();
+	if (option_count > RedirectInfo::MAX_RECORD_SIZE) {
+		throw IOException("Corrupt redirect record: option count %u is implausibly large", option_count);
+	}
+	for (uint32_t i = 0; i < option_count; i++) {
+		RedirectOption option;
+		option.key = ReadRedirectString(source);
+		option.value = ReadRedirectString(source);
+		result.options.push_back(std::move(option));
+	}
+	return result;
+}
+
 void SerializeVersionNumber(WriteStream &ser, const string &version_str) {
 	data_t version[MainHeader::MAX_VERSION_SIZE];
 	memset(version, 0, MainHeader::MAX_VERSION_SIZE);
@@ -214,7 +270,7 @@ void MainHeader::CheckMagicBytes(MemoryMappedFile &handle) {
 	}
 }
 
-MainHeader MainHeader::Read(ReadStream &source) {
+MainHeader MainHeader::Read(ReadStream &source, bool check_version) {
 	data_t magic_bytes[MAGIC_BYTE_SIZE];
 
 	MainHeader header;
@@ -225,7 +281,10 @@ MainHeader MainHeader::Read(ReadStream &source) {
 
 	header.version_number = source.Read<idx_t>();
 
-	if (static_cast<StorageVersion>(header.version_number) == DEPRECATED_VERSION_NUMBER) {
+	if (!check_version) {
+		// Skip the storage-version gate: used for redirect detection, where a pointer file may carry a poisoned
+		// storage version that must not throw before the redirect is applied.
+	} else if (static_cast<StorageVersion>(header.version_number) == DEPRECATED_VERSION_NUMBER) {
 		// if the version number in the main header is deprecated, then we just ignore the main header version number
 		// TODO: if we are confident, we can remove the check below
 	} else if (header.version_number < VERSION_NUMBER_LOWER || header.version_number > VERSION_NUMBER_UPPER) {
@@ -281,6 +340,18 @@ void DatabaseHeader::Write(WriteStream &ser) {
 		ser.Write<idx_t>(ser_version);
 	} else {
 		ser.Write<idx_t>(static_cast<idx_t>(storage_compatibility));
+	}
+
+	// Append the redirect record when this file is a pointer. It is bounded so it always fits the 4KiB block.
+	if (redirect.is_redirect) {
+		MemoryStream record_stream;
+		redirect.Serialize(record_stream);
+		if (record_stream.GetPosition() > RedirectInfo::MAX_RECORD_SIZE) {
+			throw InvalidInputException(
+			    "The redirect record is %llu bytes, which exceeds the maximum redirect record size of %llu",
+			    record_stream.GetPosition(), RedirectInfo::MAX_RECORD_SIZE);
+		}
+		ser.WriteData(record_stream.GetData(), record_stream.GetPosition());
 	}
 }
 
@@ -366,6 +437,11 @@ DatabaseHeader DatabaseHeader::Read(const MainHeader &main_header, ReadStream &s
 	auto database_header_storage_version = static_cast<StorageVersion>(h_storage_version);
 	SetStorageVersionInDatabaseHeader(header, static_cast<StorageVersion>(main_header.version_number),
 	                                  database_header_storage_version);
+
+	// The redirect record is appended after the fixed fields when the MainHeader redirect flag is set.
+	if (main_header.IsRedirect()) {
+		header.redirect = RedirectInfo::Deserialize(source);
+	}
 
 	return header;
 }
@@ -635,6 +711,15 @@ void SingleFileBlockManager::LoadExistingDatabase(QueryContext context) {
 	}
 
 	MainHeader main_header = DeserializeMainHeader(header_buffer.GetDataMutable() - delta);
+	if (main_header.IsRedirect()) {
+		// A redirect pointer file must never be opened as an ordinary database: doing so would expose (or let a
+		// write clobber) a file that only carries a pointer to its real target. Detection normally diverts the
+		// ATTACH to the target; reaching here means detection was bypassed (e.g. an explicit TYPE duckdb).
+		throw IOException(
+		    "Cannot open \"%s\" as an ordinary database: it is a redirect pointer file. Attach it without an "
+		    "explicit TYPE so the redirect is followed to its target.",
+		    path);
+	}
 	memcpy(options.db_identifier, main_header.GetDBIdentifier(), MainHeader::DB_IDENTIFIER_LEN);
 
 	if (!main_header.IsEncrypted() && options.encryption_options.encryption_enabled) {

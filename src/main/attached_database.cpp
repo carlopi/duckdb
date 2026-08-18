@@ -45,69 +45,72 @@ AttachOptions::AttachOptions(const DBConfigOptions &options)
 AttachOptions::AttachOptions(const unordered_map<string, Value> &attach_options, const AccessMode default_access_mode)
     : access_mode(default_access_mode) {
 	for (auto &entry : attach_options) {
-		if (entry.first == "readonly" || entry.first == "read_only") {
-			// Extract the read access mode.
-			auto read_only = BooleanValue::Get(entry.second.DefaultCastAs(LogicalType::BOOLEAN));
-			if (read_only) {
-				access_mode = AccessMode::READ_ONLY;
-			} else {
-				access_mode = AccessMode::READ_WRITE;
-			}
-			continue;
-		}
-
-		if (entry.first == "recovery_mode") {
-			// Extract the recovery mode.
-			auto mode_str = StringValue::Get(entry.second.DefaultCastAs(LogicalType::VARCHAR));
-			recovery_mode = EnumUtil::FromString<RecoveryMode>(mode_str);
-			continue;
-		}
-
-		if (entry.first == "readwrite" || entry.first == "read_write") {
-			// Extract the write access mode.
-			auto read_write = BooleanValue::Get(entry.second.DefaultCastAs(LogicalType::BOOLEAN));
-			if (!read_write) {
-				access_mode = AccessMode::READ_ONLY;
-			} else {
-				access_mode = AccessMode::READ_WRITE;
-			}
-			continue;
-		}
-
-		if (entry.first == "type") {
-			// Extract the database type. Normalize case so that
-			// `TYPE sqlite` and `TYPE 'SQLite'` are equivalent.
-			// `TYPE sqlite` and `TYPE 'sqlite3'` are NOT equivalent, aliasing to be applied on comparison
-			db_type = StringUtil::Lower(StringValue::Get(entry.second.DefaultCastAs(LogicalType::VARCHAR)));
-			continue;
-		}
-
-		if (entry.first == "default_table") {
-			default_table = QualifiedName::Parse(StringValue::Get(entry.second.DefaultCastAs(LogicalType::VARCHAR)));
-			continue;
-		}
-
-		if (entry.first == "hidden") {
-			auto is_hidden = BooleanValue::Get(entry.second.DefaultCastAs(LogicalType::BOOLEAN));
-			if (is_hidden) {
-				visibility = AttachVisibility::HIDDEN;
-			}
-			continue;
-		}
-
-		if (entry.first == "vacuum_rebuild_indexes") {
-			const auto threshold = UBigIntValue::Get(entry.second.DefaultCastAs(LogicalType::UBIGINT));
-			try {
-				vacuum_rebuild_indexes_threshold = threshold;
-			} catch (InternalException &e) {
-				throw InvalidInputException("Invalid setting for vacuum_rebuild_indexes: %d (valid range is 0 - %d)",
-				                            threshold,
-				                            UBigIntValue::Get(Value::MaximumValue(LogicalType::UBIGINT)) - 1);
-			}
-			continue;
-		}
-		options.emplace(entry.first, entry.second);
+		ApplyOption(entry.first, entry.second);
 	}
+}
+
+void AttachOptions::ApplyOption(const string &key, const Value &value) {
+	if (key == "readonly" || key == "read_only") {
+		// Extract the read access mode.
+		auto read_only = BooleanValue::Get(value.DefaultCastAs(LogicalType::BOOLEAN));
+		if (read_only) {
+			access_mode = AccessMode::READ_ONLY;
+		} else {
+			access_mode = AccessMode::READ_WRITE;
+		}
+		return;
+	}
+
+	if (key == "recovery_mode") {
+		// Extract the recovery mode.
+		auto mode_str = StringValue::Get(value.DefaultCastAs(LogicalType::VARCHAR));
+		recovery_mode = EnumUtil::FromString<RecoveryMode>(mode_str);
+		return;
+	}
+
+	if (key == "readwrite" || key == "read_write") {
+		// Extract the write access mode.
+		auto read_write = BooleanValue::Get(value.DefaultCastAs(LogicalType::BOOLEAN));
+		if (!read_write) {
+			access_mode = AccessMode::READ_ONLY;
+		} else {
+			access_mode = AccessMode::READ_WRITE;
+		}
+		return;
+	}
+
+	if (key == "type") {
+		// Extract the database type. Normalize case so that
+		// `TYPE sqlite` and `TYPE 'SQLite'` are equivalent.
+		// `TYPE sqlite` and `TYPE 'sqlite3'` are NOT equivalent, aliasing to be applied on comparison
+		db_type = StringUtil::Lower(StringValue::Get(value.DefaultCastAs(LogicalType::VARCHAR)));
+		return;
+	}
+
+	if (key == "default_table") {
+		default_table = QualifiedName::Parse(StringValue::Get(value.DefaultCastAs(LogicalType::VARCHAR)));
+		return;
+	}
+
+	if (key == "hidden") {
+		auto is_hidden = BooleanValue::Get(value.DefaultCastAs(LogicalType::BOOLEAN));
+		if (is_hidden) {
+			visibility = AttachVisibility::HIDDEN;
+		}
+		return;
+	}
+
+	if (key == "vacuum_rebuild_indexes") {
+		const auto threshold = UBigIntValue::Get(value.DefaultCastAs(LogicalType::UBIGINT));
+		try {
+			vacuum_rebuild_indexes_threshold = threshold;
+		} catch (InternalException &e) {
+			throw InvalidInputException("Invalid setting for vacuum_rebuild_indexes: %d (valid range is 0 - %d)",
+			                            threshold, UBigIntValue::Get(Value::MaximumValue(LogicalType::UBIGINT)) - 1);
+		}
+		return;
+	}
+	options[key] = value;
 }
 
 //===--------------------------------------------------------------------===//

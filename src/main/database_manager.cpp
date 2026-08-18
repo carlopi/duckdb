@@ -15,8 +15,82 @@
 #include "duckdb/transaction/duck_transaction_manager.hpp"
 #include "duckdb/common/enums/on_entry_not_found.hpp"
 #include "duckdb/transaction/meta_transaction.hpp"
+#include "duckdb/common/file_system.hpp"
+#include "duckdb/common/string_util.hpp"
+#include "duckdb/main/config.hpp"
+#include "duckdb/parser/parsed_data/attach_info.hpp"
+#include "duckdb/storage/redirect_info.hpp"
 
 namespace duckdb {
+
+//! Resolve a redirect target. A duckdb file target given as a relative path is resolved against the directory of
+//! the pointer file; absolute paths, URIs and remote files are used verbatim.
+static string ResolveRedirectTarget(FileSystem &fs, const string &pointer_path, const string &target,
+                                    bool duckdb_target) {
+	if (!duckdb_target) {
+		return target;
+	}
+	if (fs.IsPathAbsolute(target) || FileSystem::IsRemoteFile(target) || StringUtil::Contains(target, "://")) {
+		return target;
+	}
+	auto dir = StringUtil::GetFilePath(pointer_path);
+	if (dir.empty()) {
+		return target;
+	}
+	return fs.JoinPath(dir, target);
+}
+
+//! Rewrite an ATTACH in place so it opens the redirect target instead of the pointer file. Exactly one redirect is
+//! applied: the target must be a real database, not another pointer - chained redirects are rejected, which makes
+//! cycles impossible and keeps option-merging and provenance unambiguous. Gates the target behind
+//! enable_external_access and merges stored options (user-supplied ATTACH options win). After this the normal
+//! type-resolution/late-open opens the target.
+static void ApplyRedirects(ClientContext &context, FileSystem &fs, AttachInfo &info, AttachOptions &options,
+                           const RedirectInfo &redirect) {
+	auto &config = DBConfig::GetConfig(context);
+	const string pointer_path = info.path;
+	const bool duckdb_target = redirect.type.empty() || StringUtil::CIEquals(redirect.type, "duckdb");
+	auto target = ResolveRedirectTarget(fs, pointer_path, redirect.target, duckdb_target);
+	if (target.empty()) {
+		throw InvalidInputException("ATTACH of \"%s\" has an empty redirect target", pointer_path);
+	}
+	if (target == pointer_path) {
+		throw InvalidInputException("ATTACH of \"%s\" redirects to itself", pointer_path);
+	}
+	if (!config.CanAccessFile(target, FileType::FILE_TYPE_REGULAR)) {
+		throw PermissionException(
+		    "ATTACH of \"%s\" redirects to \"%s\", which is not allowed because enable_external_access is disabled",
+		    pointer_path, target);
+	}
+
+	// Merge stored options - route each through AttachOptions so a core-consumed key (read_only, recovery_mode, ...)
+	// reaches its typed field instead of surviving as an unrecognized leftover. User-supplied ATTACH options win, so
+	// skip any key the user provided explicitly.
+	for (auto &option : redirect.options) {
+		if (info.options.find(option.key) != info.options.end()) {
+			continue;
+		}
+		options.ApplyOption(option.key, Value(option.value));
+	}
+
+	// Rewrite the attach to point at the target and drop the pointer file's now-stale prefetched header.
+	info.path = target;
+	options.db_type = duckdb_target ? "" : redirect.type;
+	options.prefetched = PrefetchedFileData();
+
+	// Only one redirect is allowed. For a duckdb target, re-read its header (which also refills the prefetch reused
+	// by the late open); if the target is itself a pointer, reject rather than following a chain.
+	if (duckdb_target) {
+		RedirectInfo target_redirect;
+		DBPathAndType::CheckMagicBytes(context, fs, info.path, options.db_type, &options.prefetched, &target_redirect);
+		if (target_redirect.is_redirect) {
+			throw InvalidInputException(
+			    "ATTACH of \"%s\" redirects to \"%s\", which is itself a redirect pointer; chained redirects are not "
+			    "supported",
+			    pointer_path, target);
+		}
+	}
+}
 
 // Oids are started at 20000 to avoid colliding with Postgres builtin types, which end at 16383:
 // https://github.com/postgres/postgres/blob/db93988ab0e78396f2ed9e96c826ff988d12b9f2/src/include/access/transam.h#L156-L197
@@ -185,7 +259,30 @@ shared_ptr<AttachedDatabase> DatabaseManager::AttachDatabase(ClientContext &cont
 		timer.EndTimer();
 	}
 	auto &config = DBConfig::GetConfig(context);
+	auto pre_redirect_path = info.path;
 	GetDatabaseType(context, info, config, options);
+	// GetDatabaseType only rewrites info.path when a redirect was applied, so this detects a redirected attach.
+	const bool redirected = info.path != pre_redirect_path;
+	if (requires_tracking_attaches && options.db_type.empty() && redirected) {
+		// A redirect rewrote the path to a DuckDB target. The duplicate-open guard was registered against the
+		// pointer path, not the target - re-register the (canonicalized) target so opening the same database
+		// directly and via a pointer, or via two pointers, still conflicts.
+		auto &fs = FileSystem::GetFileSystem(context);
+		info.path = fs.CanonicalizePath(info.path);
+		options.stored_database_path.reset();
+		if (InsertDatabasePath(info, options) == InsertDatabasePathResult::ALREADY_EXISTS) {
+			// A concurrent attach of the same target under the same name won the race - return it.
+			auto &meta_transaction = MetaTransaction::Get(context);
+			if (auto existing_db = meta_transaction.GetReferencedDatabaseOwning(info.name)) {
+				return existing_db;
+			}
+			lock_guard<mutex> guard(databases_lock);
+			auto entry = databases.find(info.name);
+			if (entry != databases.end()) {
+				return entry->second;
+			}
+		}
+	}
 	if (!options.db_type.empty()) {
 		// we only need to prevent duplicate opening of DuckDB files
 		// if this is not a DuckDB file but e.g. a CSV or Parquet file, we don't need to do this duplicate protection
@@ -205,6 +302,11 @@ shared_ptr<AttachedDatabase> DatabaseManager::AttachDatabase(ClientContext &cont
 	// now create the attached database
 	auto &db = DatabaseInstance::GetDatabase(context);
 	auto attached_db = db.CreateAttachedDatabase(context, info, options);
+
+	if (redirected) {
+		// Surface the pointer file this attach was redirected from; the `path` column shows the resolved target.
+		attached_db->tags.insert("pointed_from", pre_redirect_path);
+	}
 
 	if (default_database.empty()) {
 		default_database = attached_db->GetName();
@@ -390,7 +492,13 @@ void DatabaseManager::GetDatabaseType(ClientContext &context, AttachInfo &info, 
 	if (options.db_type.empty()) {
 		auto &fs = FileSystem::GetFileSystem(context);
 		// Prefetch the header for a DuckDB file, reused when opening it (see AttachOptions::prefetched).
-		DBPathAndType::CheckMagicBytes(context, fs, info.path, options.db_type, &options.prefetched);
+		// A redirect record (pointer file), if present, is parsed from the same bytes.
+		RedirectInfo redirect;
+		DBPathAndType::CheckMagicBytes(context, fs, info.path, options.db_type, &options.prefetched, &redirect);
+		if (redirect.is_redirect) {
+			// Reinterpret the ATTACH to open the redirect target instead of the pointer file.
+			ApplyRedirects(context, fs, info, options, redirect);
+		}
 	}
 
 	if (options.db_type.empty()) {
