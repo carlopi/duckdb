@@ -711,6 +711,15 @@ void SingleFileBlockManager::LoadExistingDatabase(QueryContext context) {
 	}
 
 	MainHeader main_header = DeserializeMainHeader(header_buffer.GetDataMutable() - delta);
+	if (main_header.IsRedirect()) {
+		// A redirect pointer file must never be opened as an ordinary database: doing so would expose (or let a
+		// write clobber) a file that only carries a pointer to its real target. Detection normally diverts the
+		// ATTACH to the target; reaching here means detection was bypassed (e.g. an explicit TYPE duckdb).
+		throw IOException(
+		    "Cannot open \"%s\" as an ordinary database: it is a redirect pointer file. Attach it without an "
+		    "explicit TYPE so the redirect is followed to its target.",
+		    path);
+	}
 	memcpy(options.db_identifier, main_header.GetDBIdentifier(), MainHeader::DB_IDENTIFIER_LEN);
 
 	if (!main_header.IsEncrypted() && options.encryption_options.encryption_enabled) {

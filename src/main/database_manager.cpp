@@ -259,7 +259,28 @@ shared_ptr<AttachedDatabase> DatabaseManager::AttachDatabase(ClientContext &cont
 		timer.EndTimer();
 	}
 	auto &config = DBConfig::GetConfig(context);
+	auto pre_redirect_path = info.path;
 	GetDatabaseType(context, info, config, options);
+	if (requires_tracking_attaches && options.db_type.empty() && info.path != pre_redirect_path) {
+		// A redirect rewrote the path to a DuckDB target. The duplicate-open guard was registered against the
+		// pointer path, not the target - re-register the (canonicalized) target so opening the same database
+		// directly and via a pointer, or via two pointers, still conflicts.
+		auto &fs = FileSystem::GetFileSystem(context);
+		info.path = fs.CanonicalizePath(info.path);
+		options.stored_database_path.reset();
+		if (InsertDatabasePath(info, options) == InsertDatabasePathResult::ALREADY_EXISTS) {
+			// A concurrent attach of the same target under the same name won the race - return it.
+			auto &meta_transaction = MetaTransaction::Get(context);
+			if (auto existing_db = meta_transaction.GetReferencedDatabaseOwning(info.name)) {
+				return existing_db;
+			}
+			lock_guard<mutex> guard(databases_lock);
+			auto entry = databases.find(info.name);
+			if (entry != databases.end()) {
+				return entry->second;
+			}
+		}
+	}
 	if (!options.db_type.empty()) {
 		// we only need to prevent duplicate opening of DuckDB files
 		// if this is not a DuckDB file but e.g. a CSV or Parquet file, we don't need to do this duplicate protection

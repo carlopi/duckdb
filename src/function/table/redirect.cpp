@@ -8,6 +8,7 @@
 #include "duckdb/common/types/value.hpp"
 #include "duckdb/storage/storage_info.hpp"
 #include "duckdb/storage/redirect_info.hpp"
+#include "duckdb/storage/magic_bytes.hpp"
 
 namespace duckdb {
 
@@ -15,10 +16,26 @@ namespace duckdb {
 //! DatabaseHeaders carry the redirect record. Storing the record in the DatabaseHeaders (not the MainHeader) lets a
 //! later re-point swap it atomically via the h1/h2 iteration count, and rides the block-encryption path when the
 //! pointer is encrypted. h1 is the active slot; h2 is a valid fallback. Mirrors the default header block layout.
-static void WriteRedirectPointerFile(FileSystem &fs, const string &path, const RedirectInfo &redirect,
+static void WriteRedirectPointerFile(ClientContext &context, const string &path, const RedirectInfo &redirect,
                                      bool overwrite) {
-	if (!overwrite && fs.FileExists(path)) {
-		throw IOException("redirect_create: file \"%s\" already exists (pass overwrite => true to replace it)", path);
+	auto &fs = FileSystem::GetFileSystem(context);
+
+	// Inspect any existing file before writing. A redirect pointer may be replaced, but a real database or a
+	// foreign file must never be clobbered: overwriting a database would stamp a pointer header over it and
+	// orphan its data. So `overwrite` means "replace this pointer", never "clobber whatever is there".
+	if (fs.FileExists(path)) {
+		if (!overwrite) {
+			throw IOException("redirect_create: file \"%s\" already exists (pass overwrite => true to replace it)",
+			                  path);
+		}
+		RedirectInfo existing;
+		auto existing_type = MagicBytes::CheckMagicBytes(context, fs, path, nullptr, &existing);
+		if (!(existing_type == DataFileType::DUCKDB_FILE && existing.is_redirect)) {
+			throw IOException(
+			    "redirect_create: refusing to overwrite \"%s\": it is not a redirect pointer file. Delete it first "
+			    "if you really mean to replace it.",
+			    path);
+		}
 	}
 	auto handle = fs.OpenFile(path, FileFlags::FILE_FLAGS_WRITE | FileFlags::FILE_FLAGS_FILE_CREATE);
 
@@ -116,8 +133,7 @@ static void RedirectCreateFunc(ClientContext &context, TableFunctionInput &data_
 	if (state.finished) {
 		return;
 	}
-	auto &fs = FileSystem::GetFileSystem(context);
-	WriteRedirectPointerFile(fs, bind_data.path, bind_data.redirect, bind_data.overwrite);
+	WriteRedirectPointerFile(context, bind_data.path, bind_data.redirect, bind_data.overwrite);
 	output.data[0].Append(Value(bind_data.path));
 	state.finished = true;
 }

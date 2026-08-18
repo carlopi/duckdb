@@ -60,18 +60,12 @@ SELECT count(*) FROM chained.t;
 statement ok
 DETACH chained;
 
-# an explicit TYPE on the ATTACH short-circuits redirect interpretation: the raw pointer file opens as an
-# ordinary (empty) duckdb database, proving the redirect was not applied.
-statement ok
+# an explicit TYPE duckdb bypasses redirect detection, but the storage open path refuses to open a pointer
+# file as an ordinary database - otherwise a write could clobber it and orphan the real target's data.
+statement error
 ATTACH '{TEST_DIR}/redirect_ptr.db' AS raw (TYPE duckdb);
-
-query I
-SELECT count(*) FROM duckdb_tables() WHERE database_name = 'raw';
 ----
-0
-
-statement ok
-DETACH raw;
+<REGEX>:.*redirect pointer file.*
 
 # a redirect cycle is detected and rejected rather than looping forever
 statement ok
@@ -103,3 +97,24 @@ statement error
 ATTACH '{TEST_DIR}/ext_ptr.db' AS extdb;
 ----
 not_a_real_db_type
+
+# F1: the duplicate-open guard sees through a redirect. redirect_ptr.db points at redirect_real.db, so attaching
+# the real database directly and again via the pointer must conflict - otherwise two block managers could
+# checkpoint over each other and silently lose writes.
+statement ok
+ATTACH '{TEST_DIR}/redirect_real.db' AS direct;
+
+statement error
+ATTACH '{TEST_DIR}/redirect_ptr.db' AS via_ptr;
+----
+<REGEX>:.*conflict.*
+
+statement ok
+DETACH direct;
+
+# overwrite must refuse to clobber a real database - only a redirect pointer file may be replaced. Otherwise a
+# stray path typo would stamp a pointer header over a real database and orphan its data.
+statement error
+CALL redirect_create('{TEST_DIR}/redirect_real.db', 'somewhere', overwrite => true);
+----
+<REGEX>:.*not a redirect pointer.*
