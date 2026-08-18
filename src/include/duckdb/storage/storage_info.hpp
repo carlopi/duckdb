@@ -265,8 +265,6 @@ public:
 	uint64_t flags[FLAG_COUNT];
 	//! Encryption version
 	uint8_t encryption_version;
-	//! The redirect record. Only serialized/read when REDIRECT_DATABASE_FLAG is set.
-	RedirectInfo redirect;
 
 	//! The length of the unique database identifier.
 	static constexpr idx_t DB_IDENTIFIER_LEN = 16;
@@ -401,6 +399,10 @@ struct DatabaseHeader {
 	idx_t vector_size = 0;
 	//! The storage compatibility version
 	StorageVersion storage_compatibility = StorageVersion::INVALID;
+	//! The redirect record, appended after the fixed fields when the MainHeader REDIRECT_DATABASE_FLAG is set.
+	//! It lives here (not in the MainHeader) so re-pointing is atomic via the h1/h2 iteration swap, and so it
+	//! rides the standard block-encryption path when the pointer file is encrypted.
+	RedirectInfo redirect;
 
 	void Write(WriteStream &ser);
 	static DatabaseHeader Read(const MainHeader &header, ReadStream &source);

@@ -11,9 +11,10 @@
 
 namespace duckdb {
 
-//! Write a header-only pointer file: a valid DuckDB container whose MainHeader carries a redirect record and
-//! whose (empty) DatabaseHeaders use the latest storage version, so a reader without redirect support hard-fails
-//! instead of silently opening it as an empty database. Mirrors the default single-file header block layout.
+//! Write a pointer file: a valid DuckDB container whose MainHeader carries only the redirect flag and whose two
+//! DatabaseHeaders carry the redirect record. Storing the record in the DatabaseHeaders (not the MainHeader) lets a
+//! later re-point swap it atomically via the h1/h2 iteration count, and rides the block-encryption path when the
+//! pointer is encrypted. h1 is the active slot; h2 is a valid fallback. Mirrors the default header block layout.
 static void WriteRedirectPointerFile(FileSystem &fs, const string &path, const RedirectInfo &redirect,
                                      bool overwrite) {
 	if (!overwrite && fs.FileExists(path)) {
@@ -27,13 +28,11 @@ static void WriteRedirectPointerFile(FileSystem &fs, const string &path, const R
 
 	auto block = make_unsafe_uniq_array<data_t>(file_header);
 
-	// MainHeader block: carries the redirect record. The checksum covers the data region after the block header.
+	// MainHeader block: carries the redirect flag + identity only. The record lives in the DatabaseHeaders below.
 	memset(block.get(), 0, file_header);
 	MainHeader main_header {};
 	main_header.version_number = VERSION_NUMBER;
 	main_header.SetRedirect();
-	main_header.redirect = redirect;
-	main_header.redirect.is_redirect = true;
 	{
 		MemoryStream ser(block.get() + block_header, data_size);
 		main_header.Write(ser);
@@ -41,17 +40,19 @@ static void WriteRedirectPointerFile(FileSystem &fs, const string &path, const R
 	Store<uint64_t>(Checksum(block.get() + block_header, data_size), block.get());
 	handle->Write(QueryContext(), block.get(), file_header, 0);
 
-	// Two empty DatabaseHeaders with the latest storage version (poisons old readers).
+	// Two DatabaseHeaders, both carrying the redirect record. h1 is active (higher iteration); h2 is a valid fallback.
 	for (idx_t i = 1; i <= 2; i++) {
 		memset(block.get(), 0, file_header);
 		DatabaseHeader db_header;
-		db_header.iteration = 0;
+		db_header.iteration = (i == 1) ? 1 : 0;
 		db_header.meta_block = idx_t(INVALID_BLOCK);
 		db_header.free_list = idx_t(INVALID_BLOCK);
 		db_header.block_count = 0;
 		db_header.block_alloc_size = DEFAULT_BLOCK_ALLOC_SIZE;
 		db_header.vector_size = STANDARD_VECTOR_SIZE;
 		db_header.storage_compatibility = StorageVersion::V2_0_0;
+		db_header.redirect = redirect;
+		db_header.redirect.is_redirect = true;
 		MemoryStream ser(block.get() + block_header, data_size);
 		db_header.Write(ser);
 		Store<uint64_t>(Checksum(block.get() + block_header, data_size), block.get());

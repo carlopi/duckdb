@@ -1,4 +1,6 @@
 #include "duckdb/storage/magic_bytes.hpp"
+#include "duckdb/common/checksum.hpp"
+#include "duckdb/common/exception.hpp"
 #include "duckdb/common/file_system.hpp"
 #include "duckdb/common/helper.hpp"
 #include "duckdb/common/prefetched_file_data.hpp"
@@ -28,23 +30,72 @@ static DataFileType ClassifyMagicBytes(const char *buffer) {
 	return DataFileType::UNKNOWN_FILE;
 }
 
-//! Parse a redirect record from the already-prefetched header bytes. A malformed or partial header simply
-//! yields no redirect - the normal storage open path surfaces genuine corruption. Encrypted databases are
-//! skipped: their redirect record would be ciphertext, and the key is not available during detection.
-static void ParseRedirect(char *buffer, idx_t buffer_size, RedirectInfo &out_redirect) {
-	if (buffer_size <= MainHeader::MAGIC_BYTE_OFFSET) {
+//! Verify a header block's self-checksum: the first 8 bytes hold the checksum over the remaining data region.
+//! The main header and (unencrypted) database headers are plaintext and use this same layout.
+static bool VerifyHeaderBlockChecksum(const_data_ptr_t block_start) {
+	auto stored = Load<uint64_t>(block_start);
+	auto computed =
+	    Checksum(block_start + MainHeader::MAGIC_BYTE_OFFSET, Storage::FILE_HEADER_SIZE - MainHeader::MAGIC_BYTE_OFFSET);
+	return stored == computed;
+}
+
+//! Parse a redirect record from the already-prefetched header bytes. The MainHeader (block 0) carries the redirect
+//! flag; the record itself lives in the DatabaseHeaders (blocks 1/2), the active one chosen by iteration count -
+//! mirroring how a re-point atomically swaps the active slot. Every block is checksum-verified before it is trusted,
+//! so a single corrupted byte cannot silently attach a wrong target. A malformed or partial header yields no
+//! redirect (the normal open path surfaces genuine corruption); a redirect-flagged file with no readable record is
+//! reported as corrupt. Encrypted databases are skipped: their record would be ciphertext, and the key is not
+//! available during detection.
+static void ParseRedirect(const string &path, char *buffer, idx_t buffer_size, RedirectInfo &out_redirect) {
+	// The record lives in the DatabaseHeaders, so the full 3-block header region must have been read.
+	if (buffer_size < 3 * Storage::FILE_HEADER_SIZE) {
 		return;
 	}
+	auto data = reinterpret_cast<data_ptr_t>(buffer);
+
+	// Only trust the redirect flag if the MainHeader block itself is intact; otherwise let the normal open path
+	// report the corruption.
+	if (!VerifyHeaderBlockChecksum(data)) {
+		return;
+	}
+	MainHeader main_header {};
 	try {
-		MemoryStream stream(reinterpret_cast<data_ptr_t>(buffer) + MainHeader::MAGIC_BYTE_OFFSET,
-		                    buffer_size - MainHeader::MAGIC_BYTE_OFFSET);
+		MemoryStream main_stream(data + MainHeader::MAGIC_BYTE_OFFSET,
+		                         Storage::FILE_HEADER_SIZE - MainHeader::MAGIC_BYTE_OFFSET);
 		// Skip the storage-version gate so a poisoned pointer file is still detected as a redirect.
-		auto header = MainHeader::Read(stream, false);
-		if (!header.IsEncrypted() && header.IsRedirect()) {
-			out_redirect = std::move(header.redirect);
-		}
+		main_header = MainHeader::Read(main_stream, false);
 	} catch (const std::exception &) {
-		// Not a readable redirect record - leave out_redirect empty.
+		return;
+	}
+	if (main_header.IsEncrypted() || !main_header.IsRedirect()) {
+		return;
+	}
+
+	// Pick the valid slot with the highest iteration - a torn re-point leaves the older slot intact as a fallback.
+	bool found = false;
+	uint64_t best_iteration = 0;
+	for (idx_t slot = 1; slot <= 2; slot++) {
+		auto block_start = data + slot * Storage::FILE_HEADER_SIZE;
+		if (!VerifyHeaderBlockChecksum(block_start)) {
+			continue;
+		}
+		try {
+			MemoryStream db_stream(block_start + MainHeader::MAGIC_BYTE_OFFSET,
+			                       Storage::FILE_HEADER_SIZE - MainHeader::MAGIC_BYTE_OFFSET);
+			auto db_header = DatabaseHeader::Read(main_header, db_stream);
+			if (db_header.redirect.is_redirect && (!found || db_header.iteration >= best_iteration)) {
+				out_redirect = std::move(db_header.redirect);
+				best_iteration = db_header.iteration;
+				found = true;
+			}
+		} catch (const std::exception &) {
+			// A checksum-valid slot with an unreadable record - skip it; the other slot may still be usable.
+		}
+	}
+	if (!found) {
+		throw IOException(
+		    "Corrupt redirect pointer file \"%s\": the redirect flag is set but no valid redirect record was found",
+		    path);
 	}
 }
 
@@ -82,7 +133,7 @@ DataFileType MagicBytes::CheckMagicBytes(QueryContext context, FileSystem &fs, c
 		}
 		// Parse a redirect record (if any) from the same bytes - no extra I/O.
 		if (out_redirect) {
-			ParseRedirect(buffer.get(), to_read, *out_redirect);
+			ParseRedirect(path, buffer.get(), to_read, *out_redirect);
 		}
 	}
 	return file_type;

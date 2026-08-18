@@ -250,18 +250,6 @@ void MainHeader::Write(WriteStream &ser) {
 	SerializeEncryptionMetadata(ser, encrypted_canary, encryption_enabled);
 	SerializeIV(ser, canary_iv, encryption_enabled);
 	SerializeTag(ser, canary_tag, encryption_enabled);
-
-	// Append the redirect record when this file is a pointer. It is bounded so it always fits the 4KiB block.
-	if (IsRedirect()) {
-		MemoryStream record_stream;
-		redirect.Serialize(record_stream);
-		if (record_stream.GetPosition() > RedirectInfo::MAX_RECORD_SIZE) {
-			throw InvalidInputException(
-			    "The redirect record is %llu bytes, which exceeds the maximum redirect record size of %llu",
-			    record_stream.GetPosition(), RedirectInfo::MAX_RECORD_SIZE);
-		}
-		ser.WriteData(record_stream.GetData(), record_stream.GetPosition());
-	}
 }
 
 void MainHeader::CheckMagicBytes(QueryContext context, FileHandle &handle) {
@@ -335,11 +323,6 @@ MainHeader MainHeader::Read(ReadStream &source, bool check_version) {
 	DeserializeEncryptionData(source, header.canary_iv, MainHeader::AES_NONCE_LEN);
 	DeserializeEncryptionData(source, header.canary_tag, MainHeader::AES_TAG_LEN);
 
-	// The redirect record is appended after the fixed fields when the redirect flag is set.
-	if (header.IsRedirect()) {
-		header.redirect = RedirectInfo::Deserialize(source);
-	}
-
 	return header;
 }
 
@@ -357,6 +340,18 @@ void DatabaseHeader::Write(WriteStream &ser) {
 		ser.Write<idx_t>(ser_version);
 	} else {
 		ser.Write<idx_t>(static_cast<idx_t>(storage_compatibility));
+	}
+
+	// Append the redirect record when this file is a pointer. It is bounded so it always fits the 4KiB block.
+	if (redirect.is_redirect) {
+		MemoryStream record_stream;
+		redirect.Serialize(record_stream);
+		if (record_stream.GetPosition() > RedirectInfo::MAX_RECORD_SIZE) {
+			throw InvalidInputException(
+			    "The redirect record is %llu bytes, which exceeds the maximum redirect record size of %llu",
+			    record_stream.GetPosition(), RedirectInfo::MAX_RECORD_SIZE);
+		}
+		ser.WriteData(record_stream.GetData(), record_stream.GetPosition());
 	}
 }
 
@@ -442,6 +437,11 @@ DatabaseHeader DatabaseHeader::Read(const MainHeader &main_header, ReadStream &s
 	auto database_header_storage_version = static_cast<StorageVersion>(h_storage_version);
 	SetStorageVersionInDatabaseHeader(header, static_cast<StorageVersion>(main_header.version_number),
 	                                  database_header_storage_version);
+
+	// The redirect record is appended after the fixed fields when the MainHeader redirect flag is set.
+	if (main_header.IsRedirect()) {
+		header.redirect = RedirectInfo::Deserialize(source);
+	}
 
 	return header;
 }

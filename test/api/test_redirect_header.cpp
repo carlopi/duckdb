@@ -6,12 +6,16 @@
 
 using namespace duckdb;
 
-TEST_CASE("MainHeader redirect record round-trips through Write/Read", "[api][redirect]") {
-	MainHeader header {};
-	header.version_number = static_cast<idx_t>(StorageVersion::V1_4_0);
-	header.SetRedirect();
-	REQUIRE(header.IsRedirect());
+TEST_CASE("DatabaseHeader redirect record round-trips through Write/Read", "[api][redirect]") {
+	// The MainHeader carries only the redirect flag; the record itself lives in the DatabaseHeader.
+	MainHeader main_header {};
+	main_header.version_number = static_cast<idx_t>(StorageVersion::V2_0_0);
+	main_header.SetRedirect();
+	REQUIRE(main_header.IsRedirect());
 
+	DatabaseHeader header;
+	header.storage_compatibility = StorageVersion::V2_0_0;
+	header.iteration = 1;
 	header.redirect.is_redirect = true;
 	header.redirect.type = "iceberg";
 	header.redirect.target = "s3://warehouse/table";
@@ -22,8 +26,7 @@ TEST_CASE("MainHeader redirect record round-trips through Write/Read", "[api][re
 	header.Write(stream);
 	stream.Rewind();
 
-	auto read_header = MainHeader::Read(stream);
-	REQUIRE(read_header.IsRedirect());
+	auto read_header = DatabaseHeader::Read(main_header, stream);
 	REQUIRE(read_header.redirect.is_redirect);
 	REQUIRE(read_header.redirect.version == RedirectInfo::CURRENT_VERSION);
 	REQUIRE(read_header.redirect.type == "iceberg");
@@ -35,17 +38,20 @@ TEST_CASE("MainHeader redirect record round-trips through Write/Read", "[api][re
 	REQUIRE(read_header.redirect.options[1].value == "us-east-1");
 }
 
-TEST_CASE("MainHeader without redirect flag reads no redirect record", "[api][redirect]") {
-	MainHeader header {};
-	header.version_number = static_cast<idx_t>(StorageVersion::V1_4_0);
-	REQUIRE(!header.IsRedirect());
+TEST_CASE("DatabaseHeader without redirect flag reads no redirect record", "[api][redirect]") {
+	MainHeader main_header {};
+	main_header.version_number = static_cast<idx_t>(StorageVersion::V2_0_0);
+	REQUIRE(!main_header.IsRedirect());
+
+	DatabaseHeader header;
+	header.storage_compatibility = StorageVersion::V2_0_0;
+	header.iteration = 1;
 
 	MemoryStream stream;
 	header.Write(stream);
 	stream.Rewind();
 
-	auto read_header = MainHeader::Read(stream);
-	REQUIRE(!read_header.IsRedirect());
+	auto read_header = DatabaseHeader::Read(main_header, stream);
 	REQUIRE(!read_header.redirect.is_redirect);
 }
 

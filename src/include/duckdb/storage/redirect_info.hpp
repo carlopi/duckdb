@@ -22,8 +22,9 @@ struct RedirectOption {
 	string value;
 };
 
-//! An optional record, appended to the MainHeader, that turns a DuckDB file into a pointer: on ATTACH the
+//! An optional record, appended to the DatabaseHeader, that turns a DuckDB file into a pointer: on ATTACH the
 //! pointer file is not opened, but the ATTACH is reinterpreted to open `target` (as storage type `type`).
+//! It lives in the DatabaseHeader (not the MainHeader) so re-pointing is atomic via the h1/h2 iteration swap.
 struct RedirectInfo {
 	//! The record format version, independently versioned from the storage format so the layout can grow.
 	static constexpr uint8_t CURRENT_VERSION = 1;
