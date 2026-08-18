@@ -45,20 +45,15 @@ SELECT count(*) FROM ptr2.t;
 statement ok
 DETACH ptr2;
 
-# a chained redirect (pointer -> pointer -> real) resolves through the chain
+# chained redirects are not supported (0-or-1 rule): a pointer whose target is itself a pointer is rejected,
+# which also makes cycles impossible. redirect_ptr.db is itself a pointer, so redirecting to it is refused.
 statement ok
 CALL redirect_create('{TEST_DIR}/redirect_chain.db', 'redirect_ptr.db');
 
-statement ok
+statement error
 ATTACH '{TEST_DIR}/redirect_chain.db' AS chained;
-
-query I
-SELECT count(*) FROM chained.t;
 ----
-2
-
-statement ok
-DETACH chained;
+<REGEX>:.*chained redirects are not supported.*
 
 # an explicit TYPE duckdb bypasses redirect detection, but the storage open path refuses to open a pointer
 # file as an ordinary database - otherwise a write could clobber it and orphan the real target's data.
@@ -67,7 +62,7 @@ ATTACH '{TEST_DIR}/redirect_ptr.db' AS raw (TYPE duckdb);
 ----
 <REGEX>:.*redirect pointer file.*
 
-# a redirect cycle is detected and rejected rather than looping forever
+# a would-be cycle (a -> b -> a) cannot loop: the no-chain rule rejects it at the first hop, since b is a pointer
 statement ok
 CALL redirect_create('{TEST_DIR}/cycle_a.db', 'cycle_b.db');
 
@@ -77,7 +72,7 @@ CALL redirect_create('{TEST_DIR}/cycle_b.db', 'cycle_a.db');
 statement error
 ATTACH '{TEST_DIR}/cycle_a.db' AS cyc;
 ----
-redirect
+<REGEX>:.*chained redirects are not supported.*
 
 # creating a pointer over an existing file requires overwrite
 statement error
