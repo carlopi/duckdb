@@ -145,3 +145,21 @@ statement error
 CALL redirect_create('{TEST_DIR}/old_ptr.db', 'redirect_real.db', storage_version => 'v1.4.0');
 ----
 <REGEX>:.*v2.0.0 or newer.*
+
+# #7: a redirected attach records the pointer file it came from in the `pointed_from` tag; the `path` column
+# shows the resolved target, the tag shows the pointer.
+statement ok
+ATTACH '{TEST_DIR}/redirect_ptr.db' AS ptrtag;
+
+query I
+SELECT tags['pointed_from'] LIKE '%redirect_ptr.db' FROM duckdb_databases WHERE database_name = 'ptrtag';
+----
+true
+
+query I
+SELECT path LIKE '%redirect_real.db' FROM duckdb_databases WHERE database_name = 'ptrtag';
+----
+true
+
+statement ok
+DETACH ptrtag;

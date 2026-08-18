@@ -266,7 +266,9 @@ shared_ptr<AttachedDatabase> DatabaseManager::AttachDatabase(ClientContext &cont
 	auto &config = DBConfig::GetConfig(context);
 	auto pre_redirect_path = info.path;
 	GetDatabaseType(context, info, config, options);
-	if (requires_tracking_attaches && options.db_type.empty() && info.path != pre_redirect_path) {
+	// GetDatabaseType only rewrites info.path when a redirect was applied, so this detects a redirected attach.
+	const bool redirected = info.path != pre_redirect_path;
+	if (requires_tracking_attaches && options.db_type.empty() && redirected) {
 		// A redirect rewrote the path to a DuckDB target. The duplicate-open guard was registered against the
 		// pointer path, not the target - re-register the (canonicalized) target so opening the same database
 		// directly and via a pointer, or via two pointers, still conflicts.
@@ -305,6 +307,11 @@ shared_ptr<AttachedDatabase> DatabaseManager::AttachDatabase(ClientContext &cont
 	// now create the attached database
 	auto &db = DatabaseInstance::GetDatabase(context);
 	auto attached_db = db.CreateAttachedDatabase(context, info, options);
+
+	if (redirected) {
+		// Surface the pointer file this attach was redirected from; the `path` column shows the resolved target.
+		attached_db->tags.insert("pointed_from", pre_redirect_path);
+	}
 
 	if (default_database.empty()) {
 		default_database = attached_db->GetName();
