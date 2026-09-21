@@ -780,6 +780,14 @@ bool FileSystem::IsManuallySet() {
 	return false;
 }
 
+bool FileSystem::IsRewritingFileSystem() const {
+	return false;
+}
+
+OpenFileInfo FileSystem::RewriteFile(const OpenFileInfo &file) {
+	throw NotImplementedException("%s: RewriteFile is not implemented!", GetName());
+}
+
 FileWriteMode FileSystem::GetWriteMode(FileHandle &handle) {
 	return FileWriteMode::SEQUENTIAL;
 }

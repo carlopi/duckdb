@@ -359,6 +359,11 @@ public:
 
 	//! If FS was manually set by the user
 	DUCKDB_API virtual bool IsManuallySet();
+	//! Whether this file system rewrites the files it can handle into files of another file system, instead of
+	//! performing the I/O itself. The VirtualFileSystem resolves a rewriting file system before dispatching
+	DUCKDB_API virtual bool IsRewritingFileSystem() const;
+	//! Rewrite a file into the file it stands for - only called on a rewriting file system
+	DUCKDB_API virtual OpenFileInfo RewriteFile(const OpenFileInfo &file);
 	//! Return the write ordering contract for this handle.
 	DUCKDB_API virtual FileWriteMode GetWriteMode(FileHandle &handle);
 	//! Whether or not we can seek into the file

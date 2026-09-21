@@ -104,7 +104,16 @@ protected:
 	}
 
 private:
-	FileSystem &FindFileSystem(const string &path, optional_ptr<FileOpener> file_opener);
+	//! A file together with the file system that performs its I/O - rewriting file systems are resolved
+	struct ResolvedFile {
+		FileSystem &fs;
+		OpenFileInfo file;
+	};
+
+	ResolvedFile Resolve(OpenFileInfo file, optional_ptr<FileOpener> file_opener);
+	ResolvedFile Resolve(shared_ptr<FileSystemRegistry> &registry, OpenFileInfo file,
+	                     optional_ptr<FileOpener> file_opener);
+	//! Find the file system that handles a path, without resolving rewriting file systems
 	FileSystem &FindFileSystem(shared_ptr<FileSystemRegistry> &registry, const string &path,
 	                           optional_ptr<FileOpener> file_opener);
 	optional_ptr<FileSystem> FindFileSystemInternal(FileSystemRegistry &registry, const string &path);
