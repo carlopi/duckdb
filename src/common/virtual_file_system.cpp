@@ -123,8 +123,8 @@ unique_ptr<MemoryMappedFile> VirtualFileSystem::MemoryMapFile(const OpenFileInfo
                                                               const MMapOptions &options,
                                                               optional_ptr<FileOpener> opener) {
 	auto registry = file_system_registry.atomic_load();
-	auto &internal_filesystem = FindFileSystem(registry, path.path, opener);
-	return internal_filesystem.MemoryMapFile(path, flags, options, opener);
+	auto resolved = Resolve(registry, path, opener);
+	return resolved.fs.MemoryMapFile(resolved.file, flags, options, opener);
 }
 
 FileSystem &VirtualFileSystem::GetDefaultFileSystem() {
@@ -177,14 +177,16 @@ optional_ptr<FileSystem> VirtualFileSystem::FindCompressionFileSystem(FileSystem
 	    resolved.ToString(), hint);
 }
 
-unique_ptr<FileHandle> VirtualFileSystem::OpenFileExtended(const OpenFileInfo &file, FileOpenFlags flags,
+unique_ptr<FileHandle> VirtualFileSystem::OpenFileExtended(const OpenFileInfo &file_p, FileOpenFlags flags,
                                                            optional_ptr<FileOpener> opener) {
 	const FileCompressionType compression = flags.Compression();
 	// open the base file handle in UNCOMPRESSED mode
 	flags.SetCompression(FileCompressionType::UNCOMPRESSED);
 
 	auto registry = file_system_registry.atomic_load();
-	auto &internal_filesystem = FindFileSystem(registry, file.path, opener);
+	auto resolved = Resolve(registry, file_p, opener);
+	auto &internal_filesystem = resolved.fs;
+	auto &file = resolved.file;
 
 	// File handle gets created.
 	unique_ptr<FileHandle> file_handle = nullptr;
@@ -260,7 +262,9 @@ FileMetadata VirtualFileSystem::Stats(FileHandle &handle) {
 }
 
 optional<FileMetadata> VirtualFileSystem::GetStatsIfExists(const OpenFileInfo &file, optional_ptr<FileOpener> opener) {
-	return FindFileSystem(file.path, opener).GetStatsIfExists(file, opener);
+	auto registry = file_system_registry.atomic_load();
+	auto resolved = Resolve(registry, file, opener);
+	return resolved.fs.GetStatsIfExists(resolved.file, opener);
 }
 
 void VirtualFileSystem::Truncate(FileHandle &handle, int64_t new_size) {
@@ -272,16 +276,18 @@ void VirtualFileSystem::FileSync(FileHandle &handle) {
 }
 
 // need to look up correct fs for this
-bool VirtualFileSystem::DirectoryExists(const string &directory, optional_ptr<FileOpener> opener) {
-	return FindFileSystem(directory, opener).DirectoryExists(directory, opener);
+bool VirtualFileSystem::DirectoryExists(const string &directory_p, optional_ptr<FileOpener> opener) {
+	auto resolved = Resolve(directory_p, opener);
+	return resolved.fs.DirectoryExists(resolved.file.path, opener);
 }
 void VirtualFileSystem::CreateDirectory(const string &directory, optional_ptr<FileOpener> opener) {
 	CreateDirectoryExtended(directory, {CreateDirectoryMode::SINGLE}, opener);
 }
 
-bool VirtualFileSystem::CreateDirectoryExtended(const string &directory, const CreateDirectoryOptions &options,
+bool VirtualFileSystem::CreateDirectoryExtended(const string &directory_p, const CreateDirectoryOptions &options,
                                                 optional_ptr<FileOpener> opener) {
-	return FindFileSystem(directory, opener).CreateDirectoryExtended(directory, options, opener);
+	auto resolved = Resolve(directory_p, opener);
+	return resolved.fs.CreateDirectoryExtended(resolved.file.path, options, opener);
 }
 
 void VirtualFileSystem::CreateDirectoriesRecursive(const string &path, optional_ptr<FileOpener> opener) {
@@ -292,59 +298,71 @@ void VirtualFileSystem::RemoveDirectory(const string &directory, optional_ptr<Fi
 	RemoveDirectoryExtended(directory, {RemoveDirectoryMode::RECURSIVE}, opener);
 }
 
-bool VirtualFileSystem::RemoveDirectoryExtended(const string &directory, const RemoveDirectoryOptions &options,
+bool VirtualFileSystem::RemoveDirectoryExtended(const string &directory_p, const RemoveDirectoryOptions &options,
                                                 optional_ptr<FileOpener> opener) {
-	return FindFileSystem(directory, opener).RemoveDirectoryExtended(directory, options, opener);
+	auto resolved = Resolve(directory_p, opener);
+	return resolved.fs.RemoveDirectoryExtended(resolved.file.path, options, opener);
 }
 
-bool VirtualFileSystem::ListFilesExtended(const string &directory,
+bool VirtualFileSystem::ListFilesExtended(const string &directory_p,
                                           const std::function<void(OpenFileInfo &info)> &callback,
                                           optional_ptr<FileOpener> opener) {
-	return FindFileSystem(directory, opener).ListFiles(directory, callback, opener);
+	auto resolved = Resolve(directory_p, opener);
+	return resolved.fs.ListFiles(resolved.file.path, callback, opener);
 }
 
-void VirtualFileSystem::MoveFile(const string &source, const string &target, optional_ptr<FileOpener> opener) {
-	FindFileSystem(source, opener).MoveFile(source, target, opener);
+void VirtualFileSystem::MoveFile(const string &source_p, const string &target_p, optional_ptr<FileOpener> opener) {
+	auto source = Resolve(source_p, opener);
+	auto target = Resolve(target_p, opener);
+	source.fs.MoveFile(source.file.path, target.file.path, opener);
 }
 
-bool VirtualFileSystem::FileExists(const string &filename, optional_ptr<FileOpener> opener) {
-	return FindFileSystem(filename, opener).FileExists(filename, opener);
+bool VirtualFileSystem::FileExists(const string &filename_p, optional_ptr<FileOpener> opener) {
+	auto resolved = Resolve(filename_p, opener);
+	return resolved.fs.FileExists(resolved.file.path, opener);
 }
 
-bool VirtualFileSystem::IsPipe(const string &filename, optional_ptr<FileOpener> opener) {
-	return FindFileSystem(filename, opener).IsPipe(filename, opener);
+bool VirtualFileSystem::IsPipe(const string &filename_p, optional_ptr<FileOpener> opener) {
+	auto resolved = Resolve(filename_p, opener);
+	return resolved.fs.IsPipe(resolved.file.path, opener);
 }
 
-void VirtualFileSystem::RemoveFile(const string &filename, optional_ptr<FileOpener> opener) {
-	FindFileSystem(filename, opener).RemoveFile(filename, opener);
+void VirtualFileSystem::RemoveFile(const string &filename_p, optional_ptr<FileOpener> opener) {
+	auto resolved = Resolve(filename_p, opener);
+	resolved.fs.RemoveFile(resolved.file.path, opener);
 }
 
-bool VirtualFileSystem::TryRemoveFile(const string &filename, optional_ptr<FileOpener> opener) {
-	return FindFileSystem(filename, opener).TryRemoveFile(filename, opener);
+bool VirtualFileSystem::TryRemoveFile(const string &filename_p, optional_ptr<FileOpener> opener) {
+	auto resolved = Resolve(filename_p, opener);
+	return resolved.fs.TryRemoveFile(resolved.file.path, opener);
 }
 
 void VirtualFileSystem::RemoveFiles(const vector<string> &filenames, optional_ptr<FileOpener> opener) {
 	reference_map_t<FileSystem, vector<string>> files_by_fs;
 	for (const auto &filename : filenames) {
-		auto &fs = FindFileSystem(filename, opener);
-		files_by_fs[fs].push_back(filename);
+		auto resolved = Resolve(filename, opener);
+		files_by_fs[resolved.fs].push_back(resolved.file.path);
 	}
 	for (auto &entry : files_by_fs) {
 		entry.first.get().RemoveFiles(entry.second, opener);
 	}
 }
 
-string VirtualFileSystem::PathSeparator(const string &path) {
-	return FindFileSystem(path, nullptr).PathSeparator(path);
+string VirtualFileSystem::PathSeparator(const string &path_p) {
+	auto resolved = Resolve(path_p, nullptr);
+	return resolved.fs.PathSeparator(resolved.file.path);
 }
 
 string VirtualFileSystem::CanonicalizePath(const string &path_p, optional_ptr<FileOpener> opener) {
-	return FindFileSystem(path_p, opener).CanonicalizePath(path_p, opener);
+	auto resolved = Resolve(path_p, opener);
+	return resolved.fs.CanonicalizePath(resolved.file.path, opener);
 }
 
 unique_ptr<MultiFileList> VirtualFileSystem::GlobFilesExtended(const string &path, const FileGlobInput &input,
                                                                optional_ptr<FileOpener> opener) {
-	return FindFileSystem(path, opener).Glob(path, input, opener);
+	// a rewriting file system decides what globbing the paths it handles means - it is not resolved here
+	auto registry = file_system_registry.atomic_load();
+	return FindFileSystem(registry, path, opener).Glob(path, input, opener);
 }
 
 void VirtualFileSystem::RegisterSubSystem(unique_ptr<FileSystem> fs) {
@@ -412,12 +430,41 @@ bool VirtualFileSystem::IsDisabledForPath(const string &path) {
 	if (!fs) {
 		fs = registry->default_fs->file_system;
 	}
+	if (disabled_file_systems.find(fs->GetName()) != disabled_file_systems.end()) {
+		return true;
+	}
+	if (!fs->IsRewritingFileSystem()) {
+		return false;
+	}
+	// the path is rewritten into a file of another file system - that one must not be disabled either
+	auto rewritten = fs->RewriteFile(OpenFileInfo(path));
+	fs = FindFileSystemInternal(*registry, rewritten.path);
+	if (!fs) {
+		fs = registry->default_fs->file_system;
+	}
 	return disabled_file_systems.find(fs->GetName()) != disabled_file_systems.end();
 }
 
-FileSystem &VirtualFileSystem::FindFileSystem(const string &path, optional_ptr<FileOpener> opener) {
+VirtualFileSystem::ResolvedFile VirtualFileSystem::Resolve(OpenFileInfo file, optional_ptr<FileOpener> opener) {
 	auto registry = file_system_registry.atomic_load();
-	return FindFileSystem(registry, path, opener);
+	return Resolve(registry, std::move(file), opener);
+}
+
+VirtualFileSystem::ResolvedFile VirtualFileSystem::Resolve(shared_ptr<FileSystemRegistry> &registry, OpenFileInfo file,
+                                                           optional_ptr<FileOpener> opener) {
+	auto &fs = FindFileSystem(registry, file.path, opener);
+	if (!fs.IsRewritingFileSystem()) {
+		return ResolvedFile {fs, std::move(file)};
+	}
+	// a path is rewritten at most once - the rewritten file must belong to a file system that performs I/O
+	auto rewritten = fs.RewriteFile(file);
+	auto &target_fs = FindFileSystem(registry, rewritten.path, opener);
+	if (target_fs.IsRewritingFileSystem()) {
+		throw InvalidInputException("Path \"%s\" was rewritten by %s into \"%s\", which is handled by %s - a path "
+		                            "can be rewritten only once",
+		                            file.path, fs.GetName(), rewritten.path, target_fs.GetName());
+	}
+	return ResolvedFile {target_fs, std::move(rewritten)};
 }
 
 FileSystem &VirtualFileSystem::FindFileSystem(shared_ptr<FileSystemRegistry> &registry, const string &path,
