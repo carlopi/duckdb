@@ -1,0 +1,145 @@
+# name: test/sql/multi_file/extended_file_info_file_system.test
+# description: Paths carrying their open options inline are rewritten into the file they stand for
+# group: [multi_file]
+
+require parquet
+
+statement ok
+COPY (SELECT 42 a, 'hello' b) TO '{TEST_DIR}/info_fs_1.parquet'
+
+statement ok
+COPY (SELECT 43 a, 'world' b) TO '{TEST_DIR}/info_fs_2.parquet'
+
+# a packed path is accepted anywhere a path is - the multi-file readers read the file it names
+query II
+SELECT * FROM read_parquet('duckdb_file_info://{etag=my_etag}{TEST_DIR}/info_fs_1.parquet')
+----
+42	hello
+
+# the file list stays a list of VARCHAR - packed paths, plain paths and globs mix freely
+query II
+SELECT * FROM read_parquet([
+	'duckdb_file_info://{validate_external_file_cache=false}{TEST_DIR}/info_fs_1.parquet',
+	'{TEST_DIR}/info_fs_2.parquet']) ORDER BY a
+----
+42	hello
+43	world
+
+query II
+SELECT * FROM read_parquet([
+	'duckdb_file_info://{etag=my_etag}{TEST_DIR}/info_fs_1.parquet',
+	'{TEST_DIR}/info_fs_*.parquet']) ORDER BY a
+----
+42	hello
+42	hello
+43	world
+
+# an empty options block is a packed path as well
+query II
+SELECT * FROM read_parquet('duckdb_file_info://{}{TEST_DIR}/info_fs_1.parquet')
+----
+42	hello
+
+# the filename column and glob() report the path of the file, not the packed path
+query III
+SELECT * FROM read_parquet('duckdb_file_info://{etag=my_etag}{TEST_DIR}/info_fs_1.parquet', filename=true)
+----
+42	hello	{TEST_DIR}/info_fs_1.parquet
+
+query I
+SELECT * FROM glob('duckdb_file_info://{etag=my_etag}{TEST_DIR}/info_fs_1.parquet')
+----
+{TEST_DIR}/info_fs_1.parquet
+
+# a packed path is taken literally - it is not glob expanded
+statement error
+SELECT * FROM read_parquet('duckdb_file_info://{}{TEST_DIR}/info_fs_*.parquet')
+----
+<REGEX>:IO Error.*info_fs_\*\.parquet.*
+
+# glob() on a packed path returns just that file, whether it exists or not
+query I
+SELECT * FROM glob('duckdb_file_info://{}{TEST_DIR}/does_not_exist.parquet')
+----
+{TEST_DIR}/does_not_exist.parquet
+
+# a packed path cannot hold another packed path
+statement error
+SELECT * FROM read_parquet('duckdb_file_info://{etag=a}duckdb_file_info://{etag=b}{TEST_DIR}/info_fs_1.parquet')
+----
+<REGEX>:Invalid Input Error.*cannot hold another file info path.*
+
+# malformed paths are rejected
+statement error
+SELECT * FROM read_parquet('duckdb_file_info://{TEST_DIR}/info_fs_1.parquet')
+----
+<REGEX>:Invalid Input Error.*Malformed file info path.*
+
+statement error
+SELECT * FROM read_parquet('duckdb_file_info://{etag=abc')
+----
+<REGEX>:Invalid Input Error.*not closed.*
+
+statement error
+SELECT * FROM read_parquet('duckdb_file_info://{etag=abc}')
+----
+<REGEX>:Invalid Input Error.*no path follows.*
+
+statement error
+SELECT * FROM read_parquet('duckdb_file_info://{etag}{TEST_DIR}/info_fs_1.parquet')
+----
+<REGEX>:Invalid Input Error.*has no value.*
+
+statement error
+SELECT * FROM read_parquet('duckdb_file_info://{=abc}{TEST_DIR}/info_fs_1.parquet')
+----
+<REGEX>:Invalid Input Error.*has no name.*
+
+# the options reach the file system - a wrong type is an error, not a crash
+statement error
+SELECT * FROM read_parquet('duckdb_file_info://{footer_size=notanumber}{TEST_DIR}/info_fs_1.parquet')
+----
+<REGEX>:Invalid Input Error.*file option "footer_size".*UBIGINT.*
+
+# options are URL-encoded, the path is not
+statement ok
+COPY (SELECT 42 a, 'hello' b) TO '{TEST_DIR}/info fs with spaces.csv'
+
+query II
+SELECT * FROM read_csv('duckdb_file_info://{my%20option=a%3Bb%3Dc%7Dd}{TEST_DIR}/info fs with spaces.csv')
+----
+42	hello
+
+# this works for any function that takes a path, not only the multi-file readers
+query I
+SELECT contains(content, '42,hello') FROM read_text('duckdb_file_info://{etag=my_etag}{TEST_DIR}/info fs with spaces.csv')
+----
+true
+
+query II
+SELECT * FROM 'duckdb_file_info://{etag=my_etag}{TEST_DIR}/info fs with spaces.csv'
+----
+42	hello
+
+# a packed path with the external file cache enabled is read correctly, with and without validation
+statement ok
+SET enable_external_file_cache=true
+
+query II
+SELECT * FROM read_parquet('duckdb_file_info://{etag=my_etag;file_size=631;last_modified=2024-01-01%2000%3A00%3A00;validate_external_file_cache=false}{TEST_DIR}/info_fs_1.parquet')
+----
+42	hello
+
+query II
+SELECT * FROM read_parquet('duckdb_file_info://{validate_external_file_cache=true}{TEST_DIR}/info_fs_1.parquet')
+----
+42	hello
+
+# hive partitioning works on the path of the file
+statement ok
+COPY (SELECT 44 a, 'x' b, 1 part) TO '{TEST_DIR}/info_fs_hive' (FORMAT parquet, PARTITION_BY part)
+
+query III
+SELECT a, b, part FROM read_parquet('duckdb_file_info://{etag=e}{TEST_DIR}/info_fs_hive/part=1/data_0.parquet', hive_partitioning=true)
+----
+44	x	1

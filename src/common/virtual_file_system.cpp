@@ -1,6 +1,7 @@
 #include "duckdb/common/virtual_file_system.hpp"
 
 #include "duckdb/common/compressed_file_system.hpp"
+#include "duckdb/common/extended_file_info_file_system.hpp"
 #include "duckdb/common/file_opener.hpp"
 #include "duckdb/common/memory_mapped_file.hpp"
 #include "duckdb/common/gzip_file_system.hpp"
@@ -114,6 +115,7 @@ VirtualFileSystem::VirtualFileSystem() : VirtualFileSystem(FileSystem::CreateLoc
 VirtualFileSystem::VirtualFileSystem(unique_ptr<FileSystem> &&inner)
     : file_system_registry(make_shared_ptr<FileSystemRegistry>(std::move(inner))) {
 	VirtualFileSystem::RegisterCompressionFilesystem(make_uniq<GZipFileSystem>());
+	VirtualFileSystem::RegisterSubSystem(make_uniq<ExtendedFileInfoFileSystem>());
 }
 
 VirtualFileSystem::~VirtualFileSystem() {
