@@ -1,0 +1,235 @@
+# name: test/sql/multi_file/multi_file_info_pack_options.test
+# description: The open option scenarios of multi_file_open_options.test, passed through packed paths instead of structs
+# group: [multi_file]
+
+require parquet
+
+statement ok
+COPY (SELECT 42 a, 'hello' b) TO '{TEST_DIR}/pack_options_1.parquet'
+
+statement ok
+COPY (SELECT 43 a, 'world' b) TO '{TEST_DIR}/pack_options_2.parquet'
+
+# a file can be specified as a packed path
+query II
+SELECT * FROM read_parquet([file_info_pack({'filename': '{TEST_DIR}/pack_options_1.parquet'})])
+----
+42	hello
+
+query II
+SELECT * FROM read_parquet([
+	file_info_pack({'filename': '{TEST_DIR}/pack_options_1.parquet'}),
+	file_info_pack({'filename': '{TEST_DIR}/pack_options_2.parquet'})]) ORDER BY a
+----
+42	hello
+43	world
+
+# the other fields of the packed struct are the options to open the file with
+query II
+SELECT * FROM read_parquet([file_info_pack({
+	'filename': '{TEST_DIR}/pack_options_1.parquet',
+	'validate_external_file_cache': false,
+	'etag': 'my_etag'})])
+----
+42	hello
+
+# an option that is explicitly set to NULL is an option that was not specified
+query II
+SELECT * FROM read_parquet([file_info_pack({
+	'filename': '{TEST_DIR}/pack_options_1.parquet',
+	'validate_external_file_cache': NULL::BOOLEAN})])
+----
+42	hello
+
+# this works for any multi-file reader
+statement ok
+COPY (SELECT 42 a, 'hello' b) TO '{TEST_DIR}/pack_options.csv'
+
+query II
+SELECT * FROM read_csv([file_info_pack({'filename': '{TEST_DIR}/pack_options.csv'})])
+----
+42	hello
+
+query I
+SELECT * FROM glob([file_info_pack({'filename': '{TEST_DIR}/pack_options.csv'})])
+----
+{TEST_DIR}/pack_options.csv
+
+# packed paths are taken literally - they are not glob expanded
+statement error
+SELECT * FROM read_parquet([file_info_pack({'filename': '{TEST_DIR}/pack_options_*.parquet'})])
+----
+<REGEX>:IO Error.*pack_options_\*\.parquet.*
+
+# the filename column option is unaffected by the file being packed
+query III
+SELECT * FROM read_parquet([file_info_pack({'filename': '{TEST_DIR}/pack_options_1.parquet', 'etag': 'my_etag'})], filename=true)
+----
+42	hello	{TEST_DIR}/pack_options_1.parquet
+
+# the path is mandatory and must be a non-NULL VARCHAR
+statement error
+SELECT * FROM read_parquet([file_info_pack({'etag': 'my_etag'})])
+----
+<REGEX>:.*requires a file struct to have a "filename" field.*
+
+statement error
+SELECT * FROM read_parquet([file_info_pack({'filename': NULL})])
+----
+<REGEX>:.*requires the "filename" field of a file struct to be a non-NULL VARCHAR.*
+
+statement error
+SELECT * FROM read_parquet([file_info_pack({'filename': 42})])
+----
+<REGEX>:.*requires the "filename" field of a file struct to be a non-NULL VARCHAR.*
+
+# every packed entry carries exactly the options it specifies - no struct unification is involved
+query II
+SELECT * FROM read_parquet([
+	file_info_pack({'filename': '{TEST_DIR}/pack_options_1.parquet'}),
+	file_info_pack({'filename': '{TEST_DIR}/pack_options_2.parquet', 'etag': 'my_etag'})]) ORDER BY a
+----
+42	hello
+43	world
+
+# a VARIANT packs as well
+query II
+SELECT * FROM read_parquet([
+	file_info_pack({'filename': '{TEST_DIR}/pack_options_1.parquet'}::VARIANT),
+	file_info_pack({'filename': '{TEST_DIR}/pack_options_2.parquet', 'etag': 'my_etag'}::VARIANT)]) ORDER BY a
+----
+42	hello
+43	world
+
+# a single file can be passed as a packed path as well
+query II
+SELECT * FROM read_parquet(file_info_pack({'filename': '{TEST_DIR}/pack_options_1.parquet', 'etag': 'my_etag'}::VARIANT))
+----
+42	hello
+
+# an option that is set to a value it cannot be read back as is an error, not a crash
+statement error
+SELECT * FROM read_parquet([file_info_pack({'filename': '{TEST_DIR}/pack_options_1.parquet', 'footer_size': 'notanumber'})])
+----
+<REGEX>:Invalid Input Error.*file option "footer_size".*UBIGINT.*
+
+statement error
+SELECT * FROM read_parquet(['duckdb_file_info://{footer_size=notanumber}{TEST_DIR}/pack_options_1.parquet'])
+----
+<REGEX>:Invalid Input Error.*file option "footer_size".*UBIGINT.*
+
+statement error
+SELECT * FROM read_parquet(['duckdb_file_info://{footer_size=-1}{TEST_DIR}/pack_options_1.parquet'])
+----
+<REGEX>:Invalid Input Error.*file option "footer_size".*UBIGINT.*
+
+statement error
+SELECT * FROM read_parquet(['duckdb_file_info://{validate_external_file_cache=notabool}{TEST_DIR}/pack_options_1.parquet'])
+----
+<REGEX>:Invalid Input Error.*file option "validate_external_file_cache".*BOOLEAN.*
+
+# options are stored as-is - it is the type an option is read back as that matters, not the type it was written as
+query II
+SELECT * FROM read_parquet([file_info_pack({'filename': '{TEST_DIR}/pack_options_1.parquet', 'etag': 42})])
+----
+42	hello
+
+query II
+SELECT * FROM read_parquet(['duckdb_file_info://{etag=42}{TEST_DIR}/pack_options_1.parquet'])
+----
+42	hello
+
+# a value that can be read back as the expected type is accepted and converted
+query II
+SELECT * FROM read_parquet([file_info_pack({'filename': '{TEST_DIR}/pack_options_1.parquet', 'file_size': 631})])
+----
+42	hello
+
+query II
+SELECT * FROM read_parquet(['duckdb_file_info://{validate_external_file_cache=true}{TEST_DIR}/pack_options_1.parquet'])
+----
+42	hello
+
+# force_full_download is honoured as a boolean rather than by its mere presence
+query II
+SELECT * FROM read_parquet(['duckdb_file_info://{force_full_download=false}{TEST_DIR}/pack_options_1.parquet'])
+----
+42	hello
+
+query II
+SELECT * FROM read_parquet(['duckdb_file_info://{force_full_download=true}{TEST_DIR}/pack_options_1.parquet'])
+----
+42	hello
+
+# options the core does not know about are passed through untouched for extensions to interpret
+query II
+SELECT * FROM read_parquet([file_info_pack({'filename': '{TEST_DIR}/pack_options_1.parquet', 'some_extension_option': 42})])
+----
+42	hello
+
+query II
+SELECT * FROM read_parquet(['duckdb_file_info://{some_extension_option=42}{TEST_DIR}/pack_options_1.parquet'])
+----
+42	hello
+
+# a file_size that does not match the file is not verified, but it must not corrupt the read
+query II
+SELECT * FROM read_parquet(['duckdb_file_info://{file_size=99999999}{TEST_DIR}/pack_options_1.parquet'])
+----
+42	hello
+
+query II
+SELECT * FROM read_parquet(['duckdb_file_info://{file_size=1}{TEST_DIR}/pack_options_1.parquet'])
+----
+42	hello
+
+# the external file cache is told not to validate, and the file is still read correctly
+statement ok
+SET enable_external_file_cache=true
+
+query II
+SELECT * FROM read_parquet([file_info_pack({
+	'filename': '{TEST_DIR}/pack_options_1.parquet',
+	'validate_external_file_cache': false,
+	'file_size': 631::UBIGINT,
+	'etag': 'my_etag',
+	'last_modified': '2024-01-01 00:00:00'::TIMESTAMP})])
+----
+42	hello
+
+query II
+SELECT * FROM read_parquet(['duckdb_file_info://{etag=my_etag;file_size=631;last_modified=2024-01-01%2000%3A00%3A00;validate_external_file_cache=false}{TEST_DIR}/pack_options_1.parquet'])
+----
+42	hello
+
+statement ok
+SET enable_external_file_cache=false
+
+# parquet-specific options travel the same way
+statement error
+SELECT * FROM read_parquet(['duckdb_file_info://{footer_size=notanumber}{TEST_DIR}/pack_options_1.parquet'])
+----
+<REGEX>:Invalid Input Error.*file option "footer_size".*UBIGINT.*
+
+# has_deletes is inert for a plain scan - carrying an unusable value does not crash the scan that ignores it
+query II
+SELECT * FROM read_parquet(['duckdb_file_info://{has_deletes=notabool}{TEST_DIR}/pack_options_1.parquet'])
+----
+42	hello
+
+# a footer_size that does not match the file is rejected by the parquet reader rather than crashing it
+statement error
+SELECT * FROM read_parquet(['duckdb_file_info://{footer_size=999999}{TEST_DIR}/pack_options_1.parquet'])
+----
+<REGEX>:Invalid Input Error.*Invalid footer length.*
+
+statement error
+SELECT * FROM read_parquet(['duckdb_file_info://{footer_size=1}{TEST_DIR}/pack_options_1.parquet'])
+----
+<REGEX>:Invalid Input Error.*footer length stored in file is not equal to footer length provided.*
+
+# an encryption key on an unencrypted file is an error, not a crash
+statement error
+SELECT * FROM read_parquet(['duckdb_file_info://{encryption_key=0123456789112345}{TEST_DIR}/pack_options_1.parquet'])
+----
+<REGEX>:Invalid Input Error.*is not encrypted.*

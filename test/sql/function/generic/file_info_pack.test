@@ -1,0 +1,134 @@
+# name: test/sql/function/generic/file_info_pack.test
+# description: Test file_info_pack and file_info_unpack
+# group: [generic]
+
+# a struct packs into a path that carries the options, ordered by name so the encoding is stable
+query I
+SELECT file_info_pack({'filename': 's3://bucket/file.parquet', 'file_size': 1024, 'etag': 'abc'})
+----
+duckdb_file_info://{etag=abc;file_size=1024}s3://bucket/file.parquet
+
+# a plain path packs to itself
+query I
+SELECT file_info_pack('s3://bucket/file.parquet')
+----
+s3://bucket/file.parquet
+
+# a struct without options still packs to a prefixed path - the file is then taken literally
+query I
+SELECT file_info_pack({'filename': 's3://bucket/f*.parquet'})
+----
+duckdb_file_info://{}s3://bucket/f*.parquet
+
+# NULL options are options that were not specified
+query I
+SELECT file_info_pack({'filename': 'f.parquet', 'etag': NULL::VARCHAR})
+----
+duckdb_file_info://{}f.parquet
+
+query I
+SELECT file_info_pack(NULL)
+----
+NULL
+
+# a VARIANT is accepted as well
+query I
+SELECT file_info_pack({'filename': 'f.parquet', 'etag': 'abc'}::VARIANT)
+----
+duckdb_file_info://{etag=abc}f.parquet
+
+# the options block is escaped, the path is not
+query I
+SELECT file_info_pack({'filename': 'dir/with spaces/f.parquet', 'my option': 'a;b=c}d'})
+----
+duckdb_file_info://{my%20option=a%3Bb%3Dc%7Dd}dir/with spaces/f.parquet
+
+# options are written as text - it is the type an option is read back as that matters, not the type it was written as
+query I
+SELECT file_info_pack({'filename': 'f.parquet', 'has_deletes': true, 'last_modified': '2024-01-01 00:00:00'::TIMESTAMP})
+----
+duckdb_file_info://{has_deletes=true;last_modified=2024-01-01%2000%3A00%3A00}f.parquet
+
+# the path is mandatory - the checks are the ones of a file list entry
+statement error
+SELECT file_info_pack({'etag': 'abc'})
+----
+<REGEX>:.*requires a file struct to have a "filename" field.*
+
+statement error
+SELECT file_info_pack({'filename': 42})
+----
+<REGEX>:.*requires the "filename" field of a file struct to be a non-NULL VARCHAR.*
+
+statement error
+SELECT file_info_pack(42)
+----
+<REGEX>:Binder Error.*file_info_pack takes a VARCHAR path.*
+
+# packing works on a column
+query I
+SELECT file_info_pack({'filename': 'f' || i || '.parquet', 'file_size': i}) FROM range(3) t(i) ORDER BY i
+----
+duckdb_file_info://{file_size=0}f0.parquet
+duckdb_file_info://{file_size=1}f1.parquet
+duckdb_file_info://{file_size=2}f2.parquet
+
+# unpack is the inverse of pack
+query I
+SELECT file_info_unpack(file_info_pack({'filename': 's3://bucket/file.parquet', 'file_size': 1024, 'etag': 'abc'}))
+----
+{'etag': abc, 'file_size': 1024, 'filename': 's3://bucket/file.parquet'}
+
+query I
+SELECT file_info_unpack('duckdb_file_info://{has_deletes=true;my%20option=a%3Bb%3Dc%7Dd}dir/with spaces/f.parquet')
+----
+{'filename': dir/with spaces/f.parquet, 'has_deletes': true, 'my option': 'a;b=c}d'}
+
+# a plain path unpacks to a struct holding only the path
+query I
+SELECT file_info_unpack('s3://bucket/file.parquet')
+----
+{'filename': 's3://bucket/file.parquet'}
+
+query I
+SELECT file_info_unpack(NULL)
+----
+NULL
+
+# unpack returns a VARIANT - the fields can be extracted
+query II
+SELECT v.filename::VARCHAR, v.file_size::UBIGINT FROM (SELECT file_info_unpack('duckdb_file_info://{file_size=1024}f.parquet') v)
+----
+f.parquet	1024
+
+# malformed paths are rejected
+statement error
+SELECT file_info_unpack('duckdb_file_info://f.parquet')
+----
+<REGEX>:Invalid Input Error.*Malformed file info path.*
+
+statement error
+SELECT file_info_unpack('duckdb_file_info://{etag=abc')
+----
+<REGEX>:Invalid Input Error.*not closed.*
+
+statement error
+SELECT file_info_unpack('duckdb_file_info://{etag=abc}')
+----
+<REGEX>:Invalid Input Error.*no path follows.*
+
+statement error
+SELECT file_info_unpack('duckdb_file_info://{etag}f.parquet')
+----
+<REGEX>:Invalid Input Error.*has no value.*
+
+statement error
+SELECT file_info_unpack('duckdb_file_info://{=abc}f.parquet')
+----
+<REGEX>:Invalid Input Error.*has no name.*
+
+# unpacking does not interpret the options - they are read back by whoever opens the file
+query I
+SELECT file_info_unpack('duckdb_file_info://{file_size=abc}f.parquet')
+----
+{'file_size': abc, 'filename': f.parquet}
