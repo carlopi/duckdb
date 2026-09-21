@@ -1,0 +1,106 @@
+# name: test/sql/multi_file/multi_file_info_pack.test
+# description: Test reading files through paths produced by file_info_pack
+# group: [multi_file]
+
+require parquet
+
+statement ok
+COPY (SELECT 42 a, 'hello' b) TO '{TEST_DIR}/info_pack_1.parquet'
+
+statement ok
+COPY (SELECT 43 a, 'world' b) TO '{TEST_DIR}/info_pack_2.parquet'
+
+# a packed path is accepted anywhere a path is - the multi-file readers read the file it names
+query II
+SELECT * FROM read_parquet(file_info_pack({'filename': '{TEST_DIR}/info_pack_1.parquet', 'etag': 'my_etag'}))
+----
+42	hello
+
+# and the file list stays a list of VARCHAR - packed paths, plain paths and globs mix freely
+query II
+SELECT * FROM read_parquet([
+	file_info_pack({'filename': '{TEST_DIR}/info_pack_1.parquet', 'validate_external_file_cache': false}),
+	'{TEST_DIR}/info_pack_2.parquet']) ORDER BY a
+----
+42	hello
+43	world
+
+query II
+SELECT * FROM read_parquet([
+	'duckdb_file_info://{etag=my_etag}{TEST_DIR}/info_pack_1.parquet',
+	'{TEST_DIR}/info_pack_*.parquet']) ORDER BY a
+----
+42	hello
+42	hello
+43	world
+
+# the filename column and glob() report the path of the file, not the packed path
+query III
+SELECT * FROM read_parquet(file_info_pack({'filename': '{TEST_DIR}/info_pack_1.parquet', 'etag': 'my_etag'}), filename=true)
+----
+42	hello	{TEST_DIR}/info_pack_1.parquet
+
+query I
+SELECT * FROM glob(file_info_pack({'filename': '{TEST_DIR}/info_pack_1.parquet', 'etag': 'my_etag'}))
+----
+{TEST_DIR}/info_pack_1.parquet
+
+# a packed path is taken literally - it is not glob expanded
+statement error
+SELECT * FROM read_parquet(file_info_pack({'filename': '{TEST_DIR}/info_pack_*.parquet'}))
+----
+<REGEX>:IO Error.*info_pack_\*\.parquet.*
+
+# glob() on a packed path returns just that file, whether it exists or not
+query I
+SELECT * FROM glob(file_info_pack({'filename': '{TEST_DIR}/does_not_exist.parquet'}))
+----
+{TEST_DIR}/does_not_exist.parquet
+
+# a packed path cannot hold another packed path - packing rejects it
+statement error
+SELECT file_info_pack({'filename': 'duckdb_file_info://{etag=b}f.parquet', 'etag': 'a'})
+----
+<REGEX>:Invalid Input Error.*already a file info path.*
+
+# this works for any function that takes a path, not only the multi-file readers
+statement ok
+COPY (SELECT 42 a, 'hello' b) TO '{TEST_DIR}/info_pack.csv'
+
+query II
+SELECT * FROM read_csv(file_info_pack({'filename': '{TEST_DIR}/info_pack.csv', 'etag': 'my_etag'}))
+----
+42	hello
+
+query I
+SELECT contains(content, '42,hello') FROM read_text(file_info_pack({'filename': '{TEST_DIR}/info_pack.csv', 'etag': 'my_etag'}))
+----
+true
+
+query II
+SELECT * FROM 'duckdb_file_info://{etag=my_etag}{TEST_DIR}/info_pack.csv'
+----
+42	hello
+
+# a packed path with the external file cache enabled is read correctly, with and without validation
+statement ok
+SET enable_external_file_cache=true
+
+query II
+SELECT * FROM read_parquet('duckdb_file_info://{etag=my_etag;file_size=631;last_modified=2024-01-01%2000%3A00%3A00;validate_external_file_cache=false}{TEST_DIR}/info_pack_1.parquet')
+----
+42	hello
+
+query II
+SELECT * FROM read_parquet(file_info_pack({'filename': '{TEST_DIR}/info_pack_1.parquet', 'validate_external_file_cache': true}))
+----
+42	hello
+
+# hive partitioning works on the path of the file
+statement ok
+COPY (SELECT 44 a, 'x' b, 1 part) TO '{TEST_DIR}/info_pack_hive' (FORMAT parquet, PARTITION_BY part)
+
+query III
+SELECT a, b, part FROM read_parquet(file_info_pack({'filename': '{TEST_DIR}/info_pack_hive/part=1/data_0.parquet', 'etag': 'e'}), hive_partitioning=true)
+----
+44	x	1

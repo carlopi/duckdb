@@ -75,4 +75,24 @@ struct InvokeFun {
 	static ScalarFunction GetFunction();
 };
 
+struct FileInfoPackFun {
+	static constexpr const char *Name = "file_info_pack";
+	static constexpr const char *Parameters = "file";
+	static constexpr const char *Description = "Encodes a file together with the options to open it with into a single path. The file is given as a path, or as a STRUCT or VARIANT holding the path in the \"filename\" field and every option as another field. The result is accepted by any function that takes a path.";
+	static constexpr const char *Example = "file_info_pack({'filename': 's3://bucket/file.parquet', 'file_size': 1024, 'etag': 'abc'})";
+	static constexpr const char *Categories = "";
+
+	static ScalarFunction GetFunction();
+};
+
+struct FileInfoUnpackFun {
+	static constexpr const char *Name = "file_info_unpack";
+	static constexpr const char *Parameters = "path";
+	static constexpr const char *Description = "Decodes a path produced by file_info_pack into a STRUCT holding the path in the \"filename\" field and every open option as another field. A plain path decodes to a STRUCT holding only the path.";
+	static constexpr const char *Example = "file_info_unpack('duckdb_file_info://{etag=abc}s3://bucket/file.parquet')";
+	static constexpr const char *Categories = "";
+
+	static ScalarFunction GetFunction();
+};
+
 } // namespace duckdb

@@ -1,0 +1,35 @@
+# name: test/sql/multi_file/extended_file_info_file_system_disabled.test
+# description: Packed paths are handled by a file system that can be disabled like any other
+# group: [multi_file]
+
+require parquet
+
+require skip_reload
+
+statement ok
+COPY (SELECT 42 a, 'hello' b) TO '{TEST_DIR}/pack_disabled.parquet'
+
+query II
+SELECT * FROM read_parquet('duckdb_file_info://{etag=e}{TEST_DIR}/pack_disabled.parquet')
+----
+42	hello
+
+statement ok
+SET disabled_filesystems='ExtendedFileInfoFileSystem'
+
+# but a packed path can no longer be opened
+statement error
+SELECT * FROM read_parquet('duckdb_file_info://{etag=e}{TEST_DIR}/pack_disabled.parquet')
+----
+File system ExtendedFileInfoFileSystem has been disabled by configuration
+
+statement error
+SELECT * FROM glob('duckdb_file_info://{}{TEST_DIR}/pack_disabled.parquet')
+----
+File system ExtendedFileInfoFileSystem has been disabled by configuration
+
+# plain paths are unaffected
+query II
+SELECT * FROM read_parquet('{TEST_DIR}/pack_disabled.parquet')
+----
+42	hello

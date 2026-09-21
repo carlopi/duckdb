@@ -42,5 +42,19 @@
         "description": "Invokes a lambda function with the given arguments",
         "example": "invoke(x -> x + 1, 5)",
         "type": "scalar_function"
+    },
+    {
+        "name": "file_info_pack",
+        "parameters": "file",
+        "description": "Encodes a file together with the options to open it with into a single path. The file is given as a path, or as a STRUCT or VARIANT holding the path in the \"filename\" field and every option as another field. The result is accepted by any function that takes a path.",
+        "example": "file_info_pack({'filename': 's3://bucket/file.parquet', 'file_size': 1024, 'etag': 'abc'})",
+        "type": "scalar_function"
+    },
+    {
+        "name": "file_info_unpack",
+        "parameters": "path",
+        "description": "Decodes a path produced by file_info_pack into a STRUCT holding the path in the \"filename\" field and every open option as another field. A plain path decodes to a STRUCT holding only the path.",
+        "example": "file_info_unpack('duckdb_file_info://{etag=abc}s3://bucket/file.parquet')",
+        "type": "scalar_function"
     }
 ]

@@ -4,6 +4,7 @@ add_library_unity(
   barrier.cpp
   constant_or_null.cpp
   error.cpp
+  file_info.cpp
   getvariable.cpp
   invoke.cpp)
 

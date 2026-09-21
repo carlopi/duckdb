@@ -64,6 +64,7 @@ add_library_unity(
   error_data.cpp
   opener_file_system.cpp
   open_file_info.cpp
+  extended_file_info_file_system.cpp
   optional_idx.cpp
   printer.cpp
   radix_partitioning.cpp
