@@ -69,6 +69,9 @@ public:
 	//! Start fetching [nr_bytes] bytes at [location] into the cache without waiting. Prefetches are scoped to the
 	//! current query: the ones that did not start yet are dropped when it ends.
 	DUCKDB_API void Prefetch(idx_t nr_bytes, idx_t location);
+	//! Declare that [nr_bytes] bytes at [location] will be read, without fetching them. The declaration lasts until the
+	//! returned object is released, and lets fetches of neighbouring bytes include them.
+	DUCKDB_API WantedBlocks Want(idx_t nr_bytes, idx_t location);
 	//! Read [nr_bytes] bytes and sets [nr_bytes] to the actually read bytes.
 	DUCKDB_API FileBufferHandleGroup Read(idx_t &nr_bytes);
 	//! Read and record time
@@ -101,6 +104,8 @@ private:
 	void ReconcileCacheAfterRead(CachedFile &cached_file);
 	//! Record a timed read of a local file into the throughput estimate
 	void RecordReadThroughput(double total_seconds, idx_t bytes);
+	//! The layout reads of this handle cut new blocks by
+	FileLayout GetReadLayout(CachedFile &cached_file, idx_t max_block_size);
 	//! The range [fetch_location, fetch_end) fetched for a read, and the layout its units are cut by
 	void GetFetchRange(CachedFile &cached_file, idx_t nr_bytes, idx_t location, idx_t max_block_size,
 	                   idx_t &fetch_location, idx_t &fetch_end, FileLayout &layout);

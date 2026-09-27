@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "duckdb/common/atomic.hpp"
 #include "duckdb/common/mutex.hpp"
 #include "duckdb/common/shared_ptr.hpp"
 #include "duckdb/common/thread_annotation.hpp"
@@ -37,6 +38,8 @@ struct CacheBlock {
 	shared_ptr<BlockHandle> block_handle DUCKDB_GUARDED_BY(mtx);
 	//! Number of valid bytes that were read into this block
 	idx_t nr_bytes DUCKDB_GUARDED_BY(mtx) = 0;
+	//! Number of readers that declared they will read this block. Only a hint for how to fetch unfetched blocks.
+	atomic<idx_t> wanted {0};
 #ifdef DEBUG
 	//! Checksum over the buffer contents, used for verifying data was not modified after caching
 	hash_t checksum DUCKDB_GUARDED_BY(mtx) = 0;

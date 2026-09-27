@@ -1340,4 +1340,113 @@ TEST_CASE("Prefetches that did not start are dropped when the query ends", "[ext
 	REQUIRE(ReadFull(*handle, FILE_SIZE) == content);
 }
 
+TEST_CASE("Wanted ranges are marked without fetching them", "[external_file_cache]") {
+	DuckDB db = MakeCacheLocalFilesDB();
+	auto &db_instance = *db.instance;
+	auto recording_fs = make_uniq<ReadRecordingFileSystem>();
+
+	const idx_t FILE_SIZE = 100000;
+	auto content = MakeTestContent(FILE_SIZE);
+	EFCTestFileGuard test_file("test_efc_want.bin", content);
+
+	CachingFileSystem cfs(*recording_fs, db_instance);
+	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto &cache = db_instance.GetExternalFileCache();
+	recording_fs->TakeReads();
+
+	auto first = handle->Want(4096, 8192);
+	REQUIRE(first.GetBlocks().size() == 1);
+	auto block = first.GetBlocks()[0];
+	REQUIRE(block->location == 8192);
+	REQUIRE(block->size == 4096);
+	REQUIRE(block->wanted == 1);
+	{
+		const annotated_lock_guard<annotated_mutex> guard(block->mtx);
+		REQUIRE(block->state == CacheBlockState::EMPTY);
+	}
+
+	// declaring the same range again marks the same block
+	auto second = handle->Want(4096, 8192);
+	REQUIRE(second.GetBlocks()[0] == block);
+	REQUIRE(block->wanted == 2);
+
+	first.Release();
+	REQUIRE(block->wanted == 1);
+	{
+		// moving a declaration keeps the mark
+		WantedBlocks moved(std::move(second));
+		REQUIRE(block->wanted == 1);
+	}
+	REQUIRE(block->wanted == 0);
+
+	REQUIRE(recording_fs->TakeReads().empty());
+	REQUIRE(CountCachedBlocks(cache) == 0);
+}
+
+TEST_CASE("Wanted ranges mark the cached blocks they overlap", "[external_file_cache]") {
+	DuckDB db = MakeCacheLocalFilesDB();
+	auto &db_instance = *db.instance;
+	auto recording_fs = make_uniq<ReadRecordingFileSystem>();
+
+	const idx_t FILE_SIZE = 100000;
+	auto content = MakeTestContent(FILE_SIZE);
+	EFCTestFileGuard test_file("test_efc_want_cached.bin", content);
+
+	CachingFileSystem cfs(*recording_fs, db_instance);
+	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+
+	REQUIRE(ReadFull(*handle, 4096, 0) == content.substr(0, 4096));
+	recording_fs->TakeReads();
+
+	auto wanted = handle->Want(8192, 0);
+	auto &blocks = wanted.GetBlocks();
+	REQUIRE(blocks.size() == 2);
+	REQUIRE(blocks[0]->location == 0);
+	REQUIRE(blocks[1]->location == 4096);
+	REQUIRE(blocks[0]->wanted == 1);
+	REQUIRE(blocks[1]->wanted == 1);
+
+	// declarations can be combined
+	WantedBlocks combined;
+	combined.Append(handle->Want(4096, 16384));
+	combined.Append(std::move(wanted));
+	REQUIRE(combined.GetBlocks().size() == 3);
+	auto first_block = combined.GetBlocks()[1];
+	combined.Release();
+	REQUIRE(first_block->wanted == 0);
+	REQUIRE(recording_fs->TakeReads().empty());
+}
+
+TEST_CASE("Releasing wanted blocks that were superseded", "[external_file_cache]") {
+	DuckDB db = MakeCacheLocalFilesDB();
+	auto &db_instance = *db.instance;
+	auto recording_fs = make_uniq<ReadRecordingFileSystem>();
+
+	const idx_t BLOCK_SIZE = 65536;
+	Connection con(db);
+	con.Query(StringUtil::Format("SET external_file_cache_local_max_block_size=%llu", BLOCK_SIZE));
+
+	const idx_t FILE_SIZE = 100000;
+	auto content = MakeTestContent(FILE_SIZE);
+	EFCTestFileGuard test_file("test_efc_want_superseded.bin", content);
+
+	CachingFileSystem cfs(*recording_fs, db_instance);
+	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	recording_fs->TakeReads();
+
+	auto wanted = handle->Want(4096, 8192);
+	auto block = wanted.GetBlocks()[0];
+
+	// a read of the whole file merges the wanted block into the block that covers it
+	REQUIRE(ReadFull(*handle, FILE_SIZE) == content);
+	REQUIRE(recording_fs->TakeReads() ==
+	        vector<pair<idx_t, idx_t>> {{0, BLOCK_SIZE}, {BLOCK_SIZE, FILE_SIZE - BLOCK_SIZE}});
+	{
+		const annotated_lock_guard<annotated_mutex> guard(block->mtx);
+		REQUIRE(block->state == CacheBlockState::SUPERSEDED);
+	}
+	wanted.Release();
+	REQUIRE(block->wanted == 0);
+}
+
 } // namespace duckdb

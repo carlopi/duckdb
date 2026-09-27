@@ -255,6 +255,85 @@ vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cach
 	return result;
 }
 
+WantedBlocks ExternalFileCache::WantBlocks(CachedFile &cached_file, idx_t location, idx_t nr_bytes,
+                                           idx_t max_block_size, const FileLayout &layout) {
+	D_ASSERT(nr_bytes > 0);
+	D_ASSERT(max_block_size > 0);
+	const idx_t end = location + nr_bytes;
+
+	const annotated_lock_guard<annotated_mutex> map_guard(cached_file.map_lock);
+	auto &blocks = cached_file.blocks;
+	const idx_t generation = cached_file.content_generation;
+	if (layout.stride > 0) {
+		AddLayoutBlocks(blocks, generation, layout, location, end);
+	}
+	auto it = blocks.upper_bound(location);
+	if (it != blocks.begin()) {
+		auto prev = std::prev(it);
+		if (prev->first + prev->second->size > location) {
+			it = prev;
+		}
+	}
+
+	vector<shared_ptr<CacheBlock>> result;
+	idx_t pos = location;
+	while (pos < end) {
+		if (it != blocks.end() && it->first <= pos) {
+			result.push_back(it->second);
+			pos = it->first + it->second->size;
+			++it;
+			continue;
+		}
+		// empty blocks for the missing bytes up to the next block
+		const idx_t gap_end = it == blocks.end() ? end : MinValue(end, it->first);
+		while (pos < gap_end) {
+			const idx_t size = MinValue(gap_end - pos, max_block_size);
+			auto block = make_shared_ptr<CacheBlock>(pos, size, generation);
+			blocks.emplace_hint(it, pos, block);
+			result.push_back(std::move(block));
+			pos += size;
+		}
+	}
+	for (auto &block : result) {
+		block->wanted++;
+	}
+	return WantedBlocks(std::move(result));
+}
+
+WantedBlocks::WantedBlocks(vector<shared_ptr<CacheBlock>> blocks_p) : blocks(std::move(blocks_p)) {
+}
+
+WantedBlocks::~WantedBlocks() {
+	Release();
+}
+
+WantedBlocks::WantedBlocks(WantedBlocks &&other) noexcept : blocks(std::move(other.blocks)) {
+	other.blocks.clear();
+}
+
+WantedBlocks &WantedBlocks::operator=(WantedBlocks &&other) noexcept {
+	if (this != &other) {
+		Release();
+		blocks = std::move(other.blocks);
+		other.blocks.clear();
+	}
+	return *this;
+}
+
+void WantedBlocks::Append(WantedBlocks &&other) {
+	for (auto &block : other.blocks) {
+		blocks.push_back(std::move(block));
+	}
+	other.blocks.clear();
+}
+
+void WantedBlocks::Release() {
+	for (auto &block : blocks) {
+		block->wanted--;
+	}
+	blocks.clear();
+}
+
 shared_ptr<CacheBlock> ExternalFileCache::FindCoveringBlock(CachedFile &cached_file, const CacheBlock &superseded) {
 	const annotated_lock_guard<annotated_mutex> map_guard(cached_file.map_lock);
 	if (superseded.generation != cached_file.content_generation) {

@@ -54,6 +54,28 @@ struct CacheValidationInfo {
 	idx_t file_size = 0;
 };
 
+//! Blocks declared as wanted by a reader, released when destroyed.
+class WantedBlocks {
+public:
+	WantedBlocks() = default;
+	explicit WantedBlocks(vector<shared_ptr<CacheBlock>> blocks);
+	~WantedBlocks();
+	WantedBlocks(const WantedBlocks &) = delete;
+	WantedBlocks &operator=(const WantedBlocks &) = delete;
+	WantedBlocks(WantedBlocks &&other) noexcept;
+	WantedBlocks &operator=(WantedBlocks &&other) noexcept;
+
+	//! Take over the blocks of another declaration
+	void Append(WantedBlocks &&other);
+	void Release();
+	const vector<shared_ptr<CacheBlock>> &GetBlocks() const {
+		return blocks;
+	}
+
+private:
+	vector<shared_ptr<CacheBlock>> blocks;
+};
+
 //! A file made of [0, offset) followed by units of stride bytes, reads fetch whole units. A stride of 0 means none.
 struct FileLayout {
 	idx_t offset = 0;
@@ -112,6 +134,10 @@ public:
 	//! Uncached units of `layout` within the range are fetched whole.
 	vector<shared_ptr<CacheBlock>> AcquireBlocks(CachedFile &cached_file, idx_t location, idx_t nr_bytes,
 	                                             idx_t max_block_size, const FileLayout &layout = FileLayout());
+	//! Declare [location, location + nr_bytes) as wanted: blocks are created for the uncached bytes without fetching
+	//! them, and every block overlapping the range is marked until the returned declaration is released.
+	WantedBlocks WantBlocks(CachedFile &cached_file, idx_t location, idx_t nr_bytes, idx_t max_block_size,
+	                        const FileLayout &layout = FileLayout());
 	//! Get the block that replaced a superseded block, or nullptr if the file changed since.
 	shared_ptr<CacheBlock> FindCoveringBlock(CachedFile &cached_file, const CacheBlock &superseded);
 	//! Drop all blocks of a file that changed. Readers keep the blocks they hold.

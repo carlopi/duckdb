@@ -510,17 +510,22 @@ void CachingFileHandle::SetLayout(idx_t offset, idx_t stride) {
 	external_file_cache.SetLayout(*current_cached_file, offset, stride);
 }
 
+FileLayout CachingFileHandle::GetReadLayout(CachedFile &cached_file, idx_t max_block_size) {
+	// reads sized by the cache fetch the aligned blocks around them, unless the file declared its layout
+	auto layout = external_file_cache.GetLayout(cached_file);
+	if (layout.stride == 0 && flags.GetRequestSizing() == RequestSizing::BY_CACHE) {
+		layout.stride = max_block_size;
+	}
+	return layout;
+}
+
 void CachingFileHandle::GetFetchRange(CachedFile &cached_file, idx_t nr_bytes, idx_t location, idx_t max_block_size,
                                       idx_t &fetch_location, idx_t &fetch_end, FileLayout &layout) {
 	fetch_location = location;
 	fetch_end = location + nr_bytes;
 	const idx_t file_size = GetFileSize();
 	const idx_t min_block_size = MinValue(external_file_cache.GetCacheMinBlockSize(cached_file.path), max_block_size);
-	// reads sized by the cache fetch the aligned blocks around them, unless the file declared its layout
-	layout = external_file_cache.GetLayout(cached_file);
-	if (layout.stride == 0 && flags.GetRequestSizing() == RequestSizing::BY_CACHE) {
-		layout.stride = max_block_size;
-	}
+	layout = GetReadLayout(cached_file, max_block_size);
 	if (fetch_end <= file_size) {
 		if (file_size <= max_block_size) {
 			// fetch a file that fits in one block whole, so later reads of it hit the cache
@@ -531,6 +536,22 @@ void CachingFileHandle::GetFetchRange(CachedFile &cached_file, idx_t nr_bytes, i
 			fetch_end = MinValue(file_size, AlignValue(fetch_end, min_block_size));
 		}
 	}
+}
+
+WantedBlocks CachingFileHandle::Want(idx_t nr_bytes, idx_t location) {
+	if (nr_bytes == 0 || !external_file_cache.IsEnabled() || !external_file_cache.ShouldCacheFile(path.path) ||
+	    !CanUseCache()) {
+		return WantedBlocks();
+	}
+	const idx_t file_size = GetFileSize();
+	if (location >= file_size) {
+		return WantedBlocks();
+	}
+	nr_bytes = MinValue(nr_bytes, file_size - location);
+	auto current_cached_file = EnsureCachedFileCurrent();
+	const idx_t max_block_size = external_file_cache.GetCacheBlockSize(current_cached_file->path);
+	return external_file_cache.WantBlocks(*current_cached_file, location, nr_bytes, max_block_size,
+	                                      GetReadLayout(*current_cached_file, max_block_size));
 }
 
 void CachingFileHandle::Prefetch(idx_t nr_bytes, idx_t location) {
