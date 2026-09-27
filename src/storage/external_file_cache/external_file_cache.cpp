@@ -156,7 +156,8 @@ static idx_t GapBlockCount(idx_t nr_bytes, idx_t max_block_size) {
 }
 
 vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cached_file, idx_t location, idx_t nr_bytes,
-                                                                idx_t max_block_size, const FileLayout &layout) {
+                                                                idx_t max_block_size, const FileLayout &layout,
+                                                                idx_t required_start, idx_t required_end) {
 	D_ASSERT(nr_bytes > 0);
 	D_ASSERT(max_block_size > 0);
 	const idx_t end = location + nr_bytes;
@@ -182,7 +183,21 @@ vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cach
 	// superseded blocks are always covered whole by a single new block
 	vector<pair<idx_t, idx_t>> superseded;
 	idx_t pos = location;
-	while (pos < end) {
+	while (pos < end && pos < required_end) {
+		if (it != blocks.end() && it->first <= pos && it->first + it->second->size <= required_start) {
+			// before the required bytes: not needed by this read
+			pos = it->first + it->second->size;
+			++it;
+			continue;
+		}
+		if (it == blocks.end() || it->first > pos) {
+			const idx_t missing_end = it == blocks.end() ? end : MinValue(end, it->first);
+			if (missing_end <= required_start) {
+				// missing bytes that are only padding before the required bytes
+				pos = missing_end;
+				continue;
+			}
+		}
 		if (it != blocks.end() && it->first <= pos && !TrySupersedePlaceholder(*it->second)) {
 			result.push_back(it->second);
 			pos = it->first + it->second->size;

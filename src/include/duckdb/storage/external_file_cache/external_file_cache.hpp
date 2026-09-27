@@ -9,6 +9,7 @@
 #pragma once
 
 #include "duckdb/common/atomic.hpp"
+#include "duckdb/common/limits.hpp"
 #include "duckdb/common/map.hpp"
 #include "duckdb/common/mutex.hpp"
 #include "duckdb/common/optional.hpp"
@@ -132,8 +133,12 @@ public:
 
 	//! Get the blocks covering [location, location + nr_bytes), creating empty blocks for the missing bytes.
 	//! Uncached units of `layout` within the range are fetched whole.
+	//! Only blocks with bytes of [required_start, required_end) are returned: the bytes around them only widen the
+	//! missing ranges they are next to.
 	vector<shared_ptr<CacheBlock>> AcquireBlocks(CachedFile &cached_file, idx_t location, idx_t nr_bytes,
-	                                             idx_t max_block_size, const FileLayout &layout = FileLayout());
+	                                             idx_t max_block_size, const FileLayout &layout = FileLayout(),
+	                                             idx_t required_start = 0,
+	                                             idx_t required_end = NumericLimits<idx_t>::Maximum());
 	//! Declare [location, location + nr_bytes) as wanted: blocks are created for the uncached bytes without fetching
 	//! them, and every block overlapping the range is marked until the returned declaration is released.
 	WantedBlocks WantBlocks(CachedFile &cached_file, idx_t location, idx_t nr_bytes, idx_t max_block_size,

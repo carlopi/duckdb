@@ -586,7 +586,7 @@ void CachingFileHandle::Prefetch(idx_t nr_bytes, idx_t location) {
 	FileLayout layout;
 	GetFetchRange(*current_cached_file, nr_bytes, location, max_block_size, fetch_location, fetch_end, layout);
 	auto blocks = external_file_cache.AcquireBlocks(*current_cached_file, fetch_location, fetch_end - fetch_location,
-	                                                max_block_size, layout);
+	                                                max_block_size, layout, location, location + nr_bytes);
 
 	auto scope = client_context->registered_state->GetOrCreate<PrefetchState>(PrefetchState::NAME)->GetScope();
 	auto file_handle = GetFileHandle();
@@ -620,8 +620,9 @@ FileBufferHandleGroup CachingFileHandle::Read(const idx_t nr_bytes, const idx_t 
 	// a read restarts when the file changed while one of its blocks was superseded
 	static constexpr idx_t MAX_READ_ATTEMPTS = 3;
 	for (idx_t attempt = 0; attempt < MAX_READ_ATTEMPTS; attempt++) {
-		const auto blocks = external_file_cache.AcquireBlocks(*current_cached_file, fetch_location,
-		                                                      fetch_end - fetch_location, max_block_size, layout);
+		const auto blocks =
+		    external_file_cache.AcquireBlocks(*current_cached_file, fetch_location, fetch_end - fetch_location,
+		                                      max_block_size, layout, location, location + nr_bytes);
 		const idx_t num_blocks = blocks.size();
 
 		// Schedule block fetch tasks for all blocks.

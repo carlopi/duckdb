@@ -414,6 +414,33 @@ TEST_CASE("Short reads of remote files fetch the minimum blocks around them", "[
 	REQUIRE(remote_fs->TakeReads() == vector<pair<idx_t, idx_t>> {{16 * MIN_BLOCK_SIZE, 100}});
 }
 
+TEST_CASE("Short reads of cached bytes do not fetch the minimum blocks around them", "[external_file_cache]") {
+	DuckDB db = MakeCacheLocalFilesDB();
+	auto &db_instance = *db.instance;
+	auto remote_fs = make_uniq<RemotePathFileSystem>();
+
+	Connection con(db);
+	con.Query("SET external_file_cache_remote_max_block_size=16384");
+	const idx_t FILE_SIZE = 16 * 4096;
+	auto content = MakeTestContent(FILE_SIZE);
+	EFCTestFileGuard test_file("test_efc_min_block_cached.bin", content);
+
+	CachingFileSystem cfs(*remote_fs, db_instance);
+	auto handle =
+	    OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(REMOTE_PREFIX + test_file.GetPath()), ReaderSizedFlags()));
+
+	REQUIRE(ReadFull(*handle, 9000, 1000) == content.substr(1000, 9000));
+	REQUIRE(remote_fs->TakeReads() == vector<pair<idx_t, idx_t>> {{1000, 9000}});
+
+	// the bytes are cached: the minimum block around them is not fetched
+	REQUIRE(ReadFull(*handle, 100, 9900) == content.substr(9900, 100));
+	REQUIRE(remote_fs->TakeReads().empty());
+
+	// the missing bytes are fetched with the rest of their minimum block, the cached bytes before them are not
+	REQUIRE(ReadFull(*handle, 20, 9990) == content.substr(9990, 20));
+	REQUIRE(remote_fs->TakeReads() == vector<pair<idx_t, idx_t>> {{10000, 3 * 4096 - 10000}});
+}
+
 TEST_CASE("Short reads of local files are not widened", "[external_file_cache]") {
 	DuckDB db = MakeCacheLocalFilesDB();
 	auto &db_instance = *db.instance;
