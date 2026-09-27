@@ -2040,6 +2040,7 @@ static void CollectLeafColumns(const ParquetColumnSchema &schema, vector<idx_t> 
 
 vector<pair<idx_t, idx_t>> ParquetReader::GetRowGroupRanges(idx_t group_index) const {
 	auto &group = GetFileMetadata()->row_groups[group_index];
+	const idx_t file_size = file_handle->GetFileSize();
 	vector<idx_t> leaves;
 	auto add_column = [&](const ColumnIndex &index) {
 		const auto column_id = index.GetPrimaryIndex();
@@ -2060,9 +2061,21 @@ vector<pair<idx_t, idx_t>> ParquetReader::GetRowGroupRanges(idx_t group_index) c
 		if (leaf >= group.columns.size()) {
 			continue;
 		}
-		auto &chunk = group.columns[leaf];
-		const auto start = ParquetColumnChunkFileOffset(chunk);
-		ranges.emplace_back(start, start + NumericCast<idx_t>(chunk.meta_data.total_compressed_size));
+		auto &meta_data = group.columns[leaf].meta_data;
+		// the ranges are only hints: chunks with invalid offsets are skipped, the scan reports them
+		int64_t start = meta_data.data_page_offset;
+		if (meta_data.__isset.dictionary_page_offset) {
+			start = MinValue(start, meta_data.dictionary_page_offset);
+		}
+		if (meta_data.__isset.index_page_offset) {
+			start = MinValue(start, meta_data.index_page_offset);
+		}
+		if (start < 0 || meta_data.total_compressed_size <= 0 ||
+		    static_cast<idx_t>(start) + static_cast<idx_t>(meta_data.total_compressed_size) > file_size) {
+			continue;
+		}
+		ranges.emplace_back(static_cast<idx_t>(start),
+		                    static_cast<idx_t>(start) + static_cast<idx_t>(meta_data.total_compressed_size));
 	}
 	std::sort(ranges.begin(), ranges.end());
 	return ranges;
