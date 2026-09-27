@@ -1067,19 +1067,20 @@ const StringUtil::EnumStringLiteral *GetCacheBlockStateValues() {
 		{ static_cast<uint32_t>(CacheBlockState::EMPTY), "EMPTY" },
 		{ static_cast<uint32_t>(CacheBlockState::LOADING), "LOADING" },
 		{ static_cast<uint32_t>(CacheBlockState::LOADED), "LOADED" },
-		{ static_cast<uint32_t>(CacheBlockState::IO_ERROR), "IO_ERROR" }
+		{ static_cast<uint32_t>(CacheBlockState::IO_ERROR), "IO_ERROR" },
+		{ static_cast<uint32_t>(CacheBlockState::SUPERSEDED), "SUPERSEDED" }
 	};
 	return values;
 }
 
 template<>
 const char* EnumUtil::ToChars<CacheBlockState>(CacheBlockState value) {
-	return StringUtil::EnumToString(GetCacheBlockStateValues(), 4, "CacheBlockState", static_cast<uint32_t>(value));
+	return StringUtil::EnumToString(GetCacheBlockStateValues(), 5, "CacheBlockState", static_cast<uint32_t>(value));
 }
 
 template<>
 CacheBlockState EnumUtil::FromString<CacheBlockState>(const char *value) {
-	return static_cast<CacheBlockState>(StringUtil::StringToEnum(GetCacheBlockStateValues(), 4, "CacheBlockState", value));
+	return static_cast<CacheBlockState>(StringUtil::StringToEnum(GetCacheBlockStateValues(), 5, "CacheBlockState", value));
 }
 
 const StringUtil::EnumStringLiteral *GetCacheValidationModeValues() {

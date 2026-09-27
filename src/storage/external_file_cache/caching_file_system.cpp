@@ -1,5 +1,6 @@
 #include "duckdb/storage/external_file_cache/caching_file_system.hpp"
 
+#include "duckdb/common/atomic.hpp"
 #include "duckdb/common/checksum.hpp"
 #include "duckdb/common/chrono.hpp"
 #include "duckdb/common/enums/cache_validation_mode.hpp"
@@ -53,12 +54,29 @@ void TightenCacheDeadline(optional<timestamp_t> &cached, const optional<timestam
 class FetchBlockTask : public BaseExecutorTask {
 public:
 	FetchBlockTask(CachingFileHandle &caching_file_handle_p, TaskExecutor &executor, QueryContext context_p,
-	               BufferManager &buffer_manager_p, shared_ptr<CacheBlock> block_p, BufferHandle &result_pin_p)
+	               ExternalFileCache &external_file_cache_p, ExternalFileCache::CachedFile &cached_file_p,
+	               shared_ptr<CacheBlock> &block_p, BufferHandle &result_pin_p, atomic<bool> &restart_p)
 	    : BaseExecutorTask(executor), caching_file_handle(caching_file_handle_p), context(context_p),
-	      buffer_manager(buffer_manager_p), block(std::move(block_p)), result_pin(result_pin_p) {
+	      external_file_cache(external_file_cache_p), cached_file(cached_file_p),
+	      buffer_manager(external_file_cache_p.GetBufferManager()), block(block_p), result_pin(result_pin_p),
+	      restart(restart_p) {
 	}
 
 	void ExecuteTask() override {
+		while (!TryFetch()) {
+			// the block was superseded: continue with the block that covers it
+			block = external_file_cache.FindCoveringBlock(cached_file, *block);
+			if (!block) {
+				// the file changed since
+				restart = true;
+				return;
+			}
+		}
+	}
+
+private:
+	//! Fetch or pin the block, returns false if it was superseded
+	bool TryFetch() {
 		annotated_unique_lock<annotated_mutex> lk(block->mtx);
 
 		while (true) {
@@ -70,7 +88,7 @@ public:
 					D_ASSERT(Checksum(pin.Ptr(), block->nr_bytes) == block->checksum);
 #endif
 					result_pin = std::move(pin);
-					return;
+					return true;
 				}
 				// Evicted by buffer manager, need to re-fetch
 				block->state = CacheBlockState::EMPTY;
@@ -89,7 +107,7 @@ public:
 						// for another attempt.
 						block->state = CacheBlockState::EMPTY;
 						block->cv.notify_all();
-						return;
+						return true;
 					}
 					const idx_t to_read = MinValue(block->size, file_size - offset);
 					auto buf =
@@ -103,7 +121,7 @@ public:
 						block->state = CacheBlockState::EMPTY;
 						result_pin = std::move(buf);
 						block->cv.notify_all();
-						return;
+						return true;
 					}
 					block->block_handle = buf.GetBlockHandle();
 					block->nr_bytes = to_read;
@@ -119,13 +137,15 @@ public:
 					block->cv.notify_all();
 					throw;
 				}
-				return;
+				return true;
 			}
 			case CacheBlockState::LOADING: {
 				block->cv.wait(lk,
 				               [&]() DUCKDB_REQUIRES(block->mtx) { return block->state != CacheBlockState::LOADING; });
 				continue;
 			}
+			case CacheBlockState::SUPERSEDED:
+				return false;
 			case CacheBlockState::IO_ERROR: {
 				// IO operation failed, reset the block to empty state for another attempt.
 				block->state = CacheBlockState::EMPTY;
@@ -135,12 +155,15 @@ public:
 		}
 	}
 
-private:
 	CachingFileHandle &caching_file_handle;
 	QueryContext context;
+	ExternalFileCache &external_file_cache;
+	ExternalFileCache::CachedFile &cached_file;
 	BufferManager &buffer_manager;
-	shared_ptr<CacheBlock> block;
+	//! The block this read uses for its range, updated when it is superseded
+	shared_ptr<CacheBlock> &block;
 	BufferHandle &result_pin;
+	atomic<bool> &restart;
 };
 
 } // namespace
@@ -238,7 +261,7 @@ bool CachingFileHandle::CanUseCache() {
 	return !current_cached_file->validation_info.IsExpired();
 }
 
-void CachingFileHandle::ReconcileCacheAfterRead(CachedFile &cached_file, const vector<shared_ptr<CacheBlock>> &blocks) {
+void CachingFileHandle::ReconcileCacheAfterRead(CachedFile &cached_file) {
 	CacheValidationInfo current;
 	{
 		const annotated_lock_guard<annotated_mutex> guard(file_handle_mutex);
@@ -254,7 +277,7 @@ void CachingFileHandle::ReconcileCacheAfterRead(CachedFile &cached_file, const v
 
 	cached = current;
 	// Existing readers retain their pinned blocks while future reads fetch replacements.
-	external_file_cache.RetireBlocks(cached_file, blocks);
+	external_file_cache.DropBlocks(cached_file);
 }
 
 CachingFileHandle::CachingFileHandle(QueryContext context, CachingFileSystem &caching_file_system_p,
@@ -312,8 +335,7 @@ shared_ptr<FileHandle> CachingFileHandle::GetFileHandle() {
 			    !refresh_expired_cache &&
 			    ExternalFileCache::IsValid(Validate(), cached_file->validation_info, validation_info);
 			if (!cache_is_valid) {
-				annotated_lock_guard<annotated_mutex> map_guard(cached_file->map_lock);
-				cached_file->blocks.clear();
+				external_file_cache.DropBlocks(*cached_file);
 			}
 			// A successful validator check refreshes freshness. Without validators, preserve the original deadline.
 			const bool revalidated = cache_is_valid && ExternalFileCache::HasValidationMetadata(validation_info);
@@ -366,46 +388,66 @@ FileBufferHandleGroup CachingFileHandle::Read(const idx_t nr_bytes, const idx_t 
 			fetch_end = MinValue(file_size, AlignValue(fetch_end, min_block_size));
 		}
 	}
-	auto blocks = external_file_cache.AcquireBlocks(*current_cached_file, fetch_location, fetch_end - fetch_location,
-	                                                max_block_size);
-	const idx_t num_blocks = blocks.size();
+	// a read restarts when the file changed while one of its blocks was superseded
+	static constexpr idx_t MAX_READ_ATTEMPTS = 3;
+	for (idx_t attempt = 0; attempt < MAX_READ_ATTEMPTS; attempt++) {
+		const auto blocks = external_file_cache.AcquireBlocks(*current_cached_file, fetch_location,
+		                                                      fetch_end - fetch_location, max_block_size);
+		const idx_t num_blocks = blocks.size();
 
-	// Schedule block fetch tasks for all blocks.
-	vector<BufferHandle> pins(num_blocks);
-	auto &scheduler = TaskScheduler::GetScheduler(caching_file_system.db);
-	TaskExecutor executor(scheduler, TaskSchedulerType::ASYNC);
-
-	for (idx_t idx = 0; idx < num_blocks; idx++) {
-		executor.ScheduleTask(make_uniq<FetchBlockTask>(
-		    *this, executor, context, external_file_cache.GetBufferManager(), blocks[idx], pins[idx]));
-	}
-	executor.WorkOnTasks();
-
-	// Build the handle group.
-	vector<FileBufferHandleGroup::MemoryHandle> mem_handles;
-	mem_handles.reserve(num_blocks);
-	idx_t remaining = nr_bytes;
-	for (idx_t idx = 0; idx < num_blocks && remaining > 0; idx++) {
-		auto &block = *blocks[idx];
-		if (block.location + block.size <= location) {
-			// part of a small file fetched whole, before the requested range
+		// Schedule block fetch tasks for all blocks.
+		auto sources = blocks;
+		vector<BufferHandle> pins(num_blocks);
+		atomic<bool> restart {false};
+		auto &scheduler = TaskScheduler::GetScheduler(caching_file_system.db);
+		TaskExecutor executor(scheduler, TaskSchedulerType::ASYNC);
+		for (idx_t idx = 0; idx < num_blocks; idx++) {
+			executor.ScheduleTask(make_uniq<FetchBlockTask>(*this, executor, context, external_file_cache,
+			                                                *current_cached_file, sources[idx], pins[idx], restart));
+		}
+		executor.WorkOnTasks();
+		if (restart) {
 			continue;
 		}
-		const idx_t offset_in_block = location > block.location ? location - block.location : 0;
-		idx_t block_valid_bytes = 0;
-		{
-			annotated_lock_guard<annotated_mutex> block_guard(block.mtx);
-			block_valid_bytes = block.nr_bytes;
+
+		// Build the handle group: each acquired block's range is served by its source block.
+		vector<FileBufferHandleGroup::MemoryHandle> mem_handles;
+		mem_handles.reserve(num_blocks);
+		const idx_t read_end = location + nr_bytes;
+		idx_t position = location;
+		for (idx_t idx = 0; idx < num_blocks && position < read_end; idx++) {
+			auto &block = *blocks[idx];
+			const idx_t range_end = MinValue(block.location + block.size, read_end);
+			if (range_end <= position) {
+				// part of a small file fetched whole, before the requested range
+				continue;
+			}
+			auto &source = *sources[idx];
+			const idx_t offset_in_block = position - source.location;
+			idx_t block_valid_bytes = 0;
+			{
+				annotated_lock_guard<annotated_mutex> block_guard(source.mtx);
+				block_valid_bytes = source.nr_bytes;
+			}
+			const idx_t available_in_block =
+			    (block_valid_bytes > offset_in_block) ? (block_valid_bytes - offset_in_block) : 0;
+			const idx_t length = MinValue(available_in_block, range_end - position);
+			mem_handles.push_back({std::move(pins[idx]), offset_in_block, length});
+			position += length;
+			if (position < range_end) {
+				// the file ends within this block
+				break;
+			}
 		}
-		const idx_t available_in_block =
-		    (block_valid_bytes > offset_in_block) ? (block_valid_bytes - offset_in_block) : 0;
-		const idx_t length = MinValue(available_in_block, remaining);
-		mem_handles.push_back({std::move(pins[idx]), offset_in_block, length});
-		remaining -= length;
+
+		ReconcileCacheAfterRead(*current_cached_file);
+
+		return FileBufferHandleGroup(std::move(mem_handles));
 	}
-
-	ReconcileCacheAfterRead(*current_cached_file, blocks);
-
+	auto buf = AllocateUncachedReadBuffer(external_file_cache.GetBufferManager(), nr_bytes);
+	ReadAndRecord(context, buf.GetDataMutable(), nr_bytes, location);
+	vector<FileBufferHandleGroup::MemoryHandle> mem_handles;
+	mem_handles.push_back({std::move(buf), 0, nr_bytes});
 	return FileBufferHandleGroup(std::move(mem_handles));
 }
 

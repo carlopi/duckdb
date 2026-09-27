@@ -90,18 +90,44 @@ bool ExternalFileCache::ShouldCacheFile(const string &path) const {
 	return Settings::Get<CacheLocalFilesSetting>(db);
 }
 
-static bool IsDroppedBlock(CacheBlock &block) {
-	const annotated_lock_guard<annotated_mutex> block_guard(block.mtx);
-	if (block.state != CacheBlockState::LOADED || !block.block_handle) {
-		return false;
-	}
-	auto &memory = block.block_handle->GetMemory();
-	return memory.IsUnloaded() && !memory.MustWriteToTemporaryFile();
+static void MarkSuperseded(CacheBlock &block) DUCKDB_REQUIRES(block.mtx) {
+	block.state = CacheBlockState::SUPERSEDED;
+	block.block_handle.reset();
+	block.cv.notify_all();
 }
 
-static bool IsLoadedBlock(CacheBlock &block) {
+//! Supersede a block without bytes that nobody is fetching.
+static bool TrySupersedePlaceholder(CacheBlock &block) {
 	const annotated_lock_guard<annotated_mutex> block_guard(block.mtx);
-	return block.state == CacheBlockState::LOADED;
+	switch (block.state) {
+	case CacheBlockState::EMPTY:
+	case CacheBlockState::IO_ERROR:
+		break;
+	case CacheBlockState::LOADED: {
+		if (!block.block_handle) {
+			return false;
+		}
+		auto &memory = block.block_handle->GetMemory();
+		if (!memory.IsUnloaded() || memory.MustWriteToTemporaryFile()) {
+			return false;
+		}
+		break;
+	}
+	default:
+		return false;
+	}
+	MarkSuperseded(block);
+	return true;
+}
+
+//! Supersede a loaded block, dropping its bytes so they are fetched again with the gaps around it.
+static bool TrySupersedeLoaded(CacheBlock &block) {
+	const annotated_lock_guard<annotated_mutex> block_guard(block.mtx);
+	if (block.state != CacheBlockState::LOADED) {
+		return false;
+	}
+	MarkSuperseded(block);
+	return true;
 }
 
 static idx_t GapBlockCount(idx_t nr_bytes, idx_t max_block_size) {
@@ -118,6 +144,7 @@ vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cach
 
 	const annotated_lock_guard<annotated_mutex> map_guard(cached_file.map_lock);
 	auto &blocks = cached_file.blocks;
+	const idx_t generation = cached_file.content_generation;
 	// start at the block that covers `location`, if any
 	auto it = blocks.upper_bound(location);
 	if (it != blocks.begin()) {
@@ -128,56 +155,104 @@ vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cach
 	}
 
 	vector<shared_ptr<CacheBlock>> result;
+	// superseded blocks are always covered whole by a single new block
+	vector<pair<idx_t, idx_t>> superseded;
 	idx_t pos = location;
 	while (pos < end) {
+		if (it != blocks.end() && it->first <= pos && !TrySupersedePlaceholder(*it->second)) {
+			result.push_back(it->second);
+			pos = it->first + it->second->size;
+			++it;
+			continue;
+		}
+		// collect the missing bytes from `pos`, together with the superseded blocks between them
+		idx_t run_start = pos;
+		idx_t run_end = pos;
+		superseded.clear();
+		auto include_block = [&]() {
+			auto &block = *it->second;
+			run_start = MinValue(run_start, block.location);
+			run_end = block.location + block.size;
+			superseded.emplace_back(block.location, run_end);
+			it = blocks.erase(it);
+		};
 		if (it != blocks.end() && it->first <= pos) {
-			if (!IsDroppedBlock(*it->second)) {
-				result.push_back(it->second);
-				pos = it->first + it->second->size;
-				++it;
+			include_block();
+		}
+		while (true) {
+			if (run_end < end) {
+				run_end = it == blocks.end() ? end : MinValue(end, it->first);
+			}
+			if (run_end >= end || it == blocks.end() || it->first != run_end) {
+				break;
+			}
+			auto &block = *it->second;
+			if (TrySupersedePlaceholder(block)) {
+				include_block();
 				continue;
 			}
-			// re-fetch a dropped block only as far as this read needs it
-			it = blocks.erase(it);
-		}
-		// create blocks for the missing bytes up to the next cached block
-		idx_t gap_end = it == blocks.end() ? end : MinValue(end, it->first);
-		while (it != blocks.end() && it->first < end && it->second->size < absorb_size && IsLoadedBlock(*it->second)) {
-			const idx_t block_end = it->first + it->second->size;
+			if (block.size >= absorb_size) {
+				break;
+			}
+			const idx_t block_end = block.location + block.size;
 			const auto next = std::next(it);
 			const idx_t next_gap_end = next == blocks.end() ? end : MinValue(end, next->first);
 			if (block_end >= next_gap_end) {
 				break;
 			}
-			const idx_t gap_before = gap_end - pos;
+			const idx_t gap_before = run_end - run_start;
 			const idx_t gap_after = next_gap_end - block_end;
-			if (GapBlockCount(gap_before + it->second->size + gap_after, max_block_size) >=
+			if (GapBlockCount(gap_before + block.size + gap_after, max_block_size) >=
 			    GapBlockCount(gap_before, max_block_size) + GapBlockCount(gap_after, max_block_size)) {
 				break;
 			}
-			it = blocks.erase(it);
-			gap_end = next_gap_end;
+			if (!TrySupersedeLoaded(block)) {
+				break;
+			}
+			include_block();
 		}
-		while (pos < gap_end) {
-			const idx_t size = MinValue(gap_end - pos, max_block_size);
-			auto block = make_shared_ptr<CacheBlock>(pos, size);
-			blocks.emplace_hint(it, pos, block);
+		// split the run at the block size, never inside a superseded block
+		idx_t block_start = run_start;
+		while (block_start < run_end) {
+			idx_t cut = MinValue(block_start + max_block_size, run_end);
+			for (auto &range : superseded) {
+				if (range.first < cut && cut < range.second) {
+					cut = range.first > block_start ? range.first : range.second;
+					break;
+				}
+			}
+			auto block = make_shared_ptr<CacheBlock>(block_start, cut - block_start, generation);
+			blocks.emplace_hint(it, block_start, block);
 			result.push_back(std::move(block));
-			pos += size;
+			block_start = cut;
 		}
+		pos = run_end;
 	}
 	return result;
 }
 
-void ExternalFileCache::RetireBlocks(CachedFile &cached_file, const vector<shared_ptr<CacheBlock>> &blocks) {
+shared_ptr<CacheBlock> ExternalFileCache::FindCoveringBlock(CachedFile &cached_file, const CacheBlock &superseded) {
 	const annotated_lock_guard<annotated_mutex> map_guard(cached_file.map_lock);
-	for (auto &block : blocks) {
-		auto entry = cached_file.blocks.find(block->location);
-		if (entry == cached_file.blocks.end() || entry->second != block) {
-			continue;
-		}
-		cached_file.blocks.erase(entry);
+	if (superseded.generation != cached_file.content_generation) {
+		return nullptr;
 	}
+	auto &blocks = cached_file.blocks;
+	auto it = blocks.upper_bound(superseded.location);
+	if (it == blocks.begin()) {
+		return nullptr;
+	}
+	--it;
+	auto &block = it->second;
+	if (block->location + block->size < superseded.location + superseded.size) {
+		return nullptr;
+	}
+	return block;
+}
+
+void ExternalFileCache::DropBlocks(CachedFile &cached_file) {
+	const annotated_lock_guard<annotated_mutex> map_guard(cached_file.map_lock);
+	cached_file.blocks.clear();
+	cached_file.content_generation++;
 }
 
 ExternalFileCache::CachedFile::CachedFile(string path_p, idx_t generation_p)

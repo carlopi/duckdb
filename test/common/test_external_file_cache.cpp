@@ -1081,10 +1081,10 @@ TEST_CASE("No-metadata file is not cached and always returns fresh content", "[e
 	REQUIRE(CountCachedBlocks(cache) == 0);
 }
 
-TEST_CASE("Retiring cache blocks preserves existing readers and cannot erase replacements", "[external_file_cache]") {
+TEST_CASE("Dropping cache blocks preserves existing readers and starts a new generation", "[external_file_cache]") {
 	DuckDB db = MakeCacheLocalFilesDB();
 	auto &cache = db.instance->GetExternalFileCache();
-	auto cached_file = cache.GetOrCreateCachedFile("retire-blocks-test");
+	auto cached_file = cache.GetOrCreateCachedFile("drop-blocks-test");
 
 	constexpr idx_t BLOCK_SIZE = 4096;
 	constexpr idx_t LOCATION = 7 * BLOCK_SIZE;
@@ -1095,36 +1095,115 @@ TEST_CASE("Retiring cache blocks preserves existing readers and cannot erase rep
 		acquired[0]->state = CacheBlockState::LOADED;
 		acquired[0]->nr_bytes = BLOCK_SIZE;
 	}
-	{
-		const annotated_lock_guard<annotated_mutex> guard(acquired[1]->mtx);
-		acquired[1]->state = CacheBlockState::LOADED;
-		acquired[1]->nr_bytes = 123;
-	}
 
-	cache.RetireBlocks(*cached_file, acquired);
+	cache.DropBlocks(*cached_file);
 
-	// Existing readers retain the immutable block metadata needed to finish their reads.
+	// Existing readers retain their blocks
 	{
 		const annotated_lock_guard<annotated_mutex> guard(acquired[0]->mtx);
 		REQUIRE(acquired[0]->state == CacheBlockState::LOADED);
 		REQUIRE(acquired[0]->nr_bytes == BLOCK_SIZE);
 	}
-	{
-		const annotated_lock_guard<annotated_mutex> guard(acquired[1]->mtx);
-		REQUIRE(acquired[1]->state == CacheBlockState::LOADED);
-		REQUIRE(acquired[1]->nr_bytes == 123);
-	}
-
-	// Future readers receive fresh cache blocks.
+	// Future readers receive fresh blocks of the new generation
 	auto replacements = cache.AcquireBlocks(*cached_file, LOCATION, 2 * BLOCK_SIZE, BLOCK_SIZE);
+	REQUIRE(replacements.size() == 2);
 	REQUIRE(replacements[0] != acquired[0]);
-	REQUIRE(replacements[1] != acquired[1]);
+	REQUIRE(replacements[0]->generation == acquired[0]->generation + 1);
+	// Blocks of an older generation are never redirected to blocks of the new one
+	REQUIRE(!cache.FindCoveringBlock(*cached_file, *acquired[1]));
+}
 
-	// A delayed retirement of the old range must not erase its replacements.
-	cache.RetireBlocks(*cached_file, acquired);
-	auto reacquired = cache.AcquireBlocks(*cached_file, LOCATION, 2 * BLOCK_SIZE, BLOCK_SIZE);
-	REQUIRE(reacquired[0] == replacements[0]);
-	REQUIRE(reacquired[1] == replacements[1]);
+TEST_CASE("Empty blocks between gaps are fetched with them in one request", "[external_file_cache]") {
+	DuckDB db = MakeCacheLocalFilesDB();
+	auto &db_instance = *db.instance;
+	auto recording_fs = make_uniq<ReadRecordingFileSystem>();
+
+	const idx_t BLOCK_SIZE = 65536;
+	Connection con(db);
+	con.Query(StringUtil::Format("SET external_file_cache_local_max_block_size=%llu", BLOCK_SIZE));
+
+	const idx_t FILE_SIZE = 100000;
+	auto content = MakeTestContent(FILE_SIZE);
+	EFCTestFileGuard test_file("test_efc_merge_empty.bin", content);
+
+	CachingFileSystem cfs(*recording_fs, db_instance);
+	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto &cache = db_instance.GetExternalFileCache();
+	auto cached_file = cache.GetOrCreateCachedFile(test_file.GetPath());
+
+	// empty blocks nobody fetches, one of them still held
+	cache.AcquireBlocks(*cached_file, 8192, 4096, BLOCK_SIZE);
+	auto held = cache.AcquireBlocks(*cached_file, 20480, 4096, BLOCK_SIZE);
+	REQUIRE(held.size() == 1);
+
+	REQUIRE(ReadFull(*handle, FILE_SIZE) == content);
+	REQUIRE(recording_fs->TakeReads() ==
+	        vector<pair<idx_t, idx_t>> {{0, BLOCK_SIZE}, {BLOCK_SIZE, FILE_SIZE - BLOCK_SIZE}});
+	REQUIRE(CountCachedBlocks(cache) == 2);
+
+	// the held block is superseded by the block that covers it
+	{
+		const annotated_lock_guard<annotated_mutex> guard(held[0]->mtx);
+		REQUIRE(held[0]->state == CacheBlockState::SUPERSEDED);
+	}
+	auto covering = cache.FindCoveringBlock(*cached_file, *held[0]);
+	REQUIRE(covering);
+	REQUIRE(covering->location == 0);
+	REQUIRE(covering->size == BLOCK_SIZE);
+
+	REQUIRE(ReadFull(*handle, 4096, 20480) == content.substr(20480, 4096));
+	REQUIRE(recording_fs->TakeReads().empty());
+}
+
+TEST_CASE("Empty blocks are never split at the block size", "[external_file_cache]") {
+	DuckDB db = MakeCacheLocalFilesDB();
+	auto &db_instance = *db.instance;
+	auto recording_fs = make_uniq<ReadRecordingFileSystem>();
+
+	const idx_t BLOCK_SIZE = 65536;
+	Connection con(db);
+	con.Query(StringUtil::Format("SET external_file_cache_local_max_block_size=%llu", BLOCK_SIZE));
+
+	const idx_t FILE_SIZE = 100000;
+	auto content = MakeTestContent(FILE_SIZE);
+	EFCTestFileGuard test_file("test_efc_split_empty.bin", content);
+
+	CachingFileSystem cfs(*recording_fs, db_instance);
+	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto &cache = db_instance.GetExternalFileCache();
+	auto cached_file = cache.GetOrCreateCachedFile(test_file.GetPath());
+
+	// an empty block across the block size boundary
+	cache.AcquireBlocks(*cached_file, 60000, 10000, BLOCK_SIZE);
+
+	REQUIRE(ReadFull(*handle, FILE_SIZE) == content);
+	REQUIRE(recording_fs->TakeReads() == vector<pair<idx_t, idx_t>> {{0, 60000}, {60000, FILE_SIZE - 60000}});
+	REQUIRE(CountCachedBlocks(cache) == 2);
+}
+
+TEST_CASE("Reads starting inside an empty block fetch the whole block", "[external_file_cache]") {
+	DuckDB db = MakeCacheLocalFilesDB();
+	auto &db_instance = *db.instance;
+	auto recording_fs = make_uniq<ReadRecordingFileSystem>();
+
+	const idx_t BLOCK_SIZE = 65536;
+	Connection con(db);
+	con.Query(StringUtil::Format("SET external_file_cache_local_max_block_size=%llu", BLOCK_SIZE));
+
+	const idx_t FILE_SIZE = 100000;
+	auto content = MakeTestContent(FILE_SIZE);
+	EFCTestFileGuard test_file("test_efc_inside_empty.bin", content);
+
+	CachingFileSystem cfs(*recording_fs, db_instance);
+	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto &cache = db_instance.GetExternalFileCache();
+	auto cached_file = cache.GetOrCreateCachedFile(test_file.GetPath());
+
+	cache.AcquireBlocks(*cached_file, 8192, 8192, BLOCK_SIZE);
+
+	REQUIRE(ReadFull(*handle, 4096, 12288) == content.substr(12288, 4096));
+	REQUIRE(recording_fs->TakeReads() == vector<pair<idx_t, idx_t>> {{8192, 8192}});
+	REQUIRE(CountCachedBlocks(cache) == 1);
 }
 
 } // namespace duckdb
