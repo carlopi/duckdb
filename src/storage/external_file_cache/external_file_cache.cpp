@@ -182,6 +182,8 @@ vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cach
 	vector<shared_ptr<CacheBlock>> result;
 	// superseded blocks are always covered whole by a single new block
 	vector<pair<idx_t, idx_t>> superseded;
+	//! How many readers wanted each superseded block, passed on to the block that covers it
+	vector<idx_t> superseded_wanted;
 	idx_t pos = location;
 	while (pos < end && pos < required_end) {
 		if (it != blocks.end() && it->first <= pos && it->first + it->second->size <= required_start) {
@@ -208,11 +210,13 @@ vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cach
 		idx_t run_start = pos;
 		idx_t run_end = pos;
 		superseded.clear();
+		superseded_wanted.clear();
 		auto include_block = [&](map<idx_t, shared_ptr<CacheBlock>> &block_map) {
 			auto &block = *it->second;
 			run_start = MinValue(run_start, block.location);
 			run_end = block.location + block.size;
 			superseded.emplace_back(block.location, run_end);
+			superseded_wanted.push_back(block.wanted);
 			it = block_map.erase(it);
 		};
 		if (it != blocks.end() && it->first <= pos) {
@@ -261,6 +265,11 @@ vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cach
 				}
 			}
 			auto block = make_shared_ptr<CacheBlock>(block_start, cut - block_start, generation);
+			for (idx_t i = 0; i < superseded.size(); i++) {
+				if (superseded[i].first >= block_start && superseded[i].second <= cut) {
+					block->wanted += superseded_wanted[i];
+				}
+			}
 			blocks.emplace_hint(it, block_start, block);
 			result.push_back(std::move(block));
 			block_start = cut;
