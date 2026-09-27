@@ -66,9 +66,6 @@ public:
 	//! Read [nr_bytes] bytes at the requested [location].
 	//! Returns a buffer handle group that keeps the data pinned in memory.
 	DUCKDB_API FileBufferHandleGroup Read(idx_t nr_bytes, idx_t location);
-	//! Start fetching [nr_bytes] bytes at [location] into the cache without waiting. Prefetches are scoped to the
-	//! current query: the ones that did not start yet are dropped when it ends.
-	DUCKDB_API void Prefetch(idx_t nr_bytes, idx_t location);
 	//! Declare that [nr_bytes] bytes at [location] will be read, without fetching them. The declaration lasts until the
 	//! returned object is released, and lets fetches of neighbouring bytes include them.
 	DUCKDB_API WantedBlocks Want(idx_t nr_bytes, idx_t location);

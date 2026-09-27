@@ -2013,18 +2013,6 @@ void ParquetReader::PrepareReadAhead(ClientContext &context, GlobalTableFunction
 	prewarmed_scan_handle = std::move(handle);
 }
 
-idx_t ParquetReader::ReadAheadRowGroups(ClientContext &context) const {
-	if (filters) {
-		// row groups may be skipped by their statistics, those should not be fetched
-		return 0;
-	}
-	Value read_ahead;
-	if (!context.TryGetCurrentSetting("parquet_read_ahead_row_groups", read_ahead) || read_ahead.IsNull()) {
-		return 0;
-	}
-	return read_ahead.GetValue<idx_t>();
-}
-
 static void CollectLeafColumns(const ParquetColumnSchema &schema, vector<idx_t> &leaves) {
 	if (schema.children.empty()) {
 		if (schema.schema_type != ParquetColumnSchemaType::FILE_ROW_NUMBER &&
@@ -2099,32 +2087,6 @@ WantedBlocks ParquetReader::WantRowGroup(idx_t group_index) const {
 		result.Append(file_handle->Want(range.second - range.first, range.first));
 	}
 	return result;
-}
-
-void ParquetReader::PrefetchRowGroup(ParquetReaderScanState &state, idx_t group_index) const {
-	if (!state.prefetch_mode || !state.file_handle) {
-		return;
-	}
-	auto ranges = GetRowGroupRanges(group_index);
-	// merge ranges with the gap the scan uses, so the prefetched blocks are the ones it reads
-	auto &trans = reinterpret_cast<ThriftFileTransport &>(*state.thrift_file_proto->getTransport());
-	const idx_t accepted_column_gap = trans.GetAcceptedColumnGap();
-	idx_t merged_start = 0;
-	idx_t merged_end = 0;
-	for (auto &range : ranges) {
-		if (merged_end > merged_start && range.first <= merged_end + accepted_column_gap) {
-			merged_end = MaxValue(merged_end, range.second);
-			continue;
-		}
-		if (merged_end > merged_start) {
-			state.file_handle->Prefetch(merged_end - merged_start, merged_start);
-		}
-		merged_start = range.first;
-		merged_end = range.second;
-	}
-	if (merged_end > merged_start) {
-		state.file_handle->Prefetch(merged_end - merged_start, merged_start);
-	}
 }
 
 void ParquetReader::InitializeScan(ClientContext &context, ParquetReaderScanState &state, idx_t group_to_read) const {

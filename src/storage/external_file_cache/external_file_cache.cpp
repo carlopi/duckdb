@@ -8,7 +8,6 @@
 #include "duckdb/main/database.hpp"
 #include "duckdb/main/settings.hpp"
 #include "duckdb/common/operator/subtract.hpp"
-#include "duckdb/parallel/task_scheduler.hpp"
 #include "duckdb/storage/buffer_manager.hpp"
 #include "duckdb/storage/buffer/block_handle.hpp"
 #include "duckdb/storage/object_cache.hpp"
@@ -676,19 +675,8 @@ ExternalFileCache &ExternalFileCache::Get(ClientContext &context) {
 	return context.db->GetExternalFileCache();
 }
 
-ExternalFileCache::~ExternalFileCache() {
-}
-
 BufferManager &ExternalFileCache::GetBufferManager() const {
 	return buffer_manager;
-}
-
-ProducerToken &ExternalFileCache::GetPrefetchProducer() {
-	lock_guard<mutex> guard(prefetch_producer_lock);
-	if (!prefetch_producer) {
-		prefetch_producer = TaskScheduler::GetScheduler(buffer_manager.GetDatabase()).CreateProducer();
-	}
-	return *prefetch_producer;
 }
 
 BufferHandle ExternalFileCache::AllocateCacheBuffer(BufferManager &buffer_manager, const string &path, idx_t nr_bytes) {
