@@ -32,6 +32,7 @@ namespace duckdb {
 class ClientContext;
 class DatabaseInstance;
 class BufferManager;
+struct ProducerToken;
 
 //! File metadata used to determine whether cached file data is still valid.
 struct CacheValidationInfo {
@@ -94,6 +95,7 @@ public:
 
 public:
 	ExternalFileCache(DatabaseInstance &db, bool enable);
+	~ExternalFileCache();
 
 public:
 	static ExternalFileCache &Get(DatabaseInstance &db);
@@ -119,6 +121,8 @@ public:
 	FileLayout GetLayout(CachedFile &cached_file);
 
 	BufferManager &GetBufferManager() const;
+	//! The producer that prefetch tasks are scheduled with.
+	ProducerToken &GetPrefetchProducer();
 	//! Gets the shared cached file for the given path, creating it if not yet present.
 	//! When caching is disabled, returns a transient CachedFile that is not tracked in the cached file map.
 	shared_ptr<CachedFile> GetOrCreateCachedFile(const string &path);
@@ -153,6 +157,8 @@ private:
 	atomic<bool> enable;
 	//! Generation counter, incremented whenever cache enablement changes.
 	atomic<idx_t> generation;
+	mutex prefetch_producer_lock;
+	unique_ptr<ProducerToken> prefetch_producer;
 	//! Maps from path to the number of live entries for that path.
 	//! A path can have multiple live entries while an evicted entry is still referenced.
 	unordered_map<string, idx_t> cached_file_keys DUCKDB_GUARDED_BY(lock);

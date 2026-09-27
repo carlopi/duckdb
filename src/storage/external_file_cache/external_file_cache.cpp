@@ -8,6 +8,7 @@
 #include "duckdb/main/database.hpp"
 #include "duckdb/main/settings.hpp"
 #include "duckdb/common/operator/subtract.hpp"
+#include "duckdb/parallel/task_scheduler.hpp"
 #include "duckdb/storage/buffer_manager.hpp"
 #include "duckdb/storage/buffer/block_handle.hpp"
 #include "duckdb/storage/object_cache.hpp"
@@ -131,11 +132,10 @@ static bool TrySupersedeLoaded(CacheBlock &block) {
 }
 
 //! Insert empty blocks for the units of the file layout within [location, end) that are not cached at all.
-static void AddLayoutBlocks(ExternalFileCache::CachedFile &cached_file, const FileLayout &layout, idx_t location,
-                            idx_t end) DUCKDB_REQUIRES(cached_file.map_lock) {
+static void AddLayoutBlocks(map<idx_t, shared_ptr<CacheBlock>> &blocks, idx_t generation, const FileLayout &layout,
+                            idx_t location, idx_t end) {
 	const idx_t offset = layout.offset;
 	const idx_t stride = layout.stride;
-	auto &blocks = cached_file.blocks;
 	idx_t unit_start = location < offset ? 0 : location - (location - offset) % stride;
 	while (unit_start < end) {
 		const idx_t unit_end = unit_start < offset ? offset : unit_start + stride;
@@ -144,9 +144,8 @@ static void AddLayoutBlocks(ExternalFileCache::CachedFile &cached_file, const Fi
 		const bool overlaps_prev =
 		    it != blocks.begin() && std::prev(it)->first + std::prev(it)->second->size > unit_start;
 		if (!overlaps_next && !overlaps_prev) {
-			blocks.emplace_hint(
-			    it, unit_start,
-			    make_shared_ptr<CacheBlock>(unit_start, unit_end - unit_start, cached_file.content_generation));
+			blocks.emplace_hint(it, unit_start,
+			                    make_shared_ptr<CacheBlock>(unit_start, unit_end - unit_start, generation));
 		}
 		unit_start = unit_end;
 	}
@@ -168,7 +167,7 @@ vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cach
 	auto &blocks = cached_file.blocks;
 	const idx_t generation = cached_file.content_generation;
 	if (layout.stride > 0) {
-		AddLayoutBlocks(cached_file, layout, location, end);
+		AddLayoutBlocks(blocks, generation, layout, location, end);
 	}
 	// start at the block that covers `location`, if any
 	auto it = blocks.upper_bound(location);
@@ -194,15 +193,15 @@ vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cach
 		idx_t run_start = pos;
 		idx_t run_end = pos;
 		superseded.clear();
-		auto include_block = [&]() {
+		auto include_block = [&](map<idx_t, shared_ptr<CacheBlock>> &block_map) {
 			auto &block = *it->second;
 			run_start = MinValue(run_start, block.location);
 			run_end = block.location + block.size;
 			superseded.emplace_back(block.location, run_end);
-			it = blocks.erase(it);
+			it = block_map.erase(it);
 		};
 		if (it != blocks.end() && it->first <= pos) {
-			include_block();
+			include_block(blocks);
 		}
 		while (true) {
 			if (run_end < end) {
@@ -213,7 +212,7 @@ vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cach
 			}
 			auto &block = *it->second;
 			if (TrySupersedePlaceholder(block)) {
-				include_block();
+				include_block(blocks);
 				continue;
 			}
 			if (block.size >= absorb_size) {
@@ -234,7 +233,7 @@ vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cach
 			if (!TrySupersedeLoaded(block)) {
 				break;
 			}
-			include_block();
+			include_block(blocks);
 		}
 		// split the run at the block size, never inside a superseded block
 		idx_t block_start = run_start;
@@ -439,8 +438,19 @@ ExternalFileCache &ExternalFileCache::Get(ClientContext &context) {
 	return context.db->GetExternalFileCache();
 }
 
+ExternalFileCache::~ExternalFileCache() {
+}
+
 BufferManager &ExternalFileCache::GetBufferManager() const {
 	return buffer_manager;
+}
+
+ProducerToken &ExternalFileCache::GetPrefetchProducer() {
+	lock_guard<mutex> guard(prefetch_producer_lock);
+	if (!prefetch_producer) {
+		prefetch_producer = TaskScheduler::GetScheduler(buffer_manager.GetDatabase()).CreateProducer();
+	}
+	return *prefetch_producer;
 }
 
 BufferHandle ExternalFileCache::AllocateCacheBuffer(BufferManager &buffer_manager, const string &path, idx_t nr_bytes) {

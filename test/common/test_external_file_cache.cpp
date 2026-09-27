@@ -1244,4 +1244,100 @@ TEST_CASE("Reads of a file with a known layout fetch whole units", "[external_fi
 	REQUIRE(recording_fs->TakeReads().empty());
 }
 
+TEST_CASE("Prefetched ranges are served from the cache", "[external_file_cache]") {
+	DuckDB db = MakeCacheLocalFilesDB();
+	auto &db_instance = *db.instance;
+	Connection con(db);
+	auto blocking_fs = make_uniq<BlockingCachePolicyFileSystem>();
+
+	const idx_t FILE_SIZE = 100000;
+	auto content = MakeTestContent(FILE_SIZE);
+	EFCTestFileGuard test_file("test_efc_prefetch.bin", content);
+
+	CachingFileSystem cfs(*blocking_fs, db_instance);
+	auto handle =
+	    cfs.OpenFile(QueryContext(*con.context), MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	const idx_t reads_before = blocking_fs->GetReadCount();
+
+	// the prefetch fetches the range in the background
+	handle->Prefetch(4096, 8192);
+	blocking_fs->WaitForReadCount(reads_before + 1);
+
+	// the read waits for the prefetch or finds its block loaded
+	REQUIRE(ReadFull(*handle, 4096, 8192) == content.substr(8192, 4096));
+	REQUIRE(blocking_fs->GetReadCount() == reads_before + 1);
+}
+
+TEST_CASE("A read racing a prefetch of the same range fetches it once", "[external_file_cache]") {
+	DuckDB db = MakeCacheLocalFilesDB();
+	auto &db_instance = *db.instance;
+	Connection con(db);
+	auto recording_fs = make_uniq<ReadRecordingFileSystem>();
+
+	const idx_t FILE_SIZE = 100000;
+	auto content = MakeTestContent(FILE_SIZE);
+	EFCTestFileGuard test_file("test_efc_prefetch_race.bin", content);
+
+	CachingFileSystem cfs(*recording_fs, db_instance);
+	auto handle =
+	    cfs.OpenFile(QueryContext(*con.context), MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	recording_fs->TakeReads();
+
+	handle->Prefetch(4096, 8192);
+	REQUIRE(ReadFull(*handle, 4096, 8192) == content.substr(8192, 4096));
+	REQUIRE(recording_fs->TakeReads() == vector<pair<idx_t, idx_t>> {{8192, 4096}});
+}
+
+TEST_CASE("Prefetching without a query context does nothing", "[external_file_cache]") {
+	DuckDB db = MakeCacheLocalFilesDB();
+	auto &db_instance = *db.instance;
+	auto recording_fs = make_uniq<ReadRecordingFileSystem>();
+
+	const idx_t FILE_SIZE = 100000;
+	auto content = MakeTestContent(FILE_SIZE);
+	EFCTestFileGuard test_file("test_efc_prefetch_no_context.bin", content);
+
+	CachingFileSystem cfs(*recording_fs, db_instance);
+	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto &cache = db_instance.GetExternalFileCache();
+	recording_fs->TakeReads();
+
+	handle->Prefetch(4096, 8192);
+	REQUIRE(recording_fs->TakeReads().empty());
+	REQUIRE(CountCachedBlocks(cache) == 0);
+}
+
+TEST_CASE("Prefetches that did not start are dropped when the query ends", "[external_file_cache]") {
+	DuckDB db = MakeCacheLocalFilesDB();
+	auto &db_instance = *db.instance;
+	Connection con(db);
+	con.Query("SET async_threads=2");
+	auto blocking_fs = make_uniq<BlockingCachePolicyFileSystem>();
+
+	const idx_t BLOCK_SIZE = 4096;
+	con.Query(StringUtil::Format("SET external_file_cache_local_max_block_size=%llu", BLOCK_SIZE));
+	const idx_t FILE_SIZE = 64 * BLOCK_SIZE;
+	auto content = MakeTestContent(FILE_SIZE);
+	EFCTestFileGuard test_file("test_efc_prefetch_scope.bin", content);
+
+	CachingFileSystem cfs(*blocking_fs, db_instance);
+	auto handle =
+	    cfs.OpenFile(QueryContext(*con.context), MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	const idx_t reads_before = blocking_fs->GetReadCount();
+
+	// both async threads are stuck in a prefetch, the other 62 prefetches are queued
+	blocking_fs->BlockReads();
+	handle->Prefetch(FILE_SIZE, 0);
+	blocking_fs->WaitForReadCount(reads_before + 2);
+
+	// ending a query drops the queued prefetches and waits for the running ones
+	thread query_thread([&]() { con.Query("SELECT 42"); });
+	std::this_thread::sleep_for(std::chrono::milliseconds(50));
+	blocking_fs->ReleaseReads();
+	query_thread.join();
+
+	REQUIRE(blocking_fs->GetReadCount() < reads_before + 64);
+	REQUIRE(ReadFull(*handle, FILE_SIZE) == content);
+}
+
 } // namespace duckdb

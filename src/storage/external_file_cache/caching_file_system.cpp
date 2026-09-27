@@ -8,6 +8,7 @@
 #include "duckdb/common/enums/memory_tag.hpp"
 #include "duckdb/common/file_system.hpp"
 #include "duckdb/main/client_context.hpp"
+#include "duckdb/main/client_context_state.hpp"
 #include "duckdb/parallel/task_executor.hpp"
 #include "duckdb/parallel/task_scheduler.hpp"
 #include "duckdb/storage/buffer/block_handle.hpp"
@@ -164,6 +165,155 @@ private:
 	shared_ptr<CacheBlock> &block;
 	BufferHandle &result_pin;
 	atomic<bool> &restart;
+};
+
+//===----------------------------------------------------------------------===//
+// Prefetching
+//===----------------------------------------------------------------------===//
+
+//! The prefetches of one query. Prefetches that did not start when the query ends are dropped.
+class PrefetchScope {
+public:
+	bool TryStart() {
+		lock_guard<mutex> guard(lock);
+		if (ended) {
+			return false;
+		}
+		running++;
+		return true;
+	}
+
+	void Finish() {
+		lock_guard<mutex> guard(lock);
+		running--;
+		cv.notify_all();
+	}
+
+	//! Drop the prefetches that did not start and wait for the running ones
+	void End() {
+		unique_lock<mutex> guard(lock);
+		ended = true;
+		cv.wait(guard, [&]() { return running == 0; });
+	}
+
+private:
+	mutex lock;
+	std::condition_variable cv;
+	bool ended = false;
+	idx_t running = 0;
+};
+
+class PrefetchState : public ClientContextState {
+public:
+	static constexpr const char *NAME = "external_file_cache_prefetch";
+
+	~PrefetchState() override {
+		EndScope();
+	}
+
+	shared_ptr<PrefetchScope> GetScope() {
+		lock_guard<mutex> guard(lock);
+		if (!scope) {
+			scope = make_shared_ptr<PrefetchScope>();
+		}
+		return scope;
+	}
+
+	void QueryEnd(ClientContext &context) override {
+		EndScope();
+	}
+
+private:
+	void EndScope() {
+		shared_ptr<PrefetchScope> ending;
+		{
+			lock_guard<mutex> guard(lock);
+			ending = std::move(scope);
+		}
+		if (ending) {
+			ending->End();
+		}
+	}
+
+	mutex lock;
+	shared_ptr<PrefetchScope> scope;
+};
+
+//! Fetches a block nobody is fetching yet. It never waits: a block that is loading or loaded is left alone.
+class PrefetchBlockTask : public Task {
+public:
+	PrefetchBlockTask(shared_ptr<PrefetchScope> scope_p, QueryContext context_p, BufferManager &buffer_manager_p,
+	                  string path_p, shared_ptr<FileHandle> file_handle_p, idx_t file_size_p,
+	                  shared_ptr<CacheBlock> block_p)
+	    : scope(std::move(scope_p)), context(context_p), buffer_manager(buffer_manager_p), path(std::move(path_p)),
+	      file_handle(std::move(file_handle_p)), file_size(file_size_p), block(std::move(block_p)) {
+	}
+
+	TaskExecutionResult Execute(TaskExecutionMode mode) override {
+		if (!scope->TryStart()) {
+			return TaskExecutionResult::TASK_FINISHED;
+		}
+		try {
+			Fetch();
+		} catch (std::exception &) { // NOLINT: a failed prefetch is retried by the read that needs the block
+		}
+		scope->Finish();
+		return TaskExecutionResult::TASK_FINISHED;
+	}
+
+	string TaskType() const override {
+		return "PrefetchBlockTask";
+	}
+
+private:
+	void Fetch() {
+		{
+			const annotated_lock_guard<annotated_mutex> guard(block->mtx);
+			if (block->state != CacheBlockState::EMPTY && block->state != CacheBlockState::IO_ERROR) {
+				return;
+			}
+			block->state = CacheBlockState::LOADING;
+		}
+		try {
+			const idx_t offset = block->location;
+			if (offset >= file_size) {
+				Publish(BufferHandle(), 0);
+				return;
+			}
+			const idx_t to_read = MinValue(block->size, file_size - offset);
+			auto buf = ExternalFileCache::AllocateCacheBuffer(buffer_manager, path, to_read);
+			file_handle->Read(context, buf.GetDataMutable(), to_read, offset);
+			Publish(std::move(buf), to_read);
+		} catch (std::exception &) {
+			const annotated_lock_guard<annotated_mutex> guard(block->mtx);
+			block->state = CacheBlockState::IO_ERROR;
+			block->cv.notify_all();
+			throw;
+		}
+	}
+
+	void Publish(BufferHandle buf, idx_t nr_bytes) {
+		const annotated_lock_guard<annotated_mutex> guard(block->mtx);
+		if (!buf.IsValid()) {
+			block->state = CacheBlockState::EMPTY;
+		} else {
+			block->block_handle = buf.GetBlockHandle();
+			block->nr_bytes = nr_bytes;
+			block->state = CacheBlockState::LOADED;
+#ifdef DEBUG
+			block->checksum = Checksum(buf.Ptr(), nr_bytes);
+#endif
+		}
+		block->cv.notify_all();
+	}
+
+	shared_ptr<PrefetchScope> scope;
+	QueryContext context;
+	BufferManager &buffer_manager;
+	string path;
+	shared_ptr<FileHandle> file_handle;
+	idx_t file_size;
+	shared_ptr<CacheBlock> block;
 };
 
 } // namespace
@@ -360,6 +510,67 @@ void CachingFileHandle::SetLayout(idx_t offset, idx_t stride) {
 	external_file_cache.SetLayout(*current_cached_file, offset, stride);
 }
 
+void CachingFileHandle::GetFetchRange(CachedFile &cached_file, idx_t nr_bytes, idx_t location, idx_t max_block_size,
+                                      idx_t &fetch_location, idx_t &fetch_end, FileLayout &layout) {
+	fetch_location = location;
+	fetch_end = location + nr_bytes;
+	const idx_t file_size = GetFileSize();
+	const idx_t min_block_size = MinValue(external_file_cache.GetCacheMinBlockSize(cached_file.path), max_block_size);
+	// reads sized by the cache fetch the aligned blocks around them, unless the file declared its layout
+	layout = external_file_cache.GetLayout(cached_file);
+	if (layout.stride == 0 && flags.GetRequestSizing() == RequestSizing::BY_CACHE) {
+		layout.stride = max_block_size;
+	}
+	if (fetch_end <= file_size) {
+		if (file_size <= max_block_size) {
+			// fetch a file that fits in one block whole, so later reads of it hit the cache
+			fetch_location = 0;
+			fetch_end = file_size;
+		} else if (layout.stride == 0 && nr_bytes < min_block_size) {
+			fetch_location = location - location % min_block_size;
+			fetch_end = MinValue(file_size, AlignValue(fetch_end, min_block_size));
+		}
+	}
+}
+
+void CachingFileHandle::Prefetch(idx_t nr_bytes, idx_t location) {
+	auto client_context = context.GetClientContext();
+	if (nr_bytes == 0 || !client_context) {
+		return;
+	}
+	if (!external_file_cache.IsEnabled() || !external_file_cache.ShouldCacheFile(path.path) || !CanUseCache() ||
+	    IsCacheReuseProhibited()) {
+		return;
+	}
+	auto &scheduler = TaskScheduler::GetScheduler(caching_file_system.db);
+	if (scheduler.NumberOfAsyncThreads() == 0) {
+		return;
+	}
+	const idx_t file_size = GetFileSize();
+	if (location >= file_size) {
+		return;
+	}
+	nr_bytes = MinValue(nr_bytes, file_size - location);
+
+	auto current_cached_file = EnsureCachedFileCurrent();
+	const idx_t max_block_size = external_file_cache.GetCacheBlockSize(current_cached_file->path);
+	idx_t fetch_location;
+	idx_t fetch_end;
+	FileLayout layout;
+	GetFetchRange(*current_cached_file, nr_bytes, location, max_block_size, fetch_location, fetch_end, layout);
+	auto blocks = external_file_cache.AcquireBlocks(*current_cached_file, fetch_location, fetch_end - fetch_location,
+	                                                max_block_size, layout);
+
+	auto scope = client_context->registered_state->GetOrCreate<PrefetchState>(PrefetchState::NAME)->GetScope();
+	auto file_handle = GetFileHandle();
+	vector<shared_ptr<Task>> tasks;
+	for (auto &block : blocks) {
+		tasks.push_back(make_shared_ptr<PrefetchBlockTask>(scope, context, external_file_cache.GetBufferManager(),
+		                                                   path.path, file_handle, file_size, block));
+	}
+	scheduler.ScheduleTasks(external_file_cache.GetPrefetchProducer(), tasks, TaskSchedulerType::ASYNC);
+}
+
 FileBufferHandleGroup CachingFileHandle::Read(const idx_t nr_bytes, const idx_t location) {
 	if (nr_bytes == 0) {
 		return FileBufferHandleGroup();
@@ -375,26 +586,10 @@ FileBufferHandleGroup CachingFileHandle::Read(const idx_t nr_bytes, const idx_t 
 
 	auto current_cached_file = EnsureCachedFileCurrent();
 	const idx_t max_block_size = external_file_cache.GetCacheBlockSize(current_cached_file->path);
-	idx_t fetch_location = location;
-	idx_t fetch_end = location + nr_bytes;
-	const idx_t file_size = GetFileSize();
-	const idx_t min_block_size =
-	    MinValue(external_file_cache.GetCacheMinBlockSize(current_cached_file->path), max_block_size);
-	// reads sized by the cache fetch the aligned blocks around them, unless the file declared its layout
-	auto layout = external_file_cache.GetLayout(*current_cached_file);
-	if (layout.stride == 0 && flags.GetRequestSizing() == RequestSizing::BY_CACHE) {
-		layout.stride = max_block_size;
-	}
-	if (fetch_end <= file_size) {
-		if (file_size <= max_block_size) {
-			// fetch a file that fits in one block whole, so later reads of it hit the cache
-			fetch_location = 0;
-			fetch_end = file_size;
-		} else if (layout.stride == 0 && nr_bytes < min_block_size) {
-			fetch_location = location - location % min_block_size;
-			fetch_end = MinValue(file_size, AlignValue(fetch_end, min_block_size));
-		}
-	}
+	idx_t fetch_location;
+	idx_t fetch_end;
+	FileLayout layout;
+	GetFetchRange(*current_cached_file, nr_bytes, location, max_block_size, fetch_location, fetch_end, layout);
 	// a read restarts when the file changed while one of its blocks was superseded
 	static constexpr idx_t MAX_READ_ATTEMPTS = 3;
 	for (idx_t attempt = 0; attempt < MAX_READ_ATTEMPTS; attempt++) {
