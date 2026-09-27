@@ -354,13 +354,20 @@ shared_ptr<CacheBlock> ExternalFileCache::FindCoveringBlock(CachedFile &cached_f
 
 void ExternalFileCache::SetLayout(CachedFile &cached_file, idx_t offset, idx_t stride) {
 	const annotated_lock_guard<annotated_mutex> map_guard(cached_file.map_lock);
-	cached_file.layout.offset = offset;
-	cached_file.layout.stride = stride;
+	FileLayout layout;
+	layout.offset = offset;
+	layout.stride = stride;
+	cached_file.layout = layout;
 }
 
-FileLayout ExternalFileCache::GetLayout(CachedFile &cached_file) {
+FileLayout ExternalFileCache::GetLayout(CachedFile &cached_file, idx_t max_block_size) {
 	const annotated_lock_guard<annotated_mutex> map_guard(cached_file.map_lock);
-	return cached_file.layout;
+	if (cached_file.layout) {
+		return *cached_file.layout;
+	}
+	FileLayout layout;
+	layout.stride = max_block_size;
+	return layout;
 }
 
 void ExternalFileCache::DropBlocks(CachedFile &cached_file) {

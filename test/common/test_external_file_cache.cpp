@@ -133,9 +133,13 @@ OpenFileInfo MakeValidatingOpenFileInfo(const string &path) {
 }
 
 FileOpenFlags ReaderSizedFlags() {
-	auto flags = FileFlags::FILE_FLAGS_READ;
-	flags.SetRequestSizing(RequestSizing::BY_READER);
-	return flags;
+	return FileFlags::FILE_FLAGS_READ;
+}
+
+//! Opens a file whose reads fetch exactly the requested bytes, instead of units of the cache block size
+unique_ptr<CachingFileHandle> OpenReaderSized(unique_ptr<CachingFileHandle> handle) {
+	handle->SetLayout(0, 0);
+	return handle;
 }
 
 string MakeTestContent(idx_t size) {
@@ -198,7 +202,7 @@ TEST_CASE("Reads cache exactly the requested bytes", "[external_file_cache]") {
 	EFCTestFileGuard test_file("test_efc_exact_ranges.bin", content);
 
 	CachingFileSystem cfs(*recording_fs, db_instance);
-	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto handle = OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
 	auto &cache = db_instance.GetExternalFileCache();
 
 	REQUIRE(ReadFull(*handle, 5000, 1000) == content.substr(1000, 5000));
@@ -231,7 +235,7 @@ TEST_CASE("Large reads are split at the cache block size", "[external_file_cache
 	EFCTestFileGuard test_file("test_efc_split_reads.bin", content);
 
 	CachingFileSystem cfs(*recording_fs, db_instance);
-	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto handle = OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
 	auto &cache = db_instance.GetExternalFileCache();
 
 	REQUIRE(ReadFull(*handle, FILE_SIZE) == content);
@@ -259,7 +263,7 @@ TEST_CASE("A read spanning cached ranges only fetches the gaps between them", "[
 	EFCTestFileGuard test_file("test_efc_fill_gaps.bin", content);
 
 	CachingFileSystem cfs(*recording_fs, db_instance);
-	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto handle = OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
 	auto &cache = db_instance.GetExternalFileCache();
 
 	REQUIRE(ReadFull(*handle, 4096, 0) == content.substr(0, 4096));
@@ -287,7 +291,7 @@ TEST_CASE("Small cached ranges between gaps are fetched with the gaps", "[extern
 	EFCTestFileGuard test_file("test_efc_absorb.bin", content);
 
 	CachingFileSystem cfs(*recording_fs, db_instance);
-	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto handle = OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
 	auto &cache = db_instance.GetExternalFileCache();
 
 	REQUIRE(ReadFull(*handle, 4096, 8192) == content.substr(8192, 4096));
@@ -322,7 +326,7 @@ TEST_CASE("Small cached ranges are kept when fetching them with the gaps saves n
 	EFCTestFileGuard test_file("test_efc_absorb_no_saving.bin", content);
 
 	CachingFileSystem cfs(*recording_fs, db_instance);
-	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto handle = OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
 	auto &cache = db_instance.GetExternalFileCache();
 
 	REQUIRE(ReadFull(*handle, 4096, 8192) == content.substr(8192, 4096));
@@ -345,7 +349,7 @@ TEST_CASE("Cached ranges of local files between gaps are kept at the default blo
 	EFCTestFileGuard test_file("test_efc_keep_local.bin", content);
 
 	CachingFileSystem cfs(*recording_fs, db_instance);
-	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto handle = OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
 	auto &cache = db_instance.GetExternalFileCache();
 
 	REQUIRE(ReadFull(*handle, 4096, 4096) == content.substr(4096, 4096));
@@ -368,7 +372,7 @@ TEST_CASE("A file no larger than the block size is fetched whole on the first re
 	EFCTestFileGuard test_file("test_efc_small_file.bin", content);
 
 	CachingFileSystem cfs(*recording_fs, db_instance);
-	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto handle = OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
 	auto &cache = db_instance.GetExternalFileCache();
 
 	REQUIRE(ReadFull(*handle, 100, 2800) == content.substr(2800, 100));
@@ -394,7 +398,8 @@ TEST_CASE("Short reads of remote files fetch the minimum blocks around them", "[
 	EFCTestFileGuard test_file("test_efc_min_block.bin", content);
 
 	CachingFileSystem cfs(*remote_fs, db_instance);
-	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(REMOTE_PREFIX + test_file.GetPath()), ReaderSizedFlags());
+	auto handle =
+	    OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(REMOTE_PREFIX + test_file.GetPath()), ReaderSizedFlags()));
 
 	REQUIRE(ReadFull(*handle, 1, 5000) == content.substr(5000, 1));
 	REQUIRE(remote_fs->TakeReads() == vector<pair<idx_t, idx_t>> {{MIN_BLOCK_SIZE, MIN_BLOCK_SIZE}});
@@ -419,7 +424,7 @@ TEST_CASE("Short reads of local files are not widened", "[external_file_cache]")
 	EFCTestFileGuard test_file("test_efc_local_short.bin", content);
 
 	CachingFileSystem cfs(*recording_fs, db_instance);
-	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto handle = OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
 
 	REQUIRE(ReadFull(*handle, 1, 5000) == content.substr(5000, 1));
 	REQUIRE(recording_fs->TakeReads() == vector<pair<idx_t, idx_t>> {{5000, 1}});
@@ -1127,7 +1132,7 @@ TEST_CASE("Empty blocks between gaps are fetched with them in one request", "[ex
 	EFCTestFileGuard test_file("test_efc_merge_empty.bin", content);
 
 	CachingFileSystem cfs(*recording_fs, db_instance);
-	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto handle = OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
 	auto &cache = db_instance.GetExternalFileCache();
 	auto cached_file = cache.GetOrCreateCachedFile(test_file.GetPath());
 
@@ -1169,7 +1174,7 @@ TEST_CASE("Empty blocks are never split at the block size", "[external_file_cach
 	EFCTestFileGuard test_file("test_efc_split_empty.bin", content);
 
 	CachingFileSystem cfs(*recording_fs, db_instance);
-	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto handle = OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
 	auto &cache = db_instance.GetExternalFileCache();
 	auto cached_file = cache.GetOrCreateCachedFile(test_file.GetPath());
 
@@ -1195,7 +1200,7 @@ TEST_CASE("Reads starting inside an empty block fetch the whole block", "[extern
 	EFCTestFileGuard test_file("test_efc_inside_empty.bin", content);
 
 	CachingFileSystem cfs(*recording_fs, db_instance);
-	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto handle = OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
 	auto &cache = db_instance.GetExternalFileCache();
 	auto cached_file = cache.GetOrCreateCachedFile(test_file.GetPath());
 
@@ -1223,7 +1228,7 @@ TEST_CASE("Reads of a file with a known layout fetch whole units", "[external_fi
 	EFCTestFileGuard test_file("test_efc_layout.bin", content);
 
 	CachingFileSystem cfs(*recording_fs, db_instance);
-	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto handle = OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
 	handle->SetLayout(OFFSET, STRIDE);
 	auto &cache = db_instance.GetExternalFileCache();
 
@@ -1255,8 +1260,8 @@ TEST_CASE("Prefetched ranges are served from the cache", "[external_file_cache]"
 	EFCTestFileGuard test_file("test_efc_prefetch.bin", content);
 
 	CachingFileSystem cfs(*blocking_fs, db_instance);
-	auto handle =
-	    cfs.OpenFile(QueryContext(*con.context), MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto handle = OpenReaderSized(
+	    cfs.OpenFile(QueryContext(*con.context), MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
 	const idx_t reads_before = blocking_fs->GetReadCount();
 
 	// the prefetch fetches the range in the background
@@ -1279,8 +1284,8 @@ TEST_CASE("A read racing a prefetch of the same range fetches it once", "[extern
 	EFCTestFileGuard test_file("test_efc_prefetch_race.bin", content);
 
 	CachingFileSystem cfs(*recording_fs, db_instance);
-	auto handle =
-	    cfs.OpenFile(QueryContext(*con.context), MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto handle = OpenReaderSized(
+	    cfs.OpenFile(QueryContext(*con.context), MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
 	recording_fs->TakeReads();
 
 	handle->Prefetch(4096, 8192);
@@ -1298,7 +1303,7 @@ TEST_CASE("Prefetching without a query context does nothing", "[external_file_ca
 	EFCTestFileGuard test_file("test_efc_prefetch_no_context.bin", content);
 
 	CachingFileSystem cfs(*recording_fs, db_instance);
-	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto handle = OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
 	auto &cache = db_instance.GetExternalFileCache();
 	recording_fs->TakeReads();
 
@@ -1321,8 +1326,8 @@ TEST_CASE("Prefetches that did not start are dropped when the query ends", "[ext
 	EFCTestFileGuard test_file("test_efc_prefetch_scope.bin", content);
 
 	CachingFileSystem cfs(*blocking_fs, db_instance);
-	auto handle =
-	    cfs.OpenFile(QueryContext(*con.context), MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto handle = OpenReaderSized(
+	    cfs.OpenFile(QueryContext(*con.context), MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
 	const idx_t reads_before = blocking_fs->GetReadCount();
 
 	// both async threads are stuck in a prefetch, the other 62 prefetches are queued
@@ -1350,7 +1355,7 @@ TEST_CASE("Wanted ranges are marked without fetching them", "[external_file_cach
 	EFCTestFileGuard test_file("test_efc_want.bin", content);
 
 	CachingFileSystem cfs(*recording_fs, db_instance);
-	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto handle = OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
 	auto &cache = db_instance.GetExternalFileCache();
 	recording_fs->TakeReads();
 
@@ -1393,7 +1398,7 @@ TEST_CASE("Wanted ranges mark the cached blocks they overlap", "[external_file_c
 	EFCTestFileGuard test_file("test_efc_want_cached.bin", content);
 
 	CachingFileSystem cfs(*recording_fs, db_instance);
-	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto handle = OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
 
 	REQUIRE(ReadFull(*handle, 4096, 0) == content.substr(0, 4096));
 	recording_fs->TakeReads();
@@ -1431,7 +1436,7 @@ TEST_CASE("Releasing wanted blocks that were superseded", "[external_file_cache]
 	EFCTestFileGuard test_file("test_efc_want_superseded.bin", content);
 
 	CachingFileSystem cfs(*recording_fs, db_instance);
-	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	auto handle = OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
 	recording_fs->TakeReads();
 
 	auto wanted = handle->Want(4096, 8192);

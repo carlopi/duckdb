@@ -89,6 +89,7 @@ public:
 	DUCKDB_API bool OnDiskFile();
 	DUCKDB_API bool TryGetNetworkThroughput(NetworkThroughputEstimate &result);
 	//! Declare that the file consists of [0, offset) followed by units of stride bytes, reads fetch whole units.
+	//! Files that declare nothing use units of the cache block size, a stride of 0 fetches exactly what is read.
 	DUCKDB_API void SetLayout(idx_t offset, idx_t stride);
 	DUCKDB_API idx_t SeekPosition();
 	DUCKDB_API void Seek(idx_t location);
@@ -104,8 +105,6 @@ private:
 	void ReconcileCacheAfterRead(CachedFile &cached_file);
 	//! Record a timed read of a local file into the throughput estimate
 	void RecordReadThroughput(double total_seconds, idx_t bytes);
-	//! The layout reads of this handle cut new blocks by
-	FileLayout GetReadLayout(CachedFile &cached_file, idx_t max_block_size);
 	//! The range [fetch_location, fetch_end) fetched for a read, and the layout its units are cut by
 	void GetFetchRange(CachedFile &cached_file, idx_t nr_bytes, idx_t location, idx_t max_block_size,
 	                   idx_t &fetch_location, idx_t &fetch_end, FileLayout &layout);

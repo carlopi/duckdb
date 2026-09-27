@@ -76,7 +76,7 @@ private:
 	vector<shared_ptr<CacheBlock>> blocks;
 };
 
-//! A file made of [0, offset) followed by units of stride bytes, reads fetch whole units. A stride of 0 means none.
+//! A file made of [0, offset) followed by units of stride bytes, reads fetch whole units. A stride of 0 disables it.
 struct FileLayout {
 	idx_t offset = 0;
 	idx_t stride = 0;
@@ -105,8 +105,8 @@ public:
 		map<idx_t, shared_ptr<CacheBlock>> blocks DUCKDB_GUARDED_BY(map_lock);
 		//! Incremented whenever the file changes and its blocks are dropped.
 		idx_t content_generation DUCKDB_GUARDED_BY(map_lock) = 0;
-		//! Known layout of the file, declared by its reader.
-		FileLayout layout DUCKDB_GUARDED_BY(map_lock);
+		//! Layout declared by the reader of the file, otherwise units of the cache block size
+		optional<FileLayout> layout DUCKDB_GUARDED_BY(map_lock);
 
 		mutable annotated_mutex meta_lock;
 		//! Metadata for validating the cached blocks against the current file.
@@ -144,7 +144,8 @@ public:
 	void DropBlocks(CachedFile &cached_file);
 	//! Set the layout of a file, a stride of 0 removes it.
 	void SetLayout(CachedFile &cached_file, idx_t offset, idx_t stride);
-	FileLayout GetLayout(CachedFile &cached_file);
+	//! The layout reads of the file use: the declared one, or units of the given block size
+	FileLayout GetLayout(CachedFile &cached_file, idx_t max_block_size);
 
 	BufferManager &GetBufferManager() const;
 	//! The producer that prefetch tasks are scheduled with.
