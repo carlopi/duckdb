@@ -21,6 +21,7 @@
 #include "reader/variant_column_reader.hpp"
 #include "reader/struct_column_reader.hpp"
 #include "thrift_tools.hpp"
+#include "duckdb/parallel/task_scheduler.hpp"
 #include "parquet_prefetch_cost_model.hpp"
 #include "duckdb/common/encryption_state.hpp"
 #include "duckdb/common/helper.hpp"
@@ -2019,7 +2020,7 @@ idx_t ParquetReader::ReadAheadRowGroups(ClientContext &context) const {
 	}
 	Value read_ahead;
 	if (!context.TryGetCurrentSetting("parquet_read_ahead_row_groups", read_ahead) || read_ahead.IsNull()) {
-		return 0;
+		return TaskScheduler::GetScheduler(context).NumberOfThreads();
 	}
 	return read_ahead.GetValue<idx_t>();
 }
@@ -2074,7 +2075,7 @@ idx_t ParquetReader::DeclareAheadRowGroups(ClientContext &context) const {
 	}
 	Value declare_ahead;
 	if (!context.TryGetCurrentSetting("parquet_declare_ahead_row_groups", declare_ahead) || declare_ahead.IsNull()) {
-		return 0;
+		return 2 * TaskScheduler::GetScheduler(context).NumberOfThreads();
 	}
 	return declare_ahead.GetValue<idx_t>();
 }
