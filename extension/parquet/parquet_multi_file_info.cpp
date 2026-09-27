@@ -863,8 +863,13 @@ bool ParquetReader::TryInitializeScan(ClientContext &context, GlobalTableFunctio
 		// scanned all row groups in this file
 		return false;
 	}
-	// declare the row group handed out and the ones after it, before any of them is fetched
-	const idx_t declare_ahead = DeclareAheadRowGroups(context);
+	// declare the row group handed out and the ones after it, before any of them is fetched: at least one beyond the
+	// ones read ahead, so their fetches can include the chunks of the next row group
+	const idx_t read_ahead = ReadAheadRowGroups(context);
+	idx_t declare_ahead = DeclareAheadRowGroups(context);
+	if (read_ahead > 0) {
+		declare_ahead = MaxValue(declare_ahead, read_ahead + 1);
+	}
 	if (declare_ahead > 0) {
 		const idx_t declare_end = MinValue(gstate.row_group_index + 1 + declare_ahead, NumRowGroups());
 		gstate.declare_index = MaxValue(gstate.declare_index, gstate.row_group_index);
@@ -885,7 +890,6 @@ bool ParquetReader::TryInitializeScan(ClientContext &context, GlobalTableFunctio
 	}
 	// keep the next read_ahead row groups prefetched, the first ones are read directly by the first scans
 	lstate.read_ahead_groups.clear();
-	const idx_t read_ahead = ReadAheadRowGroups(context);
 	if (read_ahead > 0) {
 		// the row group of this scan first, so its fetches are not queued behind the ones ahead of it
 		lstate.read_ahead_groups.push_back(lstate.group_index);
