@@ -52,7 +52,8 @@ void ParquetColumnDefinition::Serialize(Serializer &serializer) const {
 	serializer.WriteProperty<LogicalType>(103, "type", type);
 	serializer.WriteProperty<Value>(104, "default_value", default_value);
 	serializer.WritePropertyWithDefault<Value>(105, "identifier", identifier, Value());
-	serializer.WritePropertyWithDefault<vector<ParquetColumnDefinition>>(106, "children", children, vector<ParquetColumnDefinition>());
+	serializer.WritePropertyWithDefault<vector<ParquetColumnDefinition>>(106, "children", children,
+	                                                                     vector<ParquetColumnDefinition>());
 }
 
 ParquetColumnDefinition ParquetColumnDefinition::Deserialize(Deserializer &deserializer) {
@@ -62,7 +63,8 @@ ParquetColumnDefinition ParquetColumnDefinition::Deserialize(Deserializer &deser
 	deserializer.ReadProperty<LogicalType>(103, "type", result.type);
 	deserializer.ReadProperty<Value>(104, "default_value", result.default_value);
 	deserializer.ReadPropertyWithExplicitDefault<Value>(105, "identifier", result.identifier, Value());
-	deserializer.ReadPropertyWithExplicitDefault<vector<ParquetColumnDefinition>>(106, "children", result.children, vector<ParquetColumnDefinition>());
+	deserializer.ReadPropertyWithExplicitDefault<vector<ParquetColumnDefinition>>(106, "children", result.children,
+	                                                                              vector<ParquetColumnDefinition>());
 	return result;
 }
 
@@ -83,12 +85,16 @@ void ParquetOptionsSerialization::Serialize(Serializer &serializer) const {
 	serializer.WritePropertyWithDefault<bool>(101, "file_row_number", parquet_options.file_row_number);
 	serializer.WriteProperty<MultiFileOptions>(102, "file_options", file_options);
 	serializer.WritePropertyWithDefault<vector<ParquetColumnDefinition>>(103, "schema", parquet_options.schema);
-	serializer.WritePropertyWithDefault<shared_ptr<ParquetEncryptionConfig>>(104, "encryption_config", parquet_options.encryption_config, nullptr);
+	serializer.WritePropertyWithDefault<shared_ptr<ParquetEncryptionConfig>>(
+	    104, "encryption_config", parquet_options.encryption_config, nullptr);
 	/* [Deleted] (bool) "parquet_options.debug_use_openssl" */
 	serializer.WritePropertyWithDefault<idx_t>(106, "explicit_cardinality", parquet_options.explicit_cardinality, 0);
 	serializer.WritePropertyWithDefault<bool>(107, "can_have_nan", parquet_options.can_have_nan, false);
-	serializer.WritePropertyWithDefault<ParquetPrefetchStrategyOption>(108, "prefetch_strategy", parquet_options.prefetch_strategy, ParquetPrefetchStrategyOption::AUTO);
-	serializer.WritePropertyWithDefault<StringColumnReader::Utf8ValidationOption>(109, "utf8_validation", parquet_options.utf8_validation_option, StringColumnReader::Utf8ValidationOption::STRICT_UTF8);
+	serializer.WritePropertyWithDefault<ParquetPrefetchStrategyOption>(
+	    108, "prefetch_strategy", parquet_options.prefetch_strategy, ParquetPrefetchStrategyOption::AUTO);
+	serializer.WritePropertyWithDefault<StringColumnReader::Utf8ValidationOption>(
+	    109, "utf8_validation", parquet_options.utf8_validation_option,
+	    StringColumnReader::Utf8ValidationOption::STRICT_UTF8);
 }
 
 ParquetOptionsSerialization ParquetOptionsSerialization::Deserialize(Deserializer &deserializer) {
@@ -97,12 +103,17 @@ ParquetOptionsSerialization ParquetOptionsSerialization::Deserialize(Deserialize
 	deserializer.ReadPropertyWithDefault<bool>(101, "file_row_number", result.parquet_options.file_row_number);
 	deserializer.ReadProperty<MultiFileOptions>(102, "file_options", result.file_options);
 	deserializer.ReadPropertyWithDefault<vector<ParquetColumnDefinition>>(103, "schema", result.parquet_options.schema);
-	deserializer.ReadPropertyWithExplicitDefault<shared_ptr<ParquetEncryptionConfig>>(104, "encryption_config", result.parquet_options.encryption_config, nullptr);
+	deserializer.ReadPropertyWithExplicitDefault<shared_ptr<ParquetEncryptionConfig>>(
+	    104, "encryption_config", result.parquet_options.encryption_config, nullptr);
 	deserializer.ReadDeletedProperty<bool>(105, "debug_use_openssl");
-	deserializer.ReadPropertyWithExplicitDefault<idx_t>(106, "explicit_cardinality", result.parquet_options.explicit_cardinality, 0);
+	deserializer.ReadPropertyWithExplicitDefault<idx_t>(106, "explicit_cardinality",
+	                                                    result.parquet_options.explicit_cardinality, 0);
 	deserializer.ReadPropertyWithExplicitDefault<bool>(107, "can_have_nan", result.parquet_options.can_have_nan, false);
-	deserializer.ReadPropertyWithExplicitDefault<ParquetPrefetchStrategyOption>(108, "prefetch_strategy", result.parquet_options.prefetch_strategy, ParquetPrefetchStrategyOption::AUTO);
-	deserializer.ReadPropertyWithExplicitDefault<StringColumnReader::Utf8ValidationOption>(109, "utf8_validation", result.parquet_options.utf8_validation_option, StringColumnReader::Utf8ValidationOption::STRICT_UTF8);
+	deserializer.ReadPropertyWithExplicitDefault<ParquetPrefetchStrategyOption>(
+	    108, "prefetch_strategy", result.parquet_options.prefetch_strategy, ParquetPrefetchStrategyOption::AUTO);
+	deserializer.ReadPropertyWithExplicitDefault<StringColumnReader::Utf8ValidationOption>(
+	    109, "utf8_validation", result.parquet_options.utf8_validation_option,
+	    StringColumnReader::Utf8ValidationOption::STRICT_UTF8);
 	return result;
 }
 

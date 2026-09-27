@@ -384,6 +384,12 @@ public:
 	idx_t ReadAheadRowGroups(ClientContext &context) const;
 	//! Start fetching the projected column chunks of a row group into the cache
 	void PrefetchRowGroup(ParquetReaderScanState &state, idx_t group_index) const;
+	//! Number of row groups beyond the one handed out whose column chunks are declared as wanted, 0 if none
+	idx_t DeclareAheadRowGroups(ClientContext &context) const;
+	//! Declare the projected column chunks of a row group as wanted, so fetches of their neighbours include them
+	WantedBlocks WantRowGroup(idx_t group_index) const;
+	//! Byte ranges of the projected column chunks of a row group, sorted
+	vector<pair<idx_t, idx_t>> GetRowGroupRanges(idx_t group_index) const;
 
 	idx_t NumRows() const;
 	idx_t NumRowGroups() const;

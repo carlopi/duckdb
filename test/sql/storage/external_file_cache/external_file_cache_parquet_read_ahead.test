@@ -26,6 +26,11 @@ foreach read_ahead 0 1 4 32
 statement ok
 set parquet_read_ahead_row_groups={read_ahead};
 
+foreach declare_ahead 0 1 8
+
+statement ok
+set parquet_declare_ahead_row_groups={declare_ahead};
+
 query I
 select (select sum(i) from '{TEST_DIR}/read_ahead.parquet') = (select si from expected);
 ----
@@ -46,9 +51,14 @@ endloop
 
 endloop
 
+endloop
+
 # prefetching only fetches the projected columns: the cache holds the same bytes as without read-ahead
 statement ok
 set parquet_read_ahead_row_groups=0;
+
+statement ok
+set parquet_declare_ahead_row_groups=0;
 
 statement ok
 set enable_external_file_cache=false;

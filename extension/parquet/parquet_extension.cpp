@@ -1082,6 +1082,11 @@ static void LoadInternal(ExtensionLoader &loader) {
 	config.AddExtensionOption("disable_parquet_prefetching", "Disable the prefetching mechanism in Parquet",
 	                          LogicalType::BOOLEAN, Value(false));
 	config.AddExtensionOption(
+	    "parquet_declare_ahead_row_groups",
+	    "Number of row groups declared to the cache ahead of a Parquet scan without filters, so fetches merge across "
+	    "row groups (0 disables it)",
+	    LogicalType::UBIGINT, Value::UBIGINT(0));
+	config.AddExtensionOption(
 	    "parquet_read_ahead_row_groups",
 	    "Number of row groups to prefetch ahead of a Parquet scan without filters (0 disables it)",
 	    LogicalType::UBIGINT, Value::UBIGINT(0));

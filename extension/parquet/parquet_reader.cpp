@@ -2037,10 +2037,7 @@ static void CollectLeafColumns(const ParquetColumnSchema &schema, vector<idx_t> 
 	}
 }
 
-void ParquetReader::PrefetchRowGroup(ParquetReaderScanState &state, idx_t group_index) const {
-	if (!state.prefetch_mode || !state.file_handle) {
-		return;
-	}
+vector<pair<idx_t, idx_t>> ParquetReader::GetRowGroupRanges(idx_t group_index) const {
 	auto &group = GetFileMetadata()->row_groups[group_index];
 	vector<idx_t> leaves;
 	auto add_column = [&](const ColumnIndex &index) {
@@ -2067,6 +2064,34 @@ void ParquetReader::PrefetchRowGroup(ParquetReaderScanState &state, idx_t group_
 		ranges.emplace_back(start, start + NumericCast<idx_t>(chunk.meta_data.total_compressed_size));
 	}
 	std::sort(ranges.begin(), ranges.end());
+	return ranges;
+}
+
+idx_t ParquetReader::DeclareAheadRowGroups(ClientContext &context) const {
+	if (filters) {
+		// row groups may be skipped by their statistics, those should not be declared
+		return 0;
+	}
+	Value declare_ahead;
+	if (!context.TryGetCurrentSetting("parquet_declare_ahead_row_groups", declare_ahead) || declare_ahead.IsNull()) {
+		return 0;
+	}
+	return declare_ahead.GetValue<idx_t>();
+}
+
+WantedBlocks ParquetReader::WantRowGroup(idx_t group_index) const {
+	WantedBlocks result;
+	for (auto &range : GetRowGroupRanges(group_index)) {
+		result.Append(file_handle->Want(range.second - range.first, range.first));
+	}
+	return result;
+}
+
+void ParquetReader::PrefetchRowGroup(ParquetReaderScanState &state, idx_t group_index) const {
+	if (!state.prefetch_mode || !state.file_handle) {
+		return;
+	}
+	auto ranges = GetRowGroupRanges(group_index);
 	// merge ranges like the scan does, so the prefetched blocks are the ones it reads
 	idx_t merged_start = 0;
 	idx_t merged_end = 0;
