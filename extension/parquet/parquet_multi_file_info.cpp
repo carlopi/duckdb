@@ -93,6 +93,8 @@ struct ParquetReadGlobalState : public GlobalTableFunctionState {
 	}
 	//! Index of row group within file currently up for scanning
 	idx_t row_group_index;
+	//! Next row group to prefetch, read ahead of the row groups handed out
+	idx_t prefetch_index = 0;
 	//! (Optional) pointer to physical operator performing the scan
 	optional_ptr<const PhysicalOperator> op;
 	//! Row groups read but not yet reported to the profiler
@@ -104,6 +106,8 @@ struct ParquetReadGlobalState : public GlobalTableFunctionState {
 struct ParquetReadLocalState : public LocalTableFunctionState {
 	ParquetReaderScanState scan_state;
 	idx_t group_index;
+	//! Row groups this scan prefetches: its own, then the ones it reserved ahead of the scans
+	vector<idx_t> read_ahead_groups;
 };
 
 static void ParseFileRowNumberOption(MultiFileReaderBindData &bind_data, ParquetOptions &options,
@@ -856,6 +860,18 @@ bool ParquetReader::TryInitializeScan(ClientContext &context, GlobalTableFunctio
 	// The current reader has rowgroups left to be scanned
 	lstate.group_index = gstate.row_group_index;
 	gstate.row_group_index++;
+	// keep the next read_ahead row groups prefetched, the first ones are read directly by the first scans
+	lstate.read_ahead_groups.clear();
+	const idx_t read_ahead = ReadAheadRowGroups(context);
+	if (read_ahead > 0) {
+		// the row group of this scan first, so its fetches are not queued behind the ones ahead of it
+		lstate.read_ahead_groups.push_back(lstate.group_index);
+		gstate.prefetch_index = MaxValue(gstate.prefetch_index, MaxValue(gstate.row_group_index, read_ahead));
+		const idx_t prefetch_end = MinValue(gstate.row_group_index + read_ahead, NumRowGroups());
+		while (gstate.prefetch_index < prefetch_end) {
+			lstate.read_ahead_groups.push_back(gstate.prefetch_index++);
+		}
+	}
 	return true;
 }
 
@@ -865,6 +881,9 @@ void ParquetReader::PrepareScan(ClientContext &context, GlobalTableFunctionState
 	auto &lstate = lstate_p.Cast<ParquetReadLocalState>();
 	lstate.scan_state.op = gstate.op;
 	InitializeScan(context, lstate.scan_state, lstate.group_index);
+	for (auto group_index : lstate.read_ahead_groups) {
+		PrefetchRowGroup(lstate.scan_state, group_index);
+	}
 }
 
 AsyncResult ParquetReader::ScheduleIO(ClientContext &context, GlobalTableFunctionState &gstate_p,
@@ -885,6 +904,7 @@ AsyncResult ParquetReader::ScheduleIO(ClientContext &context, GlobalTableFunctio
 void ParquetReader::FinishFile(ClientContext &context, GlobalTableFunctionState &gstate_p) {
 	auto &gstate = gstate_p.Cast<ParquetReadGlobalState>();
 	gstate.row_group_index = 0;
+	gstate.prefetch_index = 0;
 }
 
 AsyncResult ParquetReader::Scan(ClientContext &context, GlobalTableFunctionState &gstate_p,

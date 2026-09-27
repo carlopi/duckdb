@@ -380,6 +380,10 @@ public:
 public:
 	//! Initialize the state for the next rowgroup to read
 	void InitializeScan(ClientContext &context, ParquetReaderScanState &state, idx_t group_to_read) const;
+	//! Number of row groups to keep prefetched ahead of the scans, 0 if not reading ahead
+	idx_t ReadAheadRowGroups(ClientContext &context) const;
+	//! Start fetching the projected column chunks of a row group into the cache
+	void PrefetchRowGroup(ParquetReaderScanState &state, idx_t group_index) const;
 
 	idx_t NumRows() const;
 	idx_t NumRowGroups() const;

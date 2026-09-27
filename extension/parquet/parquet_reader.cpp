@@ -2012,6 +2012,80 @@ void ParquetReader::PrepareReadAhead(ClientContext &context, GlobalTableFunction
 	prewarmed_scan_handle = std::move(handle);
 }
 
+idx_t ParquetReader::ReadAheadRowGroups(ClientContext &context) const {
+	if (filters) {
+		// row groups may be skipped by their statistics, those should not be fetched
+		return 0;
+	}
+	Value read_ahead;
+	if (!context.TryGetCurrentSetting("parquet_read_ahead_row_groups", read_ahead) || read_ahead.IsNull()) {
+		return 0;
+	}
+	return read_ahead.GetValue<idx_t>();
+}
+
+static void CollectLeafColumns(const ParquetColumnSchema &schema, vector<idx_t> &leaves) {
+	if (schema.children.empty()) {
+		if (schema.schema_type != ParquetColumnSchemaType::FILE_ROW_NUMBER &&
+		    schema.schema_type != ParquetColumnSchemaType::FILE_ROW_GROUP_NUMBER) {
+			leaves.push_back(schema.column_index);
+		}
+		return;
+	}
+	for (auto &child : schema.children) {
+		CollectLeafColumns(child, leaves);
+	}
+}
+
+void ParquetReader::PrefetchRowGroup(ParquetReaderScanState &state, idx_t group_index) const {
+	if (!state.prefetch_mode || !state.file_handle) {
+		return;
+	}
+	auto &group = GetFileMetadata()->row_groups[group_index];
+	vector<idx_t> leaves;
+	auto add_column = [&](const ColumnIndex &index) {
+		const auto column_id = index.GetPrimaryIndex();
+		if (column_id < root_schema->children.size()) {
+			CollectLeafColumns(root_schema->children[column_id], leaves);
+		}
+	};
+	for (auto &index : column_indexes) {
+		add_column(index);
+	}
+	for (auto &entry : expression_map) {
+		for (auto &index : entry.second.column_indexes) {
+			add_column(index);
+		}
+	}
+	vector<pair<idx_t, idx_t>> ranges;
+	for (auto leaf : leaves) {
+		if (leaf >= group.columns.size()) {
+			continue;
+		}
+		auto &chunk = group.columns[leaf];
+		const auto start = ParquetColumnChunkFileOffset(chunk);
+		ranges.emplace_back(start, start + NumericCast<idx_t>(chunk.meta_data.total_compressed_size));
+	}
+	std::sort(ranges.begin(), ranges.end());
+	// merge ranges like the scan does, so the prefetched blocks are the ones it reads
+	idx_t merged_start = 0;
+	idx_t merged_end = 0;
+	for (auto &range : ranges) {
+		if (merged_end > merged_start && range.first <= merged_end + ReadHeadComparator::DEFAULT_ACCEPTED_COLUMN_GAP) {
+			merged_end = MaxValue(merged_end, range.second);
+			continue;
+		}
+		if (merged_end > merged_start) {
+			state.file_handle->Prefetch(merged_end - merged_start, merged_start);
+		}
+		merged_start = range.first;
+		merged_end = range.second;
+	}
+	if (merged_end > merged_start) {
+		state.file_handle->Prefetch(merged_end - merged_start, merged_start);
+	}
+}
+
 void ParquetReader::InitializeScan(ClientContext &context, ParquetReaderScanState &state, idx_t group_to_read) const {
 	state.resuming_payload = false;
 	state.offset_in_group = 0;

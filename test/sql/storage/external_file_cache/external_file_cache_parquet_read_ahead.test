@@ -1,0 +1,80 @@
+# name: test/sql/storage/external_file_cache/external_file_cache_parquet_read_ahead.test
+# description: Parquet scans prefetching the row groups ahead of them read the same data and cache the same bytes
+# group: [external_file_cache]
+
+require parquet
+
+statement ok
+set cache_local_files=true;
+
+statement ok
+set enable_external_file_cache=true;
+
+statement ok
+copy (select range i, range::varchar s, range % 7 j from range(200000)) to '{TEST_DIR}/read_ahead.parquet' (row_group_size 10000);
+
+statement ok
+create table expected as select sum(i) si, count(distinct s) cs, sum(j) sj from '{TEST_DIR}/read_ahead.parquet';
+
+foreach threads 1 3 8
+
+statement ok
+set threads={threads};
+
+foreach read_ahead 0 1 4 32
+
+statement ok
+set parquet_read_ahead_row_groups={read_ahead};
+
+query I
+select (select sum(i) from '{TEST_DIR}/read_ahead.parquet') = (select si from expected);
+----
+true
+
+query III
+select sum(i) = (select si from expected), count(distinct s) = (select cs from expected), sum(j) = (select sj from expected) from '{TEST_DIR}/read_ahead.parquet';
+----
+true	true	true
+
+# filters disable the read-ahead, results are unchanged
+query I
+select count(*) from '{TEST_DIR}/read_ahead.parquet' where i >= 150000;
+----
+50000
+
+endloop
+
+endloop
+
+# prefetching only fetches the projected columns: the cache holds the same bytes as without read-ahead
+statement ok
+set parquet_read_ahead_row_groups=0;
+
+statement ok
+set enable_external_file_cache=false;
+
+statement ok
+set enable_external_file_cache=true;
+
+statement ok
+select sum(i) from '{TEST_DIR}/read_ahead.parquet';
+
+statement ok
+create table bytes_without as select sum(nr_bytes) b from duckdb_external_file_cache();
+
+statement ok
+set parquet_read_ahead_row_groups=8;
+
+statement ok
+set enable_external_file_cache=false;
+
+statement ok
+set enable_external_file_cache=true;
+
+statement ok
+select sum(i) from '{TEST_DIR}/read_ahead.parquet';
+
+query I
+select sum(nr_bytes) = (select b from bytes_without) from duckdb_external_file_cache();
+----
+true
