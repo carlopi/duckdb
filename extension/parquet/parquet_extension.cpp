@@ -1084,13 +1084,12 @@ static void LoadInternal(ExtensionLoader &loader) {
 	config.AddExtensionOption(
 	    "parquet_declare_ahead_row_groups",
 	    "Number of row groups declared to the cache ahead of a Parquet scan without filters, so fetches merge across "
-	    "row groups (0 disables it, NULL uses twice the number of threads)",
+	    "row groups (0 disables it, NULL uses the number of threads)",
 	    LogicalType::UBIGINT, Value(LogicalType::UBIGINT));
 	config.AddExtensionOption(
 	    "parquet_read_ahead_row_groups",
-	    "Number of row groups to prefetch ahead of a Parquet scan without filters (0 disables it, NULL uses the number "
-	    "of threads)",
-	    LogicalType::UBIGINT, Value(LogicalType::UBIGINT));
+	    "Number of row groups to prefetch ahead of a Parquet scan without filters (0 disables it)",
+	    LogicalType::UBIGINT, Value::UBIGINT(0));
 	config.AddExtensionOption("prefetch_all_parquet_files",
 	                          "(deprecated) Parquet files are now always prefetched, this setting has no effect",
 	                          LogicalType::BOOLEAN, Value(false));

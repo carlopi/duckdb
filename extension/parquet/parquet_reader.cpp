@@ -2020,7 +2020,7 @@ idx_t ParquetReader::ReadAheadRowGroups(ClientContext &context) const {
 	}
 	Value read_ahead;
 	if (!context.TryGetCurrentSetting("parquet_read_ahead_row_groups", read_ahead) || read_ahead.IsNull()) {
-		return TaskScheduler::GetScheduler(context).NumberOfThreads();
+		return 0;
 	}
 	return read_ahead.GetValue<idx_t>();
 }
@@ -2075,7 +2075,7 @@ idx_t ParquetReader::DeclareAheadRowGroups(ClientContext &context) const {
 	}
 	Value declare_ahead;
 	if (!context.TryGetCurrentSetting("parquet_declare_ahead_row_groups", declare_ahead) || declare_ahead.IsNull()) {
-		return 2 * TaskScheduler::GetScheduler(context).NumberOfThreads();
+		return TaskScheduler::GetScheduler(context).NumberOfThreads();
 	}
 	return declare_ahead.GetValue<idx_t>();
 }
