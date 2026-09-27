@@ -86,6 +86,8 @@ public:
 	DUCKDB_API bool Validate() const;
 	DUCKDB_API bool CanSeek();
 	DUCKDB_API bool IsRemoteFile() const;
+	//! Whether reads of this handle currently go through the external file cache
+	DUCKDB_API bool UsesCache();
 	DUCKDB_API bool OnDiskFile();
 	DUCKDB_API bool TryGetNetworkThroughput(NetworkThroughputEstimate &result);
 	//! Declare that the file consists of [0, offset) followed by units of stride bytes, reads fetch whole units.

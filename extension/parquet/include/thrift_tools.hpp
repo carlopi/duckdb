@@ -194,18 +194,29 @@ public:
 			auto prefetch_buffer_fallback = ra_buffer.GetReadHead(location);
 			if (!prefetch_buffer_fallback ||
 			    location - prefetch_buffer_fallback->location + len > prefetch_buffer_fallback->size) {
-				file_handle.GetFileHandle()->Read(context, buf, len, location);
+				ReadThroughCache(buf, len);
 				location += len;
 				return len;
 			}
 			memcpy(buf, prefetch_buffer_fallback->buffer_ptr + location - prefetch_buffer_fallback->location, len);
 		} else {
-			// No prefetch, do a regular (non-caching) read
-			file_handle.GetFileHandle()->Read(context, buf, len, location);
+			// No prefetch, read the bytes directly
+			ReadThroughCache(buf, len);
 		}
 
 		location += len;
 		return len;
+	}
+
+	//! Read [len] bytes at the current location, through the external file cache when it caches the file
+	void ReadThroughCache(uint8_t *buf, uint32_t len) {
+		if (len == 0 || location + len > file_handle.GetFileSize() || !file_handle.UsesCache()) {
+			// reads past the end fail in the file system, uncached files are read without an intermediate buffer
+			file_handle.GetFileHandle()->Read(context, buf, len, location);
+			return;
+		}
+		auto group = file_handle.Read(len, location);
+		group.CopyTo(buf, len);
 	}
 
 	// Prefetch a single buffer

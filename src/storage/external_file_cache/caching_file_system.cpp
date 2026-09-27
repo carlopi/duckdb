@@ -407,6 +407,10 @@ shared_ptr<CachingFileHandle::CachedFile> CachingFileHandle::EnsureCachedFileCur
 	return current_cached_file;
 }
 
+bool CachingFileHandle::UsesCache() {
+	return external_file_cache.IsEnabled() && external_file_cache.ShouldCacheFile(path.path) && CanUseCache();
+}
+
 bool CachingFileHandle::CanUseCache() {
 	auto current_cached_file = EnsureCachedFileCurrent();
 	if (!Validate()) {
