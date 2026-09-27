@@ -2106,11 +2106,13 @@ void ParquetReader::PrefetchRowGroup(ParquetReaderScanState &state, idx_t group_
 		return;
 	}
 	auto ranges = GetRowGroupRanges(group_index);
-	// merge ranges like the scan does, so the prefetched blocks are the ones it reads
+	// merge ranges with the gap the scan uses, so the prefetched blocks are the ones it reads
+	auto &trans = reinterpret_cast<ThriftFileTransport &>(*state.thrift_file_proto->getTransport());
+	const idx_t accepted_column_gap = trans.GetAcceptedColumnGap();
 	idx_t merged_start = 0;
 	idx_t merged_end = 0;
 	for (auto &range : ranges) {
-		if (merged_end > merged_start && range.first <= merged_end + ReadHeadComparator::DEFAULT_ACCEPTED_COLUMN_GAP) {
+		if (merged_end > merged_start && range.first <= merged_end + accepted_column_gap) {
 			merged_end = MaxValue(merged_end, range.second);
 			continue;
 		}
