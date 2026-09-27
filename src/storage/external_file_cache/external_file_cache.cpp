@@ -334,6 +334,134 @@ void WantedBlocks::Release() {
 	blocks.clear();
 }
 
+static bool IsUnfetched(CacheBlock &block) {
+	const annotated_lock_guard<annotated_mutex> guard(block.mtx);
+	return block.state == CacheBlockState::EMPTY || block.state == CacheBlockState::IO_ERROR;
+}
+
+static bool TryMarkLoading(CacheBlock &block) {
+	const annotated_lock_guard<annotated_mutex> guard(block.mtx);
+	if (block.state != CacheBlockState::EMPTY && block.state != CacheBlockState::IO_ERROR) {
+		return false;
+	}
+	block.state = CacheBlockState::LOADING;
+	return true;
+}
+
+namespace {
+
+//! Unfetched blocks next to a claimed range, up to and including the nearest wanted one
+struct ClaimExtension {
+	vector<map<idx_t, shared_ptr<CacheBlock>>::iterator> blocks;
+	idx_t bridged_bytes = 0;
+};
+
+} // namespace
+
+//! Bytes that are not wanted, fetched to merge the requests of wanted blocks on both sides of them
+static constexpr idx_t MAX_BRIDGED_BYTES = 16384;
+
+shared_ptr<CacheBlock> ExternalFileCache::ClaimBlock(CachedFile &cached_file, const shared_ptr<CacheBlock> &block,
+                                                     idx_t max_block_size) {
+	const annotated_lock_guard<annotated_mutex> map_guard(cached_file.map_lock);
+	auto &blocks = cached_file.blocks;
+	auto it = blocks.find(block->location);
+	if (it == blocks.end() || it->second != block) {
+		// the block was dropped with its file, it is fetched on its own
+		return TryMarkLoading(*block) ? block : nullptr;
+	}
+	if (!IsUnfetched(*block)) {
+		return nullptr;
+	}
+
+	using iterator = map<idx_t, shared_ptr<CacheBlock>>::iterator;
+	idx_t start = block->location;
+	idx_t end = block->location + block->size;
+	iterator leftmost = it;
+	iterator rightmost = it;
+	vector<iterator> taken;
+
+	auto extend_right = [&](map<idx_t, shared_ptr<CacheBlock>> &block_map, ClaimExtension &result) {
+		idx_t pos = end;
+		for (auto cur = std::next(rightmost); cur != block_map.end(); ++cur) {
+			auto &candidate = *cur->second;
+			const idx_t candidate_end = cur->first + candidate.size;
+			result.bridged_bytes += cur->first - pos;
+			if (result.bridged_bytes > MAX_BRIDGED_BYTES || candidate_end - start > max_block_size ||
+			    !IsUnfetched(candidate)) {
+				return false;
+			}
+			result.blocks.push_back(cur);
+			if (candidate.wanted > 0) {
+				return true;
+			}
+			result.bridged_bytes += candidate.size;
+			pos = candidate_end;
+		}
+		return false;
+	};
+	auto extend_left = [&](map<idx_t, shared_ptr<CacheBlock>> &block_map, ClaimExtension &result) {
+		idx_t pos = start;
+		for (auto cur = leftmost; cur != block_map.begin();) {
+			--cur;
+			auto &candidate = *cur->second;
+			const idx_t candidate_end = cur->first + candidate.size;
+			result.bridged_bytes += pos - candidate_end;
+			if (result.bridged_bytes > MAX_BRIDGED_BYTES || end - cur->first > max_block_size ||
+			    !IsUnfetched(candidate)) {
+				return false;
+			}
+			result.blocks.push_back(cur);
+			if (candidate.wanted > 0) {
+				return true;
+			}
+			result.bridged_bytes += candidate.size;
+			pos = cur->first;
+		}
+		return false;
+	};
+
+	// grow towards the nearest wanted neighbour on either side, as long as one is in reach
+	while (true) {
+		ClaimExtension left;
+		ClaimExtension right;
+		const bool can_left = extend_left(blocks, left);
+		const bool can_right = extend_right(blocks, right);
+		if (!can_left && !can_right) {
+			break;
+		}
+		if (can_right && (!can_left || right.bridged_bytes <= left.bridged_bytes)) {
+			rightmost = right.blocks.back();
+			end = rightmost->first + rightmost->second->size;
+			taken.insert(taken.end(), right.blocks.begin(), right.blocks.end());
+		} else {
+			leftmost = left.blocks.back();
+			start = leftmost->first;
+			taken.insert(taken.end(), left.blocks.begin(), left.blocks.end());
+		}
+	}
+
+	if (taken.empty()) {
+		return TryMarkLoading(*block) ? block : nullptr;
+	}
+	taken.push_back(it);
+	for (auto &entry : taken) {
+		auto &superseded = *entry->second;
+		const annotated_lock_guard<annotated_mutex> guard(superseded.mtx);
+		MarkSuperseded(superseded);
+	}
+	for (auto &entry : taken) {
+		blocks.erase(entry);
+	}
+	auto claimed = make_shared_ptr<CacheBlock>(start, end - start, cached_file.content_generation);
+	{
+		const annotated_lock_guard<annotated_mutex> guard(claimed->mtx);
+		claimed->state = CacheBlockState::LOADING;
+	}
+	blocks.emplace(start, claimed);
+	return claimed;
+}
+
 shared_ptr<CacheBlock> ExternalFileCache::FindCoveringBlock(CachedFile &cached_file, const CacheBlock &superseded) {
 	const annotated_lock_guard<annotated_mutex> map_guard(cached_file.map_lock);
 	if (superseded.generation != cached_file.content_generation) {

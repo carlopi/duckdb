@@ -56,30 +56,48 @@ class FetchBlockTask : public BaseExecutorTask {
 public:
 	FetchBlockTask(CachingFileHandle &caching_file_handle_p, TaskExecutor &executor, QueryContext context_p,
 	               ExternalFileCache &external_file_cache_p, ExternalFileCache::CachedFile &cached_file_p,
-	               shared_ptr<CacheBlock> &block_p, BufferHandle &result_pin_p, atomic<bool> &restart_p)
+	               idx_t max_block_size_p, shared_ptr<CacheBlock> &block_p, BufferHandle &result_pin_p,
+	               atomic<bool> &restart_p)
 	    : BaseExecutorTask(executor), caching_file_handle(caching_file_handle_p), context(context_p),
-	      external_file_cache(external_file_cache_p), cached_file(cached_file_p),
+	      external_file_cache(external_file_cache_p), cached_file(cached_file_p), max_block_size(max_block_size_p),
 	      buffer_manager(external_file_cache_p.GetBufferManager()), block(block_p), result_pin(result_pin_p),
 	      restart(restart_p) {
 	}
 
 	void ExecuteTask() override {
-		while (!TryFetch()) {
-			// the block was superseded: continue with the block that covers it
-			block = external_file_cache.FindCoveringBlock(cached_file, *block);
-			if (!block) {
-				// the file changed since
-				restart = true;
+		while (true) {
+			switch (TryPin()) {
+			case PinResult::PINNED:
 				return;
+			case PinResult::SUPERSEDED:
+				// continue with the block that covers it
+				block = external_file_cache.FindCoveringBlock(cached_file, *block);
+				if (!block) {
+					// the file changed since
+					restart = true;
+					return;
+				}
+				break;
+			case PinResult::UNFETCHED: {
+				auto claimed = external_file_cache.ClaimBlock(cached_file, block, max_block_size);
+				if (!claimed) {
+					// claimed or superseded by someone else in the meantime
+					break;
+				}
+				block = std::move(claimed);
+				FetchClaimed();
+				return;
+			}
 			}
 		}
 	}
 
 private:
-	//! Fetch or pin the block, returns false if it was superseded
-	bool TryFetch() {
-		annotated_unique_lock<annotated_mutex> lk(block->mtx);
+	enum class PinResult : uint8_t { PINNED, SUPERSEDED, UNFETCHED };
 
+	//! Pin the block, waiting while it is loading
+	PinResult TryPin() {
+		annotated_unique_lock<annotated_mutex> lk(block->mtx);
 		while (true) {
 			switch (block->state) {
 			case CacheBlockState::LOADED: {
@@ -89,70 +107,61 @@ private:
 					D_ASSERT(Checksum(pin.Ptr(), block->nr_bytes) == block->checksum);
 #endif
 					result_pin = std::move(pin);
-					return true;
+					return PinResult::PINNED;
 				}
 				// Evicted by buffer manager, need to re-fetch
 				block->state = CacheBlockState::EMPTY;
-				continue;
+				return PinResult::UNFETCHED;
 			}
-			case CacheBlockState::EMPTY: {
-				block->state = CacheBlockState::LOADING;
-				lk.unlock();
-
-				try {
-					const idx_t file_size = caching_file_handle.GetFileSize();
-					const idx_t offset = block->location;
-					if (offset >= file_size) {
-						lk.lock();
-						// If there're other workers waiting for this block, we need to reset the block to empty state
-						// for another attempt.
-						block->state = CacheBlockState::EMPTY;
-						block->cv.notify_all();
-						return true;
-					}
-					const idx_t to_read = MinValue(block->size, file_size - offset);
-					auto buf =
-					    ExternalFileCache::AllocateCacheBuffer(buffer_manager, caching_file_handle.GetPath(), to_read);
-					caching_file_handle.ReadAndRecord(context, buf.GetDataMutable(), to_read, offset);
-					const bool share_block = !caching_file_handle.IsCacheReuseProhibited();
-
-					lk.lock();
-					if (!share_block) {
-						block->nr_bytes = to_read;
-						block->state = CacheBlockState::EMPTY;
-						result_pin = std::move(buf);
-						block->cv.notify_all();
-						return true;
-					}
-					block->block_handle = buf.GetBlockHandle();
-					block->nr_bytes = to_read;
-					block->state = CacheBlockState::LOADED;
-#ifdef DEBUG
-					block->checksum = Checksum(buf.Ptr(), to_read);
-#endif
-					result_pin = std::move(buf);
-					block->cv.notify_all();
-				} catch (std::exception &e) {
-					lk.lock();
-					block->state = CacheBlockState::IO_ERROR;
-					block->cv.notify_all();
-					throw;
-				}
-				return true;
-			}
-			case CacheBlockState::LOADING: {
+			case CacheBlockState::EMPTY:
+			case CacheBlockState::IO_ERROR:
+				return PinResult::UNFETCHED;
+			case CacheBlockState::LOADING:
 				block->cv.wait(lk,
 				               [&]() DUCKDB_REQUIRES(block->mtx) { return block->state != CacheBlockState::LOADING; });
 				continue;
-			}
 			case CacheBlockState::SUPERSEDED:
-				return false;
-			case CacheBlockState::IO_ERROR: {
-				// IO operation failed, reset the block to empty state for another attempt.
+				return PinResult::SUPERSEDED;
+			}
+		}
+	}
+
+	//! Fetch a block this task claimed
+	void FetchClaimed() {
+		try {
+			const idx_t file_size = caching_file_handle.GetFileSize();
+			const idx_t offset = block->location;
+			if (offset >= file_size) {
+				const annotated_lock_guard<annotated_mutex> guard(block->mtx);
+				// If there're other workers waiting for this block, we need to reset the block to empty state
+				// for another attempt.
 				block->state = CacheBlockState::EMPTY;
-				continue;
+				block->cv.notify_all();
+				return;
 			}
+			const idx_t to_read = MinValue(block->size, file_size - offset);
+			auto buf = ExternalFileCache::AllocateCacheBuffer(buffer_manager, caching_file_handle.GetPath(), to_read);
+			caching_file_handle.ReadAndRecord(context, buf.GetDataMutable(), to_read, offset);
+			const bool share_block = !caching_file_handle.IsCacheReuseProhibited();
+
+			const annotated_lock_guard<annotated_mutex> guard(block->mtx);
+			block->nr_bytes = to_read;
+			if (!share_block) {
+				block->state = CacheBlockState::EMPTY;
+			} else {
+				block->block_handle = buf.GetBlockHandle();
+				block->state = CacheBlockState::LOADED;
+#ifdef DEBUG
+				block->checksum = Checksum(buf.Ptr(), to_read);
+#endif
 			}
+			result_pin = std::move(buf);
+			block->cv.notify_all();
+		} catch (std::exception &e) {
+			const annotated_lock_guard<annotated_mutex> guard(block->mtx);
+			block->state = CacheBlockState::IO_ERROR;
+			block->cv.notify_all();
+			throw;
 		}
 	}
 
@@ -160,6 +169,7 @@ private:
 	QueryContext context;
 	ExternalFileCache &external_file_cache;
 	ExternalFileCache::CachedFile &cached_file;
+	idx_t max_block_size;
 	BufferManager &buffer_manager;
 	//! The block this read uses for its range, updated when it is superseded
 	shared_ptr<CacheBlock> &block;
@@ -242,11 +252,14 @@ private:
 //! Fetches a block nobody is fetching yet. It never waits: a block that is loading or loaded is left alone.
 class PrefetchBlockTask : public Task {
 public:
-	PrefetchBlockTask(shared_ptr<PrefetchScope> scope_p, QueryContext context_p, BufferManager &buffer_manager_p,
-	                  string path_p, shared_ptr<FileHandle> file_handle_p, idx_t file_size_p,
+	PrefetchBlockTask(shared_ptr<PrefetchScope> scope_p, QueryContext context_p,
+	                  ExternalFileCache &external_file_cache_p, shared_ptr<ExternalFileCache::CachedFile> cached_file_p,
+	                  idx_t max_block_size_p, string path_p, shared_ptr<FileHandle> file_handle_p, idx_t file_size_p,
 	                  shared_ptr<CacheBlock> block_p)
-	    : scope(std::move(scope_p)), context(context_p), buffer_manager(buffer_manager_p), path(std::move(path_p)),
-	      file_handle(std::move(file_handle_p)), file_size(file_size_p), block(std::move(block_p)) {
+	    : scope(std::move(scope_p)), context(context_p), external_file_cache(external_file_cache_p),
+	      buffer_manager(external_file_cache_p.GetBufferManager()), cached_file(std::move(cached_file_p)),
+	      max_block_size(max_block_size_p), path(std::move(path_p)), file_handle(std::move(file_handle_p)),
+	      file_size(file_size_p), block(std::move(block_p)) {
 	}
 
 	TaskExecutionResult Execute(TaskExecutionMode mode) override {
@@ -267,13 +280,12 @@ public:
 
 private:
 	void Fetch() {
-		{
-			const annotated_lock_guard<annotated_mutex> guard(block->mtx);
-			if (block->state != CacheBlockState::EMPTY && block->state != CacheBlockState::IO_ERROR) {
-				return;
-			}
-			block->state = CacheBlockState::LOADING;
+		auto claimed = external_file_cache.ClaimBlock(*cached_file, block, max_block_size);
+		if (!claimed) {
+			// loading, loaded or superseded: someone else fetches it
+			return;
 		}
+		block = std::move(claimed);
 		try {
 			const idx_t offset = block->location;
 			if (offset >= file_size) {
@@ -309,7 +321,10 @@ private:
 
 	shared_ptr<PrefetchScope> scope;
 	QueryContext context;
+	ExternalFileCache &external_file_cache;
 	BufferManager &buffer_manager;
+	shared_ptr<ExternalFileCache::CachedFile> cached_file;
+	idx_t max_block_size;
 	string path;
 	shared_ptr<FileHandle> file_handle;
 	idx_t file_size;
@@ -577,8 +592,8 @@ void CachingFileHandle::Prefetch(idx_t nr_bytes, idx_t location) {
 	auto file_handle = GetFileHandle();
 	vector<shared_ptr<Task>> tasks;
 	for (auto &block : blocks) {
-		tasks.push_back(make_shared_ptr<PrefetchBlockTask>(scope, context, external_file_cache.GetBufferManager(),
-		                                                   path.path, file_handle, file_size, block));
+		tasks.push_back(make_shared_ptr<PrefetchBlockTask>(scope, context, external_file_cache, current_cached_file,
+		                                                   max_block_size, path.path, file_handle, file_size, block));
 	}
 	scheduler.ScheduleTasks(external_file_cache.GetPrefetchProducer(), tasks, TaskSchedulerType::ASYNC);
 }
@@ -617,7 +632,8 @@ FileBufferHandleGroup CachingFileHandle::Read(const idx_t nr_bytes, const idx_t 
 		TaskExecutor executor(scheduler, TaskSchedulerType::ASYNC);
 		for (idx_t idx = 0; idx < num_blocks; idx++) {
 			executor.ScheduleTask(make_uniq<FetchBlockTask>(*this, executor, context, external_file_cache,
-			                                                *current_cached_file, sources[idx], pins[idx], restart));
+			                                                *current_cached_file, max_block_size, sources[idx],
+			                                                pins[idx], restart));
 		}
 		executor.WorkOnTasks();
 		if (restart) {

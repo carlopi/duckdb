@@ -1454,4 +1454,60 @@ TEST_CASE("Releasing wanted blocks that were superseded", "[external_file_cache]
 	REQUIRE(block->wanted == 0);
 }
 
+TEST_CASE("Fetches include the wanted blocks next to them", "[external_file_cache]") {
+	DuckDB db = MakeCacheLocalFilesDB();
+	auto &db_instance = *db.instance;
+	auto recording_fs = make_uniq<ReadRecordingFileSystem>();
+
+	const idx_t BLOCK_SIZE = 65536;
+	Connection con(db);
+	con.Query(StringUtil::Format("SET external_file_cache_local_max_block_size=%llu", BLOCK_SIZE));
+
+	const idx_t FILE_SIZE = 100000;
+	auto content = MakeTestContent(FILE_SIZE);
+	EFCTestFileGuard test_file("test_efc_claim_wanted.bin", content);
+
+	CachingFileSystem cfs(*recording_fs, db_instance);
+	auto handle = OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
+	recording_fs->TakeReads();
+
+	// wanted: one block touching the read on the right, one on the left across a small gap
+	auto right = handle->Want(1000, 20000);
+	auto left = handle->Want(2000, 10000);
+	// not wanted: bytes further away are not fetched
+	auto far = handle->Want(1000, 60000);
+	far.Release();
+
+	REQUIRE(ReadFull(*handle, 5000, 15000) == content.substr(15000, 5000));
+	REQUIRE(recording_fs->TakeReads() == vector<pair<idx_t, idx_t>> {{10000, 11000}});
+
+	// the wanted blocks were fetched with the read
+	REQUIRE(ReadFull(*handle, 1000, 20000) == content.substr(20000, 1000));
+	REQUIRE(ReadFull(*handle, 2000, 10000) == content.substr(10000, 2000));
+	REQUIRE(recording_fs->TakeReads().empty());
+}
+
+TEST_CASE("Fetches do not bridge large gaps to wanted blocks", "[external_file_cache]") {
+	DuckDB db = MakeCacheLocalFilesDB();
+	auto &db_instance = *db.instance;
+	auto recording_fs = make_uniq<ReadRecordingFileSystem>();
+
+	const idx_t BLOCK_SIZE = 65536;
+	Connection con(db);
+	con.Query(StringUtil::Format("SET external_file_cache_local_max_block_size=%llu", BLOCK_SIZE));
+
+	const idx_t FILE_SIZE = 100000;
+	auto content = MakeTestContent(FILE_SIZE);
+	EFCTestFileGuard test_file("test_efc_claim_gap.bin", content);
+
+	CachingFileSystem cfs(*recording_fs, db_instance);
+	auto handle = OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags()));
+	recording_fs->TakeReads();
+
+	// 30000 bytes between the read and the wanted block: too far to fetch together
+	auto wanted = handle->Want(1000, 50000);
+	REQUIRE(ReadFull(*handle, 5000, 15000) == content.substr(15000, 5000));
+	REQUIRE(recording_fs->TakeReads() == vector<pair<idx_t, idx_t>> {{15000, 5000}});
+}
+
 } // namespace duckdb
