@@ -1206,4 +1206,42 @@ TEST_CASE("Reads starting inside an empty block fetch the whole block", "[extern
 	REQUIRE(CountCachedBlocks(cache) == 1);
 }
 
+TEST_CASE("Reads of a file with a known layout fetch whole units", "[external_file_cache]") {
+	DuckDB db = MakeCacheLocalFilesDB();
+	auto &db_instance = *db.instance;
+	auto recording_fs = make_uniq<ReadRecordingFileSystem>();
+
+	const idx_t BLOCK_SIZE = 131072;
+	Connection con(db);
+	con.Query(StringUtil::Format("SET external_file_cache_local_max_block_size=%llu", BLOCK_SIZE));
+
+	// like a database file: a header, then fixed size units
+	const idx_t OFFSET = 12288;
+	const idx_t STRIDE = 65536;
+	const idx_t FILE_SIZE = 300000;
+	auto content = MakeTestContent(FILE_SIZE);
+	EFCTestFileGuard test_file("test_efc_layout.bin", content);
+
+	CachingFileSystem cfs(*recording_fs, db_instance);
+	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
+	handle->SetLayout(OFFSET, STRIDE);
+	auto &cache = db_instance.GetExternalFileCache();
+
+	// a read within a unit fetches the whole unit
+	REQUIRE(ReadFull(*handle, 10000, 20000) == content.substr(20000, 10000));
+	REQUIRE(recording_fs->TakeReads() == vector<pair<idx_t, idx_t>> {{OFFSET, STRIDE}});
+	// a read across two units fetches both with one request
+	REQUIRE(ReadFull(*handle, 10000, 140000) == content.substr(140000, 10000));
+	REQUIRE(recording_fs->TakeReads() == vector<pair<idx_t, idx_t>> {{OFFSET + STRIDE, 2 * STRIDE}});
+
+	// the rest is fetched in whole units, merged up to the block size
+	REQUIRE(ReadFull(*handle, FILE_SIZE) == content);
+	const idx_t fourth = OFFSET + 3 * STRIDE;
+	REQUIRE(recording_fs->TakeReads() == vector<pair<idx_t, idx_t>> {{0, OFFSET}, {fourth, FILE_SIZE - fourth}});
+	REQUIRE(TotalCachedBytes(cache) == FILE_SIZE);
+
+	REQUIRE(ReadFull(*handle, FILE_SIZE) == content);
+	REQUIRE(recording_fs->TakeReads().empty());
+}
+
 } // namespace duckdb

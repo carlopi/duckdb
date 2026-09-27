@@ -355,6 +355,11 @@ Allocator &CachingFileHandle::GetBufferAllocator() const {
 	return external_file_cache.GetBufferManager().GetBufferAllocator();
 }
 
+void CachingFileHandle::SetLayout(idx_t offset, idx_t stride) {
+	auto current_cached_file = EnsureCachedFileCurrent();
+	external_file_cache.SetLayout(*current_cached_file, offset, stride);
+}
+
 FileBufferHandleGroup CachingFileHandle::Read(const idx_t nr_bytes, const idx_t location) {
 	if (nr_bytes == 0) {
 		return FileBufferHandleGroup();
@@ -375,15 +380,17 @@ FileBufferHandleGroup CachingFileHandle::Read(const idx_t nr_bytes, const idx_t 
 	const idx_t file_size = GetFileSize();
 	const idx_t min_block_size =
 	    MinValue(external_file_cache.GetCacheMinBlockSize(current_cached_file->path), max_block_size);
+	// reads sized by the cache fetch the aligned blocks around them, unless the file declared its layout
+	auto layout = external_file_cache.GetLayout(*current_cached_file);
+	if (layout.stride == 0 && flags.GetRequestSizing() == RequestSizing::BY_CACHE) {
+		layout.stride = max_block_size;
+	}
 	if (fetch_end <= file_size) {
 		if (file_size <= max_block_size) {
 			// fetch a file that fits in one block whole, so later reads of it hit the cache
 			fetch_location = 0;
 			fetch_end = file_size;
-		} else if (flags.GetRequestSizing() == RequestSizing::BY_CACHE) {
-			fetch_location = location - location % max_block_size;
-			fetch_end = MinValue(file_size, AlignValue(fetch_end, max_block_size));
-		} else if (nr_bytes < min_block_size) {
+		} else if (layout.stride == 0 && nr_bytes < min_block_size) {
 			fetch_location = location - location % min_block_size;
 			fetch_end = MinValue(file_size, AlignValue(fetch_end, min_block_size));
 		}
@@ -392,7 +399,7 @@ FileBufferHandleGroup CachingFileHandle::Read(const idx_t nr_bytes, const idx_t 
 	static constexpr idx_t MAX_READ_ATTEMPTS = 3;
 	for (idx_t attempt = 0; attempt < MAX_READ_ATTEMPTS; attempt++) {
 		const auto blocks = external_file_cache.AcquireBlocks(*current_cached_file, fetch_location,
-		                                                      fetch_end - fetch_location, max_block_size);
+		                                                      fetch_end - fetch_location, max_block_size, layout);
 		const idx_t num_blocks = blocks.size();
 
 		// Schedule block fetch tasks for all blocks.

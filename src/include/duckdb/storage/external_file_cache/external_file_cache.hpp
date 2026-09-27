@@ -53,6 +53,12 @@ struct CacheValidationInfo {
 	idx_t file_size = 0;
 };
 
+//! A file made of [0, offset) followed by units of stride bytes, reads fetch whole units. A stride of 0 means none.
+struct FileLayout {
+	idx_t offset = 0;
+	idx_t stride = 0;
+};
+
 class ExternalFileCache {
 public:
 	//! Get the maximum cache block size for a given file path.
@@ -76,6 +82,8 @@ public:
 		map<idx_t, shared_ptr<CacheBlock>> blocks DUCKDB_GUARDED_BY(map_lock);
 		//! Incremented whenever the file changes and its blocks are dropped.
 		idx_t content_generation DUCKDB_GUARDED_BY(map_lock) = 0;
+		//! Known layout of the file, declared by its reader.
+		FileLayout layout DUCKDB_GUARDED_BY(map_lock);
 
 		mutable annotated_mutex meta_lock;
 		//! Metadata for validating the cached blocks against the current file.
@@ -99,12 +107,16 @@ public:
 	idx_t GetCachedFileCount() const;
 
 	//! Get the blocks covering [location, location + nr_bytes), creating empty blocks for the missing bytes.
+	//! Uncached units of `layout` within the range are fetched whole.
 	vector<shared_ptr<CacheBlock>> AcquireBlocks(CachedFile &cached_file, idx_t location, idx_t nr_bytes,
-	                                             idx_t max_block_size);
+	                                             idx_t max_block_size, const FileLayout &layout = FileLayout());
 	//! Get the block that replaced a superseded block, or nullptr if the file changed since.
 	shared_ptr<CacheBlock> FindCoveringBlock(CachedFile &cached_file, const CacheBlock &superseded);
 	//! Drop all blocks of a file that changed. Readers keep the blocks they hold.
 	void DropBlocks(CachedFile &cached_file);
+	//! Set the layout of a file, a stride of 0 removes it.
+	void SetLayout(CachedFile &cached_file, idx_t offset, idx_t stride);
+	FileLayout GetLayout(CachedFile &cached_file);
 
 	BufferManager &GetBufferManager() const;
 	//! Gets the shared cached file for the given path, creating it if not yet present.

@@ -130,12 +130,34 @@ static bool TrySupersedeLoaded(CacheBlock &block) {
 	return true;
 }
 
+//! Insert empty blocks for the units of the file layout within [location, end) that are not cached at all.
+static void AddLayoutBlocks(ExternalFileCache::CachedFile &cached_file, const FileLayout &layout, idx_t location,
+                            idx_t end) DUCKDB_REQUIRES(cached_file.map_lock) {
+	const idx_t offset = layout.offset;
+	const idx_t stride = layout.stride;
+	auto &blocks = cached_file.blocks;
+	idx_t unit_start = location < offset ? 0 : location - (location - offset) % stride;
+	while (unit_start < end) {
+		const idx_t unit_end = unit_start < offset ? offset : unit_start + stride;
+		auto it = blocks.lower_bound(unit_start);
+		const bool overlaps_next = it != blocks.end() && it->first < unit_end;
+		const bool overlaps_prev =
+		    it != blocks.begin() && std::prev(it)->first + std::prev(it)->second->size > unit_start;
+		if (!overlaps_next && !overlaps_prev) {
+			blocks.emplace_hint(
+			    it, unit_start,
+			    make_shared_ptr<CacheBlock>(unit_start, unit_end - unit_start, cached_file.content_generation));
+		}
+		unit_start = unit_end;
+	}
+}
+
 static idx_t GapBlockCount(idx_t nr_bytes, idx_t max_block_size) {
 	return (nr_bytes + max_block_size - 1) / max_block_size;
 }
 
 vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cached_file, idx_t location, idx_t nr_bytes,
-                                                                idx_t max_block_size) {
+                                                                idx_t max_block_size, const FileLayout &layout) {
 	D_ASSERT(nr_bytes > 0);
 	D_ASSERT(max_block_size > 0);
 	const idx_t end = location + nr_bytes;
@@ -145,6 +167,9 @@ vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cach
 	const annotated_lock_guard<annotated_mutex> map_guard(cached_file.map_lock);
 	auto &blocks = cached_file.blocks;
 	const idx_t generation = cached_file.content_generation;
+	if (layout.stride > 0) {
+		AddLayoutBlocks(cached_file, layout, location, end);
+	}
 	// start at the block that covers `location`, if any
 	auto it = blocks.upper_bound(location);
 	if (it != blocks.begin()) {
@@ -247,6 +272,17 @@ shared_ptr<CacheBlock> ExternalFileCache::FindCoveringBlock(CachedFile &cached_f
 		return nullptr;
 	}
 	return block;
+}
+
+void ExternalFileCache::SetLayout(CachedFile &cached_file, idx_t offset, idx_t stride) {
+	const annotated_lock_guard<annotated_mutex> map_guard(cached_file.map_lock);
+	cached_file.layout.offset = offset;
+	cached_file.layout.stride = stride;
+}
+
+FileLayout ExternalFileCache::GetLayout(CachedFile &cached_file) {
+	const annotated_lock_guard<annotated_mutex> map_guard(cached_file.map_lock);
+	return cached_file.layout;
 }
 
 void ExternalFileCache::DropBlocks(CachedFile &cached_file) {
