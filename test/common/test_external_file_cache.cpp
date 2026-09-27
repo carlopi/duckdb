@@ -1441,4 +1441,51 @@ TEST_CASE("Fetches do not bridge large gaps to wanted blocks", "[external_file_c
 	REQUIRE(recording_fs->TakeReads() == vector<pair<idx_t, idx_t>> {{15000, 5000}});
 }
 
+TEST_CASE("Large reads of remote files are split at the request size", "[external_file_cache]") {
+	DuckDB db = MakeCacheLocalFilesDB();
+	auto &db_instance = *db.instance;
+	auto remote_fs = make_uniq<RemotePathFileSystem>();
+
+	Connection con(db);
+	con.Query("SET external_file_cache_remote_max_block_size=16384");
+	con.Query("SET external_file_cache_remote_max_request_size=65536");
+	const idx_t REQUEST_SIZE = 65536;
+	const idx_t FILE_SIZE = 200000;
+	auto content = MakeTestContent(FILE_SIZE);
+	EFCTestFileGuard test_file("test_efc_request_size.bin", content);
+
+	CachingFileSystem cfs(*remote_fs, db_instance);
+	auto handle =
+	    OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(REMOTE_PREFIX + test_file.GetPath()), ReaderSizedFlags()));
+	remote_fs->TakeReads();
+
+	REQUIRE(ReadFull(*handle, FILE_SIZE) == content);
+	REQUIRE(remote_fs->TakeReads() == vector<pair<idx_t, idx_t>> {{0, REQUEST_SIZE},
+	                                                              {REQUEST_SIZE, REQUEST_SIZE},
+	                                                              {2 * REQUEST_SIZE, REQUEST_SIZE},
+	                                                              {3 * REQUEST_SIZE, FILE_SIZE - 3 * REQUEST_SIZE}});
+}
+
+TEST_CASE("Remote files larger than the block size are not fetched whole", "[external_file_cache]") {
+	DuckDB db = MakeCacheLocalFilesDB();
+	auto &db_instance = *db.instance;
+	auto remote_fs = make_uniq<RemotePathFileSystem>();
+
+	Connection con(db);
+	con.Query("SET external_file_cache_remote_max_block_size=16384");
+	con.Query("SET external_file_cache_remote_max_request_size=65536");
+	// larger than the block size, smaller than the request size
+	const idx_t FILE_SIZE = 50000;
+	auto content = MakeTestContent(FILE_SIZE);
+	EFCTestFileGuard test_file("test_efc_request_size_whole.bin", content);
+
+	CachingFileSystem cfs(*remote_fs, db_instance);
+	auto handle =
+	    OpenReaderSized(cfs.OpenFile(MakeTestOpenFileInfo(REMOTE_PREFIX + test_file.GetPath()), ReaderSizedFlags()));
+	remote_fs->TakeReads();
+
+	REQUIRE(ReadFull(*handle, 5000, 20000) == content.substr(20000, 5000));
+	REQUIRE(remote_fs->TakeReads() == vector<pair<idx_t, idx_t>> {{20000, 5000}});
+}
+
 } // namespace duckdb

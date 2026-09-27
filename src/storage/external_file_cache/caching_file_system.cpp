@@ -55,10 +55,10 @@ class FetchBlockTask : public BaseExecutorTask {
 public:
 	FetchBlockTask(CachingFileHandle &caching_file_handle_p, TaskExecutor &executor, QueryContext context_p,
 	               ExternalFileCache &external_file_cache_p, ExternalFileCache::CachedFile &cached_file_p,
-	               idx_t max_block_size_p, shared_ptr<CacheBlock> &block_p, BufferHandle &result_pin_p,
+	               idx_t max_request_size_p, shared_ptr<CacheBlock> &block_p, BufferHandle &result_pin_p,
 	               atomic<bool> &restart_p)
 	    : BaseExecutorTask(executor), caching_file_handle(caching_file_handle_p), context(context_p),
-	      external_file_cache(external_file_cache_p), cached_file(cached_file_p), max_block_size(max_block_size_p),
+	      external_file_cache(external_file_cache_p), cached_file(cached_file_p), max_request_size(max_request_size_p),
 	      buffer_manager(external_file_cache_p.GetBufferManager()), block(block_p), result_pin(result_pin_p),
 	      restart(restart_p) {
 	}
@@ -78,7 +78,7 @@ public:
 				}
 				break;
 			case PinResult::UNFETCHED: {
-				auto claimed = external_file_cache.ClaimBlock(cached_file, block, max_block_size);
+				auto claimed = external_file_cache.ClaimBlock(cached_file, block, max_request_size);
 				if (!claimed) {
 					// claimed or superseded by someone else in the meantime
 					break;
@@ -168,7 +168,7 @@ private:
 	QueryContext context;
 	ExternalFileCache &external_file_cache;
 	ExternalFileCache::CachedFile &cached_file;
-	idx_t max_block_size;
+	idx_t max_request_size;
 	BufferManager &buffer_manager;
 	//! The block this read uses for its range, updated when it is superseded
 	shared_ptr<CacheBlock> &block;
@@ -405,7 +405,8 @@ WantedBlocks CachingFileHandle::Want(idx_t nr_bytes, idx_t location) {
 	nr_bytes = MinValue(nr_bytes, file_size - location);
 	auto current_cached_file = EnsureCachedFileCurrent();
 	const idx_t max_block_size = external_file_cache.GetCacheBlockSize(current_cached_file->path);
-	return external_file_cache.WantBlocks(*current_cached_file, location, nr_bytes, max_block_size,
+	const idx_t max_request_size = external_file_cache.GetCacheRequestSize(current_cached_file->path);
+	return external_file_cache.WantBlocks(*current_cached_file, location, nr_bytes, max_request_size,
 	                                      external_file_cache.GetLayout(*current_cached_file, max_block_size));
 }
 
@@ -424,6 +425,7 @@ FileBufferHandleGroup CachingFileHandle::Read(const idx_t nr_bytes, const idx_t 
 
 	auto current_cached_file = EnsureCachedFileCurrent();
 	const idx_t max_block_size = external_file_cache.GetCacheBlockSize(current_cached_file->path);
+	const idx_t max_request_size = external_file_cache.GetCacheRequestSize(current_cached_file->path);
 	idx_t fetch_location;
 	idx_t fetch_end;
 	FileLayout layout;
@@ -433,7 +435,7 @@ FileBufferHandleGroup CachingFileHandle::Read(const idx_t nr_bytes, const idx_t 
 	for (idx_t attempt = 0; attempt < MAX_READ_ATTEMPTS; attempt++) {
 		const auto blocks =
 		    external_file_cache.AcquireBlocks(*current_cached_file, fetch_location, fetch_end - fetch_location,
-		                                      max_block_size, layout, location, location + nr_bytes);
+		                                      max_block_size, layout, location, location + nr_bytes, max_request_size);
 		const idx_t num_blocks = blocks.size();
 
 		// Schedule block fetch tasks for all blocks.
@@ -444,7 +446,7 @@ FileBufferHandleGroup CachingFileHandle::Read(const idx_t nr_bytes, const idx_t 
 		TaskExecutor executor(scheduler, TaskSchedulerType::ASYNC);
 		for (idx_t idx = 0; idx < num_blocks; idx++) {
 			executor.ScheduleTask(make_uniq<FetchBlockTask>(*this, executor, context, external_file_cache,
-			                                                *current_cached_file, max_block_size, sources[idx],
+			                                                *current_cached_file, max_request_size, sources[idx],
 			                                                pins[idx], restart));
 		}
 		executor.WorkOnTasks();

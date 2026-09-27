@@ -682,6 +682,10 @@ void ExternalFileCacheRemoteMinBlockSizeSetting::OnSet(SettingCallbackInfo &info
 	ValidateExternalFileCacheBlockSize(Name, input);
 }
 
+void ExternalFileCacheRemoteMaxRequestSizeSetting::OnSet(SettingCallbackInfo &info, Value &input) {
+	ValidateExternalFileCacheBlockSize(Name, input);
+}
+
 //===----------------------------------------------------------------------===//
 // Enable Logging
 //===----------------------------------------------------------------------===//

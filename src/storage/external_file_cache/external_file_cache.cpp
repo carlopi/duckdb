@@ -73,6 +73,15 @@ idx_t ExternalFileCache::GetCacheBlockSize(const string &path) const {
 	return Settings::Get<ExternalFileCacheLocalMaxBlockSizeSetting>(db);
 }
 
+idx_t ExternalFileCache::GetCacheRequestSize(const string &path) const {
+	const idx_t block_size = GetCacheBlockSize(path);
+	if (!FileSystem::IsRemoteFile(path)) {
+		return block_size;
+	}
+	auto &db = buffer_manager.GetDatabase();
+	return MaxValue(block_size, Settings::Get<ExternalFileCacheRemoteMaxRequestSizeSetting>(db));
+}
+
 idx_t ExternalFileCache::GetCacheMinBlockSize(const string &path) const {
 	if (!FileSystem::IsRemoteFile(path)) {
 		return 1;
@@ -156,9 +165,13 @@ static idx_t GapBlockCount(idx_t nr_bytes, idx_t max_block_size) {
 
 vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cached_file, idx_t location, idx_t nr_bytes,
                                                                 idx_t max_block_size, const FileLayout &layout,
-                                                                idx_t required_start, idx_t required_end) {
+                                                                idx_t required_start, idx_t required_end,
+                                                                idx_t max_request_size) {
 	D_ASSERT(nr_bytes > 0);
 	D_ASSERT(max_block_size > 0);
+	if (max_request_size < max_block_size) {
+		max_request_size = max_block_size;
+	}
 	const idx_t end = location + nr_bytes;
 	// smaller cached blocks between two gaps are re-fetched with them when that saves a request
 	const idx_t absorb_size = max_block_size / 8;
@@ -244,8 +257,8 @@ vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cach
 			}
 			const idx_t gap_before = run_end - run_start;
 			const idx_t gap_after = next_gap_end - block_end;
-			if (GapBlockCount(gap_before + block.size + gap_after, max_block_size) >=
-			    GapBlockCount(gap_before, max_block_size) + GapBlockCount(gap_after, max_block_size)) {
+			if (GapBlockCount(gap_before + block.size + gap_after, max_request_size) >=
+			    GapBlockCount(gap_before, max_request_size) + GapBlockCount(gap_after, max_request_size)) {
 				break;
 			}
 			if (!TrySupersedeLoaded(block)) {
@@ -253,10 +266,10 @@ vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cach
 			}
 			include_block(blocks);
 		}
-		// split the run at the block size, never inside a superseded block
+		// split the run at the request size, never inside a superseded block
 		idx_t block_start = run_start;
 		while (block_start < run_end) {
-			idx_t cut = MinValue(block_start + max_block_size, run_end);
+			idx_t cut = MinValue(block_start + max_request_size, run_end);
 			for (auto &range : superseded) {
 				if (range.first < cut && cut < range.second) {
 					cut = range.first > block_start ? range.first : range.second;
@@ -279,9 +292,9 @@ vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cach
 }
 
 WantedBlocks ExternalFileCache::WantBlocks(CachedFile &cached_file, idx_t location, idx_t nr_bytes,
-                                           idx_t max_block_size, const FileLayout &layout) {
+                                           idx_t max_request_size, const FileLayout &layout) {
 	D_ASSERT(nr_bytes > 0);
-	D_ASSERT(max_block_size > 0);
+	D_ASSERT(max_request_size > 0);
 	const idx_t end = location + nr_bytes;
 
 	const annotated_lock_guard<annotated_mutex> map_guard(cached_file.map_lock);
@@ -310,7 +323,7 @@ WantedBlocks ExternalFileCache::WantBlocks(CachedFile &cached_file, idx_t locati
 		// empty blocks for the missing bytes up to the next block
 		const idx_t gap_end = it == blocks.end() ? end : MinValue(end, it->first);
 		while (pos < gap_end) {
-			const idx_t size = MinValue(gap_end - pos, max_block_size);
+			const idx_t size = MinValue(gap_end - pos, max_request_size);
 			auto block = make_shared_ptr<CacheBlock>(pos, size, generation);
 			blocks.emplace_hint(it, pos, block);
 			result.push_back(std::move(block));
@@ -385,7 +398,7 @@ struct ClaimExtension {
 static constexpr idx_t MAX_BRIDGED_BYTES = 16384;
 
 shared_ptr<CacheBlock> ExternalFileCache::ClaimBlock(CachedFile &cached_file, const shared_ptr<CacheBlock> &block,
-                                                     idx_t max_block_size) {
+                                                     idx_t max_request_size) {
 	const annotated_lock_guard<annotated_mutex> map_guard(cached_file.map_lock);
 	auto &blocks = cached_file.blocks;
 	auto it = blocks.find(block->location);
@@ -410,7 +423,7 @@ shared_ptr<CacheBlock> ExternalFileCache::ClaimBlock(CachedFile &cached_file, co
 			auto &candidate = *cur->second;
 			const idx_t candidate_end = cur->first + candidate.size;
 			result.bridged_bytes += cur->first - pos;
-			if (result.bridged_bytes > MAX_BRIDGED_BYTES || candidate_end - start > max_block_size ||
+			if (result.bridged_bytes > MAX_BRIDGED_BYTES || candidate_end - start > max_request_size ||
 			    !IsUnfetched(candidate)) {
 				return false;
 			}
@@ -430,7 +443,7 @@ shared_ptr<CacheBlock> ExternalFileCache::ClaimBlock(CachedFile &cached_file, co
 			auto &candidate = *cur->second;
 			const idx_t candidate_end = cur->first + candidate.size;
 			result.bridged_bytes += pos - candidate_end;
-			if (result.bridged_bytes > MAX_BRIDGED_BYTES || end - cur->first > max_block_size ||
+			if (result.bridged_bytes > MAX_BRIDGED_BYTES || end - cur->first > max_request_size ||
 			    !IsUnfetched(candidate)) {
 				return false;
 			}
