@@ -53,12 +53,34 @@ struct CacheValidationInfo {
 	idx_t file_size = 0;
 };
 
+//! Blocks a read will read, marked as wanted until the read releases them.
+class WantedBlocks {
+public:
+	WantedBlocks() = default;
+	explicit WantedBlocks(vector<shared_ptr<CacheBlock>> blocks);
+	~WantedBlocks();
+	WantedBlocks(const WantedBlocks &) = delete;
+	WantedBlocks &operator=(const WantedBlocks &) = delete;
+	WantedBlocks(WantedBlocks &&other) noexcept;
+	WantedBlocks &operator=(WantedBlocks &&other) noexcept;
+
+	void Release();
+	const vector<shared_ptr<CacheBlock>> &GetBlocks() const {
+		return blocks;
+	}
+
+private:
+	vector<shared_ptr<CacheBlock>> blocks;
+};
+
 class ExternalFileCache {
 public:
 	//! Get the maximum cache block size for a given file path.
 	DUCKDB_API idx_t GetCacheBlockSize(const string &path) const;
 	//! Get the size that smaller reads of a given file path are widened to.
 	DUCKDB_API idx_t GetCacheMinBlockSize(const string &path) const;
+	//! Get the maximum size of a single request to a given file path, at least its block size.
+	DUCKDB_API idx_t GetCacheRequestSize(const string &path) const;
 	//! Whether reads of the given file should go through the cache (remote files only, unless forced).
 	DUCKDB_API bool ShouldCacheFile(const string &path) const;
 
@@ -98,9 +120,15 @@ public:
 	//! Number of files tracked in the ObjectCache, exposed for testing.
 	idx_t GetCachedFileCount() const;
 
-	//! Get the blocks covering [location, location + nr_bytes), creating empty blocks for the missing bytes.
-	vector<shared_ptr<CacheBlock>> AcquireBlocks(CachedFile &cached_file, idx_t location, idx_t nr_bytes,
-	                                             idx_t max_block_size);
+	//! Get the blocks covering [location, location + nr_bytes), creating empty blocks of at most the block size for the
+	//! missing bytes. The blocks are marked as wanted until the result is released.
+	WantedBlocks AcquireBlocks(CachedFile &cached_file, idx_t location, idx_t nr_bytes, idx_t max_block_size);
+	//! Claim an unfetched block for fetching. The block and the wanted unfetched blocks next to it are replaced by one
+	//! loading block of at most the request size, owned by the caller. Returns nullptr if the block cannot be claimed.
+	shared_ptr<CacheBlock> ClaimBlock(CachedFile &cached_file, const shared_ptr<CacheBlock> &block,
+	                                  idx_t max_request_size);
+	//! Get the block that replaced a superseded block, or nullptr if the blocks of the file were dropped since.
+	shared_ptr<CacheBlock> FindCoveringBlock(CachedFile &cached_file, const CacheBlock &superseded);
 	//! Drop all blocks of a file, e.g. because the file changed. Readers keep the blocks they hold.
 	void DropBlocks(CachedFile &cached_file);
 	idx_t GetContentGeneration(CachedFile &cached_file);

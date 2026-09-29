@@ -272,35 +272,32 @@ TEST_CASE("A read spanning cached ranges only fetches the gaps between them", "[
 	REQUIRE(TotalCachedBytes(cache) == FILE_SIZE);
 }
 
-TEST_CASE("Small cached ranges between gaps are fetched with the gaps", "[external_file_cache]") {
+TEST_CASE("Small cached ranges between gaps are kept", "[external_file_cache]") {
 	DuckDB db = MakeCacheLocalFilesDB();
 	auto &db_instance = *db.instance;
 	auto recording_fs = make_uniq<ReadRecordingFileSystem>();
 
 	const idx_t BLOCK_SIZE = 65536;
-	const idx_t ABSORB_SIZE = BLOCK_SIZE / 8;
 	Connection con(db);
 	con.Query(StringUtil::Format("SET external_file_cache_local_max_block_size=%llu", BLOCK_SIZE));
 
 	const idx_t FILE_SIZE = 100000;
 	auto content = MakeTestContent(FILE_SIZE);
-	EFCTestFileGuard test_file("test_efc_absorb.bin", content);
+	EFCTestFileGuard test_file("test_efc_keep_small.bin", content);
 
 	CachingFileSystem cfs(*recording_fs, db_instance);
 	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(test_file.GetPath()), ReaderSizedFlags());
 	auto &cache = db_instance.GetExternalFileCache();
 
 	REQUIRE(ReadFull(*handle, 4096, 8192) == content.substr(8192, 4096));
-	REQUIRE(ReadFull(*handle, ABSORB_SIZE, 20480) == content.substr(20480, ABSORB_SIZE));
+	REQUIRE(ReadFull(*handle, 8192, 20480) == content.substr(20480, 8192));
 	recording_fs->TakeReads();
 
-	// the 4096 byte range is fetched again with its gaps, the range of exactly ABSORB_SIZE is kept
+	// only the missing ranges are fetched, the cached ones are kept
 	REQUIRE(ReadFull(*handle, FILE_SIZE) == content);
-	const idx_t after = 20480 + ABSORB_SIZE;
 	REQUIRE(recording_fs->TakeReads() ==
 	        vector<pair<idx_t, idx_t>> {
-	            {0, 20480}, {after, BLOCK_SIZE}, {after + BLOCK_SIZE, FILE_SIZE - after - BLOCK_SIZE}});
-	REQUIRE(CountCachedBlocks(cache) == 4);
+	            {0, 8192}, {12288, 8192}, {28672, BLOCK_SIZE}, {28672 + BLOCK_SIZE, FILE_SIZE - 28672 - BLOCK_SIZE}});
 	REQUIRE(TotalCachedBytes(cache) == FILE_SIZE);
 
 	REQUIRE(ReadFull(*handle, FILE_SIZE) == content);
@@ -1088,7 +1085,8 @@ TEST_CASE("Dropping cache blocks preserves existing readers and starts a new gen
 
 	constexpr idx_t BLOCK_SIZE = 4096;
 	constexpr idx_t LOCATION = 7 * BLOCK_SIZE;
-	auto acquired = cache.AcquireBlocks(*cached_file, LOCATION, 2 * BLOCK_SIZE, BLOCK_SIZE);
+	auto acquired_blocks = cache.AcquireBlocks(*cached_file, LOCATION, 2 * BLOCK_SIZE, BLOCK_SIZE);
+	auto &acquired = acquired_blocks.GetBlocks();
 	REQUIRE(acquired.size() == 2);
 	{
 		const annotated_lock_guard<annotated_mutex> guard(acquired[0]->mtx);
@@ -1107,7 +1105,8 @@ TEST_CASE("Dropping cache blocks preserves existing readers and starts a new gen
 		REQUIRE(acquired[0]->nr_bytes == BLOCK_SIZE);
 	}
 	// Future readers receive fresh blocks
-	auto replacements = cache.AcquireBlocks(*cached_file, LOCATION, 2 * BLOCK_SIZE, BLOCK_SIZE);
+	auto replacement_blocks = cache.AcquireBlocks(*cached_file, LOCATION, 2 * BLOCK_SIZE, BLOCK_SIZE);
+	auto &replacements = replacement_blocks.GetBlocks();
 	REQUIRE(replacements.size() == 2);
 	REQUIRE(replacements[0] != acquired[0]);
 	REQUIRE(replacements[1] != acquired[1]);
@@ -1157,6 +1156,85 @@ TEST_CASE("Request sizing can make every read cover exactly the requested bytes"
 
 	REQUIRE(ReadFull(*handle, 100, BLOCK_SIZE + 10) == content.substr(BLOCK_SIZE + 10, 100));
 	REQUIRE(recording_fs->TakeReads() == vector<pair<idx_t, idx_t>> {{BLOCK_SIZE + 10, 100}});
+}
+
+TEST_CASE("Blocks read together are fetched with requests of up to the request size", "[external_file_cache]") {
+	DuckDB db = MakeCacheLocalFilesDB();
+	auto &db_instance = *db.instance;
+	auto remote_fs = make_uniq<RemotePathFileSystem>();
+
+	Connection con(db);
+	con.Query("SET external_file_cache_remote_max_block_size=16384");
+	con.Query("SET external_file_cache_remote_max_request_size=65536");
+	const idx_t BLOCK_SIZE = 16384;
+	const idx_t REQUEST_SIZE = 65536;
+	const idx_t FILE_SIZE = 200000;
+	auto content = MakeTestContent(FILE_SIZE);
+	EFCTestFileGuard test_file("test_efc_request_size.bin", content);
+
+	CachingFileSystem cfs(*remote_fs, db_instance);
+	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(REMOTE_PREFIX + test_file.GetPath()), FileFlags::FILE_FLAGS_READ);
+	remote_fs->TakeReads();
+
+	REQUIRE(ReadFull(*handle, FILE_SIZE) == content);
+	// which block claims first decides how blocks are grouped: check the requests cover the file once, and merge
+	auto reads = remote_fs->TakeReads();
+	const idx_t block_count = (FILE_SIZE + BLOCK_SIZE - 1) / BLOCK_SIZE;
+	REQUIRE(reads.size() < block_count);
+	idx_t position = 0;
+	for (auto &read : reads) {
+		REQUIRE(read.first == position);
+		REQUIRE(read.second <= REQUEST_SIZE);
+		REQUIRE(read.first % BLOCK_SIZE == 0);
+		position += read.second;
+	}
+	REQUIRE(position == FILE_SIZE);
+
+	REQUIRE(ReadFull(*handle, FILE_SIZE) == content);
+	REQUIRE(remote_fs->TakeReads().empty());
+}
+
+TEST_CASE("Blocks wanted by other reads are merged into a fetch and superseded", "[external_file_cache]") {
+	DuckDB db = MakeCacheLocalFilesDB();
+	auto &db_instance = *db.instance;
+	auto remote_fs = make_uniq<RemotePathFileSystem>();
+
+	Connection con(db);
+	con.Query("SET external_file_cache_remote_max_block_size=16384");
+	con.Query("SET external_file_cache_remote_max_request_size=65536");
+	const idx_t BLOCK_SIZE = 16384;
+	const idx_t FILE_SIZE = 8 * BLOCK_SIZE;
+	auto content = MakeTestContent(FILE_SIZE);
+	EFCTestFileGuard test_file("test_efc_superseded.bin", content);
+
+	CachingFileSystem cfs(*remote_fs, db_instance);
+	auto path = REMOTE_PREFIX + test_file.GetPath();
+	auto handle = cfs.OpenFile(MakeTestOpenFileInfo(path), FileFlags::FILE_FLAGS_READ);
+	auto &cache = db_instance.GetExternalFileCache();
+	auto cached_file = cache.GetOrCreateCachedFile(path);
+	remote_fs->TakeReads();
+
+	// another read holds the next two blocks and has not fetched them yet
+	auto held = cache.AcquireBlocks(*cached_file, BLOCK_SIZE, 2 * BLOCK_SIZE, BLOCK_SIZE);
+	REQUIRE(held.GetBlocks().size() == 2);
+
+	// fetching the first block includes them in its request
+	REQUIRE(ReadFull(*handle, 100, 0) == content.substr(0, 100));
+	REQUIRE(remote_fs->TakeReads() == vector<pair<idx_t, idx_t>> {{0, 3 * BLOCK_SIZE}});
+	for (auto &block : held.GetBlocks()) {
+		{
+			const annotated_lock_guard<annotated_mutex> guard(block->mtx);
+			REQUIRE(block->state == CacheBlockState::SUPERSEDED);
+		}
+		auto covering = cache.FindCoveringBlock(*cached_file, *block);
+		REQUIRE(covering);
+		REQUIRE(covering->location == 0);
+		REQUIRE(covering->size == 3 * BLOCK_SIZE);
+	}
+
+	// their bytes are read from the block that covers them
+	REQUIRE(ReadFull(*handle, BLOCK_SIZE, 2 * BLOCK_SIZE) == content.substr(2 * BLOCK_SIZE, BLOCK_SIZE));
+	REQUIRE(remote_fs->TakeReads().empty());
 }
 
 } // namespace duckdb

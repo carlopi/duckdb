@@ -177,6 +177,7 @@ static const ConfigurationOption internal_options[] = {
     DUCKDB_SETTING_CALLBACK(ExtensionRepositoryDirectorySetting),
     DUCKDB_SETTING_CALLBACK(ExternalFileCacheLocalMaxBlockSizeSetting),
     DUCKDB_SETTING_CALLBACK(ExternalFileCacheRemoteMaxBlockSizeSetting),
+    DUCKDB_SETTING_CALLBACK(ExternalFileCacheRemoteMaxRequestSizeSetting),
     DUCKDB_SETTING_CALLBACK(ExternalFileCacheRemoteMinBlockSizeSetting),
     DUCKDB_SETTING_CALLBACK(ExternalFileCacheRequestSizingSetting),
     DUCKDB_SETTING(ExternalFileCacheSpillSetting),

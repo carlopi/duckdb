@@ -20,7 +20,9 @@ enum class CacheBlockState : uint8_t {
 	// Data is already available in block_handle.
 	LOADED,
 	// I/O failed.
-	IO_ERROR
+	IO_ERROR,
+	// Merged into a block of the same generation that covers its whole range, and removed from the cache.
+	SUPERSEDED
 };
 
 } // namespace duckdb

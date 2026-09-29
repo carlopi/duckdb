@@ -927,6 +927,19 @@
         ]
     },
     {
+        "name": "external_file_cache_remote_max_request_size",
+        "description": "Maximum size in bytes of a single request to a remote file (e.g. HTTP/S3). Neighbouring blocks that are read together are fetched with one request up to this size.",
+        "type": "UBIGINT",
+        "default_scope": "global",
+        "default_value": "8388608",
+        "custom_implementation": [
+            "set"
+        ],
+        "on_callbacks": [
+            "set"
+        ]
+    },
+    {
         "name": "external_file_cache_remote_min_block_size",
         "description": "Reads of remote files smaller than this are widened to aligned blocks of this size, so tiny reads do not each cost a request.",
         "type": "UBIGINT",

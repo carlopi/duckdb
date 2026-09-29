@@ -1514,6 +1514,21 @@ struct ExternalFileCacheRemoteMaxBlockSizeSetting {
 	static void OnSet(SettingCallbackInfo &info, Value &input);
 };
 
+struct ExternalFileCacheRemoteMaxRequestSizeSetting {
+	using RETURN_TYPE = idx_t;
+	static constexpr const char *Name = "external_file_cache_remote_max_request_size";
+	static constexpr const char *Description =
+	    "Maximum size in bytes of a single request to a remote file (e.g. HTTP/S3). Neighbouring blocks that are read "
+	    "together are fetched with one request up to this size.";
+	static constexpr const char *InputType = "UBIGINT";
+	static constexpr bool IsDebug = false;
+	static constexpr bool IsDeprecated = false;
+	static constexpr const char *DefaultValue = "8388608";
+	static constexpr SettingScopeTarget Scope = SettingScopeTarget::GLOBAL_DEFAULT;
+	static constexpr idx_t SettingIndex = NEXT_SETTING_INDEX();
+	static void OnSet(SettingCallbackInfo &info, Value &input);
+};
+
 struct ExternalFileCacheRemoteMinBlockSizeSetting {
 	using RETURN_TYPE = idx_t;
 	static constexpr const char *Name = "external_file_cache_remote_min_block_size";

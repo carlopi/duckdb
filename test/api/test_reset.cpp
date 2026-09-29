@@ -141,6 +141,7 @@ OptionValueSet GetValueForOption(const string &name, const LogicalType &type) {
 	    {"enable_external_file_cache", {false}},
 	    {"external_file_cache_local_max_block_size", {Value::UBIGINT(4096)}},
 	    {"external_file_cache_remote_max_block_size", {Value::UBIGINT(4096)}},
+	    {"external_file_cache_remote_max_request_size", {Value::UBIGINT(16384)}},
 	    {"external_file_cache_remote_min_block_size", {Value::UBIGINT(8192)}},
 	    {"external_file_cache_request_sizing", {"GRID"}},
 	    {"validate_external_file_cache", {"NO_VALIDATION"}},

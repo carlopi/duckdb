@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "duckdb/common/atomic.hpp"
 #include "duckdb/common/mutex.hpp"
 #include "duckdb/common/shared_ptr.hpp"
 #include "duckdb/common/thread_annotation.hpp"
@@ -22,11 +23,16 @@ namespace duckdb {
 class BlockHandle;
 
 struct CacheBlock {
-	CacheBlock(idx_t location_p, idx_t size_p) : location(location_p), size(size_p) {
+	CacheBlock(idx_t location_p, idx_t size_p, idx_t generation_p)
+	    : location(location_p), size(size_p), generation(generation_p) {
 	}
 
 	const idx_t location;
 	const idx_t size;
+	//! Content generation of the cached file this block was created in.
+	const idx_t generation;
+	//! Number of reads that will read this block. Fetches of unfetched neighbours include it while it is wanted.
+	atomic<idx_t> wanted {0};
 
 	mutable annotated_mutex mtx;
 	mutable std::condition_variable cv DUCKDB_GUARDED_BY(mtx);

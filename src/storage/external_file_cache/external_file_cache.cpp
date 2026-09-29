@@ -73,6 +73,15 @@ idx_t ExternalFileCache::GetCacheBlockSize(const string &path) const {
 	return Settings::Get<ExternalFileCacheLocalMaxBlockSizeSetting>(db);
 }
 
+idx_t ExternalFileCache::GetCacheRequestSize(const string &path) const {
+	const idx_t block_size = GetCacheBlockSize(path);
+	if (!FileSystem::IsRemoteFile(path)) {
+		return block_size;
+	}
+	auto &db = buffer_manager.GetDatabase();
+	return MaxValue(block_size, Settings::Get<ExternalFileCacheRemoteMaxRequestSizeSetting>(db));
+}
+
 idx_t ExternalFileCache::GetCacheMinBlockSize(const string &path) const {
 	if (!FileSystem::IsRemoteFile(path)) {
 		return 1;
@@ -90,31 +99,37 @@ bool ExternalFileCache::ShouldCacheFile(const string &path) const {
 	return Settings::Get<CacheLocalFilesSetting>(db);
 }
 
-static bool IsDroppedBlock(CacheBlock &block) {
-	const annotated_lock_guard<annotated_mutex> block_guard(block.mtx);
-	if (block.state != CacheBlockState::LOADED || !block.block_handle) {
+//! Whether a block has no bytes and nobody is fetching it: empty, failed, or loaded but evicted.
+static bool IsUnfetched(CacheBlock &block) DUCKDB_REQUIRES(block.mtx) {
+	switch (block.state) {
+	case CacheBlockState::EMPTY:
+	case CacheBlockState::IO_ERROR:
+		return true;
+	case CacheBlockState::LOADED: {
+		if (!block.block_handle) {
+			return false;
+		}
+		auto &memory = block.block_handle->GetMemory();
+		return memory.IsUnloaded() && !memory.MustWriteToTemporaryFile();
+	}
+	default:
 		return false;
 	}
-	auto &memory = block.block_handle->GetMemory();
-	return memory.IsUnloaded() && !memory.MustWriteToTemporaryFile();
 }
 
-static bool IsLoadedBlock(CacheBlock &block) {
-	const annotated_lock_guard<annotated_mutex> block_guard(block.mtx);
-	return block.state == CacheBlockState::LOADED;
+static bool IsWantedUnfetched(CacheBlock &block) {
+	if (block.wanted == 0) {
+		return false;
+	}
+	const annotated_lock_guard<annotated_mutex> guard(block.mtx);
+	return IsUnfetched(block);
 }
 
-static idx_t GapBlockCount(idx_t nr_bytes, idx_t max_block_size) {
-	return (nr_bytes + max_block_size - 1) / max_block_size;
-}
-
-vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cached_file, idx_t location, idx_t nr_bytes,
-                                                                idx_t max_block_size) {
+WantedBlocks ExternalFileCache::AcquireBlocks(CachedFile &cached_file, idx_t location, idx_t nr_bytes,
+                                              idx_t max_block_size) {
 	D_ASSERT(nr_bytes > 0);
 	D_ASSERT(max_block_size > 0);
 	const idx_t end = location + nr_bytes;
-	// smaller cached blocks between two gaps are re-fetched with them when that saves a request
-	const idx_t absorb_size = max_block_size / 8;
 
 	const annotated_lock_guard<annotated_mutex> map_guard(cached_file.map_lock);
 	auto &blocks = cached_file.blocks;
@@ -131,42 +146,140 @@ vector<shared_ptr<CacheBlock>> ExternalFileCache::AcquireBlocks(CachedFile &cach
 	idx_t pos = location;
 	while (pos < end) {
 		if (it != blocks.end() && it->first <= pos) {
-			if (!IsDroppedBlock(*it->second)) {
-				result.push_back(it->second);
-				pos = it->first + it->second->size;
-				++it;
-				continue;
-			}
-			// re-fetch a dropped block only as far as this read needs it
-			it = blocks.erase(it);
+			result.push_back(it->second);
+			pos = it->first + it->second->size;
+			++it;
+			continue;
 		}
-		// create blocks for the missing bytes up to the next cached block
-		idx_t gap_end = it == blocks.end() ? end : MinValue(end, it->first);
-		while (it != blocks.end() && it->first < end && it->second->size < absorb_size && IsLoadedBlock(*it->second)) {
-			const idx_t block_end = it->first + it->second->size;
-			const auto next = std::next(it);
-			const idx_t next_gap_end = next == blocks.end() ? end : MinValue(end, next->first);
-			if (block_end >= next_gap_end) {
-				break;
-			}
-			const idx_t gap_before = gap_end - pos;
-			const idx_t gap_after = next_gap_end - block_end;
-			if (GapBlockCount(gap_before + it->second->size + gap_after, max_block_size) >=
-			    GapBlockCount(gap_before, max_block_size) + GapBlockCount(gap_after, max_block_size)) {
-				break;
-			}
-			it = blocks.erase(it);
-			gap_end = next_gap_end;
-		}
+		// create blocks for the missing bytes up to the next cached block, fetches merge them up to the request size
+		const idx_t gap_end = it == blocks.end() ? end : MinValue(end, it->first);
 		while (pos < gap_end) {
 			const idx_t size = MinValue(gap_end - pos, max_block_size);
-			auto block = make_shared_ptr<CacheBlock>(pos, size);
+			auto block = make_shared_ptr<CacheBlock>(pos, size, cached_file.content_generation);
 			blocks.emplace_hint(it, pos, block);
 			result.push_back(std::move(block));
 			pos += size;
 		}
 	}
-	return result;
+	for (auto &block : result) {
+		block->wanted++;
+	}
+	return WantedBlocks(std::move(result));
+}
+
+shared_ptr<CacheBlock> ExternalFileCache::ClaimBlock(CachedFile &cached_file, const shared_ptr<CacheBlock> &block,
+                                                     idx_t max_request_size) {
+	const annotated_lock_guard<annotated_mutex> map_guard(cached_file.map_lock);
+	auto &blocks = cached_file.blocks;
+	auto it = blocks.find(block->location);
+	if (it == blocks.end() || it->second != block) {
+		// the blocks of the file were dropped: the block is fetched on its own
+		const annotated_lock_guard<annotated_mutex> guard(block->mtx);
+		if (!IsUnfetched(*block)) {
+			return nullptr;
+		}
+		block->state = CacheBlockState::LOADING;
+		return block;
+	}
+	{
+		const annotated_lock_guard<annotated_mutex> guard(block->mtx);
+		if (!IsUnfetched(*block)) {
+			return nullptr;
+		}
+	}
+	// grow towards the wanted unfetched blocks right next to the claimed range, up to the request size
+	idx_t start = block->location;
+	idx_t end = block->location + block->size;
+	auto leftmost = it;
+	auto rightmost = it;
+	while (true) {
+		auto next = std::next(rightmost);
+		if (next != blocks.end() && next->first == end &&
+		    next->first + next->second->size - start <= max_request_size && IsWantedUnfetched(*next->second)) {
+			rightmost = next;
+			end = next->first + next->second->size;
+			continue;
+		}
+		if (leftmost != blocks.begin()) {
+			auto prev = std::prev(leftmost);
+			if (prev->first + prev->second->size == start && end - prev->first <= max_request_size &&
+			    IsWantedUnfetched(*prev->second)) {
+				leftmost = prev;
+				start = prev->first;
+				continue;
+			}
+		}
+		break;
+	}
+	if (leftmost == rightmost) {
+		const annotated_lock_guard<annotated_mutex> guard(block->mtx);
+		block->state = CacheBlockState::LOADING;
+		return block;
+	}
+	// supersede the merged blocks by one loading block that covers them all
+	auto claimed = make_shared_ptr<CacheBlock>(start, end - start, cached_file.content_generation);
+	{
+		const annotated_lock_guard<annotated_mutex> guard(claimed->mtx);
+		claimed->state = CacheBlockState::LOADING;
+	}
+	const auto stop = std::next(rightmost);
+	for (auto entry = leftmost; entry != stop;) {
+		auto &superseded = *entry->second;
+		{
+			const annotated_lock_guard<annotated_mutex> guard(superseded.mtx);
+			superseded.state = CacheBlockState::SUPERSEDED;
+			superseded.block_handle.reset();
+			superseded.cv.notify_all();
+		}
+		entry = blocks.erase(entry);
+	}
+	blocks.emplace(start, claimed);
+	return claimed;
+}
+
+shared_ptr<CacheBlock> ExternalFileCache::FindCoveringBlock(CachedFile &cached_file, const CacheBlock &superseded) {
+	const annotated_lock_guard<annotated_mutex> map_guard(cached_file.map_lock);
+	if (superseded.generation != cached_file.content_generation) {
+		return nullptr;
+	}
+	auto &blocks = cached_file.blocks;
+	auto it = blocks.upper_bound(superseded.location);
+	if (it == blocks.begin()) {
+		return nullptr;
+	}
+	--it;
+	auto &covering = it->second;
+	if (covering->location + covering->size < superseded.location + superseded.size) {
+		return nullptr;
+	}
+	return covering;
+}
+
+WantedBlocks::WantedBlocks(vector<shared_ptr<CacheBlock>> blocks_p) : blocks(std::move(blocks_p)) {
+}
+
+WantedBlocks::~WantedBlocks() {
+	Release();
+}
+
+WantedBlocks::WantedBlocks(WantedBlocks &&other) noexcept : blocks(std::move(other.blocks)) {
+	other.blocks.clear();
+}
+
+WantedBlocks &WantedBlocks::operator=(WantedBlocks &&other) noexcept {
+	if (this != &other) {
+		Release();
+		blocks = std::move(other.blocks);
+		other.blocks.clear();
+	}
+	return *this;
+}
+
+void WantedBlocks::Release() {
+	for (auto &block : blocks) {
+		block->wanted--;
+	}
+	blocks.clear();
 }
 
 void ExternalFileCache::DropBlocks(CachedFile &cached_file) {
