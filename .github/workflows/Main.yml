@@ -196,11 +196,11 @@ jobs:
             --runner-provider '${{ steps.runners.outputs.runner_provider }}'
 
           if [[ "${{ github.event_name }}" != "pull_request" ]]; then
-            extra_exclude_archs=
+            extra_exclude_archs="windows_amd64"
           elif [[ "${{ steps.changed.outputs.extensions_any_changed }}" == "true" ]]; then
-            extra_exclude_archs="windows_arm64;osx_amd64"
+            extra_exclude_archs="windows_amd64;windows_arm64;osx_amd64"
           else
-            extra_exclude_archs="windows_arm64;osx_amd64;wasm_eh"
+            extra_exclude_archs="windows_amd64;windows_arm64;osx_amd64;wasm_eh"
           fi
 
           echo "extra_exclude_archs=$extra_exclude_archs" >> "$GITHUB_OUTPUT"
