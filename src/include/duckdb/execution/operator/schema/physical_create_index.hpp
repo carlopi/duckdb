@@ -11,10 +11,14 @@
 #include "duckdb/execution/physical_operator.hpp"
 #include "duckdb/parser/parsed_data/create_index_info.hpp"
 #include "duckdb/storage/data_table.hpp"
+#include "duckdb/execution/index/index_type.hpp"
 
 namespace duckdb {
+class TableCatalogEntry;
+struct AlterTableInfo;
 
 class DuckTableEntry;
+class LogicalOperator;
 
 //! Physical index creation operator.
 class PhysicalCreateIndex : public PhysicalOperator {

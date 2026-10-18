@@ -12,6 +12,7 @@
 #include "duckdb/common/mutex.hpp"
 #include "duckdb/parser/parsed_data/create_sequence_info.hpp"
 #include "duckdb/parser/parsed_data/alter_table_info.hpp"
+#include "duckdb/common/optional.hpp"
 
 namespace duckdb {
 class DuckTransaction;
@@ -31,10 +32,10 @@ struct SequenceData {
 	//! The sequence counter
 	int64_t counter;
 	//! The most recently returned value
-	int64_t last_value;
+	optional<int64_t> last_value;
 	//! The increment value
 	int64_t increment;
-	//! The minimum value of the sequence
+	//! The start_value of the sequence
 	int64_t start_value;
 	//! The minimum value of the sequence
 	int64_t min_value;
@@ -42,6 +43,18 @@ struct SequenceData {
 	int64_t max_value;
 	//! Whether or not the sequence cycles
 	bool cycle;
+};
+
+//! The state of a sequence: shared by all versions of the catalog entry, so that altering the entry (e.g. setting a
+//! comment) does not fork the counter
+struct SequenceState {
+	explicit SequenceState(CreateSequenceInfo &info) : data(info) {
+	}
+
+	//! Lock for getting a value on the sequence
+	mutable mutex lock;
+	//! Sequence data
+	SequenceData data;
 };
 
 //! A sequence catalog entry
@@ -61,14 +74,15 @@ public:
 	SequenceData GetData() const;
 	int64_t CurrentValue();
 	int64_t NextValue(DuckTransaction &transaction);
-	void ReplayValue(uint64_t usage_count, int64_t counter);
+	int64_t SetValue(DuckTransaction &transaction, int64_t value, bool is_called);
+	void ReplayValue(uint64_t usage_count, int64_t counter, optional<int64_t> last_value);
+	//! Derive the last value from the counter - storage versions prior to v2.0.0 do not store it
+	void DeriveLastValue();
 
 	string ToSQL() const override;
 
 private:
-	//! Lock for getting a value on the sequence
-	mutable mutex lock;
-	//! Sequence data
-	SequenceData data;
+	//! The sequence state (shared with the other versions of this entry)
+	shared_ptr<SequenceState> state;
 };
 } // namespace duckdb

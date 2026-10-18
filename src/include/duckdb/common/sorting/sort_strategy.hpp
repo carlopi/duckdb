@@ -12,6 +12,8 @@
 
 namespace duckdb {
 
+class ParallelHyperLogLogLocalState;
+
 class SortStrategy {
 public:
 	using Types = vector<LogicalType>;
@@ -21,7 +23,8 @@ public:
 	static unique_ptr<SortStrategy> Factory(ClientContext &context, const vector<unique_ptr<Expression>> &partition_bys,
 	                                        const vector<BoundOrderByNode> &order_bys, const Types &payload_types,
 	                                        const vector<unique_ptr<BaseStatistics>> &partitions_stats,
-	                                        idx_t estimated_cardinality, bool require_payload = false);
+	                                        const OperatorPartitionInfo &partition_info, idx_t estimated_cardinality,
+	                                        bool require_payload = false);
 
 	explicit SortStrategy(const Types &input_types);
 	virtual ~SortStrategy() = default;
@@ -32,12 +35,13 @@ public:
 	//===--------------------------------------------------------------------===//
 	virtual unique_ptr<LocalSinkState> GetLocalSinkState(ExecutionContext &context) const = 0;
 	virtual unique_ptr<GlobalSinkState> GetGlobalSinkState(ClientContext &client) const = 0;
+	virtual SinkNextBatchType NextBatch(ExecutionContext &, OperatorSinkNextBatchInput &) const;
 	virtual SinkResultType Sink(ExecutionContext &context, DataChunk &chunk, OperatorSinkInput &input) const = 0;
 	virtual SinkCombineResultType Combine(ExecutionContext &context, OperatorSinkCombineInput &input) const = 0;
 	virtual SinkFinalizeType Finalize(ClientContext &client, OperatorSinkFinalizeInput &finalize) const = 0;
 	virtual ProgressData GetSinkProgress(ClientContext &context, GlobalSinkState &gstate,
 	                                     const ProgressData source_progress) const = 0;
-	virtual void Synchronize(const GlobalSinkState &source, GlobalSinkState &target) const;
+	virtual void Synchronize(ClientContext &client, const GlobalSinkState &source, GlobalSinkState &target) const;
 
 public:
 	//===--------------------------------------------------------------------===//
@@ -51,7 +55,7 @@ public:
 	//===--------------------------------------------------------------------===//
 	// Non-Standard Interface
 	//===--------------------------------------------------------------------===//
-	virtual void SortColumnData(ExecutionContext &context, hash_t hash_bin, OperatorSinkFinalizeInput &finalize);
+	virtual void SortColumnData(ExecutionContext &context, hash_t hash_bin, OperatorSinkFinalizeInput &finalize) const;
 
 	virtual SourceResultType MaterializeColumnData(ExecutionContext &context, idx_t hash_bin,
 	                                               OperatorSourceInput &source) const = 0;
@@ -69,12 +73,14 @@ public:
 	using ChunkRows = vector<ChunkRow>;
 	virtual const ChunkRows &GetHashGroups(GlobalSourceState &global_state) const = 0;
 
+	virtual void RegisterHyperLogLog(LocalSinkState &local_state, ParallelHyperLogLogLocalState &hll_state) const;
+
 public:
 	//! The inserted data schema
 	Types payload_types;
 	//! Input columns in the sorted output
 	vector<column_t> scan_ids;
-	// Key columns in the sorted output. Needed for prefix computations.
+	//! Key columns in the sorted output. Needed for prefix computations.
 	vector<column_t> sort_ids;
 };
 

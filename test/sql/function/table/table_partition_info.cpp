@@ -10,12 +10,11 @@ namespace {
 
 struct NonPushdownPartitionFunction {
 	struct BindData : public TableFunctionData {
-		duckdb::vector<column_t> expected_partition_ids;
+		vector<column_t> expected_partition_ids;
 	};
 
-	static duckdb::unique_ptr<FunctionData> Bind(ClientContext &, TableFunctionBindInput &input,
-	                                             duckdb::vector<LogicalType> &return_types,
-	                                             duckdb::vector<string> &names) {
+	static unique_ptr<FunctionData> Bind(ClientContext &, TableFunctionBindInput &input,
+	                                     vector<LogicalType> &return_types, vector<Identifier> &names) {
 		return_types = {LogicalType::VARCHAR, LogicalType::BIGINT, LogicalType::DOUBLE};
 		names = {"region", "year", "value"};
 		auto result = make_uniq<BindData>();
@@ -60,17 +59,17 @@ TEST_CASE("Resolve partition columns for table functions without projection push
 
 	auto result = con.Query("EXPLAIN SELECT year, COUNT(*) FROM non_pushdown_partitions(1, -1) GROUP BY year");
 	REQUIRE(!result->HasError());
-	REQUIRE(StringUtil::Contains(result->ToString(), "PARTITIONED_AGGREGATE"));
+	REQUIRE(StringUtil::Contains(result->ToString(), "Partitioned Aggregate"));
 
 	result = con.Query("EXPLAIN SELECT year, COUNT(*) FROM (SELECT year FROM non_pushdown_partitions(1, -1) "
 	                   "WHERE region = 'x') GROUP BY year");
 	REQUIRE(!result->HasError());
-	REQUIRE(StringUtil::Contains(result->ToString(), "PARTITIONED_AGGREGATE"));
+	REQUIRE(StringUtil::Contains(result->ToString(), "Partitioned Aggregate"));
 
 	result = con.Query("EXPLAIN SELECT year, region, COUNT(*) FROM non_pushdown_partitions(1, 0) "
 	                   "GROUP BY year, region");
 	REQUIRE(!result->HasError());
-	REQUIRE(StringUtil::Contains(result->ToString(), "PARTITIONED_AGGREGATE"));
+	REQUIRE(StringUtil::Contains(result->ToString(), "Partitioned Aggregate"));
 
 	result = con.Query("EXPLAIN SELECT COUNT(*) OVER (PARTITION BY year) FROM non_pushdown_partitions(1, -1)");
 	REQUIRE(!result->HasError());

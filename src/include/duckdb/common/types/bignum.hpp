@@ -13,12 +13,15 @@
 #include "duckdb/common/string_util.hpp"
 #include "duckdb/common/types.hpp"
 #include "duckdb/common/winapi.hpp"
-#include "duckdb/function/cast/default_casts.hpp"
+#include "duckdb/common/vector/string_vector.hpp"
 #include "duckdb/common/bignum.hpp"
 
 namespace duckdb {
 using digit_t = uint32_t;
 using twodigit_t = uint64_t;
+
+struct BoundCastInfo;
+struct CastParameters;
 
 //! The Bignum class is a static class that holds helper functions for the Bignum type.
 class Bignum {
@@ -47,18 +50,20 @@ public:
 	DUCKDB_API static bignum_t InitializeBignumZero(Vector &result);
 	DUCKDB_API static string InitializeBignumZero();
 
-	//! Switch Case of To Bignum Convertion
+	//! Switch Case of To Bignum Conversion
 	DUCKDB_API static BoundCastInfo NumericToBignumCastSwitch(const LogicalType &source);
 
 	//! ----------------------------------- Varchar Cast ----------------------------------- //
 	//! Function to prepare a varchar for conversion. We trim zero's, check for negative values, and what-not
 	//! Returns false if this is an invalid varchar
 	DUCKDB_API static bool VarcharFormatting(const string_t &value, idx_t &start_pos, idx_t &end_pos, bool &is_negative,
-	                                         bool &is_zero);
+	                                         bool &is_zero, bool &should_round_up);
 	//! Encodes a VARCHAR into a BIGNUM blob using formatting information returned by VarcharFormatting.
 	DUCKDB_API static string EncodeBignum(const string_t &value, idx_t start_pos, idx_t end_pos, bool is_negative,
 	                                      bool is_zero);
-
+	//! Encodes a VARCHAR into a BIGNUM blob, applying decimal rounding if requested.
+	DUCKDB_API static string EncodeVarcharBignum(const string_t &value, idx_t start_pos, idx_t end_pos,
+	                                             bool is_negative, bool is_zero, bool should_round_up);
 	//! Converts a char to a Digit
 	DUCKDB_API static int CharToDigit(char c);
 	//! Converts a Digit to a char
@@ -83,22 +88,34 @@ public:
 		for (idx_t i = 0; i < data_byte_size; ++i) {
 			uint8_t byte = static_cast<uint8_t>(data[Bignum::BIGNUM_HEADER_SIZE + i]);
 			if (is_negative) {
-				byte = ~byte;
+				byte = static_cast<uint8_t>(~byte);
+			}
+			if (abs_value > (NumericLimits<uhugeint_t>::Maximum() >> 8)) {
+				// the absolute value does not fit in 128 bits
+				return false;
 			}
 			abs_value = (abs_value << 8) | byte;
 		}
 
-		if (is_negative) {
-			if (abs_value > static_cast<uhugeint_t>(std::numeric_limits<T>::max()) + 1) {
-				throw OutOfRangeException("Negative bignum too small for type");
-			}
-			result = static_cast<T>(-static_cast<hugeint_t>(abs_value));
-		} else {
-			if (abs_value > static_cast<uhugeint_t>(std::numeric_limits<T>::max())) {
-				throw OutOfRangeException("Positive bignum too large for type");
+		const auto max_value = static_cast<uhugeint_t>(NumericLimits<T>::Maximum());
+		if (!is_negative || abs_value == 0) {
+			if (abs_value > max_value) {
+				return false;
 			}
 			result = static_cast<T>(abs_value);
+			return true;
 		}
+		if (!NumericLimits<T>::IsSigned()) {
+			return false;
+		}
+		if (abs_value > max_value + 1) {
+			return false;
+		}
+		if (abs_value == max_value + 1) {
+			result = NumericLimits<T>::Minimum();
+			return true;
+		}
+		result = static_cast<T>(-static_cast<hugeint_t>(abs_value));
 		return true;
 	}
 };
@@ -106,15 +123,15 @@ public:
 //! ----------------------------------- (u)Integral Cast ----------------------------------- //
 struct IntCastToBignum {
 	template <class SRC>
-	static inline bignum_t Operation(SRC input, Vector &result) {
-		return IntToBignum(result, input);
+	static inline bignum_t Operation(SRC input, StringHeap &heap) {
+		return IntToBignum(heap, input);
 	}
 };
 
 //! ----------------------------------- (u)HugeInt Cast ----------------------------------- //
 struct HugeintCastToBignum {
 	template <class SRC>
-	static inline bignum_t Operation(SRC input, Vector &result) {
+	static inline bignum_t Operation(SRC input, StringHeap &heap) {
 		throw InternalException("Unsupported type for cast to BIGNUM");
 	}
 };
@@ -140,8 +157,8 @@ DUCKDB_API bool TryCastToBignum::Operation(string_t input_value, bignum_t &resul
 
 struct BignumCastToVarchar {
 	template <class SRC>
-	DUCKDB_API static inline string_t Operation(SRC input, Vector &result) {
-		return StringVector::AddStringOrBlob(result, Bignum::BignumToVarchar(input));
+	DUCKDB_API static inline string_t Operation(SRC input, StringHeap &heap) {
+		return heap.AddBlob(Bignum::BignumToVarchar(input));
 	}
 };
 

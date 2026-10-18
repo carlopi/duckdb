@@ -13,7 +13,7 @@
 #include "duckdb/parser/parsed_data/create_table_function_info.hpp"
 #include "duckdb/parser/tableref/table_function_ref.hpp"
 #include "utf8proc_wrapper.hpp"
-#include "duckdb/common/extra_type_info.hpp"
+#include "duckdb/common/logical_type_info.hpp"
 #include "duckdb/common/arrow/schema_metadata.hpp"
 #include "duckdb/main/settings.hpp"
 
@@ -49,7 +49,7 @@ void ArrowTableFunction::PopulateArrowTableSchema(ClientContext &context, ArrowT
 
 unique_ptr<FunctionData> ArrowTableFunction::ArrowScanBindDumb(ClientContext &context, TableFunctionBindInput &input,
                                                                vector<LogicalType> &return_types,
-                                                               vector<string> &names) {
+                                                               vector<Identifier> &names) {
 	auto bind_data = ArrowScanBind(context, input, return_types, names);
 	auto &arrow_bind_data = bind_data->Cast<ArrowScanFunctionData>();
 	arrow_bind_data.projection_pushdown_enabled = false;
@@ -57,30 +57,17 @@ unique_ptr<FunctionData> ArrowTableFunction::ArrowScanBindDumb(ClientContext &co
 }
 
 unique_ptr<FunctionData> ArrowTableFunction::ArrowScanBind(ClientContext &context, TableFunctionBindInput &input,
-                                                           vector<LogicalType> &return_types, vector<string> &names) {
-	if (input.inputs[0].IsNull() || input.inputs[1].IsNull() || input.inputs[2].IsNull()) {
-		throw BinderException("arrow_scan: pointers cannot be null");
+                                                           vector<LogicalType> &return_types,
+                                                           vector<Identifier> &names) {
+	if (!input.ref.bind_info) {
+		throw BinderException("arrow_scan requires an ArrowScanFactory bind input");
 	}
-	auto &ref = input.ref;
-
-	shared_ptr<DependencyItem> dependency;
-	if (ref.external_dependency) {
-		// This was created during the replacement scan for Python (see python_replacement_scan.cpp)
-		// this object is the owning reference to 'stream_factory_ptr' and has to be kept alive.
-		dependency = ref.external_dependency->GetDependency("replacement_cache");
-		D_ASSERT(dependency);
-	}
-
-	auto stream_factory_ptr = input.inputs[0].GetPointer();
-	auto stream_factory_produce = (stream_factory_produce_t)input.inputs[1].GetPointer();       // NOLINT
-	auto stream_factory_get_schema = (stream_factory_get_schema_t)input.inputs[2].GetPointer(); // NOLINT
-
-	auto res = make_uniq<ArrowScanFunctionData>(stream_factory_produce, stream_factory_ptr, std::move(dependency));
-
-	auto &data = *res;
-	stream_factory_get_schema(reinterpret_cast<ArrowArrayStream *>(stream_factory_ptr), data.schema_root.arrow_schema);
-	PopulateArrowTableSchema(context, res->arrow_table, data.schema_root.arrow_schema);
-	names = res->arrow_table.GetNames();
+	DynamicCastCheck<ArrowScanFactory>(input.ref.bind_info.get());
+	auto factory = shared_ptr_cast<TableFunctionInfo, ArrowScanFactory>(input.ref.bind_info);
+	auto res = make_uniq<ArrowScanFunctionData>(std::move(factory));
+	res->factory->GetSchema(res->schema_root.arrow_schema);
+	PopulateArrowTableSchema(context, res->arrow_table, res->schema_root.arrow_schema);
+	names = StringsToIdentifiers(res->arrow_table.GetNames());
 	return_types = res->arrow_table.GetTypes();
 	res->all_types = return_types;
 	if (return_types.empty()) {
@@ -106,7 +93,7 @@ unique_ptr<ArrowArrayStreamWrapper> ProduceArrowScan(const ArrowScanFunctionData
 		}
 	}
 	parameters.filters = filters;
-	return function.scanner_producer(function.stream_factory_ptr, parameters);
+	return function.factory->ProduceStream(parameters);
 }
 
 idx_t ArrowTableFunction::ArrowScanMaxThreads(ClientContext &context, const FunctionData *bind_data_p) {
@@ -200,15 +187,15 @@ void ArrowTableFunction::ArrowScanFunction(ClientContext &context, TableFunction
 	data.lines_read += output_size;
 	if (global_state.CanRemoveFilterColumns()) {
 		state.all_columns.Reset();
-		state.all_columns.SetCardinality(output_size);
+		state.all_columns.SetChildCardinality(output_size);
 		ArrowToDuckDB(state, data.arrow_table.GetColumns(), state.all_columns);
 		output.ReferenceColumns(state.all_columns, global_state.projection_ids);
 	} else {
-		output.SetCardinality(output_size);
+		output.SetChildCardinality(output_size);
 		ArrowToDuckDB(state, data.arrow_table.GetColumns(), output);
 	}
 
-	output.Verify();
+	output.Verify(context);
 	state.chunk_offset += output.size();
 }
 
@@ -226,6 +213,12 @@ OperatorPartitionData ArrowTableFunction::ArrowGetPartitionData(ClientContext &c
 }
 
 static bool CanPushdown(const ArrowType &type) {
+	if (type.RunEndEncoded()) {
+		return false;
+	}
+	if (type.HasDictionary()) {
+		return CanPushdown(type.GetDictionary());
+	}
 	auto duck_type = type.GetDuckType();
 	switch (duck_type.id()) {
 	case LogicalTypeId::BOOLEAN:
@@ -241,6 +234,7 @@ static bool CanPushdown(const ArrowType &type) {
 	case LogicalTypeId::TIMESTAMP_NS:
 	case LogicalTypeId::TIMESTAMP_SEC:
 	case LogicalTypeId::TIMESTAMP_TZ:
+	case LogicalTypeId::TIMESTAMP_TZ_NS:
 	case LogicalTypeId::UTINYINT:
 	case LogicalTypeId::USMALLINT:
 	case LogicalTypeId::UINTEGER:
@@ -264,7 +258,8 @@ static bool CanPushdown(const ArrowType &type) {
 			return false;
 		}
 	}
-	case LogicalTypeId::STRUCT: {
+	case LogicalTypeId::STRUCT:
+	case LogicalTypeId::TUPLE: {
 		const auto &struct_info = type.GetTypeInfo<ArrowStructInfo>();
 		for (idx_t i = 0; i < struct_info.ChildCount(); i++) {
 			if (!CanPushdown(struct_info.GetChild(i))) {
@@ -277,17 +272,24 @@ static bool CanPushdown(const ArrowType &type) {
 		return false;
 	}
 }
-static bool HasViewType(const ArrowType &type) {
+
+// PyArrow's array_filter kernel has no implementation for string view, binary view and run-end encoded arrays.
+// It filters a dictionary by its indices, so a dictionary of view values is fine here.
+static bool HasUnfilterableType(const ArrowType &type) {
+	if (type.RunEndEncoded()) {
+		return true;
+	}
 	auto duck_type = type.GetDuckType();
 	switch (duck_type.id()) {
 	case LogicalTypeId::VARCHAR:
 	case LogicalTypeId::BLOB:
 		return type.GetTypeInfo<ArrowStringInfo>().GetSizeType() == ArrowVariableSizeType::VIEW;
 	case LogicalTypeId::STRUCT:
+	case LogicalTypeId::TUPLE:
 	case LogicalTypeId::UNION: {
 		const auto &struct_info = type.GetTypeInfo<ArrowStructInfo>();
 		for (idx_t i = 0; i < struct_info.ChildCount(); i++) {
-			if (HasViewType(struct_info.GetChild(i))) {
+			if (HasUnfilterableType(struct_info.GetChild(i))) {
 				return true;
 			}
 		}
@@ -296,20 +298,20 @@ static bool HasViewType(const ArrowType &type) {
 	case LogicalTypeId::LIST:
 	case LogicalTypeId::MAP: {
 		const auto &list_info = type.GetTypeInfo<ArrowListInfo>();
-		return HasViewType(list_info.GetChild());
+		return HasUnfilterableType(list_info.GetChild());
 	}
 	case LogicalTypeId::ARRAY: {
 		const auto &array_info = type.GetTypeInfo<ArrowArrayInfo>();
-		return HasViewType(array_info.GetChild());
+		return HasUnfilterableType(array_info.GetChild());
 	}
 	default:
 		return false;
 	}
 }
 
-static bool TableHasViewTypes(const arrow_column_map_t &column_info) {
+static bool TableHasUnfilterableTypes(const arrow_column_map_t &column_info) {
 	for (const auto &col : column_info) {
-		if (HasViewType(*col.second)) {
+		if (HasUnfilterableType(*col.second)) {
 			return true;
 		}
 	}
@@ -319,11 +321,9 @@ static bool TableHasViewTypes(const arrow_column_map_t &column_info) {
 bool ArrowTableFunction::ArrowPushdownType(const FunctionData &bind_data, idx_t col_idx) {
 	auto &arrow_bind_data = bind_data.Cast<ArrowScanFunctionData>();
 	const auto &column_info = arrow_bind_data.arrow_table.GetColumns();
-	// PyArrow's array_filter kernel doesn't support string_view/binary_view types.
-	// The filter is applied to ALL columns in a record batch, so if any column has a
-	// view type, we must disable filter pushdown for the entire table.
-	// See https://github.com/duckdb/duckdb-python/issues/227
-	if (TableHasViewTypes(column_info)) {
+	// The producer applies a pushed filter to every column of a record batch, so one column that cannot be
+	// filtered turns pushdown off for the entire table.
+	if (TableHasUnfilterableTypes(column_info)) {
 		return false;
 	}
 	const auto column_type = column_info.at(col_idx);
@@ -331,23 +331,24 @@ bool ArrowTableFunction::ArrowPushdownType(const FunctionData &bind_data, idx_t 
 }
 
 void ArrowTableFunction::RegisterFunction(BuiltinFunctions &set) {
-	TableFunction arrow("arrow_scan", {LogicalType::POINTER, LogicalType::POINTER, LogicalType::POINTER},
-	                    ArrowScanFunction, ArrowScanBind, ArrowScanInitGlobal, ArrowScanInitLocal);
+	TableFunction arrow("arrow_scan", {}, ArrowScanFunction, ArrowScanBind, ArrowScanInitGlobal, ArrowScanInitLocal);
 	arrow.cardinality = ArrowScanCardinality;
 	arrow.get_partition_data = ArrowGetPartitionData;
 	arrow.projection_pushdown = true;
 	arrow.filter_pushdown = true;
 	arrow.filter_prune = true;
 	arrow.supports_pushdown_type = ArrowPushdownType;
+	arrow.parallelism = TableFunctionParallelism::SEQUENTIAL;
 	set.AddFunction(arrow);
 
-	TableFunction arrow_dumb("arrow_scan_dumb", {LogicalType::POINTER, LogicalType::POINTER, LogicalType::POINTER},
-	                         ArrowScanFunction, ArrowScanBindDumb, ArrowScanInitGlobal, ArrowScanInitLocal);
+	TableFunction arrow_dumb("arrow_scan_dumb", {}, ArrowScanFunction, ArrowScanBindDumb, ArrowScanInitGlobal,
+	                         ArrowScanInitLocal);
 	arrow_dumb.cardinality = ArrowScanCardinality;
 	arrow_dumb.get_partition_data = ArrowGetPartitionData;
 	arrow_dumb.projection_pushdown = false;
 	arrow_dumb.filter_pushdown = false;
 	arrow_dumb.filter_prune = false;
+	arrow_dumb.parallelism = TableFunctionParallelism::SEQUENTIAL;
 	set.AddFunction(arrow_dumb);
 }
 

@@ -9,6 +9,8 @@
 #pragma once
 
 #include "duckdb/common/types/column/column_data_collection.hpp"
+#include "duckdb/common/vector/flat_vector.hpp"
+#include "duckdb/common/vector/list_vector.hpp"
 #include "core_functions/aggregate/quantile_helpers.hpp"
 #include "duckdb/common/operator/cast_operators.hpp"
 #include "duckdb/common/operator/interpolate.hpp"
@@ -16,6 +18,8 @@
 #include "duckdb/planner/expression/bound_constant_expression.hpp"
 #include "duckdb/function/window/window_index_tree.hpp"
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <stdlib.h>
 #include <utility>
 
@@ -25,12 +29,15 @@ namespace duckdb {
 template <typename INPUT_TYPE>
 struct QuantileCursor {
 	explicit QuantileCursor(const WindowPartitionInput &partition) : inputs(*partition.inputs) {
-		D_ASSERT(partition.column_ids.size() == 1);
-		inputs.InitializeScan(scan, partition.column_ids);
+		// the quantile parameter is folded into the bind data by the bind, but stays part of the expression tree -
+		// only the leading input column is paged in
+		D_ASSERT(!partition.column_ids.empty());
+		vector<column_t> input_ids {partition.column_ids[0]};
+		inputs.InitializeScan(scan, input_ids);
 		inputs.InitializeScanChunk(scan, page);
 
-		D_ASSERT(partition.all_valid.size() == 1);
-		all_valid = partition.all_valid[0];
+		D_ASSERT(!partition.all_valid.empty());
+		cannot_have_null = partition.all_valid[0];
 	}
 
 	inline sel_t RowOffset(idx_t row_idx) const {
@@ -46,7 +53,7 @@ struct QuantileCursor {
 		if (!RowIsVisible(row_idx)) {
 			inputs.Seek(row_idx, scan, page);
 			data = FlatVector::GetData<INPUT_TYPE>(page.data[0]);
-			validity = &FlatVector::Validity(page.data[0]);
+			validity = &FlatVector::ValidityMutable(page.data[0]);
 		}
 		return RowOffset(row_idx);
 	}
@@ -61,8 +68,8 @@ struct QuantileCursor {
 		return validity->RowIsValid(offset);
 	}
 
-	inline bool AllValid() {
-		return all_valid;
+	inline bool CannotHaveNull() {
+		return cannot_have_null;
 	}
 
 	//! Windowed paging
@@ -76,7 +83,7 @@ struct QuantileCursor {
 	//! The validity mask
 	const ValidityMask *validity = nullptr;
 	//! Paged chunks do not track this but it is really necessary for performance
-	bool all_valid;
+	bool cannot_have_null;
 };
 
 // Direct access
@@ -234,10 +241,22 @@ struct QuantileInterpolator<true> {
 			floored = Cast::Operation<hugeint_t, idx_t>((scaled_n - scaled_q) / scaling);
 			break;
 		}
-		default:
+		default: {
+			//	The target is ceil(n * q) evaluated as if exactly, matching the DECIMAL path.
+			//	A binary double for a decimal fraction is slightly off, so when n * q is mathematically an
+			//	integer (n = 10, q = 0.9) the product lands a few ulps away from it and ceil() would
+			//	pick the next element. Worse, the outcome of floor(n - n * q) depended on whether the
+			//	compiler fused the multiply and subtract into an FMA, so different call sites of this
+			//	function disagreed. Snap to the nearest integer when the product is within a few ulps
+			//	of it; the result is then independent of contraction and of the rounding of q.
 			const auto scaled_q = double(n) * q.dbl;
-			floored = LossyNumericCast<idx_t>(floor(double(n) - scaled_q));
+			const auto nearest = std::round(scaled_q);
+			const auto tolerance = double(n) * 4 * std::numeric_limits<double>::epsilon();
+			const auto ceiled = (std::fabs(scaled_q - nearest) <= tolerance) ? nearest : std::ceil(scaled_q);
+			//	0 <= q <= 1, so 0 <= ceiled <= n
+			floored = n - LossyNumericCast<idx_t>(ceiled);
 			break;
+		}
 		}
 
 		return MaxValue<idx_t>(1, n - floored) - 1;
@@ -291,8 +310,11 @@ struct QuantileIncluded {
 		return fmask.RowIsValid(idx) && dmask.RowIsValid(idx);
 	}
 
+	inline bool CannotHaveNull() {
+		return fmask.CannotHaveNull() && dmask.CannotHaveNull();
+	}
 	inline bool AllValid() {
-		return fmask.AllValid() && dmask.AllValid();
+		return CannotHaveNull();
 	}
 
 	const ValidityMask &fmask;
@@ -308,7 +330,10 @@ struct QuantileSortTree {
 		auto &interrupt = partition.interrupt_state;
 		ColumnDataScanState scan;
 		DataChunk sort;
-		inputs.InitializeScan(scan, partition.column_ids);
+		// only the leading input column is sorted on - see QuantileCursor
+		D_ASSERT(!partition.column_ids.empty());
+		vector<column_t> input_ids {partition.column_ids[0]};
+		inputs.InitializeScan(scan, input_ids);
 		inputs.InitializeScanChunk(scan, sort);
 
 		// Sort on the single argument
@@ -329,9 +354,9 @@ struct QuantileSortTree {
 		SelectionVector filter_sel(STANDARD_VECTOR_SIZE);
 		while (inputs.Scan(scan, sort)) {
 			const auto row_idx = scan.current_row_index;
-			if (!filter_mask.AllValid() || !partition.all_valid[0]) {
+			if (filter_mask.CanHaveNull() || !partition.all_valid[0]) {
 				auto &key = sort.data[0];
-				auto &validity = FlatVector::Validity(key);
+				auto &validity = FlatVector::ValidityMutable(key);
 				idx_t filtered = 0;
 				for (sel_t i = 0; i < sort.size(); ++i) {
 					if (filter_mask.RowIsValid(i + row_idx) && validity.RowIsValid(i)) {
@@ -358,7 +383,7 @@ struct QuantileSortTree {
 		//	Thread safe and idempotent.
 		index_tree->Build();
 
-		//	Find the interpolated indicies within the frame
+		//	Find the interpolated indices within the frame
 		QuantileInterpolator<DISCRETE> interp(q, n, false);
 		const auto lo_data = SelectNth(frames, interp.FRN);
 		auto hi_data = lo_data;
@@ -381,15 +406,15 @@ struct QuantileSortTree {
 		index_tree->Build();
 
 		// Result is a constant LIST<CHILD_TYPE> with a fixed length
-		auto ldata = FlatVector::GetData<list_entry_t>(list);
+		auto ldata = FlatVector::GetDataMutable<list_entry_t>(list);
 		auto &lentry = ldata[lidx];
 		lentry.offset = ListVector::GetListSize(list);
 		lentry.length = bind_data.quantiles.size();
 
 		ListVector::Reserve(list, lentry.offset + lentry.length);
 		ListVector::SetListSize(list, lentry.offset + lentry.length);
-		auto &result = ListVector::GetEntry(list);
-		auto rdata = FlatVector::GetData<CHILD_TYPE>(result);
+		auto &result = ListVector::GetChildMutable(list);
+		auto rdata = FlatVector::GetDataMutable<CHILD_TYPE>(result);
 
 		using ID = QuantileIndirect<INPUT_TYPE>;
 		ID indirect(data);

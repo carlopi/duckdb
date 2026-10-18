@@ -1,5 +1,6 @@
 duckdb_extension_load(sqlsmith
-        DONT_LINK LOAD_TESTS
+        LOAD_TESTS
         GIT_URL https://github.com/duckdb/duckdb-sqlsmith
-        GIT_TAG e47106c6fef6e019feaf8cedfc2ef737428a386c
+        GIT_TAG 0521e4c4325e7972e484f60de8adde1557defc3d
+        APPLY_PATCHES
         )

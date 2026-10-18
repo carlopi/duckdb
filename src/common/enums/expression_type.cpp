@@ -57,6 +57,8 @@ string ExpressionTypeToString(ExpressionType type) {
 		return "AGGREGATE";
 	case ExpressionType::WINDOW_AGGREGATE:
 		return "WINDOW_AGGREGATE";
+	case ExpressionType::WINDOW_FUNCTION:
+		return "WINDOW_FUNCTION";
 	case ExpressionType::WINDOW_RANK:
 		return "RANK";
 	case ExpressionType::WINDOW_RANK_DENSE:
@@ -121,6 +123,14 @@ string ExpressionTypeToString(ExpressionType type) {
 		return "COMPARE_NOT_BETWEEN";
 	case ExpressionType::VALUE_DEFAULT:
 		return "VALUE_DEFAULT";
+	case ExpressionType::ALTERNATION:
+		return "ALTERNATION";
+	case ExpressionType::CONCATENATION:
+		return "CONCATENATION";
+	case ExpressionType::QUANTIFIER:
+		return "QUANTIFIER";
+	case ExpressionType::ANCHOR:
+		return "ANCHOR";
 	case ExpressionType::BOUND_REF:
 		return "BOUND_REF";
 	case ExpressionType::BOUND_COLUMN_REF:
@@ -204,12 +214,12 @@ string ExpressionClassToString(ExpressionClass type) {
 		return "BOUND_AGGREGATE";
 	case ExpressionClass::BOUND_CASE:
 		return "BOUND_CASE";
-	case ExpressionClass::BOUND_CAST:
-		return "BOUND_CAST";
+	case ExpressionClass::LEGACY_BOUND_CAST:
+		return "LEGACY_BOUND_CAST";
 	case ExpressionClass::BOUND_COLUMN_REF:
 		return "BOUND_COLUMN_REF";
-	case ExpressionClass::BOUND_COMPARISON:
-		return "BOUND_COMPARISON";
+	case ExpressionClass::LEGACY_BOUND_COMPARISON:
+		return "LEGACY_BOUND_COMPARISON";
 	case ExpressionClass::BOUND_CONJUNCTION:
 		return "BOUND_CONJUNCTION";
 	case ExpressionClass::BOUND_CONSTANT:
@@ -222,20 +232,20 @@ string ExpressionClassToString(ExpressionClass type) {
 		return "BOUND_OPERATOR";
 	case ExpressionClass::BOUND_PARAMETER:
 		return "BOUND_PARAMETER";
+	case ExpressionClass::PATTERN:
+		return "PATTERN";
 	case ExpressionClass::BOUND_REF:
 		return "BOUND_REF";
 	case ExpressionClass::BOUND_SUBQUERY:
 		return "BOUND_SUBQUERY";
 	case ExpressionClass::BOUND_WINDOW:
 		return "BOUND_WINDOW";
-	case ExpressionClass::BOUND_BETWEEN:
-		return "BOUND_BETWEEN";
+	case ExpressionClass::LEGACY_BOUND_BETWEEN:
+		return "LEGACY_BOUND_BETWEEN";
 	case ExpressionClass::BOUND_UNNEST:
 		return "BOUND_UNNEST";
 	case ExpressionClass::BOUND_LAMBDA:
 		return "BOUND_LAMBDA";
-	case ExpressionClass::BOUND_EXPRESSION:
-		return "BOUND_EXPRESSION";
 	case ExpressionClass::BOUND_EXPANDED:
 		return "BOUND_EXPANDED";
 	default:

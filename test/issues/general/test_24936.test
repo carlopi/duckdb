@@ -4,15 +4,15 @@
 
 require parquet
 
-# the list child vector fills up a data page (100MB) part way through
+# NULLs in a list whose child vector fills up a data page
 statement ok
 CREATE TABLE lists AS
-SELECT i AS id, list(CASE WHEN j % 9 = 0 THEN NULL ELSE lpad((i * 400 + j)::VARCHAR, 400, 'N') END ORDER BY j) AS v
-FROM range(800) s(i), (SELECT unnest(range(400)) AS j)
+SELECT i AS id, list(CASE WHEN j % 9 = 0 THEN NULL ELSE 'N' || (i * 7919 + j) END ORDER BY j) AS v
+FROM range(20000) s(i), (SELECT unnest(range(50)) AS j)
 GROUP BY i;
 
 statement ok
-COPY lists TO '{TEST_DIR}/24936_list.parquet' (FORMAT PARQUET, PARQUET_VERSION V2);
+COPY lists TO '{TEST_DIR}/24936_list.parquet' (FORMAT PARQUET, PARQUET_VERSION V2, DATA_PAGE_SIZE_LIMIT 4096);
 
 query I
 SELECT count(*) FROM lists JOIN '{TEST_DIR}/24936_list.parquet' p USING (id) WHERE lists.v IS DISTINCT FROM p.v;
@@ -21,22 +21,40 @@ SELECT count(*) FROM lists JOIN '{TEST_DIR}/24936_list.parquet' p USING (id) WHE
 
 # the same through a STRUCT inside the LIST
 statement ok
-COPY (SELECT id, [{'s': x} for x in v] AS v FROM lists) TO '{TEST_DIR}/24936_list_struct.parquet' (FORMAT PARQUET, PARQUET_VERSION V2);
+COPY (SELECT id, [{'s': x} for x in v] AS v FROM lists) TO '{TEST_DIR}/24936_list_struct.parquet' (FORMAT PARQUET, PARQUET_VERSION V2, DATA_PAGE_SIZE_LIMIT 4096);
 
 query I
-SELECT count(*) FROM (SELECT id, [{'s': x} for x in v] AS v FROM lists) l
-JOIN '{TEST_DIR}/24936_list_struct.parquet' p USING (id) WHERE l.v IS DISTINCT FROM p.v;
+SELECT count(*) FROM lists JOIN '{TEST_DIR}/24936_list_struct.parquet' p USING (id) WHERE [{'s': x} for x in lists.v] IS DISTINCT FROM p.v;
 ----
 0
 
-# V1 pages take the same Prepare path
+# fixed-size ARRAY child vectors take the same single page path
 statement ok
-COPY lists TO '{TEST_DIR}/24936_list_v1.parquet' (FORMAT PARQUET, PARQUET_VERSION V1);
+CREATE TABLE arrays AS
+SELECT i AS id, [CASE WHEN i % 3 = 0 THEN NULL ELSE 'A' || (i * 31) END, 'B' || i, NULL]::VARCHAR[3] AS a
+FROM range(200000) s(i);
+
+statement ok
+COPY arrays TO '{TEST_DIR}/24936_array.parquet' (FORMAT PARQUET, PARQUET_VERSION V2, DATA_PAGE_SIZE_LIMIT 4096);
+
+query I
+SELECT count(*) FROM arrays JOIN '{TEST_DIR}/24936_array.parquet' p USING (id) WHERE arrays.a IS DISTINCT FROM p.a;
+----
+0
+
+# V1 must round-trip and report the right null count
+statement ok
+COPY lists TO '{TEST_DIR}/24936_list_v1.parquet' (FORMAT PARQUET, PARQUET_VERSION V1, DATA_PAGE_SIZE_LIMIT 4096);
 
 query I
 SELECT count(*) FROM lists JOIN '{TEST_DIR}/24936_list_v1.parquet' p USING (id) WHERE lists.v IS DISTINCT FROM p.v;
 ----
 0
+
+query I
+SELECT sum(stats_null_count) FROM parquet_metadata('{TEST_DIR}/24936_list_v1.parquet') WHERE path_in_schema LIKE 'v%';
+----
+120000
 
 # a large element at the page boundary must not blow up the page size estimate
 statement ok

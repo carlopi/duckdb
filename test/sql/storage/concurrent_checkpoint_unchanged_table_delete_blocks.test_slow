@@ -11,7 +11,7 @@ PRAGMA disable_checkpoint_on_shutdown
 # small blocks and one large row group: the persisted deletes below span several metadata blocks that hold
 # nothing else
 statement ok
-ATTACH '{TEST_DIR}/unchanged_table_delete_blocks.db' AS db (BLOCK_SIZE 16384, ROW_GROUP_SIZE 1048576, STORAGE_VERSION 'v1.2.0')
+ATTACH '{TEST_DIR}/unchanged_table_delete_blocks.db' AS db (BLOCK_SIZE 16384, ROW_GROUP_SIZE 1048576)
 
 statement ok
 CREATE TABLE db.test AS SELECT i, 'str' || i AS s FROM range(400000) t(i)
