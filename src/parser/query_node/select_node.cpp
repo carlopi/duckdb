@@ -1,4 +1,5 @@
 #include "duckdb/parser/query_node/select_node.hpp"
+#include "duckdb/parser/tableref/showref.hpp"
 #include "duckdb/parser/expression_util.hpp"
 #include "duckdb/common/serializer/serializer.hpp"
 
@@ -9,12 +10,18 @@ SelectNode::SelectNode()
 }
 
 string SelectNode::ToString() const {
-	if (from_table && from_table->type == TableReferenceType::SHOW_REF) {
-		D_ASSERT(select_list.size() == 1);
-		return from_table->ToString();
-	}
 	string result;
 	result = cte_map.ToString();
+	if (from_table && from_table->type == TableReferenceType::SHOW_REF) {
+		// SHOW/DESCRIBE/SUMMARIZE stand for "SELECT * FROM <show>", with the usual clauses after them
+		D_ASSERT(select_list.size() == 1);
+		auto show = from_table->ToString() + SelectClausesToString();
+		if (from_table->Cast<ShowRef>().query && !modifiers.empty()) {
+			// "DESCRIBE (query) ORDER BY ..." would hand the modifiers to the query, so wrap the describe
+			show = "(" + show + ")";
+		}
+		return result + show + ResultModifiersToString();
+	}
 	result += "SELECT ";
 
 	// search for a distinct modifier
@@ -46,6 +53,11 @@ string SelectNode::ToString() const {
 	if (from_table && from_table->type != TableReferenceType::EMPTY_FROM) {
 		result += " FROM " + from_table->ToString();
 	}
+	return result + SelectClausesToString() + ResultModifiersToString();
+}
+
+string SelectNode::SelectClausesToString() const {
+	string result;
 	if (where_clause) {
 		result += " WHERE " + where_clause->ToString();
 	}
@@ -104,8 +116,7 @@ string SelectNode::ToString() const {
 		}
 		result += ")";
 	}
-
-	return result + ResultModifiersToString();
+	return result;
 }
 
 bool SelectNode::Equals(const QueryNode *other_p) const {

@@ -1,0 +1,159 @@
+# name: test/sql/show_select/show_trailing_clauses.test
+# description: SHOW / DESCRIBE / SUMMARIZE are select heads, so WHERE, ORDER BY, LIMIT and friends apply to them
+# group: [show_select]
+
+statement ok
+CREATE TABLE t(i INTEGER, j INTEGER);
+
+statement ok
+CREATE TABLE u(k INTEGER);
+
+# An attached in-memory database, so the full SHOW ALL TABLES rows do not depend on the test's database
+statement ok
+ATTACH ':memory:' AS mem;
+
+statement ok
+CREATE TABLE mem.v(x INTEGER, y INTEGER);
+
+# SHOW TABLES / SHOW ALL TABLES with a WHERE
+query I
+SHOW TABLES WHERE name = 't';
+----
+t
+
+query I
+SHOW TABLES WHERE name LIKE 'nope%';
+----
+
+query IIIIII
+SHOW ALL TABLES WHERE database = 'mem';
+----
+mem	main	v	[x, y]	[INTEGER, INTEGER]	false
+
+query I
+SHOW TABLES FROM mem.main WHERE name LIKE 'v%';
+----
+v
+
+# ORDER BY and LIMIT, with and without a WHERE
+query I
+SHOW TABLES ORDER BY name DESC LIMIT 1;
+----
+u
+
+query I
+SHOW TABLES WHERE name <> 'nope' ORDER BY name LIMIT 1 OFFSET 1;
+----
+u
+
+query IIIIII
+SHOW ALL TABLES WHERE name IN ('t', 'u', 'v') ORDER BY name DESC LIMIT 1;
+----
+mem	main	v	[x, y]	[INTEGER, INTEGER]	false
+
+# The other select clauses parse as well
+query I
+SHOW TABLES GROUP BY ALL HAVING name <> 'u' ORDER BY name;
+----
+t
+
+query I
+SHOW TABLES QUALIFY row_number() OVER (ORDER BY name DESC) = 1;
+----
+u
+
+# Bare SHOW lists tables, so a WHERE right after it filters them
+query IIIIII
+SHOW WHERE database = 'mem';
+----
+mem	main	v	[x, y]	[INTEGER, INTEGER]	false
+
+# DESCRIBE / SUMMARIZE a table
+query IIIIII
+DESCRIBE t WHERE column_name = 'j';
+----
+j	INTEGER	YES	NULL	NULL	NULL
+
+query I
+SELECT count(*) FROM (DESCRIBE t WHERE column_name LIKE '%');
+----
+2
+
+query IIIIIIIIIIII
+SUMMARIZE t WHERE column_name = 'j';
+----
+j	INTEGER	NULL	NULL	0	NULL	NULL	NULL	NULL	NULL	0	NULL
+
+# The special forms
+query I
+SHOW DATABASES WHERE database_name = 'mem';
+----
+mem
+
+query I
+SHOW DATABASES WHERE database_name = 'nope';
+----
+
+# A setting
+statement ok
+SET enable_progress_bar = false;
+
+query I
+SHOW enable_progress_bar WHERE NOT enable_progress_bar;
+----
+false
+
+query I
+SHOW enable_progress_bar WHERE enable_progress_bar;
+----
+
+# Set operations over filtered SHOWs
+query I
+SHOW TABLES WHERE name = 't' UNION ALL SHOW TABLES WHERE name = 'u' ORDER BY 1;
+----
+t
+u
+
+# Describing a query: the clauses bind to the innermost select, so parenthesize the query to filter its description
+statement error
+DESCRIBE SELECT 1 AS a WHERE column_name = 'a';
+----
+<REGEX>:Binder Error.*column_name.*
+
+query IIIIII
+DESCRIBE (SELECT 1 AS a, 2 AS b) WHERE column_name = 'b';
+----
+b	INTEGER	YES	NULL	NULL	NULL
+
+# ... and result modifiers after a parenthesized query still belong to that query, so wrap the DESCRIBE to sort its output
+statement error
+DESCRIBE (SELECT 1 AS a, 2 AS b) ORDER BY column_name DESC LIMIT 1;
+----
+<REGEX>:Binder Error.*column_name.*
+
+query IIIIII
+(DESCRIBE (SELECT 1 AS a, 2 AS b)) ORDER BY column_name DESC LIMIT 1;
+----
+b	INTEGER	YES	NULL	NULL	NULL
+
+# A parenthesized SHOW is a subquery, so it only takes result modifiers, like any parenthesized select
+query IIIIII
+(DESCRIBE t) ORDER BY column_name DESC LIMIT 1;
+----
+j	INTEGER	YES	NULL	NULL	NULL
+
+statement error
+(SHOW TABLES) WHERE name = 't';
+----
+<REGEX>:Parser Error.*
+
+statement error
+SHOW TABLES WHERE;
+----
+<REGEX>:Parser Error.*
+
+# Still usable as a subquery
+query I
+SELECT count(*) FROM (SHOW ALL TABLES WHERE name = 't');
+----
+1

@@ -1490,10 +1490,12 @@ TargetOptAlias <- BaseTableName TargetAlias?
 TargetAlias <- 'AS'? ColId
 DeleteUsingClause <- 'USING' List(TableRef)
 
+# Every form is the query "SELECT * FROM <show>" (select.gram: a SelectFrom head), so it can be a subquery and takes the
+# usual clauses after it: "SHOW ALL TABLES WHERE database = 'x' ORDER BY name".
 DescribeStatement <- ShowExternalResources / ShowTables / ShowDeprecatedSelect / DescribeSelect / ShowAllTables / ShowByName / DescribeByName
 
-# "SHOW [ALL] EXTERNAL RESOURCES" is a query over duckdb_external_resources, so it works as a subquery too. It comes
-# first: "SHOW ALL" alone is ShowAllTables, and "SHOW <name>" is ShowByName, and neither can be retried once matched.
+# "SHOW [ALL] EXTERNAL RESOURCES" is a query over duckdb_external_resources. It comes first: "SHOW ALL" alone is
+# ShowAllTables, and "SHOW <name>" is ShowByName, and neither can be retried once matched.
 ShowExternalResources <- ShowRule 'ALL'? 'EXTERNAL' 'RESOURCES'
 
 # "DESCRIBE (query)" and "SUMMARIZE (query)" describe the query's columns. "SHOW (query)" does too but is deprecated,
@@ -2231,7 +2233,7 @@ SetopUnion <- 'UNION'
 SetopExcept <- 'EXCEPT'
 ByName <- 'BY' 'NAME'
 
-SelectStatementType <- OptionalParensSimpleSelect / ValuesClause / DescribeStatement / TableStatement / PivotStatement / UnpivotStatement
+SelectStatementType <- OptionalParensSimpleSelect / ValuesClause / TableStatement / PivotStatement / UnpivotStatement
 ResultModifiers <- OrderByClause? LimitOffset?
 LimitOffset <- LimitOffsetClause / OffsetFetchClause / OffsetLimitClause / FetchOffsetClause / FetchOnlyClause
 LimitOffsetClause <- LimitClause OffsetClause?
@@ -2244,7 +2246,8 @@ OptionalParensSimpleSelect <- SimpleSelectParens / SimpleSelect
 SimpleSelectParens <- Parens(SimpleSelect)
 SimpleSelect <- SelectFrom WhereClause? GroupByClause? HavingClause? WindowClause? QualifyClause? SelectSampleClause?
 
-SelectFrom <- SelectFromClause / FromSelectClause
+# SHOW/DESCRIBE/SUMMARIZE are "SELECT * FROM <show>" heads, so WHERE and the other clauses apply to them too.
+SelectFrom <- SelectFromClause / FromSelectClause / DescribeStatement
 SelectFromClause <- SelectClause FromClause?
 FromSelectClause <- FromClause SelectClause?
 WithStatement <- ColIdOrString ColumnAliases? UsingKey? 'AS' Materialized? CTEBody

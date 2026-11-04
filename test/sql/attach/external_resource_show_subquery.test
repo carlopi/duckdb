@@ -47,6 +47,27 @@ FROM (SHOW ALL EXTERNAL RESOURCES) SELECT handle['id'] WHERE managed;
 ----
 local-1
 
+# The clauses apply directly, without wrapping.
+query TTTTTTTT
+SHOW ALL EXTERNAL RESOURCES WHERE NOT managed;
+----
+NULL	a@sq	false	running	ext-ref	NULL	NULL	{id=ext-1}
+
+query TTTTTTTT rowsort
+SHOW ALL EXTERNAL RESOURCES WHERE type = 'a@sq' ORDER BY name LIMIT 2;
+----
+NULL	a@sq	false	running	ext-ref	NULL	NULL	{id=ext-1}
+mine	a@sq	true	NULL	NULL	NULL	NULL	{id=local-1}
+
+query TTTTTTTT
+SHOW EXTERNAL RESOURCES WHERE handle['id'] = 'local-1';
+----
+mine	a@sq	true	NULL	NULL	NULL	NULL	{id=local-1}
+
+query TTTTTTTT
+SHOW EXTERNAL RESOURCES WHERE name = 'nope';
+----
+
 # As a CTE, and joined.
 query TT rowsort
 WITH r AS (SHOW ALL EXTERNAL RESOURCES)

@@ -51,9 +51,9 @@ unique_ptr<SQLStatement> PEGTransformerFactory::TransformDestroyExternalResource
 
 // SHOW [ALL] EXTERNAL RESOURCES is the query `SELECT * FROM duckdb_external_resources(discover := <all>)`, so it
 // can be used wherever a query can, such as a subquery.
-unique_ptr<QueryNode> PEGTransformerFactory::TransformShowExternalResources(PEGTransformer &transformer,
-                                                                            const ShowType &show_rule,
-                                                                            const bool &has_result) {
+unique_ptr<SelectNode> PEGTransformerFactory::TransformShowExternalResources(PEGTransformer &transformer,
+                                                                             const ShowType &show_rule,
+                                                                             const bool &has_result) {
 	vector<FunctionArgument> children;
 	if (has_result) {
 		auto discover = ConstantExpression::Boolean(true);
@@ -66,7 +66,7 @@ unique_ptr<QueryNode> PEGTransformerFactory::TransformShowExternalResources(PEGT
 	auto select_node = make_uniq<SelectNode>();
 	select_node->select_list.push_back(make_uniq<StarExpression>());
 	select_node->from_table = std::move(table_function);
-	return std::move(select_node);
+	return select_node;
 }
 
 } // namespace duckdb

@@ -127,7 +127,6 @@ SelectStatement:
   type: "unique_ptr<SelectStatement>"
   by_value: true
   rules:
-    - DescribeStatement
     - PivotStatement
     - UnpivotStatement
     - SelectStatementInternal
@@ -151,10 +150,11 @@ SetStatement:
     - SetTimeZone
     - StandardAssignment
 
-QueryNode:
-  type: "unique_ptr<QueryNode>"
+SelectNode:
+  type: "unique_ptr<SelectNode>"
   by_value: true
   rules:
+    - DescribeStatement
     - ShowExternalResources
     - ShowDeprecatedSelect
     - DescribeSelect
@@ -162,11 +162,6 @@ QueryNode:
     - ShowAllTables
     - ShowByName
     - DescribeByName
-
-SelectNode:
-  type: "unique_ptr<SelectNode>"
-  by_value: true
-  rules:
     - SelectFrom
     - SelectFromClause
     - FromSelectClause

@@ -5,19 +5,12 @@
 
 namespace duckdb {
 
-unique_ptr<SelectStatement> PEGTransformerFactory::TransformDescribeStatement(PEGTransformer &transformer,
-                                                                              unique_ptr<QueryNode> child) {
-	auto select_statement = make_uniq<SelectStatement>();
-	select_statement->node = std::move(child);
-	return select_statement;
-}
-
 // Wrap a ShowRef as the query "SELECT * FROM <showref>".
-static unique_ptr<QueryNode> WrapShowRef(unique_ptr<ShowRef> showref) {
+static unique_ptr<SelectNode> WrapShowRef(unique_ptr<ShowRef> showref) {
 	auto select_node = make_uniq<SelectNode>();
 	select_node->select_list.push_back(make_uniq<StarExpression>());
 	select_node->from_table = std::move(showref);
-	return std::move(select_node);
+	return select_node;
 }
 
 // Configure `showref` as the "list all tables" form (bare SHOW/DESCRIBE and SHOW ALL TABLES). The
@@ -27,30 +20,30 @@ static void SetShowAllTables(ShowRef &showref) {
 	showref.show_type = ShowType::SHOW_SPECIAL;
 }
 
-//! Build the "describe the columns of this query" QueryNode. Shared by "DESCRIBE/SUMMARIZE (query)" and the
+//! Build the "describe the columns of this query" SelectNode. Shared by "DESCRIBE/SUMMARIZE (query)" and the
 //! deprecated "SHOW (query)".
-static unique_ptr<QueryNode> BuildDescribeSelect(ShowType show_type, unique_ptr<SelectStatement> select_statement) {
+static unique_ptr<SelectNode> BuildDescribeSelect(ShowType show_type, unique_ptr<SelectStatement> select_statement) {
 	auto showref = make_uniq<ShowRef>();
 	showref->show_type = show_type;
 	showref->query = std::move(select_statement->node);
 	return WrapShowRef(std::move(showref));
 }
 
-unique_ptr<QueryNode>
+unique_ptr<SelectNode>
 PEGTransformerFactory::TransformDescribeSelect(PEGTransformer &transformer, const ShowType &describe_or_summarize,
                                                unique_ptr<SelectStatement> select_statement_internal) {
 	return BuildDescribeSelect(describe_or_summarize, std::move(select_statement_internal));
 }
 
-unique_ptr<QueryNode>
+unique_ptr<SelectNode>
 PEGTransformerFactory::TransformShowDeprecatedSelect(PEGTransformer &transformer, const ShowType &show_rule,
                                                      unique_ptr<SelectStatement> select_statement_internal) {
 	return BuildDescribeSelect(show_rule, std::move(select_statement_internal));
 }
 
-unique_ptr<QueryNode> PEGTransformerFactory::TransformShowTables(PEGTransformer &transformer,
-                                                                 const ShowType &show_or_describe,
-                                                                 const QualifiedName &qualified_name) {
+unique_ptr<SelectNode> PEGTransformerFactory::TransformShowTables(PEGTransformer &transformer,
+                                                                  const ShowType &show_or_describe,
+                                                                  const QualifiedName &qualified_name) {
 	auto showref = make_uniq<ShowRef>();
 	showref->show_type = ShowType::SHOW_FROM;
 	if (!IsInvalidCatalog(qualified_name.Catalog())) {
@@ -66,9 +59,9 @@ unique_ptr<QueryNode> PEGTransformerFactory::TransformShowTables(PEGTransformer 
 	return WrapShowRef(std::move(showref));
 }
 
-unique_ptr<QueryNode> PEGTransformerFactory::TransformShowAllTables(PEGTransformer &transformer,
-                                                                    const ShowType &show_or_describe,
-                                                                    const bool &has_result) {
+unique_ptr<SelectNode> PEGTransformerFactory::TransformShowAllTables(PEGTransformer &transformer,
+                                                                     const ShowType &show_or_describe,
+                                                                     const bool &has_result) {
 	auto showref = make_uniq<ShowRef>();
 	SetShowAllTables(*showref);
 	return WrapShowRef(std::move(showref));
@@ -174,14 +167,15 @@ static unique_ptr<ShowRef> BuildDescribeByName(ShowType show_type, optional<Desc
 	return showref;
 }
 
-unique_ptr<QueryNode> PEGTransformerFactory::TransformShowByName(PEGTransformer &transformer, const ShowType &show_rule,
-                                                                 optional<DescribeTarget> show_target) {
+unique_ptr<SelectNode> PEGTransformerFactory::TransformShowByName(PEGTransformer &transformer,
+                                                                  const ShowType &show_rule,
+                                                                  optional<DescribeTarget> show_target) {
 	return WrapShowRef(BuildShowByName(show_rule, std::move(show_target)));
 }
 
-unique_ptr<QueryNode> PEGTransformerFactory::TransformDescribeByName(PEGTransformer &transformer,
-                                                                     const ShowType &describe_or_summarize,
-                                                                     optional<DescribeTarget> describe_target) {
+unique_ptr<SelectNode> PEGTransformerFactory::TransformDescribeByName(PEGTransformer &transformer,
+                                                                      const ShowType &describe_or_summarize,
+                                                                      optional<DescribeTarget> describe_target) {
 	return WrapShowRef(BuildDescribeByName(describe_or_summarize, std::move(describe_target)));
 }
 

@@ -45,6 +45,8 @@ public:
 public:
 	//! Convert the query node to a string
 	string ToString() const override;
+	//! The clauses after the FROM (WHERE, GROUP BY, ...), without the result modifiers
+	string SelectClausesToString() const;
 
 	bool Equals(const QueryNode *other) const override;
 

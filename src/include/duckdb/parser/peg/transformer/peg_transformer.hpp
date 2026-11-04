@@ -218,7 +218,6 @@ DUCKDB_REGISTER_TRANSFORM_RESULT_TYPE("duckdb.transform_result.unique_ptr<MergeI
 DUCKDB_REGISTER_TRANSFORM_RESULT_TYPE("duckdb.transform_result.unique_ptr<OnConflictInfo>", unique_ptr<OnConflictInfo>);
 DUCKDB_REGISTER_TRANSFORM_RESULT_TYPE("duckdb.transform_result.unique_ptr<ParsedExpression>",
                                       unique_ptr<ParsedExpression>);
-DUCKDB_REGISTER_TRANSFORM_RESULT_TYPE("duckdb.transform_result.unique_ptr<QueryNode>", unique_ptr<QueryNode>);
 DUCKDB_REGISTER_TRANSFORM_RESULT_TYPE("duckdb.transform_result.unique_ptr<ResultModifier>", unique_ptr<ResultModifier>);
 DUCKDB_REGISTER_TRANSFORM_RESULT_TYPE("duckdb.transform_result.unique_ptr<SQLStatement>", unique_ptr<SQLStatement>);
 DUCKDB_REGISTER_TRANSFORM_RESULT_TYPE("duckdb.transform_result.unique_ptr<SampleOptions>", unique_ptr<SampleOptions>);
@@ -1487,8 +1486,6 @@ public:
 	static arena_ptr<TransformResultValue> FinalizeTargetAliasTrampoline(PEGTransformer &transformer,
 	                                                                     GeneratedTransformProcess &process);
 	static arena_ptr<TransformResultValue> FinalizeDeleteUsingClauseTrampoline(PEGTransformer &transformer,
-	                                                                           GeneratedTransformProcess &process);
-	static arena_ptr<TransformResultValue> FinalizeDescribeStatementTrampoline(PEGTransformer &transformer,
 	                                                                           GeneratedTransformProcess &process);
 	static arena_ptr<TransformResultValue> FinalizeShowExternalResourcesTrampoline(PEGTransformer &transformer,
 	                                                                               GeneratedTransformProcess &process);
@@ -3313,24 +3310,22 @@ public:
 	                                       const Identifier &col_id);
 	static vector<unique_ptr<TableRef>> TransformDeleteUsingClause(PEGTransformer &transformer,
 	                                                               vector<unique_ptr<TableRef>> table_ref);
-	static unique_ptr<SelectStatement> TransformDescribeStatement(PEGTransformer &transformer,
-	                                                              unique_ptr<QueryNode> child);
-	static unique_ptr<QueryNode> TransformShowExternalResources(PEGTransformer &transformer, const ShowType &show_rule,
-	                                                            const bool &has_result);
-	static unique_ptr<QueryNode> TransformShowDeprecatedSelect(PEGTransformer &transformer, const ShowType &show_rule,
-	                                                           unique_ptr<SelectStatement> select_statement_internal);
-	static unique_ptr<QueryNode> TransformDescribeSelect(PEGTransformer &transformer,
-	                                                     const ShowType &describe_or_summarize,
-	                                                     unique_ptr<SelectStatement> select_statement_internal);
-	static unique_ptr<QueryNode> TransformShowAllTables(PEGTransformer &transformer, const ShowType &show_or_describe,
-	                                                    const bool &has_result);
-	static unique_ptr<QueryNode> TransformShowTables(PEGTransformer &transformer, const ShowType &show_or_describe,
-	                                                 const QualifiedName &qualified_name);
-	static unique_ptr<QueryNode> TransformShowByName(PEGTransformer &transformer, const ShowType &show_rule,
-	                                                 optional<DescribeTarget> show_target);
-	static unique_ptr<QueryNode> TransformDescribeByName(PEGTransformer &transformer,
-	                                                     const ShowType &describe_or_summarize,
-	                                                     optional<DescribeTarget> describe_target);
+	static unique_ptr<SelectNode> TransformShowExternalResources(PEGTransformer &transformer, const ShowType &show_rule,
+	                                                             const bool &has_result);
+	static unique_ptr<SelectNode> TransformShowDeprecatedSelect(PEGTransformer &transformer, const ShowType &show_rule,
+	                                                            unique_ptr<SelectStatement> select_statement_internal);
+	static unique_ptr<SelectNode> TransformDescribeSelect(PEGTransformer &transformer,
+	                                                      const ShowType &describe_or_summarize,
+	                                                      unique_ptr<SelectStatement> select_statement_internal);
+	static unique_ptr<SelectNode> TransformShowAllTables(PEGTransformer &transformer, const ShowType &show_or_describe,
+	                                                     const bool &has_result);
+	static unique_ptr<SelectNode> TransformShowTables(PEGTransformer &transformer, const ShowType &show_or_describe,
+	                                                  const QualifiedName &qualified_name);
+	static unique_ptr<SelectNode> TransformShowByName(PEGTransformer &transformer, const ShowType &show_rule,
+	                                                  optional<DescribeTarget> show_target);
+	static unique_ptr<SelectNode> TransformDescribeByName(PEGTransformer &transformer,
+	                                                      const ShowType &describe_or_summarize,
+	                                                      optional<DescribeTarget> describe_target);
 	static DescribeTarget TransformShowDeprecatedQualifiedTableName(PEGTransformer &transformer,
 	                                                                unique_ptr<BaseTableRef> qualified_table_name);
 	static DescribeTarget TransformShowSettingName(PEGTransformer &transformer, const Identifier &setting_name);

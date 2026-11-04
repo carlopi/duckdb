@@ -7718,7 +7718,7 @@ static const TransformFrameOps GENERATED_FRAME_OPS[] = {
     {"DeleteUsingClause", &PEGTransformerFactory::InitializePlannedTrampoline,
      &PEGTransformerFactory::FinalizeDeleteUsingClauseTrampoline, &FRAME_PLAN_172},
     {"DescribeStatement", &PEGTransformerFactory::InitializePlannedChoiceTrampoline,
-     &PEGTransformerFactory::FinalizeDescribeStatementTrampoline, &FRAME_PLAN_1},
+     &PEGTransformerFactory::FinalizePassthroughTrampoline, &FRAME_PLAN_1},
     {"ShowExternalResources", &PEGTransformerFactory::InitializePlannedTrampoline,
      &PEGTransformerFactory::FinalizeShowExternalResourcesTrampoline, &FRAME_PLAN_173},
     {"ShowDeprecatedSelect", &PEGTransformerFactory::InitializePlannedTrampoline,
@@ -12837,14 +12837,6 @@ PEGTransformerFactory::FinalizeDeleteUsingClauseTrampoline(PEGTransformer &trans
 }
 
 arena_ptr<TransformResultValue>
-PEGTransformerFactory::FinalizeDescribeStatementTrampoline(PEGTransformer &transformer,
-                                                           GeneratedTransformProcess &process) {
-	auto child = process.TakeResult<unique_ptr<QueryNode>>(0);
-	auto result = TransformDescribeStatement(transformer, std::move(child));
-	return transformer.MakeResult<unique_ptr<SelectStatement>>(std::move(result));
-}
-
-arena_ptr<TransformResultValue>
 PEGTransformerFactory::FinalizeShowExternalResourcesTrampoline(PEGTransformer &transformer,
                                                                GeneratedTransformProcess &process) {
 	auto &list_pr = process.parse_result.Cast<ListParseResult>();
@@ -12853,7 +12845,7 @@ PEGTransformerFactory::FinalizeShowExternalResourcesTrampoline(PEGTransformer &t
 	auto &has_result_opt = list_pr.GetChild(1).Cast<OptionalParseResult>();
 	has_result = has_result_opt.HasResult();
 	auto result = TransformShowExternalResources(transformer, show_rule, has_result);
-	return transformer.MakeResult<unique_ptr<QueryNode>>(std::move(result));
+	return transformer.MakeResult<unique_ptr<SelectNode>>(std::move(result));
 }
 
 arena_ptr<TransformResultValue>
@@ -12862,7 +12854,7 @@ PEGTransformerFactory::FinalizeShowDeprecatedSelectTrampoline(PEGTransformer &tr
 	auto show_rule = process.TakeResult<ShowType>(0);
 	auto select_statement_internal = process.TakeResult<unique_ptr<SelectStatement>>(1);
 	auto result = TransformShowDeprecatedSelect(transformer, show_rule, std::move(select_statement_internal));
-	return transformer.MakeResult<unique_ptr<QueryNode>>(std::move(result));
+	return transformer.MakeResult<unique_ptr<SelectNode>>(std::move(result));
 }
 
 arena_ptr<TransformResultValue>
@@ -12871,7 +12863,7 @@ PEGTransformerFactory::FinalizeDescribeSelectTrampoline(PEGTransformer &transfor
 	auto describe_or_summarize = process.TakeResult<ShowType>(0);
 	auto select_statement_internal = process.TakeResult<unique_ptr<SelectStatement>>(1);
 	auto result = TransformDescribeSelect(transformer, describe_or_summarize, std::move(select_statement_internal));
-	return transformer.MakeResult<unique_ptr<QueryNode>>(std::move(result));
+	return transformer.MakeResult<unique_ptr<SelectNode>>(std::move(result));
 }
 
 arena_ptr<TransformResultValue>
@@ -12883,7 +12875,7 @@ PEGTransformerFactory::FinalizeShowAllTablesTrampoline(PEGTransformer &transform
 	auto &has_result_opt = list_pr.GetChild(2).Cast<OptionalParseResult>();
 	has_result = has_result_opt.HasResult();
 	auto result = TransformShowAllTables(transformer, show_or_describe, has_result);
-	return transformer.MakeResult<unique_ptr<QueryNode>>(std::move(result));
+	return transformer.MakeResult<unique_ptr<SelectNode>>(std::move(result));
 }
 
 arena_ptr<TransformResultValue>
@@ -12891,7 +12883,7 @@ PEGTransformerFactory::FinalizeShowTablesTrampoline(PEGTransformer &transformer,
 	auto show_or_describe = process.TakeResult<ShowType>(0);
 	auto qualified_name = process.TakeResult<QualifiedName>(1);
 	auto result = TransformShowTables(transformer, show_or_describe, qualified_name);
-	return transformer.MakeResult<unique_ptr<QueryNode>>(std::move(result));
+	return transformer.MakeResult<unique_ptr<SelectNode>>(std::move(result));
 }
 
 arena_ptr<TransformResultValue>
@@ -12902,7 +12894,7 @@ PEGTransformerFactory::FinalizeShowByNameTrampoline(PEGTransformer &transformer,
 		show_target = process.TakeResult<DescribeTarget>(1);
 	}
 	auto result = TransformShowByName(transformer, show_rule, std::move(show_target));
-	return transformer.MakeResult<unique_ptr<QueryNode>>(std::move(result));
+	return transformer.MakeResult<unique_ptr<SelectNode>>(std::move(result));
 }
 
 arena_ptr<TransformResultValue>
@@ -12914,7 +12906,7 @@ PEGTransformerFactory::FinalizeDescribeByNameTrampoline(PEGTransformer &transfor
 		describe_target = process.TakeResult<DescribeTarget>(1);
 	}
 	auto result = TransformDescribeByName(transformer, describe_or_summarize, std::move(describe_target));
-	return transformer.MakeResult<unique_ptr<QueryNode>>(std::move(result));
+	return transformer.MakeResult<unique_ptr<SelectNode>>(std::move(result));
 }
 
 arena_ptr<TransformResultValue>

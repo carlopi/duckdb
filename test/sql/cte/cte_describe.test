@@ -20,12 +20,23 @@ with cte as (select 42 AS a) FROM (SUMMARIZE TABLE cte)
 query I nosort summarize
 with cte as (select 42 AS a) FROM (SUMMARIZE TABLE cte)
 
-statement error
+# DESCRIBE is a select, so the CTE is in scope without wrapping, and result modifiers apply
+query I nosort describe
 with cte as (select 42 AS a) (DESCRIBE TABLE cte)
-----
-<REGEX>:(.*Parser Error: exprLocation NOT IMPLEMENTED.*|.*Parser Error.*DESCRIBE with CTE not allowed - wrap the statement in a subquery instead.*)
+
+query I nosort describe
+with cte as (select 42 AS a) DESCRIBE cte
+
+query I nosort describe
+with cte as (select 42 AS a) (DESCRIBE TABLE cte) ORDER BY 1
+
+query I nosort describe
+with cte as (select 42 AS a) DESCRIBE cte WHERE column_name = 'a' ORDER BY column_name
+
+query I nosort summarize
+with cte as (select 42 AS a) SUMMARIZE cte WHERE column_name = 'a'
 
 statement error
 (DESCRIBE TABLE cte) ORDER BY 1
 ----
-<REGEX>:(.*Parser Error: exprLocation NOT IMPLEMENTED.*|.*Parser Error.*DESCRIBE with ORDER BY not allowed - wrap the statement in a subquery instead.*)
+<REGEX>:Catalog Error.*cte.*
