@@ -1,6 +1,7 @@
 #include "duckdb/parser/expression/constant_expression.hpp"
 #include "duckdb/parser/peg/ast/generic_copy_option.hpp"
 #include "duckdb/parser/peg/transformer/peg_transformer.hpp"
+#include "duckdb/parser/external_resource_family.hpp"
 #include "duckdb/parser/parsed_data/external_resource_options.hpp"
 #include "duckdb/parser/statement/attach_statement.hpp"
 #include "duckdb/parser/statement/connect_statement.hpp"
@@ -10,23 +11,29 @@ namespace duckdb {
 // Both statements produce a normal ATTACH/CONNECT carrying an ExternalResourceOptions. `NEW TEMPORARY`
 // provisions a resource the statement owns; a bare `<name>` borrows a registered one.
 
-//! NEW TEMPORARY EXTERNAL RESOURCE '<type>' [(create opts)] — provision a fresh resource.
+//! NEW TEMPORARY EXTERNAL RESOURCE '<type>' [(create opts)] — provision a fresh resource. A family in place of
+//! EXTERNAL folds into the type (see ExternalResourceFamily).
 unique_ptr<ExternalResourceOptions> PEGTransformerFactory::TransformExternalResourceCreateClause(
-    PEGTransformer &transformer, const string &string_literal,
+    PEGTransformer &transformer, const Identifier &external_resource_family, const string &string_literal,
     const optional<vector<GenericCopyOption>> &external_resource_creation_options) {
 	auto result = make_uniq<ExternalResourceOptions>();
-	result->provider = string_literal;
+	result->provider =
+	    ExternalResourceFamily::QualifyType(external_resource_family.GetIdentifierName(), string_literal);
 	if (external_resource_creation_options) {
 		CollectGenericOptions(*external_resource_creation_options, result->parsed_params, "EXTERNAL RESOURCE");
 	}
 	return result;
 }
 
-//! EXTERNAL RESOURCE <name> — reference an already-registered resource.
-unique_ptr<ExternalResourceOptions>
-PEGTransformerFactory::TransformExternalResourceReferenceClause(PEGTransformer &transformer, const Identifier &col_id) {
+//! EXTERNAL RESOURCE <name> — reference an already-registered resource. A family in place of EXTERNAL is kept,
+//! and the record is checked against it at bind.
+unique_ptr<ExternalResourceOptions> PEGTransformerFactory::TransformExternalResourceReferenceClause(
+    PEGTransformer &transformer, const Identifier &external_resource_family, const Identifier &col_id) {
 	auto result = make_uniq<ExternalResourceOptions>();
 	result->reference_name = col_id.GetIdentifierName();
+	if (!ExternalResourceFamily::IsRoot(external_resource_family.GetIdentifierName())) {
+		result->family = external_resource_family.GetIdentifierName();
+	}
 	return result;
 }
 

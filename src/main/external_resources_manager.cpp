@@ -1,5 +1,7 @@
 #include "duckdb/main/external_resources_manager.hpp"
 
+#include "duckdb/parser/external_resource_family.hpp"
+
 #include "duckdb/catalog/catalog.hpp"
 #include "duckdb/catalog/catalog_entry/schema_catalog_entry.hpp"
 #include "duckdb/catalog/entry_lookup_info.hpp"
@@ -131,6 +133,14 @@ unique_ptr<ExternalResource> ExternalResourcesManager::Lookup(const string &name
 		}
 	}
 	return nullptr;
+}
+
+void ExternalResourcesManager::CheckFamily(const string &name, const string &family) const {
+	auto instance = Lookup(name);
+	if (instance && !ExternalResourceFamily::Contains(family, instance->type)) {
+		throw InvalidInputException("external resource \"%s\" is not of the %s family: its type is \"%s\"", name,
+		                            family, instance->type);
+	}
 }
 
 vector<ExternalResource> ExternalResourcesManager::List() const {

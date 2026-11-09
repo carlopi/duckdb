@@ -1494,9 +1494,11 @@ DescribeStatement <- ShowExternalResources / ShowTables / ShowDeprecatedSelect /
 
 # "SHOW [ALL] EXTERNAL RESOURCES" is a query over duckdb_external_resources, so it works as a subquery too. It comes
 # first: "SHOW ALL" alone is ShowAllTables, and "SHOW <name>" is ShowByName, and neither can be retried once matched.
-ShowExternalResources <- ShowRule 'ALL'? 'EXTERNAL' 'RESOURCES' ShowExternalResourcesType?
+# A family in place of EXTERNAL ("SHOW ALL AWS RESOURCES", see external_resource.gram) restricts it to that family's
+# types; the rule fails over to the others when RESOURCES does not follow the word.
+ShowExternalResources <- ShowRule 'ALL'? ExternalResourceFamily 'RESOURCES' ShowExternalResourcesType?
 # "WITH TYPE 'aws:s3tables:table-bucket'" restricts the listing (and the discovery) to one type; a bare identifier
-# is passed through as the type name as well.
+# is passed through as the type name as well. Under a family the type is spelled relative to it.
 ShowExternalResourcesType <- 'WITH' 'TYPE' ColIdOrString
 
 # "DESCRIBE (query)" and "SUMMARIZE (query)" describe the query's columns. "SHOW (query)" does too but is deprecated,
@@ -1998,12 +2000,16 @@ ExtractDatePart <-
 # rather than one per form. SHOW [ALL] EXTERNAL RESOURCES is a query (describe.gram), so it can be a subquery.
 ExternalResourceStatement <- CreateExternalResourceStmt / RegisterExternalResourceStmt / DestroyExternalResourceStmt / AttachToExternalResource / ConnectToExternalResource
 
-CreateExternalResourceStmt <- 'CREATE' ExternalResourceKeyword StringLiteral AttachAlias? ExternalResourceCreationOptions?
-RegisterExternalResourceStmt <- 'REGISTER' ExternalResourceKeyword StringLiteral AttachAlias? 'FROM' Expression
-DestroyExternalResourceStmt <- 'DESTROY' ExternalResourceKeyword ColId
+CreateExternalResourceStmt <- 'CREATE' ExternalResourceFamily 'RESOURCE' StringLiteral AttachAlias? ExternalResourceCreationOptions?
+RegisterExternalResourceStmt <- 'REGISTER' ExternalResourceFamily 'RESOURCE' StringLiteral AttachAlias? 'FROM' Expression
+DestroyExternalResourceStmt <- 'DESTROY' ExternalResourceFamily 'RESOURCE' ColId
 
-# Syntax only: the keyword pair every singular form repeats.
-ExternalResourceKeyword <- 'EXTERNAL' 'RESOURCE'
+# The word before RESOURCE. EXTERNAL is the root: every type, spelled in full. Any other identifier names a family
+# of types, 'aws' for the 'aws:...' types, and the type after it is spelled relative to the family. It parses as
+# an identifier so extensions plug families in without touching the grammar; an unknown family is a bind error.
+# EXTERNAL is an unreserved keyword, so ColId would accept it as well: its own alternative is what autocomplete offers.
+ExternalResourceFamily <- ExternalKeyword / ColId
+ExternalKeyword <- 'EXTERNAL'
 
 # The recipe's create params. Its own rule rather than AttachOptions: the two option bags are
 # distinct, and a statement can carry both.
@@ -2017,8 +2023,8 @@ ExternalResourceCreationOptions <- GenericCopyOptionList
 AttachToExternalResource <- 'ATTACH' 'TO' ExternalResourceSource AttachAlias AttachOptions?
 ConnectToExternalResource <- 'CONNECT' 'TO' ExternalResourceSource AttachOptions?
 ExternalResourceSource <- ExternalResourceCreateClause / ExternalResourceReferenceClause
-ExternalResourceCreateClause <- 'NEW' 'TEMPORARY' ExternalResourceKeyword StringLiteral ExternalResourceCreationOptions?
-ExternalResourceReferenceClause <- ExternalResourceKeyword ColId
+ExternalResourceCreateClause <- 'NEW' 'TEMPORARY' ExternalResourceFamily 'RESOURCE' StringLiteral ExternalResourceCreationOptions?
+ExternalResourceReferenceClause <- ExternalResourceFamily 'RESOURCE' ColId
 
 InsertStatement <- WithClause? 'INSERT' OrAction? 'INTO' InsertTarget ByNameOrPosition? InsertColumnList? OverridingClause? InsertValues OnConflictClause? ReturningClause?
 

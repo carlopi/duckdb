@@ -91,6 +91,10 @@ public:
 	unique_ptr<ExternalResource> Remove(const string &name);
 	//! The registered instance with the given name, or nullptr if none.
 	unique_ptr<ExternalResource> Lookup(const string &name) const;
+	//! A statement naming the instance under a family (`DESTROY AWS RESOURCE r`, see ExternalResourceFamily)
+	//! means one of that family: throws if the instance is registered under a type outside it. An instance not
+	//! registered at all is not this check's concern; the statement reports that when it runs.
+	void CheckFamily(const string &name, const string &family) const;
 	//! Snapshot of all registered instances, in registration order.
 	vector<ExternalResource> List() const;
 

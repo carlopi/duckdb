@@ -1795,6 +1795,8 @@ IdentifierType:
     - AnalyzeKeyword
     - ColId
     - ColIdOrString
+    - ExternalKeyword
+    - ExternalResourceFamily
     - ShowExternalResourcesType
     - UsingColumnName
     - ColLabelOrString
@@ -2015,8 +2017,6 @@ rule_labels:
 # ---------------------------------------------------------------------------
 
 excluded_rules:
-  # Syntax only: the 'EXTERNAL' 'RESOURCE' keyword pair, shared by every singular form.
-  - ExternalResourceKeyword
   # Syntax only: OVERRIDING {USER|SYSTEM} VALUE is accepted and ignored.
   - OverridingClause
   # Syntax only: CREATE INDEX CONCURRENTLY is accepted and ignored.

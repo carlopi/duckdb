@@ -5,6 +5,8 @@
 #include "duckdb/main/database.hpp"
 #include "duckdb/main/extension_entries.hpp"
 #include "duckdb/main/extension_helper.hpp"
+#include "duckdb/main/settings.hpp"
+#include "duckdb/parser/external_resource_family.hpp"
 #include "duckdb/parser/qualified_name.hpp"
 
 namespace duckdb {
@@ -91,12 +93,28 @@ unique_ptr<ExternalResourceType> ExternalResourceTypeRegistry::LookupOrAutoload(
 		return type;
 	}
 	// The extension registers its types on load, so a successful autoload makes the second lookup succeed
-	ExtensionHelper::TryAutoloadFromEntry(db, Identifier(name), EXTENSION_EXTERNAL_RESOURCE_TYPES);
+	Autoload(db, name);
 	return registry.Lookup(name);
 }
 
+void ExternalResourceTypeRegistry::Autoload(DatabaseInstance &db, const string &name) {
+	if (!Settings::Get<AutoloadKnownExtensionsSetting>(db)) {
+		return;
+	}
+	auto extension = ProvidingExtension(name);
+	if (ExtensionHelper::CanAutoloadExtension(db, extension)) {
+		ExtensionHelper::AutoLoadExtension(db, extension);
+	}
+}
+
 string ExternalResourceTypeRegistry::ProvidingExtension(const string &name) {
-	return ExtensionHelper::FindExtensionInEntries(Identifier(name), EXTENSION_EXTERNAL_RESOURCE_TYPES);
+	// A family is provided by whichever extension provides a type under it, so `SHOW ALL AWS RESOURCES` loads aws
+	for (auto &entry : EXTENSION_EXTERNAL_RESOURCE_TYPES) {
+		if (ExternalResourceFamily::Contains(name, entry.name)) {
+			return entry.extension;
+		}
+	}
+	return "";
 }
 
 } // namespace duckdb

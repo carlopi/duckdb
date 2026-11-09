@@ -12,6 +12,11 @@ Identifier PEGTransformerFactory::TransformAnalyzeKeyword(PEGTransformer &transf
 	return Identifier("analyze");
 }
 
+//! The root family of external resource types, see ExternalResourceFamily
+Identifier PEGTransformerFactory::TransformExternalKeyword(PEGTransformer &transformer) {
+	return Identifier("external");
+}
+
 string PEGTransformerFactory::TransformIdentifierOrKeyword(PEGTransformer &transformer, ParseResult &parse_result) {
 	if (parse_result.type == ParseResultType::IDENTIFIER) {
 		return parse_result.Cast<IdentifierParseResult>().identifier.GetIdentifierName();

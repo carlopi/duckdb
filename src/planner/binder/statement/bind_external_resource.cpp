@@ -1,4 +1,5 @@
 #include "duckdb/execution/expression_executor.hpp"
+#include "duckdb/main/external_resources_manager.hpp"
 #include "duckdb/parser/expression/constant_expression.hpp"
 #include "duckdb/parser/statement/external_resource_statement.hpp"
 #include "duckdb/planner/binder.hpp"
@@ -34,7 +35,10 @@ BoundStatement Binder::Bind(ExternalResourceStatement &stmt) {
 		throw BinderException("EXTERNAL RESOURCE requires a name (AS <name>)");
 	}
 
-	if (stmt.operation != ExternalResourceOperation::DESTROY) {
+	if (stmt.operation == ExternalResourceOperation::DESTROY) {
+		// `DESTROY AWS RESOURCE r` means an aws resource: a record of another family is refused here
+		ExternalResourcesManager::Get(context).CheckFamily(data.name, stmt.family);
+	} else {
 		// CREATE / REGISTER: the resource type is a string literal; only the create params need resolving.
 		data.type = stmt.type;
 		BindExternalResourceParams(stmt.options, data.params);

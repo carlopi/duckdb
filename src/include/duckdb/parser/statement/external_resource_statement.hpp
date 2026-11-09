@@ -28,8 +28,12 @@ public:
 	explicit ExternalResourceStatement(ExternalResourceOperation operation);
 
 	ExternalResourceOperation operation;
-	//! The resource type ('<recipe>'): a string literal, so it is fixed at parse time. Set for CREATE and REGISTER.
+	//! The resource type ('<recipe>'): a string literal, so it is fixed at parse time. Set for CREATE and REGISTER,
+	//! spelled in full: a family before RESOURCE is folded into it (see ExternalResourceFamily).
 	string type;
+	//! The family before RESOURCE, empty for EXTERNAL. Set for DESTROY, which names a record rather than a type,
+	//! so the record is checked against it when the statement runs.
+	string family;
 	//! The local name: the `AS <name>` alias for CREATE/REGISTER (optional), or the target for DESTROY.
 	Identifier name;
 	//! Create params `(k v, ...)`. Set for CREATE.

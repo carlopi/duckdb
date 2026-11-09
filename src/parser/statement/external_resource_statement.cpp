@@ -1,5 +1,6 @@
 #include "duckdb/parser/statement/external_resource_statement.hpp"
 
+#include "duckdb/parser/external_resource_family.hpp"
 #include "duckdb/common/string_util.hpp"
 #include "duckdb/common/sql_identifier.hpp"
 #include "duckdb/parser/keyword_helper.hpp"
@@ -11,7 +12,7 @@ ExternalResourceStatement::ExternalResourceStatement(ExternalResourceOperation o
 }
 
 ExternalResourceStatement::ExternalResourceStatement(const ExternalResourceStatement &other)
-    : SQLStatement(other), operation(other.operation), type(other.type), name(other.name) {
+    : SQLStatement(other), operation(other.operation), type(other.type), family(other.family), name(other.name) {
 	if (other.handle) {
 		handle = other.handle->Copy();
 	}
@@ -49,7 +50,7 @@ string ExternalResourceStatement::ToString() const {
 		result += " FROM " + (handle ? handle->ToString() : string());
 		break;
 	case ExternalResourceOperation::DESTROY:
-		result = "DESTROY EXTERNAL RESOURCE " + SQLIdentifier(name);
+		result = "DESTROY " + ExternalResourceFamily::Keyword(family) + " RESOURCE " + SQLIdentifier(name);
 		break;
 	}
 	return result;

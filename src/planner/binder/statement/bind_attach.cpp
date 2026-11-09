@@ -5,13 +5,15 @@
 #include "duckdb/planner/operator/logical_attach.hpp"
 #include "duckdb/planner/expression_binder/table_function_binder.hpp"
 #include "duckdb/execution/expression_executor.hpp"
+#include "duckdb/main/external_resources_manager.hpp"
 
 namespace duckdb {
 
 void Binder::BindExternalResource(ExternalResourceOptions &external_resource) {
 	// Reference form (`EXTERNAL RESOURCE <name>`): the resource already exists — the physical operator
-	// looks it up in the manager at execution. Nothing to resolve here.
+	// looks it up in the manager at execution. Only a family before RESOURCE is checked here.
 	if (!external_resource.reference_name.empty()) {
+		ExternalResourcesManager::Get(context).CheckFamily(external_resource.reference_name, external_resource.family);
 		return;
 	}
 

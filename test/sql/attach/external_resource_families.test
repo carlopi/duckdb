@@ -1,0 +1,201 @@
+# name: test/sql/attach/external_resource_families.test
+# description: A family in place of EXTERNAL names the types under it: CREATE/REGISTER/DESTROY/ATTACH TO <FAMILY> RESOURCE, SHOW [ALL] <FAMILY> RESOURCES
+# group: [attach]
+
+statement ok
+CREATE MACRO list_fam_a(opts) AS TABLE
+    SELECT MAP {'id': 'a1'} AS handle, 'bucket-a' AS name, 'a-ref' AS reference, 'ready' AS state;
+
+statement ok
+CREATE MACRO list_fam_b(opts) AS TABLE
+    SELECT MAP {'id': 'b1'} AS handle, 'bucket-b' AS name, 'b-ref' AS reference, 'ready' AS state;
+
+statement ok
+CREATE MACRO list_other(opts) AS TABLE
+    SELECT MAP {'id': 'o1'} AS handle, 'other-1' AS name, 'o-ref' AS reference, 'ready' AS state;
+
+# The family of a type is the leading segment of its name: these are two types of the famf family and one of otherf.
+statement ok
+CALL register_external_resource_type('famf:a', kind := 'catalog', create_function := 'noop_create', list_function := 'list_fam_a');
+
+statement ok
+CALL register_external_resource_type('famf:b', kind := 'catalog', create_function := 'noop_create', list_function := 'list_fam_b');
+
+statement ok
+CALL register_external_resource_type('otherf:x', kind := 'catalog', create_function := 'noop_create', list_function := 'list_other');
+
+statement ok
+CALL register_external_resource('famf:a', 'r_a', MAP {'id': 'ra'});
+
+statement ok
+CALL register_external_resource('famf:b', 'r_b', MAP {'id': 'rb'});
+
+statement ok
+CALL register_external_resource('otherf:x', 'r_x', MAP {'id': 'rx'});
+
+query TT rowsort
+SELECT name, type FROM duckdb_external_resources();
+----
+r_a	famf:a
+r_b	famf:b
+r_x	otherf:x
+
+# SHOW <FAMILY> RESOURCES lists the registry rows of that family; EXTERNAL is the root and lists everything.
+query TT rowsort
+SELECT name, type FROM (SHOW FAMF RESOURCES);
+----
+r_a	famf:a
+r_b	famf:b
+
+query I
+SELECT count(*) FROM (SHOW EXTERNAL RESOURCES);
+----
+3
+
+# SHOW ALL <FAMILY> RESOURCES discovers the family's types and no other.
+query TTT rowsort
+SELECT name, type, managed FROM (SHOW ALL FAMF RESOURCES);
+----
+bucket-a	famf:a	false
+bucket-b	famf:b	false
+r_a	famf:a	true
+r_b	famf:b	true
+
+query TTT rowsort
+SELECT name, type, managed FROM (SHOW ALL OTHERF RESOURCES);
+----
+other-1	otherf:x	false
+r_x	otherf:x	true
+
+# WITH TYPE under a family is spelled relative to the family.
+query TT rowsort
+SELECT name, type FROM (SHOW ALL FAMF RESOURCES WITH TYPE 'a');
+----
+bucket-a	famf:a
+r_a	famf:a
+
+query I
+SELECT count(*) FROM (SHOW ALL EXTERNAL RESOURCES WITH TYPE 'famf:a');
+----
+2
+
+# The family is an identifier, so its case does not matter, quoted or not; type names are lower case.
+query I
+SELECT count(*) FROM (SHOW Famf RESOURCES);
+----
+2
+
+query I
+SELECT count(*) FROM (SHOW "FAMF" RESOURCES);
+----
+2
+
+# A family is a prefix segment, not a prefix: 'fam' is not 'famf'.
+query I
+SELECT count(*) FROM (SHOW FAM RESOURCES);
+----
+0
+
+# A family nothing provides: the registry lists nothing under it, and discovering it is an error.
+query I
+SELECT count(*) FROM (SHOW DOCKER RESOURCES);
+----
+0
+
+statement error
+SHOW ALL DOCKER RESOURCES;
+----
+<REGEX>:.*unknown resource type "docker".*
+
+# Under a family the type is spelled relative to it: DOCKER RESOURCE 'container' is the EXTERNAL RESOURCE
+# 'docker:container', for CREATE, REGISTER and NEW TEMPORARY alike.
+statement error
+CREATE DOCKER RESOURCE 'container' AS c (IMAGE 'duckdb');
+----
+<REGEX>:.*unknown resource type "docker:container".*
+
+statement error
+REGISTER Docker RESOURCE 'container' AS c FROM MAP {'id': 'abc'};
+----
+<REGEX>:.*unknown resource type "docker:container".*
+
+statement error
+ATTACH TO NEW TEMPORARY DOCKER RESOURCE 'container' AS c_db;
+----
+<REGEX>:.*unknown resource type "docker:container".*
+
+# A record named under a family must be of that family; EXTERNAL accepts any.
+statement error
+DESTROY OTHERF RESOURCE r_a;
+----
+<REGEX>:.*external resource "r_a" is not of the otherf family: its type is "famf:a".*
+
+statement error
+ATTACH TO OTHERF RESOURCE r_a AS r_a_db;
+----
+<REGEX>:.*"r_a" is not of the otherf family.*
+
+statement error
+CONNECT TO OTHERF RESOURCE r_a;
+----
+<REGEX>:.*"r_a" is not of the otherf family.*
+
+query T rowsort
+SELECT name FROM duckdb_external_resources();
+----
+r_a
+r_b
+r_x
+
+statement ok
+DESTROY FAMF RESOURCE r_a;
+
+statement ok
+DESTROY EXTERNAL RESOURCE r_b;
+
+query T
+SELECT name FROM duckdb_external_resources();
+----
+r_x
+
+# A name nothing is registered under is reported as before, whatever the family.
+statement error
+DESTROY FAMF RESOURCE nope;
+----
+<REGEX>:.*not registered.*
+
+# The other SHOW forms are untouched by the word before RESOURCES.
+statement ok
+CREATE TABLE resources (i INTEGER);
+
+statement ok
+SHOW ALL TABLES;
+
+statement ok
+SHOW TABLES;
+
+query ITTITT
+SHOW resources;
+----
+i	INTEGER	YES	NULL	NULL	NULL
+
+query ITTITT
+DESCRIBE resources;
+----
+i	INTEGER	YES	NULL	NULL	NULL
+
+# The word before RESOURCE is required.
+statement error
+CREATE RESOURCE 'a' AS c;
+----
+<REGEX>:.*(syntax error|Parser).*
+
+statement error
+SHOW ALL RESOURCES;
+----
+<REGEX>:.*(syntax error|Parser).*
+
+statement error
+DESTROY RESOURCE r_x;
+----
+<REGEX>:.*(syntax error|Parser).*

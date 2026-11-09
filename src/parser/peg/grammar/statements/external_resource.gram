@@ -2,12 +2,16 @@
 # rather than one per form. SHOW [ALL] EXTERNAL RESOURCES is a query (describe.gram), so it can be a subquery.
 ExternalResourceStatement <- CreateExternalResourceStmt / RegisterExternalResourceStmt / DestroyExternalResourceStmt / AttachToExternalResource / ConnectToExternalResource
 
-CreateExternalResourceStmt <- 'CREATE' ExternalResourceKeyword StringLiteral AttachAlias? ExternalResourceCreationOptions?
-RegisterExternalResourceStmt <- 'REGISTER' ExternalResourceKeyword StringLiteral AttachAlias? 'FROM' Expression
-DestroyExternalResourceStmt <- 'DESTROY' ExternalResourceKeyword ColId
+CreateExternalResourceStmt <- 'CREATE' ExternalResourceFamily 'RESOURCE' StringLiteral AttachAlias? ExternalResourceCreationOptions?
+RegisterExternalResourceStmt <- 'REGISTER' ExternalResourceFamily 'RESOURCE' StringLiteral AttachAlias? 'FROM' Expression
+DestroyExternalResourceStmt <- 'DESTROY' ExternalResourceFamily 'RESOURCE' ColId
 
-# Syntax only: the keyword pair every singular form repeats.
-ExternalResourceKeyword <- 'EXTERNAL' 'RESOURCE'
+# The word before RESOURCE. EXTERNAL is the root: every type, spelled in full. Any other identifier names a family
+# of types, 'aws' for the 'aws:...' types, and the type after it is spelled relative to the family. It parses as
+# an identifier so extensions plug families in without touching the grammar; an unknown family is a bind error.
+# EXTERNAL is an unreserved keyword, so ColId would accept it as well: its own alternative is what autocomplete offers.
+ExternalResourceFamily <- ExternalKeyword / ColId
+ExternalKeyword <- 'EXTERNAL'
 
 # The recipe's create params. Its own rule rather than AttachOptions: the two option bags are
 # distinct, and a statement can carry both.

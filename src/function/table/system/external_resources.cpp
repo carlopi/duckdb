@@ -6,6 +6,7 @@
 #include "duckdb/main/database.hpp"
 #include "duckdb/main/external_resource_type_registry.hpp"
 #include "duckdb/main/external_resources_manager.hpp"
+#include "duckdb/parser/external_resource_family.hpp"
 #include "duckdb/parser/keyword_helper.hpp"
 #include "duckdb/parser/parser.hpp"
 #include "duckdb/parser/qualified_name.hpp"
@@ -51,8 +52,9 @@ static ExternalResourcesParameters ReadParameters(TableFunctionBindInput &input)
 	return result;
 }
 
+//! `type` is a type name or a family (see ExternalResourceFamily): 'aws' matches every 'aws:...' type.
 static bool MatchesType(const string &type, const string &type_name) {
-	return type.empty() || type == type_name;
+	return ExternalResourceFamily::Contains(type, type_name);
 }
 
 //! The registry scan restricted to `type`, as SQL.
@@ -65,7 +67,7 @@ static string RegistryScan(const string &type) {
 
 static bool RegistryHasType(ClientContext &context, const string &type) {
 	for (auto &instance : ExternalResourcesManager::Get(context).List()) {
-		if (instance.type == type) {
+		if (MatchesType(type, instance.type)) {
 			return true;
 		}
 	}

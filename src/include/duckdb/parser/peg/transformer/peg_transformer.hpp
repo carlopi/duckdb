@@ -2084,6 +2084,10 @@ public:
 	FinalizeRegisterExternalResourceStmtTrampoline(PEGTransformer &transformer, GeneratedTransformProcess &process);
 	static arena_ptr<TransformResultValue>
 	FinalizeDestroyExternalResourceStmtTrampoline(PEGTransformer &transformer, GeneratedTransformProcess &process);
+	static arena_ptr<TransformResultValue> FinalizeExternalResourceFamilyTrampoline(PEGTransformer &transformer,
+	                                                                                GeneratedTransformProcess &process);
+	static arena_ptr<TransformResultValue> FinalizeExternalKeywordTrampoline(PEGTransformer &transformer,
+	                                                                         GeneratedTransformProcess &process);
 	static arena_ptr<TransformResultValue>
 	FinalizeAttachToExternalResourceTrampoline(PEGTransformer &transformer, GeneratedTransformProcess &process);
 	static arena_ptr<TransformResultValue>
@@ -2824,6 +2828,7 @@ public:
 	static CatalogType TransformCommentColumn(PEGTransformer &transformer);
 	static Value TransformStringLiteralValue(PEGTransformer &transformer, const string &string_literal);
 	static Identifier TransformAnalyzeKeyword(PEGTransformer &transformer);
+	static Identifier TransformExternalKeyword(PEGTransformer &transformer);
 	static Identifier TransformConstraintName(PEGTransformer &transformer, const Identifier &col_id_or_string);
 	static Identifier TransformCollationName(PEGTransformer &transformer, const Identifier &identifier);
 	static unique_ptr<ParsedExpression> TransformNumberLiteral(PEGTransformer &transformer, ParseResult &parse_result);
@@ -3317,6 +3322,7 @@ public:
 	                                                              unique_ptr<QueryNode> child);
 	static unique_ptr<QueryNode> TransformShowExternalResources(PEGTransformer &transformer, const ShowType &show_rule,
 	                                                            const bool &has_result,
+	                                                            const Identifier &external_resource_family,
 	                                                            optional<Identifier> show_external_resources_type);
 	static unique_ptr<QueryNode> TransformShowDeprecatedSelect(PEGTransformer &transformer, const ShowType &show_rule,
 	                                                           unique_ptr<SelectStatement> select_statement_internal);
@@ -3918,14 +3924,17 @@ public:
 	static unique_ptr<ParsedExpression> TransformExtractStringArgument(PEGTransformer &transformer,
 	                                                                   const string &string_literal);
 	static unique_ptr<SQLStatement>
-	TransformCreateExternalResourceStmt(PEGTransformer &transformer, const string &string_literal,
+	TransformCreateExternalResourceStmt(PEGTransformer &transformer, const Identifier &external_resource_family,
+	                                    const string &string_literal,
 	                                    const optional<Identifier> &attach_alias,
 	                                    const optional<vector<GenericCopyOption>> &external_resource_creation_options);
 	static unique_ptr<SQLStatement> TransformRegisterExternalResourceStmt(PEGTransformer &transformer,
+	                                                                      const Identifier &external_resource_family,
 	                                                                      const string &string_literal,
 	                                                                      const optional<Identifier> &attach_alias,
 	                                                                      unique_ptr<ParsedExpression> expression);
 	static unique_ptr<SQLStatement> TransformDestroyExternalResourceStmt(PEGTransformer &transformer,
+	                                                                     const Identifier &external_resource_family,
 	                                                                     const Identifier &col_id);
 	static unique_ptr<SQLStatement> TransformAttachToExternalResource(
 	    PEGTransformer &transformer, unique_ptr<ExternalResourceOptions> external_resource_source,
@@ -3935,9 +3944,10 @@ public:
 	                                   unique_ptr<ExternalResourceOptions> external_resource_source,
 	                                   const optional<vector<GenericCopyOption>> &attach_options);
 	static unique_ptr<ExternalResourceOptions> TransformExternalResourceCreateClause(
-	    PEGTransformer &transformer, const string &string_literal,
+	    PEGTransformer &transformer, const Identifier &external_resource_family, const string &string_literal,
 	    const optional<vector<GenericCopyOption>> &external_resource_creation_options);
 	static unique_ptr<ExternalResourceOptions> TransformExternalResourceReferenceClause(PEGTransformer &transformer,
+	                                                                                    const Identifier &external_resource_family,
 	                                                                                    const Identifier &col_id);
 	static unique_ptr<SQLStatement>
 	TransformInsertStatement(PEGTransformer &transformer, optional<CommonTableExpressionMap> with_clause,

@@ -29,6 +29,22 @@ REGISTER EXTERNAL RESOURCE 'aws:cloudformation:quack-on-ec2' AS r FROM MAP {'id'
 ----
 <REGEX>:.*provided by the aws extension.*INSTALL AND LOAD aws;.*
 
+# A family is provided by whichever extension provides a type under it.
+statement error
+CREATE AWS RESOURCE 'cloudformation:quack-on-ec2' AS r;
+----
+<REGEX>:.*unknown resource type "aws:cloudformation:quack-on-ec2".*provided by the aws extension.*INSTALL AND LOAD aws;.*
+
+statement error
+SHOW ALL AWS RESOURCES;
+----
+<REGEX>:.*provided by the aws extension.*INSTALL AND LOAD aws;.*
+
+statement error
+SHOW ALL NOBODY RESOURCES;
+----
+<REGEX>:.*unknown resource type "nobody".*
+
 # Discovery of a type does the same lookup, so a type restriction can load the provider.
 statement error
 SELECT * FROM duckdb_external_resources(discover := true, type := 'nobody:provides:this');
@@ -72,6 +88,12 @@ REGISTER EXTERNAL RESOURCE 'aws:cloudformation:quack-on-ec2' AS r FROM MAP {'id'
 
 statement error
 SELECT * FROM duckdb_external_resources(discover := true, type := 'aws:cloudformation:quack-on-ec2');
+----
+<REGEX>:.*Extension Autoloading Error.*automatically install the required extension 'aws.*
+
+# The family triggers the same autoload.
+statement error
+SHOW ALL AWS RESOURCES;
 ----
 <REGEX>:.*Extension Autoloading Error.*automatically install the required extension 'aws.*
 

@@ -31,6 +31,9 @@ struct ExternalResourceOptions {
 	//! Reference form: a bare identifier naming a registered resource to BORROW rather than provision,
 	//! so no teardown is owned. Mutually exclusive with `provider`.
 	string reference_name;
+	//! The family before RESOURCE in the reference form, empty for EXTERNAL: the record must be of a type under
+	//! it (see ExternalResourceFamily). In the create form the family is folded into `provider`.
+	string family;
 
 	unique_ptr<ExternalResourceOptions> Copy() const;
 	//! Renders `NEW TEMPORARY EXTERNAL RESOURCE '<type>' [(k v, ...)]`, or the reference form.

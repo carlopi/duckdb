@@ -65,6 +65,8 @@ public:
 	static unique_ptr<ExternalResourceType> LookupOrAutoload(DatabaseInstance &db, const string &name);
 	//! The extension known to provide the type, or empty if none
 	static string ProvidingExtension(const string &name);
+	//! Autoload the extension providing the type, or the family, when autoloading is on and it is known
+	static void Autoload(DatabaseInstance &db, const string &name);
 
 private:
 	mutable mutex lock;
