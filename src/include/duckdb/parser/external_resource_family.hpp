@@ -25,16 +25,20 @@ struct ExternalResourceFamily {
 	static bool IsRoot(const string &family) {
 		return family.empty() || StringUtil::CIEquals(family, ROOT);
 	}
+	//! The family as type names spell it: lower case
+	static string Fold(const string &family) {
+		return StringUtil::Lower(family);
+	}
 	//! The full type name: 'aws' + 's3tables' is 'aws:s3tables'; under the root the type is already spelled in full
 	static string QualifyType(const string &family, const string &type) {
-		return IsRoot(family) ? type : StringUtil::Lower(family) + ":" + type;
+		return IsRoot(family) ? type : Fold(family) + ":" + type;
 	}
 	//! Whether `type` is `family` itself or below it. The root contains every type.
 	static bool Contains(const string &family, const string &type) {
 		if (IsRoot(family)) {
 			return true;
 		}
-		auto folded = StringUtil::Lower(family);
+		auto folded = Fold(family);
 		return type == folded || StringUtil::StartsWith(type, folded + ":");
 	}
 	//! The family as a statement spells it: EXTERNAL, or the identifier

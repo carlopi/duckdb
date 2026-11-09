@@ -3925,8 +3925,7 @@ public:
 	                                                                   const string &string_literal);
 	static unique_ptr<SQLStatement>
 	TransformCreateExternalResourceStmt(PEGTransformer &transformer, const Identifier &external_resource_family,
-	                                    const string &string_literal,
-	                                    const optional<Identifier> &attach_alias,
+	                                    const string &string_literal, const optional<Identifier> &attach_alias,
 	                                    const optional<vector<GenericCopyOption>> &external_resource_creation_options);
 	static unique_ptr<SQLStatement> TransformRegisterExternalResourceStmt(PEGTransformer &transformer,
 	                                                                      const Identifier &external_resource_family,
@@ -3946,9 +3945,9 @@ public:
 	static unique_ptr<ExternalResourceOptions> TransformExternalResourceCreateClause(
 	    PEGTransformer &transformer, const Identifier &external_resource_family, const string &string_literal,
 	    const optional<vector<GenericCopyOption>> &external_resource_creation_options);
-	static unique_ptr<ExternalResourceOptions> TransformExternalResourceReferenceClause(PEGTransformer &transformer,
-	                                                                                    const Identifier &external_resource_family,
-	                                                                                    const Identifier &col_id);
+	static unique_ptr<ExternalResourceOptions>
+	TransformExternalResourceReferenceClause(PEGTransformer &transformer, const Identifier &external_resource_family,
+	                                         const Identifier &col_id);
 	static unique_ptr<SQLStatement>
 	TransformInsertStatement(PEGTransformer &transformer, optional<CommonTableExpressionMap> with_clause,
 	                         const optional<OnConflictAction> &or_action, unique_ptr<BaseTableRef> insert_target,

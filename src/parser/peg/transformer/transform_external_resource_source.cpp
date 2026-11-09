@@ -32,7 +32,7 @@ unique_ptr<ExternalResourceOptions> PEGTransformerFactory::TransformExternalReso
 	auto result = make_uniq<ExternalResourceOptions>();
 	result->reference_name = col_id.GetIdentifierName();
 	if (!ExternalResourceFamily::IsRoot(external_resource_family.GetIdentifierName())) {
-		result->family = external_resource_family.GetIdentifierName();
+		result->family = ExternalResourceFamily::Fold(external_resource_family.GetIdentifierName());
 	}
 	return result;
 }
