@@ -29,6 +29,7 @@ unique_ptr<LoadInfo> LoadInfo::Copy() const {
 	result->version = version;
 	result->alias = alias;
 	result->repository_url = repository_url;
+	result->repository_host = repository_host;
 	result->public_keys = public_keys;
 	result->on_conflict = on_conflict;
 	result->missing_ok = missing_ok;
@@ -63,6 +64,9 @@ static string RepositoryToString(const LoadInfo &info) {
 			result += "IF NOT EXISTS ";
 		}
 		result += SQLIdentifier(info.repository);
+		if (!info.repository_host.empty()) {
+			return result + " FROM " + SQLString(info.repository_host) + ";";
+		}
 		result += " WITH PREFIX " + SQLString(info.repository_url);
 		if (!info.public_keys.empty()) {
 			result += info.public_keys.size() > 1 ? " USING PUBLIC KEYS " : " USING PUBLIC KEY ";

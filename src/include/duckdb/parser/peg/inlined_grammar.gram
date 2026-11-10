@@ -2073,10 +2073,14 @@ FromSourceIdentifier <- 'FROM' Identifier
 FromSourceString <- 'FROM' StringLiteral
 VersionNumber <- 'VERSION' IdentifierOrStringLiteral
 
-ExtensionRepositoryStatement <- CreateExtensionRepositoryStmt / DropExtensionRepositoryStmt
+ExtensionRepositoryStatement <- CreateExtensionRepositoryStmt / CreateExtensionRepositoryFromHostStmt / DropExtensionRepositoryStmt
 CreateExtensionRepositoryStmt <- 'CREATE' OrReplace? 'EXTENSION' 'REPOSITORY' IfNotExists? ColIdOrString RepositoryPrefix RepositoryPublicKey?
 RepositoryPrefix <- 'WITH'? 'PREFIX' StringLiteral
 RepositoryPublicKey <- 'USING'? 'PUBLIC' ('KEYS' / 'KEY') List(StringLiteral)
+# "CREATE EXTENSION REPOSITORY name FROM 'host'": the prefix is looked up in the extension repository registry under the
+# host, and when the registry asks for it, a consent file on the host must name the same prefix. The keys are then
+# fetched from the prefix and pinned, as with WITH PREFIX.
+CreateExtensionRepositoryFromHostStmt <- 'CREATE' OrReplace? 'EXTENSION' 'REPOSITORY' IfNotExists? ColIdOrString 'FROM' StringLiteral
 DropExtensionRepositoryStmt <- 'DROP' 'EXTENSION' 'REPOSITORY' IfExists? ColIdOrString
 
 TableMatchRecognizeClause <- 'MATCH_RECOGNIZE' Parens(MatchRecognizeBody) TableAlias?

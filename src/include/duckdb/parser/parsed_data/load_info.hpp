@@ -34,6 +34,9 @@ public:
 	Identifier alias;
 	//! The url prefix of the repository (CREATE_REPOSITORY only)
 	string repository_url;
+	//! The host the repository is resolved from (CREATE_REPOSITORY ... FROM only): the prefix is looked up in the
+	//! extension repository registry under this host
+	string repository_host;
 	//! The public keys that are trusted to sign the extensions of the repository (CREATE_REPOSITORY only)
 	vector<string> public_keys;
 	//! What to do when the repository already exists (CREATE_REPOSITORY only)

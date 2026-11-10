@@ -28,10 +28,12 @@ enum class ExtensionInstallMode : uint8_t {
 };
 
 //! Whether the user has opted in to adding external extension repositories. This is a one-way ratchet: once FORBIDDEN
-//! it cannot be moved back within a session. UNDECIDED (the default) blocks adding new repositories, but extensions
-//! from repositories that were already created can still be installed and loaded
+//! it cannot be moved back within a session. UNDECIDED (the default) blocks adding repositories by prefix, but allows
+//! the ones resolved through the extension repository registry (CREATE EXTENSION REPOSITORY ... FROM '<host>'), and
+//! extensions from repositories that were already created can still be installed and loaded
 enum class ExtensionRepositoryAccess : uint8_t {
-	//! No decision has been made yet - adding repositories fails until the user opts in explicitly
+	//! No decision has been made yet - adding a repository by prefix fails until the user opts in explicitly; a
+	//! repository listed in the extension repository registry can be added
 	UNDECIDED = 0,
 	//! Adding external repositories is allowed
 	ALLOWED = 1,

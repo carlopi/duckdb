@@ -548,6 +548,7 @@ void LoadInfo::Serialize(Serializer &serializer) const {
 	serializer.WritePropertyWithDefault<OnCreateConflict>(208, "on_conflict", on_conflict, OnCreateConflict::ERROR_ON_CONFLICT);
 	serializer.WritePropertyWithDefault<bool>(209, "missing_ok", missing_ok, false);
 	serializer.WritePropertyWithDefault<bool>(210, "load_after_install", load_after_install, false);
+	serializer.WritePropertyWithDefault<string>(211, "repository_host", repository_host);
 }
 
 unique_ptr<ParseInfo> LoadInfo::Deserialize(Deserializer &deserializer) {
@@ -563,6 +564,7 @@ unique_ptr<ParseInfo> LoadInfo::Deserialize(Deserializer &deserializer) {
 	deserializer.ReadPropertyWithExplicitDefault<OnCreateConflict>(208, "on_conflict", result->on_conflict, OnCreateConflict::ERROR_ON_CONFLICT);
 	deserializer.ReadPropertyWithExplicitDefault<bool>(209, "missing_ok", result->missing_ok, false);
 	deserializer.ReadPropertyWithExplicitDefault<bool>(210, "load_after_install", result->load_after_install, false);
+	deserializer.ReadPropertyWithDefault<string>(211, "repository_host", result->repository_host);
 	return std::move(result);
 }
 

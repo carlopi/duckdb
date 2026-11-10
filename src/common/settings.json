@@ -58,7 +58,7 @@
     },
     {
         "name": "allow_extension_repositories",
-        "description": "Whether custom trusted extension repositories are 'allowed', 'forbidden' (which also distrusts existing repositories) or 'undecided' (the default: blocks adding new repositories, but keeps trusting existing ones). While the database is running the setting can only move from 'undecided' to 'allowed' or 'forbidden', or from 'allowed' to 'forbidden'.",
+        "description": "Whether custom trusted extension repositories are 'allowed', 'forbidden' (which also distrusts existing repositories) or 'undecided' (the default: blocks adding repositories by prefix, allows the ones resolved through the extension repository registry with CREATE EXTENSION REPOSITORY ... FROM '<host>', and keeps trusting existing ones). While the database is running the setting can only move from 'undecided' to 'allowed' or 'forbidden', or from 'allowed' to 'forbidden'.",
         "type": "VARCHAR",
         "scope": "global",
         "default_value": "undecided",
@@ -913,6 +913,16 @@
         "type": "VARCHAR",
         "scope": "global",
         "default_value": "",
+        "on_callbacks": [
+            "set"
+        ]
+    },
+    {
+        "name": "extension_repository_registry",
+        "description": "The registry that resolves CREATE EXTENSION REPOSITORY <name> FROM '<host>': the entry for a host is read from '<registry>/<host>'. Empty disables the FROM form. While signature checking is enabled (allow_unsigned_extensions=false) it can only be set to the default or to empty, not repointed.",
+        "type": "VARCHAR",
+        "scope": "global",
+        "default_value": "https://extensions.duckdb.org/extension-repositories",
         "on_callbacks": [
             "set"
         ]

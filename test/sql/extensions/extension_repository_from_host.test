@@ -1,0 +1,152 @@
+# name: test/sql/extensions/extension_repository_from_host.test
+# description: CREATE EXTENSION REPOSITORY name FROM 'host' resolves the prefix through the extension repository registry
+# group: [extensions]
+
+statement ok
+SET extension_repository_directory='{TEST_DIR}/extension_repositories'
+
+# The registry is a directory here: '<registry>/<host>' is the registry entry.
+statement ok
+SET extension_repository_registry='{TEST_DIR}/registry'
+
+# The repository itself: a prefix serving its signing key, as for WITH PREFIX. PER_THREAD_OUTPUT creates directories.
+statement ok
+COPY (SELECT 1 AS a) TO '{TEST_DIR}/repo' (FORMAT csv, PER_THREAD_OUTPUT true)
+
+statement ok
+COPY (SELECT 1 AS a) TO '{TEST_DIR}/repo/.well-known' (FORMAT csv, PER_THREAD_OUTPUT true)
+
+statement ok
+COPY (SELECT '{"signature_keys":["MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAt9+KeDkWJa7SiBb7AMdXAPV2qpRunztoC2c7DtRmN9+Lq2YQm4rMQmmAQcwyxTxcK8vwPKOiE4mLMwmQMvTty9tL+buREfvg5KJ+FY3Bv05cZYsf7VuYgUDcw41zSEE5W1thh5PiafcrMn7CPF0jN0oFfVvAHB/fAM0yaZGPKs3WYqnHAHa6v/cVMeiWZ/lQORCBqqL2hii1fEiuIqw6AOEoZVsN0/lqm7GfnD899zrzLOPRuP4YFg46drL1UyNdg+4TquJ2OV9kR4CAfdGRexqHFWLmoxkTfnUxJ4yL+gkV57K1H+smEdKrDhDX68pEFM/34E2eVKZoRU/0paxDZQIDAQAB"]}') TO '{TEST_DIR}/repo/.well-known/duckdb-extension-repo.json' (FORMAT csv, HEADER false, QUOTE '', USE_TMP_FILE false)
+
+statement ok
+COPY (SELECT 1 AS a) TO '{TEST_DIR}/registry' (FORMAT csv, PER_THREAD_OUTPUT true)
+
+# A registry entry without a verifier path: verified when it was accepted into the registry, so the url is used as is.
+statement ok
+COPY (SELECT '{"version": 1, "repository_url": "{TEST_DIR}/repo/"}') TO '{TEST_DIR}/registry/trusted.example' (FORMAT csv, HEADER false, QUOTE '', USE_TMP_FILE false)
+
+query III
+CREATE EXTENSION REPOSITORY trusted FROM 'trusted.example'
+----
+trusted	{TEST_DIR}/repo	['sha256:172c29bbb3cd41c70a8225d36ba3a53c94ca9236389fba11a71d45ef0524fa3b']
+
+# The host name is case insensitive, and the repository is stored like any other.
+query II
+SELECT repository_name, prefix FROM duckdb_extension_repositories() WHERE type='USER_PROVIDED'
+----
+trusted	{TEST_DIR}/repo
+
+statement ok
+DROP EXTENSION REPOSITORY trusted
+
+# A host that is not in the registry.
+statement error
+CREATE EXTENSION REPOSITORY unknown FROM 'unknown.example'
+----
+<REGEX>:IO Error.*not in the extension repository registry.*WITH PREFIX.*
+
+# Only a host name is accepted: no scheme, no path.
+statement error
+CREATE EXTENSION REPOSITORY bad FROM 'https://trusted.example'
+----
+<REGEX>:Invalid Input Error.*expected a host name.*
+
+statement error
+CREATE EXTENSION REPOSITORY bad FROM 'trusted.example/repo'
+----
+<REGEX>:Invalid Input Error.*expected a host name.*
+
+# An entry of a version this DuckDB does not understand.
+statement ok
+COPY (SELECT '{"version": 2, "repository_url": "{TEST_DIR}/repo"}') TO '{TEST_DIR}/registry/future.example' (FORMAT csv, HEADER false, QUOTE '', USE_TMP_FILE false)
+
+statement error
+CREATE EXTENSION REPOSITORY future FROM 'future.example'
+----
+<REGEX>:IO Error.*version 2.*understands version 1.*
+
+# A verifier path that could point the check somewhere else than the host is refused.
+statement ok
+COPY (SELECT '{"version": 1, "verifier_path": "../other.example/consent.json", "repository_url": "{TEST_DIR}/repo"}') TO '{TEST_DIR}/registry/climbing.example' (FORMAT csv, HEADER false, QUOTE '', USE_TMP_FILE false)
+
+statement error
+CREATE EXTENSION REPOSITORY climbing FROM 'climbing.example'
+----
+<REGEX>:IO Error.*verifier_path.*relative path on the host.*
+
+statement ok
+COPY (SELECT '{"version": 1, "verifier_path": "https://other.example/consent.json", "repository_url": "{TEST_DIR}/repo"}') TO '{TEST_DIR}/registry/absolute.example' (FORMAT csv, HEADER false, QUOTE '', USE_TMP_FILE false)
+
+statement error
+CREATE EXTENSION REPOSITORY absolute FROM 'absolute.example'
+----
+<REGEX>:IO Error.*verifier_path.*relative path on the host.*
+
+# A registry entry that is not valid json, or lacks the url.
+statement ok
+COPY (SELECT 'not json') TO '{TEST_DIR}/registry/broken.example' (FORMAT csv, HEADER false, QUOTE '', USE_TMP_FILE false)
+
+statement error
+CREATE EXTENSION REPOSITORY broken FROM 'broken.example'
+----
+<REGEX>:IO Error.*registry entry.*not valid json.*
+
+statement ok
+COPY (SELECT '{"version": 1}') TO '{TEST_DIR}/registry/nourl.example' (FORMAT csv, HEADER false, QUOTE '', USE_TMP_FILE false)
+
+statement error
+CREATE EXTENSION REPOSITORY nourl FROM 'nourl.example'
+----
+<REGEX>:IO Error.*registry entry.*repository_url.*
+
+# OR REPLACE and IF NOT EXISTS work as with WITH PREFIX.
+statement ok
+CREATE EXTENSION REPOSITORY trusted FROM 'trusted.example'
+
+statement error
+CREATE EXTENSION REPOSITORY trusted FROM 'trusted.example'
+----
+<REGEX>:Catalog Error.*already exists.*
+
+statement ok
+CREATE EXTENSION REPOSITORY IF NOT EXISTS trusted FROM 'trusted.example'
+
+statement ok
+CREATE OR REPLACE EXTENSION REPOSITORY trusted FROM 'trusted.example'
+
+statement ok
+DROP EXTENSION REPOSITORY trusted
+
+# An empty registry setting turns the FROM form off.
+statement ok
+SET extension_repository_registry=''
+
+statement error
+CREATE EXTENSION REPOSITORY trusted FROM 'trusted.example'
+----
+<REGEX>:Invalid Input Error.*extension_repository_registry setting is empty.*
+
+# While signature checking is enabled the registry can be disabled or reset to its default, but not repointed: the test
+# runner allows unsigned extensions (which is what let this test point it at a directory), so tighten that first.
+statement ok
+SET allow_unsigned_extensions=false
+
+statement ok
+SET extension_repository_registry='https://extensions.duckdb.org/extension-repositories'
+
+statement ok
+RESET extension_repository_registry
+
+statement ok
+SET extension_repository_registry=''
+
+statement error
+SET extension_repository_registry='{TEST_DIR}/registry'
+----
+<REGEX>:Invalid Input Error.*extension_repository_registry can only be set to its default or to ''.*
+
+statement error
+SET extension_repository_registry='https://registry.example/repos'
+----
+<REGEX>:Invalid Input Error.*extension_repository_registry can only be set to its default or to ''.*

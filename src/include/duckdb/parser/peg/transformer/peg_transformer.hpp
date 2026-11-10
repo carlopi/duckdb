@@ -2154,6 +2154,9 @@ public:
 	static arena_ptr<TransformResultValue> FinalizeRepositoryPublicKeyTrampoline(PEGTransformer &transformer,
 	                                                                             GeneratedTransformProcess &process);
 	static arena_ptr<TransformResultValue>
+	FinalizeCreateExtensionRepositoryFromHostStmtTrampoline(PEGTransformer &transformer,
+	                                                        GeneratedTransformProcess &process);
+	static arena_ptr<TransformResultValue>
 	FinalizeDropExtensionRepositoryStmtTrampoline(PEGTransformer &transformer, GeneratedTransformProcess &process);
 	static arena_ptr<TransformResultValue>
 	FinalizeTableMatchRecognizeClauseTrampoline(PEGTransformer &transformer, GeneratedTransformProcess &process);
@@ -4011,6 +4014,11 @@ public:
 	                                        const string &string_literal);
 	static vector<string> TransformRepositoryPublicKey(PEGTransformer &transformer, const bool &has_result,
 	                                                   const vector<string> &string_literal);
+	static unique_ptr<SQLStatement> TransformCreateExtensionRepositoryFromHostStmt(PEGTransformer &transformer,
+	                                                                               const optional<bool> &or_replace,
+	                                                                               const optional<bool> &if_not_exists,
+	                                                                               const Identifier &col_id_or_string,
+	                                                                               const string &string_literal);
 	static unique_ptr<SQLStatement> TransformDropExtensionRepositoryStmt(PEGTransformer &transformer,
 	                                                                     const optional<bool> &if_exists,
 	                                                                     const Identifier &col_id_or_string);

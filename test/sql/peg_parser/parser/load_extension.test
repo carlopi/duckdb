@@ -61,6 +61,12 @@ statement ok
 CALL check_peg_parser($TEST_PEG_PARSER$CREATE EXTENSION REPOSITORY acme WITH PREFIX 'http://acme.com';$TEST_PEG_PARSER$);
 
 statement ok
+CALL check_peg_parser($TEST_PEG_PARSER$CREATE EXTENSION REPOSITORY acme FROM 'acme.com';$TEST_PEG_PARSER$);
+
+statement ok
+CALL check_peg_parser($TEST_PEG_PARSER$CREATE OR REPLACE EXTENSION REPOSITORY IF NOT EXISTS acme FROM 'acme.com';$TEST_PEG_PARSER$);
+
+statement ok
 CALL check_peg_parser($TEST_PEG_PARSER$CREATE EXTENSION REPOSITORY acme PREFIX 'http://acme.com' PUBLIC KEY 'mykey';$TEST_PEG_PARSER$);
 
 statement ok

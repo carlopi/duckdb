@@ -39,8 +39,16 @@ static void ExecuteRepositoryStatement(ClientContext &context, const LoadInfo &i
 	auto &fs = FileSystem::GetLocal(db);
 
 	if (info.load_type == LoadType::CREATE_REPOSITORY) {
-		ExtensionRepository repository(info.repository, info.repository_url, info.public_keys);
-		auto result = ExtensionRepositoryManager::CreateRepository(db, fs, context, repository, info.on_conflict);
+		auto url = info.repository_url;
+		if (!info.repository_host.empty()) {
+			// FROM '<host>': the registry names the url, and the host may have to agree
+			bool verified_on_host;
+			url = ExtensionRepositoryManager::ResolveRepositoryUrlFromHost(db, context, info.repository_host,
+			                                                               verified_on_host);
+		}
+		ExtensionRepository repository(info.repository, url, info.public_keys);
+		auto result = ExtensionRepositoryManager::CreateRepository(db, fs, context, repository, info.on_conflict,
+		                                                           !info.repository_host.empty());
 
 		// report the repository as it was stored, so that the keys can be compared with the published fingerprints
 		vector<Value> fingerprints;

@@ -97,6 +97,18 @@ Failed to read the metadata file of the extension repository
 statement ok
 DROP EXTENSION REPOSITORY IF EXISTS parsed_data_repo
 
+# the FROM form prints as FROM; the registry is switched off here so the statement fails before any network access
+statement ok
+SET extension_repository_registry=''
+
+statement error
+CREATE OR REPLACE EXTENSION REPOSITORY parsed_data_repo FROM 'parsed-data.example'
+----
+extension_repository_registry setting is empty
+
+statement ok
+RESET extension_repository_registry
+
 # Trigger variants
 statement ok
 DROP TABLE IF EXISTS parsed_data_trigger_target

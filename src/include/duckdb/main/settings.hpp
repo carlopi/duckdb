@@ -277,9 +277,10 @@ struct AllowExtensionRepositoriesSetting {
 	static constexpr const char *Name = "allow_extension_repositories";
 	static constexpr const char *Description =
 	    "Whether custom trusted extension repositories are 'allowed', 'forbidden' (which also distrusts existing "
-	    "repositories) or 'undecided' (the default: blocks adding new repositories, but keeps trusting existing ones). "
-	    "While the database is running the setting can only move from 'undecided' to 'allowed' or 'forbidden', or from "
-	    "'allowed' to 'forbidden'.";
+	    "repositories) or 'undecided' (the default: blocks adding repositories by prefix, allows the ones resolved "
+	    "through the extension repository registry with CREATE EXTENSION REPOSITORY ... FROM '<host>', and keeps "
+	    "trusting existing ones). While the database is running the setting can only move from 'undecided' to "
+	    "'allowed' or 'forbidden', or from 'allowed' to 'forbidden'.";
 	static constexpr const char *InputType = "VARCHAR";
 	static constexpr bool IsDebug = false;
 	static constexpr bool IsDeprecated = false;
@@ -1619,6 +1620,22 @@ struct ExtensionRepositoryDirectorySetting {
 	static constexpr bool IsDebug = false;
 	static constexpr bool IsDeprecated = false;
 	static constexpr const char *DefaultValue = "";
+	static constexpr SettingScopeTarget Scope = SettingScopeTarget::GLOBAL_ONLY;
+	static constexpr idx_t SettingIndex = NEXT_SETTING_INDEX();
+	static void OnSet(SettingCallbackInfo &info, Value &input);
+};
+
+struct ExtensionRepositoryRegistrySetting {
+	using RETURN_TYPE = string;
+	static constexpr const char *Name = "extension_repository_registry";
+	static constexpr const char *Description =
+	    "The registry that resolves CREATE EXTENSION REPOSITORY <name> FROM '<host>': the entry for a host is read "
+	    "from '<registry>/<host>'. Empty disables the FROM form. While signature checking is enabled "
+	    "(allow_unsigned_extensions=false) it can only be set to the default or to empty, not repointed.";
+	static constexpr const char *InputType = "VARCHAR";
+	static constexpr bool IsDebug = false;
+	static constexpr bool IsDeprecated = false;
+	static constexpr const char *DefaultValue = "https://extensions.duckdb.org/extension-repositories";
 	static constexpr SettingScopeTarget Scope = SettingScopeTarget::GLOBAL_ONLY;
 	static constexpr idx_t SettingIndex = NEXT_SETTING_INDEX();
 	static void OnSet(SettingCallbackInfo &info, Value &input);

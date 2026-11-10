@@ -914,6 +914,11 @@
         "name": "load_after_install",
         "type": "bool",
         "default": "false"
+      },
+      {
+        "id": 211,
+        "name": "repository_host",
+        "type": "string"
       }
     ]
   },

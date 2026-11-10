@@ -115,6 +115,16 @@ unique_ptr<SQLStatement> PEGTransformerFactory::TransformCreateExtensionReposito
 	return std::move(result);
 }
 
+// CREATE EXTENSION REPOSITORY name FROM 'host': the prefix is resolved from the host when the statement runs
+unique_ptr<SQLStatement> PEGTransformerFactory::TransformCreateExtensionRepositoryFromHostStmt(
+    PEGTransformer &transformer, const optional<bool> &or_replace, const optional<bool> &if_not_exists,
+    const Identifier &col_id_or_string, const string &string_literal) {
+	auto result = TransformCreateExtensionRepositoryStmt(transformer, or_replace, if_not_exists, col_id_or_string,
+	                                                     string(), optional<vector<string>>());
+	result->Cast<LoadStatement>().info->repository_host = string_literal;
+	return result;
+}
+
 string PEGTransformerFactory::TransformRepositoryPrefix(PEGTransformer &transformer, const bool &has_result,
                                                         const string &string_literal) {
 	return string_literal;

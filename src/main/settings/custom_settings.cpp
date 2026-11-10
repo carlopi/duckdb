@@ -238,6 +238,26 @@ void ExtensionRepositoryDirectorySetting::OnSet(SettingCallbackInfo &info, Value
 	}
 }
 
+void ExtensionRepositoryRegistrySetting::OnSet(SettingCallbackInfo &info, Value &input) {
+	if (!info.db) {
+		// set before the database is running (startup) - always allowed
+		return;
+	}
+	// The registry decides which url a host resolves to, so it is part of the trust anchor: a runtime connection may
+	// switch the FROM form off (empty) or back to the default, but may not repoint it while signature checking is
+	// enabled. When unsigned extensions are allowed the signature-trust model is off, so there is nothing to protect
+	auto value = input.IsNull() ? string() : StringValue::Get(input.DefaultCastAs(LogicalType::VARCHAR));
+	if (value.empty() || value == ExtensionRepositoryRegistrySetting::DefaultValue) {
+		return;
+	}
+	if (!Settings::Get<AllowUnsignedExtensionsSetting>(*info.db)) {
+		throw InvalidInputException(
+		    "extension_repository_registry can only be set to its default or to '' (which "
+		    "disables CREATE EXTENSION REPOSITORY ... FROM) while signature checking is enabled "
+		    "(allow_unsigned_extensions=false)");
+	}
+}
+
 //===----------------------------------------------------------------------===//
 // Allow Persistent Secrets
 //===----------------------------------------------------------------------===//

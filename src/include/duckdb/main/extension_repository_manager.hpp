@@ -39,10 +39,13 @@ public:
 	static string GetRepositoryDirectory(DatabaseInstance &db, FileSystem &fs);
 
 	//! Store a new trusted repository on disk. If the repository has no public keys, they are fetched from the
-	//! repository prefix and pinned. Returns the repository as it was stored
+	//! repository prefix and pinned. `from_registry` says the url was resolved through the extension repository
+	//! registry (FROM '<host>'), which the 'undecided' default of allow_extension_repositories permits. Returns the
+	//! repository as it was stored
 	static ExtensionRepository CreateRepository(DatabaseInstance &db, FileSystem &fs,
 	                                            optional_ptr<ClientContext> context,
-	                                            const ExtensionRepository &repository, OnCreateConflict on_conflict);
+	                                            const ExtensionRepository &repository, OnCreateConflict on_conflict,
+	                                            bool from_registry = false);
 	//! Remove a trusted repository from disk
 	static void DropRepository(DatabaseInstance &db, FileSystem &fs, const string &name,
 	                           OnEntryNotFound on_entry_not_found);
@@ -70,6 +73,12 @@ public:
 	static vector<string> FetchPublicKeys(DatabaseInstance &db, optional_ptr<ClientContext> context,
 	                                      const string &prefix);
 
+	//! Resolve `CREATE EXTENSION REPOSITORY ... FROM '<host>'` to the repository url. The registry entry for the host
+	//! (`<extension_repository_registry>/<host>`) names the url; when it also names a verifier path, the consent file
+	//! the host serves there must name the same url. `verified_on_host` reports whether that check ran
+	static string ResolveRepositoryUrlFromHost(DatabaseInstance &db, optional_ptr<ClientContext> context,
+	                                           const string &host, bool &verified_on_host);
+
 	//! The sha256 fingerprint of a public key, used to compare a key against the fingerprint published by a repository
 	static string GetPublicKeyFingerprint(const string &compact_key);
 
@@ -84,7 +93,7 @@ public:
 
 private:
 	//! Throws unless adding a repository is currently allowed (opt-in and configuration lock)
-	static void CheckCanCreate(DatabaseInstance &db);
+	static void CheckCanCreate(DatabaseInstance &db, bool from_registry);
 	//! Throws if the configuration is locked, freezing the trust store
 	static void CheckNotLocked(DatabaseInstance &db);
 	static string GetRepositoryPath(DatabaseInstance &db, FileSystem &fs, const string &name);

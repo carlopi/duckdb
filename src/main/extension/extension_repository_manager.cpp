@@ -126,8 +126,185 @@ string ExtensionRepositoryManager::GetPublicKeyFingerprint(const string &compact
 }
 
 //===--------------------------------------------------------------------===//
+// FROM '<host>': resolution through the extension repository registry
+//
+// The registry entry `<extension_repository_registry>/<host>` is `{"version": 1, "repository_url": "<url>"}`, with an
+// optional "verifier_path". When the path is given, the host must serve `{"version": 1, "repository_url": "<url>"}`
+// at `https://<host>/<verifier_path>` naming the same url: the host's consent to being installed from there. Without
+// the path the registry entry was verified when it was accepted into the registry, and stands on its own.
+//===--------------------------------------------------------------------===//
+
+static constexpr const idx_t REGISTRY_FORMAT_VERSION = 1;
+
+static string ReadSmallRemoteFile(DatabaseInstance &db, optional_ptr<ClientContext> context, const string &path);
+
+//! The root object of a registry or consent file, after checking its version
+static yyjson_val *ReadVersionedObject(RepositoryJSONDocument &document, const string &path, const char *what) {
+	if (!document.doc) {
+		throw IOException("Failed to read the %s '%s': the file is not valid json", what, path);
+	}
+	auto root = yyjson_doc_get_root(document.doc);
+	if (!root || !yyjson_is_obj(root)) {
+		throw IOException("Failed to read the %s '%s': expected a json object", what, path);
+	}
+	auto version = yyjson_obj_get(root, "version");
+	if (!version || !yyjson_is_uint(version)) {
+		throw IOException("Failed to read the %s '%s': missing or invalid field 'version'", what, path);
+	}
+	if (yyjson_get_uint(version) != REGISTRY_FORMAT_VERSION) {
+		throw IOException(
+		    "Failed to read the %s '%s': it has version %llu, this version of DuckDB understands version %llu", what,
+		    path, yyjson_get_uint(version), REGISTRY_FORMAT_VERSION);
+	}
+	return root;
+}
+
+static string ReadVersionedString(yyjson_val *root, const char *field, const string &path, const char *what) {
+	auto value = yyjson_obj_get(root, field);
+	if (!value || !yyjson_is_str(value) || yyjson_get_len(value) == 0) {
+		throw IOException("Failed to read the %s '%s': missing or invalid field '%s'", what, path, field);
+	}
+	return string(yyjson_get_str(value), yyjson_get_len(value));
+}
+
+//! The url a registry or consent file names, in the form the two are compared in
+static string NormalizeRepositoryUrl(string url) {
+	StringUtil::RTrim(url, "/");
+	return url;
+}
+
+static string NormalizeHost(const string &host_p) {
+	auto host = StringUtil::Lower(host_p);
+	StringUtil::Trim(host);
+	if (host.empty()) {
+		throw InvalidInputException("CREATE EXTENSION REPOSITORY ... FROM: the host cannot be empty");
+	}
+	if (host.find("://") != string::npos || host.find_first_of("/\\?#@ \t\r\n") != string::npos) {
+		throw InvalidInputException("CREATE EXTENSION REPOSITORY ... FROM '%s': expected a host name such as "
+		                            "'example.com', without a scheme, a path or a query",
+		                            host_p);
+	}
+	return host;
+}
+
+//! The verifier path is joined onto the host by us, so it must be a plain relative path: nothing that could point the
+//! check at another host, and nothing that climbs out of where it was anchored
+static string NormalizeVerifierPath(const string &path_p, const string &entry_path) {
+	auto path = path_p;
+	if (StringUtil::StartsWith(path, "./")) {
+		path = path.substr(2);
+	}
+	while (!path.empty() && path[0] == '/') {
+		path = path.substr(1);
+	}
+	bool valid = !path.empty() && path.find("://") == string::npos && path.find_first_of("?#\\") == string::npos;
+	if (valid) {
+		for (auto &segment : StringUtil::Split(path, '/')) {
+			if (segment == "..") {
+				valid = false;
+				break;
+			}
+		}
+	}
+	if (!valid) {
+		throw IOException(
+		    "Failed to read the registry entry '%s': 'verifier_path' must be a relative path on the host, "
+		    "got '%s'",
+		    entry_path, path_p);
+	}
+	return path;
+}
+
+string ExtensionRepositoryManager::ResolveRepositoryUrlFromHost(DatabaseInstance &db,
+                                                                optional_ptr<ClientContext> context,
+                                                                const string &host_p, bool &verified_on_host) {
+	// nothing is fetched before the access check: 'forbidden' forbids this too
+	CheckCanCreate(db, true);
+	auto host = NormalizeHost(host_p);
+
+	auto registry = Settings::Get<ExtensionRepositoryRegistrySetting>(db);
+	StringUtil::RTrim(registry, "/");
+	if (registry.empty()) {
+		throw InvalidInputException(
+		    "Cannot create an extension repository from '%s': the extension_repository_registry "
+		    "setting is empty\nUse `WITH PREFIX '<url>'` to trust a repository directly",
+		    host);
+	}
+	auto entry_path = registry + "/" + host;
+	string entry_contents;
+	try {
+		entry_contents = ReadSmallRemoteFile(db, context, entry_path);
+	} catch (std::exception &ex) {
+		ErrorData error(ex);
+		throw IOException(
+		    "Cannot create an extension repository from '%s': the host is not in the extension repository "
+		    "registry (failed to read '%s': %s)\nUse `WITH PREFIX '<url>'` to trust a repository directly",
+		    host, entry_path, error.RawMessage());
+	}
+	RepositoryJSONDocument entry(yyjson_read(entry_contents.c_str(), entry_contents.size(), 0));
+	auto entry_root = ReadVersionedObject(entry, entry_path, "registry entry");
+	auto repository_url =
+	    NormalizeRepositoryUrl(ReadVersionedString(entry_root, "repository_url", entry_path, "registry entry"));
+
+	verified_on_host = false;
+	auto verifier = yyjson_obj_get(entry_root, "verifier_path");
+	if (!verifier || yyjson_is_null(verifier)) {
+		// verified when it was accepted into the registry
+		return repository_url;
+	}
+	if (!yyjson_is_str(verifier)) {
+		throw IOException("Failed to read the registry entry '%s': 'verifier_path' must be a string", entry_path);
+	}
+	auto verifier_path = NormalizeVerifierPath(string(yyjson_get_str(verifier), yyjson_get_len(verifier)), entry_path);
+
+	// the host is where the user said, never where the registry says: only the path comes from the entry
+	auto consent_path = "https://" + host + "/" + verifier_path;
+	string consent_contents;
+	try {
+		consent_contents = ReadSmallRemoteFile(db, context, consent_path);
+	} catch (std::exception &ex) {
+		ErrorData error(ex);
+		throw IOException(
+		    "Cannot create an extension repository from '%s': the registry asks the host for its consent, "
+		    "but the consent file could not be read from '%s': %s",
+		    host, consent_path, error.RawMessage());
+	}
+	RepositoryJSONDocument consent(yyjson_read(consent_contents.c_str(), consent_contents.size(), 0));
+	auto consent_root = ReadVersionedObject(consent, consent_path, "consent file");
+	auto consented_url =
+	    NormalizeRepositoryUrl(ReadVersionedString(consent_root, "repository_url", consent_path, "consent file"));
+	if (consented_url != repository_url) {
+		throw InvalidInputException("Cannot create an extension repository from '%s': the registry names '%s', but the "
+		                            "host consents to '%s' (in '%s')",
+		                            host, repository_url, consented_url, consent_path);
+	}
+	verified_on_host = true;
+	return repository_url;
+}
+
+//===--------------------------------------------------------------------===//
 // Repository storage
 //===--------------------------------------------------------------------===//
+//! Read a small file that may live on a remote file system (autoloading the extension that provides it), bounded by
+//! MAX_METADATA_FILE_SIZE: the metadata, registry and consent files are all a few lines of json
+static string ReadSmallRemoteFile(DatabaseInstance &db, optional_ptr<ClientContext> context, const string &path) {
+	auto &fs = db.GetFileSystem();
+	// remote file systems are provided by extensions - autoload them if necessary
+	string required_extension;
+	if (context && fs.IsRemoteFile(path, required_extension) && !db.ExtensionIsLoaded(required_extension) &&
+	    Settings::Get<AutoloadKnownExtensionsSetting>(*context)) {
+		ExtensionHelper::AutoLoadExtension(*context, required_extension);
+	}
+	auto handle = fs.OpenFile(path, FileFlags::FILE_FLAGS_READ);
+	auto file_size = handle->GetFileSize();
+	if (file_size > MAX_METADATA_FILE_SIZE) {
+		throw IOException("File is %llu bytes, which is too large to be a repository metadata file", file_size);
+	}
+	auto buffer = make_unsafe_uniq_array<char>(file_size);
+	handle->Read(buffer.get(), file_size, 0);
+	return string(buffer.get(), file_size);
+}
+
 //! Fetch the public keys that the repository publishes at its prefix. Note that the keys are pinned when the repository
 //! is created: the fingerprints that are reported back are what identify the keys from there on
 vector<string> ExtensionRepositoryManager::FetchPublicKeys(DatabaseInstance &db, optional_ptr<ClientContext> context,
@@ -136,24 +313,9 @@ vector<string> ExtensionRepositoryManager::FetchPublicKeys(DatabaseInstance &db,
 	StringUtil::RTrim(metadata_path, "/");
 	metadata_path += "/" + string(METADATA_FILE);
 
-	auto &fs = db.GetFileSystem();
-	// remote file systems are provided by extensions - autoload them if necessary
-	string required_extension;
-	if (context && fs.IsRemoteFile(metadata_path, required_extension) && !db.ExtensionIsLoaded(required_extension) &&
-	    Settings::Get<AutoloadKnownExtensionsSetting>(*context)) {
-		ExtensionHelper::AutoLoadExtension(*context, required_extension);
-	}
-
 	string contents;
 	try {
-		auto handle = fs.OpenFile(metadata_path, FileFlags::FILE_FLAGS_READ);
-		auto file_size = handle->GetFileSize();
-		if (file_size > MAX_METADATA_FILE_SIZE) {
-			throw IOException("File is %llu bytes, which is too large to be a repository metadata file", file_size);
-		}
-		auto buffer = make_unsafe_uniq_array<char>(file_size);
-		handle->Read(buffer.get(), file_size, 0);
-		contents = string(buffer.get(), file_size);
+		contents = ReadSmallRemoteFile(db, context, metadata_path);
 	} catch (std::exception &ex) {
 		ErrorData error(ex);
 		throw IOException("Failed to read the metadata file of the extension repository from '%s': %s\nProvide the key "
@@ -246,17 +408,25 @@ void ExtensionRepositoryManager::CheckNotLocked(DatabaseInstance &db) {
 	db.config.CheckLock(AllowExtensionRepositoriesSetting::Name);
 }
 
-void ExtensionRepositoryManager::CheckCanCreate(DatabaseInstance &db) {
+void ExtensionRepositoryManager::CheckCanCreate(DatabaseInstance &db, bool from_registry) {
 	CheckNotLocked(db);
-	// adding a repository adds a new trusted signing key, so the user must explicitly opt in first
+	// adding a repository adds a new trusted signing key, so the user must explicitly opt in first - except for a
+	// repository resolved through the extension repository registry, which was accepted there before it could be
+	// resolved, so the 'undecided' default lets it through
 	switch (GetAccess(db)) {
 	case ExtensionRepositoryAccess::ALLOWED:
 		return;
 	case ExtensionRepositoryAccess::FORBIDDEN:
 		throw PermissionException("Adding extension repositories has been forbidden through configuration");
 	default:
-		throw PermissionException("Adding extension repositories is not enabled: set "
-		                          "allow_extension_repositories='allowed' to opt in");
+		if (from_registry) {
+			return;
+		}
+		throw PermissionException(
+		    "Adding extension repositories is not enabled: set "
+		    "allow_extension_repositories='allowed' to opt in, or use `CREATE EXTENSION "
+		    "REPOSITORY <name> FROM '<host>'` for a repository listed in the extension repository "
+		    "registry");
 	}
 }
 
@@ -377,8 +547,8 @@ ExtensionRepository ExtensionRepositoryManager::ReadRepository(FileSystem &fs, c
 ExtensionRepository ExtensionRepositoryManager::CreateRepository(DatabaseInstance &db, FileSystem &fs,
                                                                  optional_ptr<ClientContext> context,
                                                                  const ExtensionRepository &repository,
-                                                                 OnCreateConflict on_conflict) {
-	CheckCanCreate(db);
+                                                                 OnCreateConflict on_conflict, bool from_registry) {
+	CheckCanCreate(db, from_registry);
 
 	auto name = NormalizeRepositoryName(repository.name);
 	if (!ExtensionRepository::TryGetRepositoryUrl(name).empty()) {

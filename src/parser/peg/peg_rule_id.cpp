@@ -847,6 +847,7 @@ static const char *const PEG_RULE_NAMES[] = {
     "CreateExtensionRepositoryStmt",
     "RepositoryPrefix",
     "RepositoryPublicKey",
+    "CreateExtensionRepositoryFromHostStmt",
     "DropExtensionRepositoryStmt",
     "TableMatchRecognizeClause",
     "MatchRecognizeBody",

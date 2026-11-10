@@ -848,6 +848,7 @@ enum class PEGRuleId : uint32_t {
 	CreateExtensionRepositoryStmt,
 	RepositoryPrefix,
 	RepositoryPublicKey,
+	CreateExtensionRepositoryFromHostStmt,
 	DropExtensionRepositoryStmt,
 	TableMatchRecognizeClause,
 	MatchRecognizeBody,
