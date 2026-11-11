@@ -54,6 +54,13 @@ public:
 	static vector<ExtensionRepository> GetRepositories(DatabaseInstance &db, FileSystem &fs);
 	//! Try to look up a trusted repository by name
 	static bool TryGetRepository(DatabaseInstance &db, FileSystem &fs, const string &name, ExtensionRepository &result);
+	//! Try to look up a trusted repository by the host it was resolved from. The name is the user's alias, the host
+	//! is the identity, so this is how code refers to a repository. Throws when more than one repository was created
+	//! from the host: which one is meant is then the user's call, not a guess
+	static bool TryGetRepositoryByHost(DatabaseInstance &db, FileSystem &fs, const string &host,
+	                                   ExtensionRepository &result);
+	//! The host as it is compared and stored: lower case. Throws if it is not a plain host name
+	static string NormalizeHost(const string &host);
 
 	//! Repository names are case insensitive and are used as file names - restrict them to a safe character set
 	static string NormalizeRepositoryName(const string &name);
@@ -61,8 +68,11 @@ public:
 
 	//! Whether the user has opted in to adding external extension repositories
 	static ExtensionRepositoryAccess GetAccess(DatabaseInstance &db);
-	//! Whether the repositories that were already created are trusted: their extensions can be installed and loaded
+	//! Whether any of the repositories that were already created may be trusted: their extensions can be installed and
+	//! loaded. Under 'known_hosts' only some are, see TrustsRepository
 	static bool TrustsExistingRepositories(DatabaseInstance &db);
+	//! Whether this repository is trusted: under 'known_hosts' only a repository with a host is
+	static bool TrustsRepository(DatabaseInstance &db, const ExtensionRepository &repository);
 	//! Parse the access value of the allow_extension_repositories setting (throws on an invalid value)
 	static ExtensionRepositoryAccess ParseAccess(const string &value);
 	//! The string representation of an access value, as used by the allow_extension_repositories setting

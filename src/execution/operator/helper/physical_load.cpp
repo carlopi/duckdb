@@ -47,6 +47,9 @@ static void ExecuteRepositoryStatement(ClientContext &context, const LoadInfo &i
 			                                                               verified_on_host);
 		}
 		ExtensionRepository repository(info.repository, url, info.public_keys);
+		if (!info.repository_host.empty()) {
+			repository.host = ExtensionRepositoryManager::NormalizeHost(info.repository_host);
+		}
 		auto result = ExtensionRepositoryManager::CreateRepository(db, fs, context, repository, info.on_conflict,
 		                                                           !info.repository_host.empty());
 

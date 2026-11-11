@@ -861,6 +861,37 @@ const vector<string> ExtensionHelper::GetPublicKeys(bool allow_community_extensi
 	return keys;
 }
 
+//===--------------------------------------------------------------------===//
+// Repositories by host
+//===--------------------------------------------------------------------===//
+static ExtensionRepository RepositoryFromHost(ClientContext &context, const string &host) {
+	auto &db = DatabaseInstance::GetDatabase(context);
+	auto &fs = FileSystem::GetLocal(db);
+	ExtensionRepository repository;
+	if (!ExtensionRepositoryManager::TryGetRepositoryByHost(db, fs, host, repository)) {
+		throw InvalidInputException(
+		    "No extension repository was created from host '%s'. Create it with `CREATE EXTENSION "
+		    "REPOSITORY <name> FROM '%s'`",
+		    host, host);
+	}
+	return repository;
+}
+
+unique_ptr<ExtensionInstallInfo> ExtensionHelper::InstallExtensionFromHost(ClientContext &context,
+                                                                           const string &extension, const string &host,
+                                                                           ExtensionInstallOptions &options) {
+	auto repository = RepositoryFromHost(context, host);
+	options.repository = repository;
+	return InstallExtension(context, extension, options);
+}
+
+void ExtensionHelper::LoadExtensionFromHost(ClientContext &context, const string &extension, const string &host) {
+	auto repository = RepositoryFromHost(context, host);
+	ExtensionLoadOptions options(extension);
+	options.repository = repository.name;
+	LoadExternalExtension(context, options);
+}
+
 vector<string> ExtensionHelper::GetTrustedPublicKeys(DatabaseInstance &db, ExtensionRepositoryType repository_type,
                                                      const string &repository_name) {
 	vector<string> keys;
@@ -883,7 +914,9 @@ vector<string> ExtensionHelper::GetTrustedPublicKeys(DatabaseInstance &db, Exten
 		// only the keys of the repository the extension came from are trusted
 		ExtensionRepository repository;
 		auto &fs = FileSystem::GetLocal(db);
-		if (ExtensionRepositoryManager::TryGetRepository(db, fs, repository_name, repository)) {
+		// under 'known_hosts' only a repository resolved through the registry is trusted
+		if (ExtensionRepositoryManager::TryGetRepository(db, fs, repository_name, repository) &&
+		    ExtensionRepositoryManager::TrustsRepository(db, repository)) {
 			for (auto &public_key : repository.public_keys) {
 				keys.push_back(ExtensionRepositoryManager::ToPEMPublicKey(public_key));
 			}

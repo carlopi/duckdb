@@ -108,6 +108,14 @@ public:
 	                                                         ExtensionInstallOptions &options);
 	static unique_ptr<ExtensionInstallInfo> InstallExtension(DatabaseInstance &db, FileSystem &fs,
 	                                                         const string &extension, ExtensionInstallOptions &options);
+	//! Install an extension from the repository that was created from `host` (CREATE EXTENSION REPOSITORY <name> FROM
+	//! '<host>'). The host is the repository's identity, the name is the user's alias, so this is how code refers to
+	//! one. Throws when no repository, or more than one, was created from the host
+	static unique_ptr<ExtensionInstallInfo> InstallExtensionFromHost(ClientContext &context, const string &extension,
+	                                                                 const string &host,
+	                                                                 ExtensionInstallOptions &options);
+	//! Load an extension that was installed from the repository created from `host`, see InstallExtensionFromHost
+	static void LoadExtensionFromHost(ClientContext &context, const string &extension, const string &host);
 	//! Load an extension. `context`, where available, is lent to a V2 C API extension's entrypoint; without one the
 	//! loader opens an internal connection for the duration of the load instead.
 	static void LoadExternalExtension(ClientContext &context, const ExtensionLoadOptions &options);

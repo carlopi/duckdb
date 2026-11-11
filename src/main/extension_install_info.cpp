@@ -121,6 +121,13 @@ ExtensionRepository ExtensionRepository::GetCoreRepository() {
 	return {"core", CORE_REPOSITORY_URL};
 }
 
+bool ExtensionRepository::HostIs(const string &other_host) const {
+	if (host.empty()) {
+		return false;
+	}
+	return StringUtil::CIEquals(host, other_host);
+}
+
 ExtensionRepository ExtensionRepository::GetRepositoryByUrl(const string &url) {
 	if (url.empty()) {
 		return GetCoreRepository();

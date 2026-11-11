@@ -178,10 +178,12 @@ bool OptionIsExcludedFromTest(const string &name) {
 	static unordered_set<string> excluded_options = {
 	    "access_mode",
 	    "active_grammar_extensions",
-	    "allow_community_extensions",   // cant change this while db is running
-	    "allow_extension_repositories", // can only be tightened at runtime, cannot be freely reset
-	    "allow_unredacted_secrets",     // cant change this while db is running
-	    "allow_unsigned_extensions",    // cant change this while db is running
+	    "allow_community_extensions",    // cant change this while db is running
+	    "allow_extension_repositories",  // can only be tightened at runtime, cannot be freely reset
+	    "extension_repository_registry", // trust anchor: only its default or empty can be set while signature checking
+	                                     // is on
+	    "allow_unredacted_secrets",      // cant change this while db is running
+	    "allow_unsigned_extensions",     // cant change this while db is running
 	    "allowed_configs",
 	    "allowed_directories",
 	    "default_grammar_extensions", // non-empty values require a registered grammar extension

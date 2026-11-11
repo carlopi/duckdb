@@ -276,11 +276,12 @@ struct AllowExtensionRepositoriesSetting {
 	using RETURN_TYPE = string;
 	static constexpr const char *Name = "allow_extension_repositories";
 	static constexpr const char *Description =
-	    "Whether custom trusted extension repositories are 'allowed', 'forbidden' (which also distrusts existing "
-	    "repositories) or 'undecided' (the default: blocks adding repositories by prefix, allows the ones resolved "
-	    "through the extension repository registry with CREATE EXTENSION REPOSITORY ... FROM '<host>', and keeps "
-	    "trusting existing ones). While the database is running the setting can only move from 'undecided' to "
-	    "'allowed' or 'forbidden', or from 'allowed' to 'forbidden'.";
+	    "Whether custom trusted extension repositories are 'allowed', 'known_hosts' (only repositories resolved "
+	    "through the extension repository registry can be added, and only those are trusted), 'forbidden' (which also "
+	    "distrusts existing repositories) or 'undecided' (the default: blocks adding repositories by prefix, allows "
+	    "the ones resolved through the registry with CREATE EXTENSION REPOSITORY ... FROM '<host>', and keeps trusting "
+	    "existing ones). While the database is running the setting can only be tightened: 'undecided' -> 'allowed' -> "
+	    "'known_hosts' -> 'forbidden'.";
 	static constexpr const char *InputType = "VARCHAR";
 	static constexpr bool IsDebug = false;
 	static constexpr bool IsDeprecated = false;

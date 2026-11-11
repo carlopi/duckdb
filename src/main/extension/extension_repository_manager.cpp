@@ -173,7 +173,7 @@ static string NormalizeRepositoryUrl(string url) {
 	return url;
 }
 
-static string NormalizeHost(const string &host_p) {
+string ExtensionRepositoryManager::NormalizeHost(const string &host_p) {
 	auto host = StringUtil::Lower(host_p);
 	StringUtil::Trim(host);
 	if (host.empty()) {
@@ -371,8 +371,11 @@ ExtensionRepositoryAccess ExtensionRepositoryManager::ParseAccess(const string &
 	if (lower == "forbidden") {
 		return ExtensionRepositoryAccess::FORBIDDEN;
 	}
-	throw InvalidInputException("Invalid value '%s' for allow_extension_repositories: expected 'undecided', 'allowed' "
-	                            "or 'forbidden'",
+	if (lower == "known_hosts") {
+		return ExtensionRepositoryAccess::KNOWN_HOSTS;
+	}
+	throw InvalidInputException("Invalid value '%s' for allow_extension_repositories: expected 'undecided', 'allowed', "
+	                            "'known_hosts' or 'forbidden'",
 	                            value);
 }
 
@@ -382,6 +385,8 @@ string ExtensionRepositoryManager::AccessToString(ExtensionRepositoryAccess acce
 		return "allowed";
 	case ExtensionRepositoryAccess::FORBIDDEN:
 		return "forbidden";
+	case ExtensionRepositoryAccess::KNOWN_HOSTS:
+		return "known_hosts";
 	default:
 		return "undecided";
 	}
@@ -396,10 +401,22 @@ bool ExtensionRepositoryManager::TrustsExistingRepositories(DatabaseInstance &db
 	switch (GetAccess(db)) {
 	case ExtensionRepositoryAccess::UNDECIDED:
 	case ExtensionRepositoryAccess::ALLOWED:
+	case ExtensionRepositoryAccess::KNOWN_HOSTS:
 		return true;
 	default:
 		return false;
 	}
+}
+
+bool ExtensionRepositoryManager::TrustsRepository(DatabaseInstance &db, const ExtensionRepository &repository) {
+	if (!TrustsExistingRepositories(db)) {
+		return false;
+	}
+	if (GetAccess(db) == ExtensionRepositoryAccess::KNOWN_HOSTS) {
+		// only a repository resolved through the registry is trusted - one added by prefix is distrusted
+		return !repository.host.empty();
+	}
+	return true;
 }
 
 void ExtensionRepositoryManager::CheckNotLocked(DatabaseInstance &db) {
@@ -418,6 +435,13 @@ void ExtensionRepositoryManager::CheckCanCreate(DatabaseInstance &db, bool from_
 		return;
 	case ExtensionRepositoryAccess::FORBIDDEN:
 		throw PermissionException("Adding extension repositories has been forbidden through configuration");
+	case ExtensionRepositoryAccess::KNOWN_HOSTS:
+		if (from_registry) {
+			return;
+		}
+		throw PermissionException("Adding extension repositories by prefix is not permitted while "
+		                          "allow_extension_repositories='known_hosts': use `CREATE EXTENSION REPOSITORY <name> "
+		                          "FROM '<host>'` for a repository listed in the extension repository registry");
 	default:
 		if (from_registry) {
 			return;
@@ -528,6 +552,10 @@ ExtensionRepository ExtensionRepositoryManager::ReadRepository(FileSystem &fs, c
 	result.path = ReadJSONString(root, "url", path);
 	result.public_keys = ReadJSONKeys(root, path);
 	result.type = ExtensionRepositoryType::USER_PROVIDED;
+	auto host = yyjson_obj_get(root, "host");
+	if (host && yyjson_is_str(host)) {
+		result.host = string(yyjson_get_str(host), yyjson_get_len(host));
+	}
 
 	auto expected_name = fs.ExtractBaseName(path);
 	if (NormalizeRepositoryName(result.name) != expected_name) {
@@ -591,6 +619,9 @@ ExtensionRepository ExtensionRepositoryManager::CreateRepository(DatabaseInstanc
 	yyjson_mut_obj_add_uint(document.doc, root, "version", FORMAT_VERSION);
 	yyjson_mut_obj_add_strcpy(document.doc, root, "name", name.c_str());
 	yyjson_mut_obj_add_strcpy(document.doc, root, "url", repository.path.c_str());
+	if (!repository.host.empty()) {
+		yyjson_mut_obj_add_strcpy(document.doc, root, "host", repository.host.c_str());
+	}
 	auto keys_array = yyjson_mut_arr(document.doc);
 	yyjson_mut_obj_add_val(document.doc, root, "public_keys", keys_array);
 	for (auto &public_key : public_keys) {
@@ -620,6 +651,7 @@ ExtensionRepository ExtensionRepositoryManager::CreateRepository(DatabaseInstanc
 
 	ExtensionRepository result(name, repository.path, std::move(public_keys));
 	result.type = ExtensionRepositoryType::USER_PROVIDED;
+	result.host = repository.host;
 	return result;
 }
 
@@ -667,6 +699,26 @@ vector<ExtensionRepository> ExtensionRepositoryManager::GetRepositories(Database
 		result.push_back(ReadRepository(fs, fs.JoinPath(directory, file_name)));
 	}
 	return result;
+}
+
+bool ExtensionRepositoryManager::TryGetRepositoryByHost(DatabaseInstance &db, FileSystem &fs, const string &host,
+                                                        ExtensionRepository &result) {
+	// a handful of files: iterating them is fine, an index can come when it is not
+	vector<string> matches;
+	for (auto &repository : GetRepositories(db, fs)) {
+		if (repository.HostIs(host)) {
+			if (matches.empty()) {
+				result = repository;
+			}
+			matches.push_back(repository.name);
+		}
+	}
+	if (matches.size() > 1) {
+		throw InvalidInputException("More than one extension repository was created from host '%s': %s. Refer to one "
+		                            "of them by name instead",
+		                            host, StringUtil::Join(matches, ", "));
+	}
+	return !matches.empty();
 }
 
 bool ExtensionRepositoryManager::TryGetRepository(DatabaseInstance &db, FileSystem &fs, const string &name_p,

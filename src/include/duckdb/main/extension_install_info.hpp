@@ -27,10 +27,11 @@ enum class ExtensionInstallMode : uint8_t {
 	NOT_INSTALLED = 4
 };
 
-//! Whether the user has opted in to adding external extension repositories. This is a one-way ratchet: once FORBIDDEN
-//! it cannot be moved back within a session. UNDECIDED (the default) blocks adding repositories by prefix, but allows
-//! the ones resolved through the extension repository registry (CREATE EXTENSION REPOSITORY ... FROM '<host>'), and
-//! extensions from repositories that were already created can still be installed and loaded
+//! Whether the user has opted in to adding external extension repositories. This is a one-way ratchet: while the
+//! database is running the setting can only tighten (UNDECIDED -> ALLOWED, and any -> KNOWN_HOSTS -> FORBIDDEN), never
+//! loosen. UNDECIDED (the default) blocks adding repositories by prefix, but allows the ones resolved through the
+//! extension repository registry (CREATE EXTENSION REPOSITORY ... FROM '<host>'), and extensions from repositories that
+//! were already created can still be installed and loaded
 enum class ExtensionRepositoryAccess : uint8_t {
 	//! No decision has been made yet - adding a repository by prefix fails until the user opts in explicitly; a
 	//! repository listed in the extension repository registry can be added
@@ -38,7 +39,10 @@ enum class ExtensionRepositoryAccess : uint8_t {
 	//! Adding external repositories is allowed
 	ALLOWED = 1,
 	//! Adding external repositories is forbidden - this cannot be undone in the same session
-	FORBIDDEN = 2
+	FORBIDDEN = 2,
+	//! Only repositories with a host (resolved through the registry) can be added, and only those are trusted: a
+	//! repository added by prefix is distrusted like under FORBIDDEN
+	KNOWN_HOSTS = 3
 };
 
 //! The type of a repository determines which public keys are trusted to sign the extensions that it serves. Keys of
@@ -75,6 +79,10 @@ public:
 	ExtensionRepositoryType repository_type = ExtensionRepositoryType::CORE;
 	//! (optional) Name of the repository the extension came from
 	string repository_name;
+	//! (optional) Host of the repository the extension came from, for a repository resolved through the extension
+	//! repository registry (CREATE EXTENSION REPOSITORY ... FROM '<host>'). The repository's identity, where the name
+	//! is the user's alias for it
+	string repository_host;
 	//! (optional) Fingerprint of the public key that signed this extension, as verified at install time. Empty when
 	//! the extension is unsigned. Matches the key_fingerprints reported by CREATE EXTENSION REPOSITORY
 	string signature_key_fingerprint;
@@ -144,6 +152,12 @@ struct ExtensionRepository {
 	vector<string> public_keys;
 	//! Which public keys are trusted to sign the extensions of this repository
 	ExtensionRepositoryType type = ExtensionRepositoryType::CORE;
+	//! (optional) The host the repository was resolved from through the extension repository registry. The identity
+	//! of the repository, where the name is the user's alias for it; empty for a repository added by prefix
+	string host;
+
+	//! Whether this repository was resolved from the given host (case insensitive). Always false without a host
+	bool HostIs(const string &host) const;
 };
 
 } // namespace duckdb

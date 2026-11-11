@@ -234,10 +234,52 @@ TEST_CASE("Test that a repository resolved through the registry does not need th
 	REQUIRE(KeyIsTrusted(*db.instance, ExtensionRepositoryType::USER_PROVIDED, "listed", TEST_PUBLIC_KEY));
 	REQUIRE_FAIL(con.Query("CREATE EXTENSION REPOSITORY unlisted FROM 'unlisted.example'"));
 
-	// 'forbidden' forbids the registry form as well
+	// the host is the repository's identity, the name is the alias: code refers to it by host
+	auto &fs_db = FileSystem::GetLocal(*db.instance);
+	ExtensionRepository by_host;
+	REQUIRE(ExtensionRepositoryManager::TryGetRepositoryByHost(*db.instance, fs_db, "LISTED.example", by_host));
+	REQUIRE(by_host.name == "listed");
+	REQUIRE(by_host.HostIs("listed.example"));
+	REQUIRE(!by_host.HostIs("other.example"));
+	REQUIRE(!ExtensionRepositoryManager::TryGetRepositoryByHost(*db.instance, fs_db, "unlisted.example", by_host));
+	REQUIRE_THROWS(ExtensionHelper::LoadExtensionFromHost(*con.context, "some_extension", "unlisted.example"));
+
+	// two aliases for one host: the lookup by host refuses to guess
+	REQUIRE_NO_FAIL(con.Query("CREATE EXTENSION REPOSITORY listed_too FROM 'listed.example'"));
+	REQUIRE_THROWS(ExtensionRepositoryManager::TryGetRepositoryByHost(*db.instance, fs_db, "listed.example", by_host));
+	REQUIRE_NO_FAIL(con.Query("DROP EXTENSION REPOSITORY listed_too"));
+
+	// 'known_hosts' keeps trusting the repository with a host, 'forbidden' forbids the registry form as well
+	REQUIRE_NO_FAIL(con.Query("SET allow_extension_repositories='known_hosts'"));
+	REQUIRE(KeyIsTrusted(*db.instance, ExtensionRepositoryType::USER_PROVIDED, "listed", TEST_PUBLIC_KEY));
 	REQUIRE_NO_FAIL(con.Query("DROP EXTENSION REPOSITORY listed"));
 	REQUIRE_NO_FAIL(con.Query("SET allow_extension_repositories='forbidden'"));
 	REQUIRE_FAIL(con.Query("CREATE EXTENSION REPOSITORY listed FROM 'listed.example'"));
+}
+
+TEST_CASE("Test that 'known_hosts' distrusts the repositories added by prefix", "[api]") {
+	auto repository_directory = TestCreatePath("extension_repositories_known_hosts");
+
+	DBConfig config;
+	config.SetOptionByName("extension_repository_directory", repository_directory);
+	config.SetOptionByName("allow_extension_repositories", "allowed");
+	DuckDB db(nullptr, &config);
+	Connection con(db);
+
+	REQUIRE_NO_FAIL(con.Query(StringUtil::Format(
+	    "CREATE EXTENSION REPOSITORY acme WITH PREFIX 'http://acme.com' USING PUBLIC KEY '%s'", TEST_PUBLIC_KEY)));
+	REQUIRE(KeyIsTrusted(*db.instance, ExtensionRepositoryType::USER_PROVIDED, "acme", TEST_PUBLIC_KEY));
+
+	// a repository without a host is distrusted under 'known_hosts', like under 'forbidden'; it stays listed
+	REQUIRE_NO_FAIL(con.Query("SET allow_extension_repositories='known_hosts'"));
+	REQUIRE(!KeyIsTrusted(*db.instance, ExtensionRepositoryType::USER_PROVIDED, "acme", TEST_PUBLIC_KEY));
+	REQUIRE(UserRepositoryCount(con) == 1);
+
+	// the ratchet: 'known_hosts' cannot go back to 'allowed' or 'undecided', only on to 'forbidden'
+	REQUIRE_FAIL(con.Query("SET allow_extension_repositories='allowed'"));
+	REQUIRE_FAIL(con.Query("SET allow_extension_repositories='undecided'"));
+	REQUIRE_NO_FAIL(con.Query("SET allow_extension_repositories='forbidden'"));
+	REQUIRE_FAIL(con.Query("SET allow_extension_repositories='known_hosts'"));
 }
 
 TEST_CASE("Test that the extension repository directory is a startup-only trust anchor", "[api]") {

@@ -32,10 +32,23 @@ CREATE EXTENSION REPOSITORY trusted FROM 'trusted.example'
 trusted	{TEST_DIR}/repo	['sha256:172c29bbb3cd41c70a8225d36ba3a53c94ca9236389fba11a71d45ef0524fa3b']
 
 # The host name is case insensitive, and the repository is stored like any other.
-query II
-SELECT repository_name, prefix FROM duckdb_extension_repositories() WHERE type='USER_PROVIDED'
+query III
+SELECT repository_name, prefix, host FROM duckdb_extension_repositories() WHERE type='USER_PROVIDED'
 ----
-trusted	{TEST_DIR}/repo
+trusted	{TEST_DIR}/repo	trusted.example
+
+# A repository added by prefix has no host.
+statement ok
+CREATE EXTENSION REPOSITORY byprefix WITH PREFIX '{TEST_DIR}/repo'
+
+query II
+SELECT repository_name, host FROM duckdb_extension_repositories() WHERE type='USER_PROVIDED' ORDER BY 1
+----
+byprefix	NULL
+trusted	trusted.example
+
+statement ok
+DROP EXTENSION REPOSITORY byprefix
 
 statement ok
 DROP EXTENSION REPOSITORY trusted
@@ -114,6 +127,49 @@ CREATE EXTENSION REPOSITORY IF NOT EXISTS trusted FROM 'trusted.example'
 
 statement ok
 CREATE OR REPLACE EXTENSION REPOSITORY trusted FROM 'trusted.example'
+
+statement ok
+DROP EXTENSION REPOSITORY trusted
+
+# 'known_hosts': only repositories resolved through the registry can be added, and only those are trusted. The runner
+# starts in 'allowed'; the setting can only be tightened.
+statement ok
+CREATE EXTENSION REPOSITORY byprefix WITH PREFIX '{TEST_DIR}/repo'
+
+statement ok
+CREATE EXTENSION REPOSITORY trusted FROM 'trusted.example'
+
+statement ok
+SET allow_extension_repositories='known_hosts'
+
+statement error
+CREATE EXTENSION REPOSITORY other WITH PREFIX '{TEST_DIR}/repo'
+----
+<REGEX>:Permission Error.*by prefix is not permitted.*known_hosts.*
+
+statement ok
+CREATE OR REPLACE EXTENSION REPOSITORY trusted FROM 'trusted.example'
+
+# the repository added by prefix is distrusted: installing from it is refused before anything is fetched
+statement error
+INSTALL nonexistent_extension FROM byprefix
+----
+<REGEX>:Permission Error.*'byprefix' is not permitted while allow_extension_repositories='known_hosts'.*
+
+# ...while the one resolved through the registry is still consulted (and fails on the download, not on permission)
+statement error
+INSTALL nonexistent_extension FROM trusted
+----
+<REGEX>:IO Error.*
+
+# the ratchet only tightens
+statement error
+SET allow_extension_repositories='allowed'
+----
+<REGEX>:Invalid Input Error.*can only be tightened.*
+
+statement ok
+DROP EXTENSION REPOSITORY byprefix
 
 statement ok
 DROP EXTENSION REPOSITORY trusted
