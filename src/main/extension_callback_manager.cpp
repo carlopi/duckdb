@@ -216,12 +216,16 @@ optional_ptr<GrammarExtension> ExtensionCallbackManager::FindGrammarExtension(co
 }
 
 optional_ptr<StorageExtension> ExtensionCallbackManager::FindStorageExtension(const string &name) const {
+	return GetStorageExtension(name).get();
+}
+
+shared_ptr<StorageExtension> ExtensionCallbackManager::GetStorageExtension(const string &name) const {
 	auto registry = callback_registry.load();
 	auto entry = registry->storage_extensions.find(name);
 	if (entry == registry->storage_extensions.end()) {
 		return nullptr;
 	}
-	return entry->second.get();
+	return entry->second;
 }
 
 optional_ptr<ProfilerExtension> ExtensionCallbackManager::FindProfilerExtension(const string &name) const {
@@ -278,6 +282,10 @@ optional_ptr<StorageExtension> StorageExtension::Find(const DBConfig &config, co
 
 void ExtensionCallback::Register(DBConfig &config, shared_ptr<ExtensionCallback> extension) {
 	config.GetCallbackManager().Register(std::move(extension));
+}
+
+shared_ptr<StorageExtension> StorageExtension::Get(const DBConfig &config, const string &extension_name) {
+	return config.GetCallbackManager().GetStorageExtension(extension_name);
 }
 
 void StorageExtension::Register(DBConfig &config, const string &extension_name,

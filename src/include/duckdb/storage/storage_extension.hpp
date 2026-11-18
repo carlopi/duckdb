@@ -47,6 +47,9 @@ public:
 	}
 
 	static optional_ptr<StorageExtension> Find(const DBConfig &config, const string &extension_name);
+	//! Like Find, but as the owner: a storage extension registered under a name stays valid for whoever holds this
+	//! even after another one is registered under the same name
+	static shared_ptr<StorageExtension> Get(const DBConfig &config, const string &extension_name);
 	static void Register(DBConfig &config, const string &extension_name, shared_ptr<StorageExtension> extension);
 };
 

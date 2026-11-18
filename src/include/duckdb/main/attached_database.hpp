@@ -121,7 +121,7 @@ public:
 	//! Create an attached database instance with the specified name and storage.
 	AttachedDatabase(DatabaseInstance &db, Catalog &catalog, Identifier name, string file_path, AttachOptions &options);
 	//! Create an attached database instance with the specified storage extension.
-	AttachedDatabase(DatabaseInstance &db, Catalog &catalog, StorageExtension &ext, ClientContext &context,
+	AttachedDatabase(DatabaseInstance &db, Catalog &catalog, shared_ptr<StorageExtension> ext, ClientContext &context,
 	                 Identifier name, AttachInfo &info, AttachOptions &options);
 	~AttachedDatabase() override;
 
@@ -157,7 +157,7 @@ public:
 	ErrorData InvalidationError(const string &operation);
 
 	optional_ptr<StorageExtension> GetStorageExtension() {
-		return storage_extension;
+		return storage_extension.get();
 	}
 
 	const Identifier &GetName() const {
@@ -225,7 +225,9 @@ private:
 	unique_ptr<TransactionManager> transaction_manager;
 	AttachedDatabaseType type;
 	optional_ptr<Catalog> parent_catalog;
-	optional_ptr<StorageExtension> storage_extension;
+	//! The storage extension this database was attached through, owned: its attach may load an extension that
+	//! registers another storage extension under the same name, and the registry then drops this one
+	shared_ptr<StorageExtension> storage_extension;
 	RecoveryMode recovery_mode = RecoveryMode::DEFAULT;
 	AttachVisibility visibility = AttachVisibility::SHOWN;
 	bool ephemeral = false;

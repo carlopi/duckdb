@@ -167,10 +167,12 @@ AttachedDatabase::AttachedDatabase(DatabaseInstance &db, Catalog &catalog_p, Ide
 	internal = true;
 }
 
-AttachedDatabase::AttachedDatabase(DatabaseInstance &db, Catalog &catalog_p, StorageExtension &storage_extension_p,
-                                   ClientContext &context, Identifier name_p, AttachInfo &info, AttachOptions &options)
+AttachedDatabase::AttachedDatabase(DatabaseInstance &db, Catalog &catalog_p,
+                                   shared_ptr<StorageExtension> storage_extension_p, ClientContext &context,
+                                   Identifier name_p, AttachInfo &info, AttachOptions &options)
     : CatalogEntry(CatalogType::DATABASE_ENTRY, catalog_p, std::move(name_p)), db(db), validity(db),
-      parent_catalog(&catalog_p), storage_extension(&storage_extension_p), close_lock(make_shared_ptr<mutex>()) {
+      parent_catalog(&catalog_p), storage_extension(std::move(storage_extension_p)),
+      close_lock(make_shared_ptr<mutex>()) {
 	if (options.access_mode == AccessMode::READ_ONLY) {
 		type = AttachedDatabaseType::READ_ONLY_DATABASE;
 	} else {

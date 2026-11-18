@@ -62,6 +62,8 @@ public:
 	ExtensionCallbackIteratorHelper<PlannerExtension> PlannerExtensions() const;
 	ExtensionCallbackIteratorHelper<shared_ptr<ExtensionCallback>> ExtensionCallbacks() const;
 	optional_ptr<StorageExtension> FindStorageExtension(const string &name) const;
+	//! The registered storage extension as its owner, for a holder that must outlive its registry entry
+	shared_ptr<StorageExtension> GetStorageExtension(const string &name) const;
 	optional_ptr<GrammarExtension> FindGrammarExtension(const string &name) const;
 	case_insensitive_map_t<shared_ptr<GrammarExtension>> GrammarExtensions() const;
 	//! Monotonic version bumped on every grammar extension registration, so sessions can detect

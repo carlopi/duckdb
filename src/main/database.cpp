@@ -217,14 +217,16 @@ shared_ptr<AttachedDatabase> DatabaseInstance::CreateAttachedDatabase(ClientCont
 	if (!options.db_type.empty()) {
 		// Find the storage extension for this database file.
 		auto extension_name = ExtensionHelper::ApplyExtensionAlias(options.db_type);
-		auto storage_extension = StorageExtension::Find(config, extension_name);
+		// Held by the attached database as its owner: attaching may load an extension that registers another
+		// storage extension under this name, which would otherwise free this one while it is still in use
+		auto storage_extension = StorageExtension::Get(config, extension_name);
 		if (!storage_extension) {
 			throw BinderException("Unrecognized storage type \"%s\"", options.db_type);
 		}
 
 		if (storage_extension->attach != nullptr && storage_extension->create_transaction_manager != nullptr) {
 			// Use the storage extension to create the initial database.
-			attached_database = make_shared_ptr<AttachedDatabase>(*this, catalog, *storage_extension, context,
+			attached_database = make_shared_ptr<AttachedDatabase>(*this, catalog, std::move(storage_extension), context,
 			                                                      info.name, info, options);
 			return attached_database;
 		}
