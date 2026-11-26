@@ -507,7 +507,7 @@ public:
 	//! Autoload the extension required for `configuration_name` or throw a CatalogException
 	static String AutoloadExtensionByConfigName(ClientContext &context, const Identifier &configuration_name);
 	//! Autoload the extension required for `function_name` or throw a CatalogException
-	static bool AutoLoadExtensionByCatalogEntry(DatabaseInstance &db, CatalogType type, const Identifier &entry_name);
+	static bool AutoLoadExtensionByCatalogEntry(ClientContext &context, CatalogType type, const Identifier &entry_name);
 	DUCKDB_API static bool TryAutoLoad(ClientContext &context, const string &extension_name) noexcept;
 
 	//! Called when the catalog is detached

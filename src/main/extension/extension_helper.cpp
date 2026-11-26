@@ -49,6 +49,21 @@ ExtensionLoadResult ExtensionHelper::LoadExtension(DuckDB &db, const std::string
 	return ExtensionLoadResult::NOT_LOADED;
 }
 
+bool ExtensionHelper::TryLoadLinkedExtension(DatabaseInstance &db, const string &extension) {
+	if (db.ExtensionIsLoaded(extension)) {
+		return false;
+	}
+	auto &config = DBConfig::GetConfig(db);
+	for (auto &linked : config.linked_extensions) {
+		if (linked.load && StringUtil::CIEquals(linked.name, extension)) {
+			DuckDB wrapper(db);
+			linked.load(wrapper);
+			return true;
+		}
+	}
+	return false;
+}
+
 void ExtensionHelper::LoadAllExtensions(DuckDB &db) {
 	// registration order, so a binary loads its extensions the same way on every run
 	auto &config = DBConfig::GetConfig(*db.instance);

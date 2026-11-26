@@ -29,7 +29,7 @@ CollationFunction CollationFunctions::Lookup(ClientContext &context, const strin
 	QualifiedName qualified_name(catalog.GetName(), GetSchema(), Identifier(collation));
 	auto entry = catalog.GetEntry<ScalarFunctionCatalogEntry>(context, qualified_name, OnEntryNotFound::RETURN_NULL);
 	if (!entry &&
-	    Catalog::AutoLoadExtensionByCatalogEntry(*context.db, CatalogType::COLLATION_ENTRY, Identifier(collation))) {
+	    Catalog::AutoLoadExtensionByCatalogEntry(context, CatalogType::COLLATION_ENTRY, Identifier(collation))) {
 		entry = catalog.GetEntry<ScalarFunctionCatalogEntry>(context, qualified_name, OnEntryNotFound::RETURN_NULL);
 	}
 	if (!entry) {

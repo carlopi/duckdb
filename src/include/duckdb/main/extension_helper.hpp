@@ -133,6 +133,8 @@ class ExtensionHelper {
 public:
 	static void LoadAllExtensions(DuckDB &db);
 	static ExtensionLoadResult LoadExtension(DuckDB &db, const std::string &extension);
+	//! Loads the named extension when it is linked into this binary and not loaded yet, and returns whether it did
+	static bool TryLoadLinkedExtension(DatabaseInstance &db, const string &extension);
 	//! Publishes the extensions linked into this binary, as collected by LinkedExtensionRegistry, onto the config
 	static void RegisterLinkedExtensions(DBConfig &config);
 

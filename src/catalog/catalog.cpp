@@ -9,6 +9,7 @@
 #include "duckdb/catalog/default/default_schemas.hpp"
 #include "duckdb/catalog/catalog_entry/type_catalog_entry.hpp"
 #include "duckdb/common/exception.hpp"
+#include "duckdb/main/client_config.hpp"
 #include "duckdb/main/client_context.hpp"
 #include "duckdb/main/client_data.hpp"
 #include "duckdb/main/database.hpp"
@@ -875,34 +876,45 @@ static bool CompareCatalogTypes(CatalogType type_a, CatalogType type_b) {
 	return false;
 }
 
-bool Catalog::AutoLoadExtensionByCatalogEntry(DatabaseInstance &db, CatalogType type, const Identifier &entry_name) {
-	if (Settings::Get<AutoloadKnownExtensionsSetting>(db)) {
-		string extension_name;
-		if (IsAutoloadableFunction(type)) {
-			auto lookup_result = ExtensionHelper::FindExtensionInFunctionEntries(entry_name, EXTENSION_FUNCTIONS);
-			if (lookup_result.empty()) {
-				return false;
-			}
-			for (auto &function : lookup_result) {
-				auto function_type = function.second;
-				// FIXME: what if there are two functions with the same name, from different extensions?
-				if (CompareCatalogTypes(type, function_type)) {
-					extension_name = function.first;
-					break;
-				}
-			}
-		} else if (type == CatalogType::COPY_FUNCTION_ENTRY) {
-			extension_name = ExtensionHelper::FindExtensionInEntries(entry_name, EXTENSION_COPY_FUNCTIONS);
-		} else if (type == CatalogType::TYPE_ENTRY) {
-			extension_name = ExtensionHelper::FindExtensionInEntries(entry_name, EXTENSION_TYPES);
-		} else if (type == CatalogType::COLLATION_ENTRY) {
-			extension_name = ExtensionHelper::FindExtensionInEntries(entry_name, EXTENSION_COLLATIONS);
+bool Catalog::AutoLoadExtensionByCatalogEntry(ClientContext &context, CatalogType type, const Identifier &entry_name) {
+	auto &db = *context.db;
+	const bool autoload = Settings::Get<AutoloadKnownExtensionsSetting>(db);
+	const bool load_linked = ClientConfig::GetConfig(context).load_linked_extensions_on_missing_entry;
+	if (!autoload && !load_linked) {
+		return false;
+	}
+	string extension_name;
+	if (IsAutoloadableFunction(type)) {
+		auto lookup_result = ExtensionHelper::FindExtensionInFunctionEntries(entry_name, EXTENSION_FUNCTIONS);
+		if (lookup_result.empty()) {
+			return false;
 		}
+		for (auto &function : lookup_result) {
+			auto function_type = function.second;
+			// FIXME: what if there are two functions with the same name, from different extensions?
+			if (CompareCatalogTypes(type, function_type)) {
+				extension_name = function.first;
+				break;
+			}
+		}
+	} else if (type == CatalogType::COPY_FUNCTION_ENTRY) {
+		extension_name = ExtensionHelper::FindExtensionInEntries(entry_name, EXTENSION_COPY_FUNCTIONS);
+	} else if (type == CatalogType::TYPE_ENTRY) {
+		extension_name = ExtensionHelper::FindExtensionInEntries(entry_name, EXTENSION_TYPES);
+	} else if (type == CatalogType::COLLATION_ENTRY) {
+		extension_name = ExtensionHelper::FindExtensionInEntries(entry_name, EXTENSION_COLLATIONS);
+	}
+	if (extension_name.empty()) {
+		return false;
+	}
 
-		if (!extension_name.empty() && ExtensionHelper::CanAutoloadExtension(db, extension_name)) {
-			ExtensionHelper::AutoLoadExtension(db, extension_name);
-			return true;
-		}
+	// an extension linked into this binary loads without install or file access
+	if (load_linked && ExtensionHelper::TryLoadLinkedExtension(db, extension_name)) {
+		return true;
+	}
+	if (autoload && ExtensionHelper::CanAutoloadExtension(db, extension_name)) {
+		ExtensionHelper::AutoLoadExtension(db, extension_name);
+		return true;
 	}
 
 	return false;
@@ -1386,7 +1398,7 @@ optional_ptr<CatalogEntry> Catalog::GetEntry(CatalogEntryRetriever &retriever, c
 
 	// Try autoloading extension to resolve lookup
 	if (!result.Found()) {
-		if (AutoLoadExtensionByCatalogEntry(*retriever.GetContext().db, lookup_info.GetCatalogType(),
+		if (AutoLoadExtensionByCatalogEntry(retriever.GetContext(), lookup_info.GetCatalogType(),
 		                                    lookup_info.GetEntryIdentifier())) {
 			result = TryLookupEntryAcrossCatalogs(retriever, lookup_info, if_not_found);
 		}
@@ -1449,7 +1461,7 @@ optional_ptr<CatalogEntry> Catalog::GetEntryInCatalog(CatalogEntryRetriever &ret
 
 	// Try autoloading extension to resolve lookup
 	if (!result.Found()) {
-		if (AutoLoadExtensionByCatalogEntry(*retriever.GetContext().db, lookup_info.GetCatalogType(),
+		if (AutoLoadExtensionByCatalogEntry(retriever.GetContext(), lookup_info.GetCatalogType(),
 		                                    lookup_info.GetEntryIdentifier())) {
 			result = TryLookupEntry(retriever, lookup_info, if_not_found);
 		}

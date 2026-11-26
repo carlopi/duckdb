@@ -1,0 +1,61 @@
+# name: test/sql/storage/wal/wal_alter_type_using_extension_function.test
+# description: Replay an ALTER TYPE whose USING expression needs a statically linked extension
+# group: [wal]
+
+# WAL replay runs before startup loads the statically linked extensions, so replaying the
+# stored USING expression must load the extension that provides its functions (core_functions)
+
+require core_functions
+
+require no_extension_autoloading "EXPECTED: core_functions must load from the binary, not from a repository"
+
+load {TEST_DIR}/wal_alter_type_using.db
+
+statement ok
+PRAGMA disable_checkpoint_on_shutdown
+
+statement ok
+SET wal_autocheckpoint='1TB';
+
+statement ok
+CREATE TABLE t(i INTEGER);
+
+statement ok
+INSERT INTO t VALUES (1), (-2), (NULL);
+
+statement ok
+ALTER TABLE t ALTER i TYPE VARCHAR USING abs(i)::VARCHAR;
+
+# reopen the database, replaying the ALTER from the WAL
+restart
+
+query I
+SELECT i FROM t ORDER BY ALL
+----
+1
+2
+NULL
+
+statement ok
+PRAGMA disable_checkpoint_on_shutdown
+
+statement ok
+SET wal_autocheckpoint='1TB';
+
+# a USING expression evaluating a core_functions function directly, without a cast on top
+statement ok
+CREATE TABLE numbers(v BIGINT);
+
+statement ok
+INSERT INTO numbers VALUES (4), (9);
+
+statement ok
+ALTER TABLE numbers ALTER v TYPE DOUBLE USING sqrt(v);
+
+restart
+
+query I
+SELECT v FROM numbers ORDER BY ALL
+----
+2.0
+3.0

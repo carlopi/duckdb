@@ -50,6 +50,10 @@ struct ClientConfig {
 
 	//! Force parallelism of small tables, used for testing
 	bool verify_parallelism = false;
+	//! Whether a missed catalog lookup may load a statically linked extension that provides the entry.
+	//! Set during WAL replay, which binds stored expressions (e.g. ALTER ... USING) before startup
+	//! has loaded the extensions linked into the binary.
+	bool load_linked_extensions_on_missing_entry = false;
 	//! If this context should also try to use the available replacement scans
 	//! True by default
 	bool use_replacement_scans = true;
