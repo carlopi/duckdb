@@ -1,0 +1,36 @@
+# name: test/sql/optimizer/or_pushdown_all_null_constants.test
+# description: An OR whose children all compare with NULL constants folds to false instead of an empty pushed filter
+# group: [optimizer]
+
+statement ok
+CREATE TABLE t_or_null AS SELECT range::INT AS x FROM range(10);
+
+# the mark join simplifier rewrites each IN into x = NULL, leaving an OR with only NULL comparisons
+query I
+SELECT count(*) FROM t_or_null WHERE x IN (SELECT NULL::INT) OR x IN (SELECT NULL::INT);
+----
+0
+
+query I
+SELECT count(*) FROM t_or_null WHERE x IN (SELECT NULL::INT) OR x IN (SELECT NULL::INT) OR x IN (SELECT NULL::INT);
+----
+0
+
+query I
+SELECT count(*) FROM t_or_null WHERE (x IN (SELECT NULL::INT) OR x IN (SELECT NULL::INT)) AND x > 1;
+----
+0
+
+query I
+SELECT x FROM t_or_null WHERE x IN (SELECT NULL::INT) OR x IN (SELECT NULL::INT);
+----
+
+# a disjunct that can be true keeps its matches
+query I
+SELECT x FROM t_or_null WHERE x IN (SELECT NULL::INT) OR x = 3;
+----
+3
+
+query I
+SELECT x FROM t_or_null WHERE x IN (SELECT NULL::INT) OR x IS NULL;
+----

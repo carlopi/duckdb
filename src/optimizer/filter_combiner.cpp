@@ -1086,6 +1086,12 @@ FilterPushdownResult FilterCombiner::TryPushdownOrClause(TableFilterSet &table_f
 			    CreateComparisonExpression(*column_ref, comparison_type, const_val->GetValue()));
 		}
 	}
+	if (conj_filter->GetChildren().empty()) {
+		// every child compares with a NULL constant - the OR can never be true: fold it to false
+		auto false_expr = make_uniq<BoundConstantExpression>(Value::BOOLEAN(false));
+		table_filters.PushFilter(proj_id, CreateOptionalExpressionFilter(std::move(false_expr), col_type));
+		return FilterPushdownResult::PUSHED_DOWN_PARTIALLY;
+	}
 	if (only_equalities && equality_column) {
 		if (TryPushdownDenseInFilter(table_filters, *equality_column, equality_values)) {
 			return FilterPushdownResult::PUSHED_DOWN_FULLY;

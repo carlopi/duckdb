@@ -974,6 +974,17 @@ FilterPropagateResult ExpressionFilter::CheckExpressionStatistics(optional_ptr<C
 		return CheckConjunctionStatistics(context_p, expr.Cast<BoundConjunctionExpression>(), input_stats);
 	case ExpressionClass::BOUND_REF:
 		return CheckBoolRefStatistics(expr, input_stats, false);
+	case ExpressionClass::BOUND_CONSTANT: {
+		auto &value = expr.Cast<BoundConstantExpression>().GetValue();
+		if (value.type().id() != LogicalTypeId::BOOLEAN) {
+			return FilterPropagateResult::NO_PRUNING_POSSIBLE;
+		}
+		if (value.IsNull()) {
+			return FilterPropagateResult::FILTER_FALSE_OR_NULL;
+		}
+		return BooleanValue::Get(value) ? FilterPropagateResult::FILTER_ALWAYS_TRUE
+		                                : FilterPropagateResult::FILTER_ALWAYS_FALSE;
+	}
 	default:
 		return FilterPropagateResult::NO_PRUNING_POSSIBLE;
 	}
