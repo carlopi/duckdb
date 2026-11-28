@@ -74,6 +74,7 @@ ScalarFunction SuffixFun::GetFunction() {
 	function.GetSignature()
 	    .AddParameter("string", LogicalType::VARCHAR)
 	    .AddParameter("search_string", LogicalType::VARCHAR);
+	function.SetCollationHandling(FunctionCollationHandling::PUSH_COMBINABLE_COLLATIONS);
 	function.SetFilterPruneCallback(SuffixFilterPrune);
 	return function;
 }

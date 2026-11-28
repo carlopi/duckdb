@@ -1,0 +1,92 @@
+# name: test/sql/collate/test_prefix_suffix_collation.test
+# description: prefix/suffix/ends_with push combinable collations like starts_with and contains
+# group: [collate]
+
+statement ok
+CREATE TABLE strings AS SELECT i, CASE WHEN i % 2 = 0 THEN 'ÀBC' ELSE 'xyz' END AS s FROM range(5000) t(i);
+
+# without a collation the comparison stays binary
+query IIII
+SELECT prefix('ABC', 'a'), suffix('ABC', 'c'), ends_with('ABC', 'c'), starts_with('ABC', 'a')
+----
+false	false	false	false
+
+# explicit NOCASE collation
+query IIII
+SELECT prefix('ABC' COLLATE NOCASE, 'a'), suffix('ABC' COLLATE NOCASE, 'c'), ends_with('ABC' COLLATE NOCASE, 'c'), starts_with('ABC' COLLATE NOCASE, 'a')
+----
+true	true	true	true
+
+# the collation of either argument is pushed into both
+query II
+SELECT prefix('ABC', 'a' COLLATE NOCASE), suffix('ABC', 'c' COLLATE NOCASE)
+----
+true	true
+
+# explicit NOACCENT collation
+query III
+SELECT prefix('àbc' COLLATE NOACCENT, 'ab'), suffix('abà' COLLATE NOACCENT, 'ba'), ends_with('abà' COLLATE NOACCENT, 'ba')
+----
+true	true	true
+
+# combined NOACCENT.NOCASE collation
+query III
+SELECT prefix('ÀBC' COLLATE NOACCENT.NOCASE, 'ab'), suffix('ABÀ' COLLATE NOACCENT.NOCASE, 'ba'), ends_with('ABÀ' COLLATE NOACCENT.NOCASE, 'ba')
+----
+true	true	true
+
+# non-matching strings still return false under a collation
+query III
+SELECT prefix('ABC' COLLATE NOCASE, 'b'), suffix('ABC' COLLATE NOCASE, 'b'), ends_with('ABC' COLLATE NOCASE, 'b')
+----
+false	false	false
+
+# a needle longer than the string returns false
+query II
+SELECT prefix('ABC' COLLATE NOCASE, 'abcd'), suffix('ABC' COLLATE NOCASE, 'zabc')
+----
+false	false
+
+# collated columns over more than one vector, and agreement with starts_with/contains
+query IIII
+SELECT count(*) FILTER (WHERE prefix(s COLLATE NOACCENT.NOCASE, 'ab')),
+       count(*) FILTER (WHERE suffix(s COLLATE NOACCENT.NOCASE, 'bc')),
+       count(*) FILTER (WHERE ends_with(s COLLATE NOACCENT.NOCASE, 'bc')),
+       count(*) FILTER (WHERE prefix(s COLLATE NOACCENT.NOCASE, 'ab') = starts_with(s COLLATE NOACCENT.NOCASE, 'ab'))
+FROM strings
+----
+2500	2500	2500	5000
+
+# the default collation applies like an explicit one
+statement ok
+SET default_collation = 'nocase';
+
+query IIII
+SELECT prefix('ABC', 'a'), suffix('ABC', 'c'), ends_with('ABC', 'c'), starts_with('ABC', 'a')
+----
+true	true	true	true
+
+# prefix/suffix must agree with their mirror functions under the default collation
+query III
+SELECT count(*) FILTER (WHERE prefix(s, 'À')),
+       count(*) FILTER (WHERE prefix(s, 'À') = starts_with(s, 'À')),
+       count(*) FILTER (WHERE suffix(s, 'c') = ends_with(s, 'c'))
+FROM strings
+----
+2500	5000	5000
+
+statement ok
+SET default_collation = 'noaccent.nocase';
+
+query III
+SELECT prefix('ÀBC', 'ab'), suffix('ABÀ', 'ba'), ends_with('HÉLLO', 'ello')
+----
+true	true	true
+
+statement ok
+RESET default_collation;
+
+query III
+SELECT prefix('ABC', 'a'), suffix('ABC', 'c'), ends_with('ABC', 'c')
+----
+false	false	false
