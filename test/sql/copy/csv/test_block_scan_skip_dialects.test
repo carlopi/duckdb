@@ -509,16 +509,19 @@ CREATE OR REPLACE TEMP TABLE t_rej_cr AS SELECT a, d FROM read_csv('{DATA_DIR}/c
 15	263	271	5	TOO MANY COLUMNS	17,a,b,x,21
 16	275	278	2	UNQUOTED VALUE	18,"open,x,22
 
-# file cr, rejects, counting
+# file cr, rejects, counting: the count still records the cast errors of the columns it does not read
 query III
 CREATE OR REPLACE TEMP TABLE t_rej_cr_count AS SELECT count(*) FROM read_csv('{DATA_DIR}/csv/block_scan_skip_cr.csv', delim=',', quote='"', escape='"', header=false, new_line='\r', auto_detect=false, columns={'a':'INTEGER','b':'VARCHAR','c':'VARCHAR','d':'INTEGER'}, store_rejects=true, rejects_table='rej_cr_count', rejects_scan='scan_rej_cr_count'); SELECT line, column_idx, error_type FROM rej_cr_count ORDER BY ALL
 ----
 5	2	UNQUOTED VALUE
 6	3	MISSING COLUMNS
+7	4	CAST
 7	5	TOO MANY COLUMNS
 9	2	MISSING COLUMNS
 9	3	MISSING COLUMNS
+10	1	CAST
 10	3	MISSING COLUMNS
+15	4	CAST
 15	5	TOO MANY COLUMNS
 16	2	UNQUOTED VALUE
 
@@ -1044,15 +1047,17 @@ CREATE OR REPLACE TEMP TABLE t_rej_comment_pipe2_cr AS SELECT a, d FROM read_csv
 17	290	295	3	MISSING COLUMNS	14||a#b||x||18
 21	408	412	2	UNQUOTED VALUE	18||"open||x||22
 
-# file comment_pipe2_cr, rejects, counting
+# file comment_pipe2_cr, rejects, counting: the count still records the cast errors of the columns it does not read
 query III
 CREATE OR REPLACE TEMP TABLE t_rej_comment_pipe2_cr_count AS SELECT count(*) FROM read_csv('{DATA_DIR}/csv/block_scan_skip_comment_pipe2_cr.csv', delim='||', quote='"', escape='"', comment='#', header=false, new_line='\r', auto_detect=false, columns={'a':'INTEGER','b':'VARCHAR','c':'VARCHAR','d':'INTEGER'}, store_rejects=true, rejects_table='rej_comment_pipe2_cr_count', rejects_scan='scan_rej_comment_pipe2_cr_count'); SELECT line, column_idx, error_type FROM rej_comment_pipe2_cr_count ORDER BY ALL
 ----
 6	2	UNQUOTED VALUE
 7	3	MISSING COLUMNS
+8	4	CAST
 8	5	TOO MANY COLUMNS
 10	2	MISSING COLUMNS
 10	3	MISSING COLUMNS
+11	1	CAST
 11	3	MISSING COLUMNS
 17	2	MISSING COLUMNS
 17	3	MISSING COLUMNS
@@ -5183,13 +5188,12 @@ w
 w
 w
 w
-y
 
-# rows after a full chunk with ||, counting
+# rows after a full chunk with ||, counting: the cast error in the unread column a also removes its row
 query I
 SELECT count(*) FROM read_csv('{TEST_DIR}/skip_after_chunk_pipe2.csv', delim='||', quote='"', escape='"', header=false, new_line='\n', auto_detect=false, columns={'a':'INTEGER','b':'VARCHAR'}, ignore_errors=true)
 ----
-2059
+2058
 
 # rows after a full chunk with ||, strict
 statement error
@@ -5201,7 +5205,9 @@ Conversion Error: CSV Error on Line: 2049
 query IIIIII
 CREATE OR REPLACE TEMP TABLE t_rej_chunk2 AS SELECT b FROM read_csv('{TEST_DIR}/skip_after_chunk_pipe2.csv', delim='||', quote='"', escape='"', header=false, new_line='\n', auto_detect=false, columns={'a':'INTEGER','b':'VARCHAR'}, store_rejects=true, rejects_table='rej_chunk2', rejects_scan='scan_chunk2'); SELECT line, line_byte_position, byte_position, column_idx, error_type, csv_line FROM rej_chunk2 ORDER BY ALL
 ----
+2049	22357	22357	1	CAST	x||bad||extra
 2049	22357	22364	3	TOO MANY COLUMNS	x||bad||extra
+2050	22371	22371	1	CAST	notanumber||y
 
 # the last of 300 columns with ||
 query I

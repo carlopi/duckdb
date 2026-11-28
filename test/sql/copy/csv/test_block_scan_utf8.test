@@ -38,13 +38,10 @@ CSV Error on Line: 2
 query I
 SELECT b FROM read_csv('data/csv/block_scan_invalid_utf8.csv', delim=',', quote='"', escape='"', header=false, new_line='\n', auto_detect=false, columns={'a':'INTEGER','b':'VARCHAR','c':'VARCHAR'}, ignore_errors=true) ORDER BY ALL
 ----
-a
 a"b
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 abc
 ascii
-fine
-x
 é
 €
 
@@ -59,16 +56,11 @@ query I
 SELECT c FROM read_csv('data/csv/block_scan_invalid_utf8.csv', delim=',', quote='"', escape='"', header=false, new_line='\n', auto_detect=false, columns={'a':'INTEGER','b':'VARCHAR','c':'VARCHAR'}, ignore_errors=true) ORDER BY ALL
 ----
 b
-b
-c
-d
 e
 euro
 ok
 quoted
 x
-y
-z
 
 # invalid bytes, strict, selecting a
 statement error
@@ -81,17 +73,11 @@ query I
 SELECT a FROM read_csv('data/csv/block_scan_invalid_utf8.csv', delim=',', quote='"', escape='"', header=false, new_line='\n', auto_detect=false, columns={'a':'INTEGER','b':'VARCHAR','c':'VARCHAR'}, ignore_errors=true) ORDER BY ALL
 ----
 1
-2
-3
 4
-5
 7
-8
-9
 10
 11
 12
-13
 
 # invalid bytes, rejects stored
 statement ok
@@ -115,7 +101,12 @@ CREATE OR REPLACE TEMP TABLE r2 AS SELECT c FROM read_csv('data/csv/block_scan_i
 query III
 SELECT line, column_idx, error_type FROM rej_c ORDER BY ALL
 ----
+2	2	INVALID ENCODING
+3	2	INVALID ENCODING
 5	3	INVALID ENCODING
+6	1	CAST
+8	2	INVALID ENCODING
+9	2	INVALID ENCODING
 13	3	INVALID ENCODING
 
 # invalid bytes, all_varchar, ignore_errors
@@ -139,7 +130,7 @@ CSV Error on Line: 2
 query I
 SELECT count(*) FROM read_csv('data/csv/block_scan_invalid_utf8.csv', ignore_errors=true)
 ----
-12
+6
 
 # valid multi byte values, utf8_valid.csv
 query IIIIII

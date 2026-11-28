@@ -318,7 +318,6 @@ SELECT a FROM read_csv('{DATA_DIR}/csv/block_scan_multibyte_3.csv', delim='<|>',
 2
 3
 4
-6
 
 # file_3, ignore_errors, selecting d
 query I
@@ -337,13 +336,12 @@ SELECT a, replace(replace(c, chr(10), '<LF>'), chr(13), '<CR>') AS c FROM read_c
 2	x
 3	x
 4	x
-6	x
 
 # file_3, ignore_errors, selecting count(*)
 query I
 SELECT count(*) FROM read_csv('{DATA_DIR}/csv/block_scan_multibyte_3.csv', delim='<|>', quote='"', escape='"', header=false, new_line='\n', auto_detect=false, columns={'a':'INTEGER','b':'VARCHAR','c':'VARCHAR','d':'INTEGER'}, ignore_errors=true)
 ----
-5
+4
 
 # file_3, lenient, selecting *
 query IIII
@@ -416,7 +414,6 @@ SELECT a FROM read_csv('{DATA_DIR}/csv/block_scan_multibyte_4.csv', delim='::::'
 3
 4
 5
-6
 
 # file_4, ignore_errors, selecting d
 query I
@@ -437,13 +434,12 @@ SELECT a, replace(replace(c, chr(10), '<LF>'), chr(13), '<CR>') AS c FROM read_c
 3	x
 4	x
 5	::x
-6	x
 
 # file_4, ignore_errors, selecting count(*)
 query I
 SELECT count(*) FROM read_csv('{DATA_DIR}/csv/block_scan_multibyte_4.csv', delim='::::', quote='"', escape='"', header=false, new_line='\n', auto_detect=false, columns={'a':'INTEGER','b':'VARCHAR','c':'VARCHAR','d':'INTEGER'}, ignore_errors=true)
 ----
-6
+5
 
 # file_4, lenient, selecting *
 query IIII
@@ -513,9 +509,7 @@ SELECT a FROM read_csv('{DATA_DIR}/csv/block_scan_multibyte_utf8.csv', delim='�
 ----
 1
 2
-3
 4
-5
 
 # file_utf8, ignore_errors, selecting d
 query I
@@ -523,7 +517,6 @@ SELECT d FROM read_csv('{DATA_DIR}/csv/block_scan_multibyte_utf8.csv', delim='�
 ----
 7
 8
-9
 10
 
 # file_utf8, ignore_errors, selecting a, c
@@ -532,15 +525,13 @@ SELECT a, replace(replace(c, chr(10), '<LF>'), chr(13), '<CR>') AS c FROM read_c
 ----
 1	x
 2	x
-3	x
 4	x
-5	x
 
 # file_utf8, ignore_errors, selecting count(*)
 query I
 SELECT count(*) FROM read_csv('{DATA_DIR}/csv/block_scan_multibyte_utf8.csv', delim='€', quote='"', escape='"', header=false, new_line='\n', auto_detect=false, columns={'a':'INTEGER','b':'VARCHAR','c':'VARCHAR','d':'INTEGER'}, ignore_errors=true)
 ----
-5
+3
 
 # file_utf8, lenient, selecting *
 query IIII
@@ -565,7 +556,6 @@ SELECT a, d FROM read_csv('{DATA_DIR}/csv/block_scan_multibyte_utf8.csv', delim=
 ----
 1	7
 2	8
-3	9
 4	10
 
 # file_utf8, parallel=false, selecting a, d
@@ -574,7 +564,6 @@ SELECT a, d FROM read_csv('{DATA_DIR}/csv/block_scan_multibyte_utf8.csv', delim=
 ----
 1	7
 2	8
-3	9
 4	10
 
 # file_utf8, rejects
@@ -605,9 +594,7 @@ SELECT a FROM read_csv('{DATA_DIR}/csv/block_scan_multibyte_cent.csv', delim='¢
 ----
 1
 2
-3
 4
-5
 
 # file_cent, ignore_errors, selecting d
 query I
@@ -615,7 +602,6 @@ SELECT d FROM read_csv('{DATA_DIR}/csv/block_scan_multibyte_cent.csv', delim='¢
 ----
 7
 8
-9
 10
 
 # file_cent, ignore_errors, selecting a, c
@@ -624,15 +610,13 @@ SELECT a, replace(replace(c, chr(10), '<LF>'), chr(13), '<CR>') AS c FROM read_c
 ----
 1	x
 2	x
-3	x
 4	x
-5	x
 
 # file_cent, ignore_errors, selecting count(*)
 query I
 SELECT count(*) FROM read_csv('{DATA_DIR}/csv/block_scan_multibyte_cent.csv', delim='¢', quote='"', escape='"', header=false, new_line='\n', auto_detect=false, columns={'a':'INTEGER','b':'VARCHAR','c':'VARCHAR','d':'INTEGER'}, ignore_errors=true)
 ----
-5
+3
 
 # file_cent, lenient, selecting *
 query IIII
@@ -656,7 +640,6 @@ SELECT a, d FROM read_csv('{DATA_DIR}/csv/block_scan_multibyte_cent.csv', delim=
 ----
 1	7
 2	8
-3	9
 4	10
 
 # file_cent, parallel=false, selecting a, d
@@ -665,7 +648,6 @@ SELECT a, d FROM read_csv('{DATA_DIR}/csv/block_scan_multibyte_cent.csv', delim=
 ----
 1	7
 2	8
-3	9
 4	10
 
 # file_cent, rejects

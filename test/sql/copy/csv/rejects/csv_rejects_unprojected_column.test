@@ -1,0 +1,19 @@
+# name: test/sql/copy/csv/rejects/csv_rejects_unprojected_column.test
+# description: Errors in a column the query does not read must still reach the rejects table
+# group: [rejects]
+
+require skip_reload
+
+statement ok
+COPY (SELECT * FROM (VALUES (1, '10'), (2, 'oops'), (3, '30')) t(a, b)) TO '{TEST_DIR}/rejects_unprojected.csv' (HEADER)
+
+query I
+SELECT a FROM read_csv('{TEST_DIR}/rejects_unprojected.csv', store_rejects=true, columns={'a': 'INTEGER', 'b': 'INTEGER'}, header=true)
+----
+1
+3
+
+query IIII
+SELECT line, column_idx, column_name, error_type FROM reject_errors
+----
+3	2	b	CAST

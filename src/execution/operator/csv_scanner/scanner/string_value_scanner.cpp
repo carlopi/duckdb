@@ -1141,6 +1141,49 @@ void StringValueScanner::ResumeParse() {
 	}
 }
 
+void StringValueScanner::ValidateUnprojectedColumn(DataChunk &parse_chunk, idx_t col_idx) {
+	auto &parse_vector = parse_chunk.data[col_idx];
+	auto &parse_type = parse_vector.GetType();
+	auto &type = csv_file_scan->file_types[col_idx];
+	if (!type.IsJSONType() && (type == LogicalType::VARCHAR || parse_type != LogicalType::VARCHAR)) {
+		// the column was parsed as its own type: its errors were already found while parsing
+		return;
+	}
+	string error_message;
+	Vector result_vector(type, parse_chunk.size());
+	if (VectorOperations::TryCast(buffer_manager->context, parse_vector, result_vector, parse_chunk.size(),
+	                              &error_message, false, true)) {
+		return;
+	}
+	auto inserted_validity = result_vector.Validity();
+	auto parse_validity = parse_vector.Validity();
+	const idx_t file_column = csv_file_scan->parse_columns[col_idx].file_column;
+	auto &names = csv_file_scan->GetNames();
+	for (idx_t line_error = 0; line_error < parse_chunk.size(); line_error++) {
+		if (inserted_validity.IsValid(line_error) || !parse_validity.IsValid(line_error)) {
+			continue;
+		}
+		result.borked_rows.insert(line_error);
+		if (!state_machine->options.IgnoreErrors()) {
+			// the error must reach the rejects table
+			LinesPerBoundary lines_per_batch(iterator.GetBoundaryIdx(), lines_read - parse_chunk.size() + line_error);
+			bool first_nl = false;
+			auto borked_line = result.line_positions_per_row[line_error].ReconstructCurrentLine(
+			    first_nl, result.buffer_handles, result.PrintErrorLine());
+			std::ostringstream error;
+			error << "Could not convert string \"" << parse_vector.GetValue(line_error) << "\" to \'" << type.ToString()
+			      << "\'";
+			string error_msg = error.str();
+			FullLinePosition::SanitizeError(error_msg);
+			auto csv_error = CSVError::CastError(
+			    state_machine->options, names[file_column], error_msg, file_column, borked_line, lines_per_batch,
+			    result.line_positions_per_row[line_error].begin.GetGlobalPosition(result.result_size, first_nl),
+			    optional_idx::Invalid(), type.id(), result.path);
+			error_handler->Error(csv_error);
+		}
+	}
+}
+
 void StringValueScanner::Flush(DataChunk &insert_chunk) {
 	bool continue_processing;
 	do {
@@ -1166,15 +1209,18 @@ void StringValueScanner::Flush(DataChunk &insert_chunk) {
 
 		auto &names = csv_file_scan->GetNames();
 		// Now Do the cast-aroo
-		for (idx_t i = 0; i < csv_file_scan->column_ids.size(); i++) {
-			idx_t result_idx = i;
-			if (!csv_file_scan->projection_ids.empty()) {
-				result_idx = csv_file_scan->projection_ids[i].second;
-			}
+		for (idx_t i = 0; i < csv_file_scan->parse_columns.size(); i++) {
+			auto &parse_column = csv_file_scan->parse_columns[i];
 			if (i >= parse_chunk.ColumnCount()) {
 				throw InvalidInputException("Mismatch between the schema of different files");
 			}
 			auto &parse_vector = parse_chunk.data[i];
+			if (!parse_column.output_column.IsValid()) {
+				// the column is only parsed to validate its values - a failed cast still removes the row
+				ValidateUnprojectedColumn(parse_chunk, i);
+				continue;
+			}
+			const idx_t result_idx = parse_column.output_column.GetIndex();
 			auto &result_vector = insert_chunk.data[result_idx];
 			auto &type = result_vector.GetType();
 			auto &parse_type = parse_vector.GetType();
@@ -1222,9 +1268,10 @@ void StringValueScanner::Flush(DataChunk &insert_chunk) {
 							row_byte_pos = result.line_positions_per_row[line_error].begin.GetGlobalPosition(
 							    result.result_size, first_nl);
 						}
-						auto csv_error = CSVError::CastError(
-						    state_machine->options, names[i], error_msg, i, borked_line, lines_per_batch, row_byte_pos,
-						    optional_idx::Invalid(), result_vector.GetType().id(), result.path);
+						auto csv_error =
+						    CSVError::CastError(state_machine->options, names[parse_column.file_column], error_msg,
+						                        parse_column.file_column, borked_line, lines_per_batch, row_byte_pos,
+						                        optional_idx::Invalid(), result_vector.GetType().id(), result.path);
 						error_handler->Error(csv_error);
 					}
 				}
@@ -1250,11 +1297,12 @@ void StringValueScanner::Flush(DataChunk &insert_chunk) {
 							      << LogicalTypeIdToString(type.id()) << "\'";
 							string error_msg = error.str();
 							FullLinePosition::SanitizeError(error_msg);
-							auto csv_error = CSVError::CastError(
-							    state_machine->options, names[i], error_msg, i, borked_line, lines_per_batch,
-							    result.line_positions_per_row[line_error].begin.GetGlobalPosition(result.result_size,
-							                                                                      first_nl),
-							    optional_idx::Invalid(), result_vector.GetType().id(), result.path);
+							auto csv_error =
+							    CSVError::CastError(state_machine->options, names[parse_column.file_column], error_msg,
+							                        parse_column.file_column, borked_line, lines_per_batch,
+							                        result.line_positions_per_row[line_error].begin.GetGlobalPosition(
+							                            result.result_size, first_nl),
+							                        optional_idx::Invalid(), result_vector.GetType().id(), result.path);
 							error_handler->Error(csv_error);
 						}
 					}

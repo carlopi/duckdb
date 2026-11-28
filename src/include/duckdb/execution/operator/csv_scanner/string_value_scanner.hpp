@@ -406,6 +406,9 @@ private:
 	//! Continues a chunk that suspended on a buffer load
 	void ResumeParse();
 
+	//! Casts a column the query does not read, so its cast errors still remove the row
+	void ValidateUnprojectedColumn(DataChunk &parse_chunk, idx_t col_idx);
+
 	//! Function used to process values that go over the first buffer, extra allocation might be necessary
 	void ProcessOverBufferValue();
 

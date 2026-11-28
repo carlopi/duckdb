@@ -110,46 +110,49 @@ void CSVFileScan::SetNamesAndTypes(const vector<Identifier> &names_p, const vect
 }
 
 void CSVFileScan::InitializeFileNamesTypes() {
-	if (column_ids.empty()) {
+	// when the scan drops rows with errors, every column must be validated: an error in a column the query
+	// does not read still removes the row, so the row set does not depend on the projection
+	const bool validate_all_columns = options.ignore_errors.GetValue();
+	if (column_ids.empty() && !validate_all_columns) {
 		// This means that the columns from this file are irrelevant.
 		// just read the first column
 		file_types.emplace_back(LogicalType::VARCHAR);
 		projected_columns.insert(0);
 		reads_first_column_to_count_rows = true;
-		projection_ids.emplace_back(0, 0);
+		parse_columns.push_back({0, optional_idx()});
 		return;
 	}
 
 	for (idx_t i = 0; i < column_ids.size(); i++) {
 		auto col_idx = MultiFileLocalIndex(i);
 		auto column_id = column_ids[col_idx];
-		file_types.emplace_back(types[column_id.GetId()]);
 		projected_columns.insert(column_id.GetId());
-		projection_ids.emplace_back(column_id.GetId(), col_idx);
+		parse_columns.push_back({column_id.GetId(), optional_idx(col_idx)});
 	}
 
-	if (column_ids.empty()) {
-		file_types = types;
-	}
-
-	// We need to be sure that our types are also following the cast_map
-	if (!cast_map.empty()) {
-		for (idx_t i = 0; i < column_ids.size(); i++) {
-			auto local_idx = MultiFileLocalIndex(i);
-			auto entry = cast_map.find(column_ids[local_idx].GetId());
-			if (entry != cast_map.end()) {
-				file_types[i] = entry->second;
+	if (validate_all_columns) {
+		// the columns the query does not read are still parsed, so that their errors remove the row;
+		// columns of the schema the file does not have cannot hold values, they need no validation
+		const idx_t file_columns = MinValue<idx_t>(types.size(), state_machine->dialect_options.num_cols);
+		for (idx_t col_idx = 0; col_idx < file_columns; col_idx++) {
+			if (projected_columns.insert(col_idx).second) {
+				parse_columns.push_back({col_idx, optional_idx()});
 			}
 		}
 	}
 
-	// We sort the types on the order of the parsed chunk
-	std::sort(projection_ids.begin(), projection_ids.end());
-	vector<LogicalType> sorted_types;
-	for (idx_t i = 0; i < projection_ids.size(); ++i) {
-		sorted_types.push_back(file_types[projection_ids[i].second]);
+	// We sort the columns on the order of the parsed chunk
+	std::sort(parse_columns.begin(), parse_columns.end(),
+	          [](const ParseColumnMapping &a, const ParseColumnMapping &b) { return a.file_column < b.file_column; });
+	for (auto &parse_column : parse_columns) {
+		// We need to be sure that our types are also following the cast_map
+		auto entry = cast_map.find(parse_column.file_column);
+		if (entry != cast_map.end()) {
+			file_types.push_back(entry->second);
+		} else {
+			file_types.push_back(types[parse_column.file_column]);
+		}
 	}
-	file_types = sorted_types;
 }
 
 const vector<string> &CSVFileScan::GetNames() {
@@ -162,6 +165,7 @@ const vector<LogicalType> &CSVFileScan::GetTypes() {
 void CSVFileScan::InitializeProjection() {
 	for (idx_t i = 0; i < options.dialect_options.num_cols; i++) {
 		column_ids.push_back(MultiFileLocalColumnId(i));
+		parse_columns.push_back({i, optional_idx(i)});
 	}
 }
 

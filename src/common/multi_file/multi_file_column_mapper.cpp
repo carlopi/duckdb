@@ -1046,6 +1046,21 @@ ResultColumnMapping MultiFileColumnMapper::CreateColumnMappingByMapper(const Col
 		reader.column_ids.emplace_back(local_id);
 		reader.column_indexes.push_back(std::move(*local_index));
 	}
+	if (reader.UseCastMap()) {
+		// a reader that casts while parsing sees the schema types through its cast map; give it the entries of
+		// the columns the query does not read as well, so it can validate their values against those types
+		for (auto &global_column : global_columns) {
+			auto entry = mapper.Find(global_column);
+			if (!entry.IsValid()) {
+				continue;
+			}
+			const auto local_id = entry.GetIndex();
+			auto &local_type = local_columns[local_id].type;
+			if (global_column.type != local_type && reader.cast_map.find(local_id) == reader.cast_map.end()) {
+				reader.cast_map[local_id] = global_column.type;
+			}
+		}
+	}
 	D_ASSERT(global_column_ids.size() == reader_data.expressions.size());
 	return result;
 }

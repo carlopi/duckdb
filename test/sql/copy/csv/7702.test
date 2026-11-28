@@ -2,12 +2,14 @@
 # description: Test for issue #7702
 # group: [csv]
 
+# the 4096 rows whose first column does not cast to the sniffed BIGINT are skipped,
+# whether or not a query reads that column
 query I
 SELECT count(*) FROM read_csv_auto( ['{DATA_DIR}/csv/error/mismatch/half1.csv', '{DATA_DIR}/csv/error/mismatch/half2.csv'], ignore_errors=true, sample_size=1);
 ----
-9102
+5006
 
 query I
 SELECT count(*) FROM read_csv_auto( ['{DATA_DIR}/csv/error/mismatch/half2.csv', '{DATA_DIR}/csv/error/mismatch/half1.csv'], ignore_errors=true, sample_size=1);
 ----
-9102
+5006

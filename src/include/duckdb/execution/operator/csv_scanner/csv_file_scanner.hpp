@@ -88,11 +88,19 @@ public:
 
 	vector<LogicalType> file_types;
 
+	//! A column of the parse chunk: the file column it reads and the output column it fills.
+	//! The output column is invalid for a column that is only parsed to validate its values.
+	struct ParseColumnMapping {
+		idx_t file_column;
+		optional_idx output_column;
+	};
+
 	//! Variables to handle projection pushdown
 	set<idx_t> projected_columns;
 	//! No column of the file is projected: the scan reads the first column only to count rows
 	bool reads_first_column_to_count_rows = false;
-	std::vector<std::pair<idx_t, idx_t>> projection_ids;
+	//! The columns of the parse chunk, in the order they appear in the file
+	vector<ParseColumnMapping> parse_columns;
 
 	//! Options for this CSV Reader
 	CSVReaderOptions options;
