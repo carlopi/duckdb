@@ -1,0 +1,66 @@
+# name: test/sql/copy/parquet/encryption/encrypted_bloom_filter_write.test
+# description: Write bloom filters into encrypted Parquet files as encrypted modules
+# group: [encryption]
+
+require parquet
+
+# parquet keys are not persisted across restarts
+require noforcestorage
+
+# writing encrypted parquet requires a crypto provider; use the built-in mbedtls one
+statement ok
+SET force_mbedtls_unsafe = true
+
+statement ok
+PRAGMA add_parquet_key('key256', '01234567891123450123456789112345')
+
+# s is high-cardinality (bloom filter fallback path), tag is low-cardinality (dictionary bloom filter path)
+# the min/max of tag never rule a row group out, only its bloom filter can
+statement ok
+CREATE TABLE bloom_source AS
+SELECT concat('v', i) AS s, ((i % 50) * 20 + i // 100000)::INTEGER AS tag, i
+FROM range(300000) t(i)
+
+statement ok
+COPY bloom_source TO '{TEST_DIR}/plain_bloom.parquet' (ROW_GROUP_SIZE 100000)
+
+statement ok
+COPY bloom_source TO '{TEST_DIR}/encrypted_bloom.parquet'
+(ENCRYPTION_CONFIG {footer_key: 'key256'}, ROW_GROUP_SIZE 100000)
+
+# the plain file prunes the string point lookup to a single row group via the bloom filter
+# ('v150000' is inside the min/max of the first row group but not in its bloom filter)
+query II
+EXPLAIN ANALYZE SELECT sum(i) FROM read_parquet('{TEST_DIR}/plain_bloom.parquet') WHERE s = 'v150000'
+----
+analyzed_plan	<REGEX>:(?s).*Row Groups Scanned: 1 / 3.*
+
+# the encrypted file prunes identically (statistics alone would scan 2 / 3)
+query II
+EXPLAIN ANALYZE SELECT sum(i) FROM read_parquet('{TEST_DIR}/encrypted_bloom.parquet',
+	encryption_config={footer_key: 'key256'}) WHERE s = 'v150000'
+----
+analyzed_plan	<REGEX>:(?s).*Row Groups Scanned: 1 / 3.*
+
+query II
+SELECT s, i FROM read_parquet('{TEST_DIR}/encrypted_bloom.parquet',
+	encryption_config={footer_key: 'key256'}) WHERE s = 'v150000'
+----
+v150000	150000
+
+# the dictionary bloom filter excludes a value that is within the min/max of every row group
+query II
+EXPLAIN ANALYZE SELECT sum(i) FROM read_parquet('{TEST_DIR}/encrypted_bloom.parquet',
+	encryption_config={footer_key: 'key256'}) WHERE tag = 10
+----
+analyzed_plan	<REGEX>:(?s).*Row Groups Scanned: 0 / 3.*
+
+# full scan sanity check: the encrypted file round-trips completely
+query III
+SELECT count(*), sum(i), count(DISTINCT tag) FROM read_parquet('{TEST_DIR}/encrypted_bloom.parquet',
+	encryption_config={footer_key: 'key256'})
+----
+300000	44999850000	150
+
+statement ok
+SET force_mbedtls_unsafe = false

@@ -665,7 +665,7 @@ void ParquetWriter::InitializeColumnWriters() {
 		    &options.shredding_types, 0, 1, can_have_nulls));
 		auto &column_writer = *column_writers.back();
 		column_writer.bloom_filter_fallback =
-		    options.enable_bloom_filters && !options.encryption_config && column_writer.SupportsBloomFilterFallback();
+		    options.enable_bloom_filters && column_writer.SupportsBloomFilterFallback();
 	}
 }
 
@@ -1568,7 +1568,6 @@ void ParquetWriter::FlushBloomFilters() {
 		                 (a.column_idx == b.column_idx && a.row_group_idx < b.row_group_idx);
 	          });
 	for (auto &bloom_filter_entry : bloom_filters) {
-		D_ASSERT(!options.encryption_config);
 		// write nonsense bloom filter header
 		duckdb_parquet::BloomFilterHeader filter_header;
 		const auto bloom_filter_size = bloom_filter_entry.bloom_filter->Get()->GetLength();
@@ -1584,13 +1583,16 @@ void ParquetWriter::FlushBloomFilters() {
 		column_chunk.meta_data.__isset.bloom_filter_offset = true;
 		column_chunk.meta_data.bloom_filter_offset = NumericCast<int64_t>(writer->GetTotalWritten());
 
+		// in an encrypted file the header and the bitset are their own encrypted modules
 		auto bloom_filter_header_size = Write(filter_header);
 		// the async writer accounts for the bytes it queues, so the filter no longer needs the budget
 		bloom_filter_entry.bloom_filter->ReleaseReservation();
-		WriteData(make_uniq<ParquetBloomFilterWriteBuffer>(std::move(bloom_filter_entry.bloom_filter)));
+		auto bloom_filter_on_disk_size = WriteData(
+		    PrepareWriteData(make_uniq<ParquetBloomFilterWriteBuffer>(std::move(bloom_filter_entry.bloom_filter))));
 
 		column_chunk.meta_data.__isset.bloom_filter_length = true;
-		column_chunk.meta_data.bloom_filter_length = NumericCast<int32_t>(bloom_filter_header_size + bloom_filter_size);
+		column_chunk.meta_data.bloom_filter_length =
+		    NumericCast<int32_t>(bloom_filter_header_size + bloom_filter_on_disk_size);
 	}
 	bloom_filters.clear();
 }
@@ -1598,7 +1600,7 @@ void ParquetWriter::FlushBloomFilters() {
 void ParquetWriter::Finalize() {
 	InitializeSchemaElements();
 
-	// dump the remaining bloom filters right before footer, not if stuff is encrypted
+	// dump the remaining bloom filters right before the footer
 	FlushBloomFilters();
 
 	// the page index goes right in front of the footer, after the bloom filters, so that it is part of the tail of the
@@ -1684,9 +1686,6 @@ void ParquetWriter::BufferPageIndex(idx_t col_idx, ParquetPageIndexEntry page_in
 }
 
 void ParquetWriter::BufferBloomFilter(idx_t col_idx, unique_ptr<ParquetBloomFilter> bloom_filter) {
-	if (options.encryption_config) {
-		return;
-	}
 	ParquetBloomFilterEntry new_entry;
 	new_entry.bloom_filter = std::move(bloom_filter);
 	new_entry.column_idx = col_idx;
