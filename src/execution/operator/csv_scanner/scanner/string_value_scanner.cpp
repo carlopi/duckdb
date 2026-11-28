@@ -480,12 +480,7 @@ void StringValueResult::AddValueToVector(const char *value_ptr, idx_t size, bool
 		// We only evaluate if a string is utf8 valid, if it's actually a varchar
 		if (parse_types[chunk_col_id].validate_utf8 && !ascii_value &&
 		    !Utf8Proc::IsValid(value_ptr, UnsafeNumericCast<uint32_t>(size))) {
-			bool force_error = !state_machine.options.ignore_errors.GetValue() && sniffing;
-			// Invalid unicode, we must error
-			if (force_error) {
-				HandleUnicodeError(cur_col_id, last_position);
-			}
-			// If we got here, we are ignoring errors, hence we must ignore this line.
+			// Invalid unicode: the error is reported when the full row has been scanned, in HandleErrors
 			current_errors.Insert(INVALID_ENCODING, cur_col_id, chunk_col_id, last_position);
 			static_cast<string_t *>(vector_ptr[chunk_col_id])[number_of_rows] = StringVector::AddStringOrBlob(
 			    parse_chunk.data[chunk_col_id], string_t(value_ptr, UnsafeNumericCast<uint32_t>(0)));
@@ -692,23 +687,6 @@ void StringValueResult::SkipValue(StringValueResult &result, const idx_t buffer_
 	result.last_position.buffer_pos = buffer_pos + 1;
 }
 
-void StringValueResult::HandleUnicodeError(idx_t col_idx, LinePosition &error_position) {
-	bool first_nl = false;
-	auto borked_line = current_line_position.ReconstructCurrentLine(first_nl, buffer_handles, PrintErrorLine());
-	LinesPerBoundary lines_per_batch(iterator.GetBoundaryIdx(), lines_read);
-	if (current_line_position.begin == error_position) {
-		auto csv_error = CSVError::InvalidUTF8(state_machine.options, col_idx, lines_per_batch, borked_line,
-		                                       current_line_position.begin.GetGlobalPosition(requested_size, first_nl),
-		                                       error_position.GetGlobalPosition(requested_size, first_nl), path);
-		error_handler.Error(csv_error, true);
-	} else {
-		auto csv_error = CSVError::InvalidUTF8(state_machine.options, col_idx, lines_per_batch, borked_line,
-		                                       current_line_position.begin.GetGlobalPosition(requested_size, first_nl),
-		                                       error_position.GetGlobalPosition(requested_size), path);
-		error_handler.Error(csv_error, true);
-	}
-}
-
 bool LineError::HandleErrors(StringValueResult &result) {
 	bool skip_sniffing = false;
 	for (auto &cur_error : current_errors) {
@@ -716,7 +694,8 @@ bool LineError::HandleErrors(StringValueResult &result) {
 			skip_sniffing = true;
 		}
 	}
-	skip_sniffing = result.sniffing && skip_sniffing;
+	// when errors are not ignored, an invalid encoding found while sniffing must be reported, not skipped
+	skip_sniffing = result.sniffing && skip_sniffing && result.state_machine.options.ignore_errors.GetValue();
 
 	if ((ignore_errors || skip_sniffing) && is_error_in_line && !result.figure_out_new_line) {
 		result.RemoveLastLine();
@@ -759,6 +738,10 @@ bool LineError::HandleErrors(StringValueResult &result) {
 				    result.state_machine.options, col_idx, lines_per_batch, borked_line,
 				    result.current_line_position.begin.GetGlobalPosition(result.requested_size, first_nl),
 				    line_pos.GetGlobalPosition(result.requested_size), result.path);
+			}
+			if (result.sniffing && !result.state_machine.options.ignore_errors.GetValue()) {
+				// the sniffer must abort on an invalid encoding, even when the error handler would hold the error
+				result.error_handler.Error(csv_error, true);
 			}
 			// the value is invalid: make it NULL so that casting the column does not report a second error for it
 			if (cur_error.chunk_idx < result.validity_mask.size()) {

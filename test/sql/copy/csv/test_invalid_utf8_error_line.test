@@ -1,0 +1,59 @@
+# name: test/sql/copy/csv/test_invalid_utf8_error_line.test
+# description: An invalid-encoding error must report the row it occurred in as the Original Line, not the previous row
+# group: [csv]
+
+# line 3 is '2,\xFF\xFE bad'
+statement ok
+COPY (SELECT from_hex('612c620a312c780a322cfffe206261640a')) TO '{TEST_DIR}/invalid_utf8_line.csv' (FORMAT BLOB)
+
+# sniffing path: the error is detected while auto-detecting types
+statement error
+SELECT * FROM '{TEST_DIR}/invalid_utf8_line.csv'
+----
+CSV Error on Line: 3
+Original Line: 2,?? bad
+
+# parsing path: same report with an explicit schema
+statement error
+SELECT * FROM read_csv('{TEST_DIR}/invalid_utf8_line.csv', columns={'a': 'INTEGER', 'b': 'VARCHAR'}, auto_detect=false, header=1)
+----
+CSV Error on Line: 3
+Original Line: 2,?? bad
+
+# line 2 is '3,\xFFmid,4': the Original Line must contain the full row, including the columns after the invalid value
+statement ok
+COPY (SELECT from_hex('312c6f6b2c320a332cff6d69642c340a352c6f6b2c360a')) TO '{TEST_DIR}/invalid_utf8_mid_line.csv' (FORMAT BLOB)
+
+statement error
+SELECT * FROM '{TEST_DIR}/invalid_utf8_mid_line.csv'
+----
+CSV Error on Line: 2
+Original Line: 3,?mid,4
+
+statement error
+SELECT * FROM read_csv('{TEST_DIR}/invalid_utf8_mid_line.csv', columns={'a': 'INTEGER', 'b': 'VARCHAR', 'c': 'INTEGER'}, auto_detect=false, header=0)
+----
+CSV Error on Line: 2
+Original Line: 3,?mid,4
+
+# the invalid row is the first line of the file
+statement ok
+COPY (SELECT from_hex('392cff2c380a312c6f6b2c320a')) TO '{TEST_DIR}/invalid_utf8_first_line.csv' (FORMAT BLOB)
+
+statement error
+SELECT * FROM '{TEST_DIR}/invalid_utf8_first_line.csv'
+----
+CSV Error on Line: 1
+Original Line: 9,?,8
+
+statement error
+SELECT * FROM read_csv('{TEST_DIR}/invalid_utf8_first_line.csv', columns={'a': 'INTEGER', 'b': 'VARCHAR', 'c': 'INTEGER'}, auto_detect=false, header=0)
+----
+CSV Error on Line: 1
+Original Line: 9,?,8
+
+# ignoring errors still skips the invalid row, during sniffing and scanning
+query IT
+SELECT * FROM read_csv('{TEST_DIR}/invalid_utf8_line.csv', ignore_errors=true) ORDER BY ALL
+----
+1	x

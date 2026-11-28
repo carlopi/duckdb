@@ -305,8 +305,6 @@ public:
 	inline void StoreLinePosition();
 	//! Marks the columns of a borked row that were never written as NULL
 	void InvalidateUnwrittenColumns(idx_t first_unwritten_col);
-	//! Force the throw of a Unicode error
-	void HandleUnicodeError(idx_t col_idx, LinePosition &error_position);
 	bool HandleTooManyColumnsError(const char *value_ptr, const idx_t size);
 	inline void AddValueToVector(const char *value_ptr, idx_t size, bool allocate = false);
 	static inline void SetComment(StringValueResult &result, idx_t buffer_pos);
